@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.query.test_recursive_ctes import Category, Visit, WalkRole
 from tests.runtime.test_named_codecs import (
     LocalDocument,
@@ -28,7 +28,9 @@ class NativeCategory[S = mariadb.Pending](mariadb.Model[S]):
 async def provide_categories() -> AsyncGenerator[sqlite.Database]:
     """A three-node cycle with a leaf demonstrates repeated visits and branching."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_categories": sqlite.scaffold([Category])})
+        await database.migrate(
+            migration_functions({"001_categories": sqlite.scaffold([Category])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(
@@ -49,7 +51,9 @@ async def provide_native_categories() -> AsyncGenerator[mariadb.Database]:
     """Use the same cycle against MariaDB's recursive type rules."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_categories": mariadb.scaffold([NativeCategory])})
+        await database.migrate(
+            migration_functions({"001_categories": mariadb.scaffold([NativeCategory])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert_many(

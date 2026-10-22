@@ -8,6 +8,7 @@ from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.errors import ExecutionError, SchemaError
+from tests.helpers import migration_functions
 
 
 @test(
@@ -99,7 +100,7 @@ async def accepted_scalar_targets_support_scaffold_replay_and_inserts(
         if statement.strip()
     }
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate(migrations)
+        await database.migrate(migration_functions(migrations))
         await database.verify([Parent, Child])
         async with database.transaction() as setup:
             await setup.execute(sqlite.insert(Parent(a=10, b=20)))

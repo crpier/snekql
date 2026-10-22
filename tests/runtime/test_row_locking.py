@@ -15,7 +15,7 @@ from anyio import (
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.query.test_row_locking import Job, JobSummary
 from tests.runtime.test_nested_recovery import SQLiteEntry
 from tests.runtime.test_nested_transactions import provide_nested_case
@@ -29,9 +29,11 @@ async def provide_queue() -> AsyncGenerator[mariadb.Database]:
         server.config(pool_size=2)
     ) as database:
         await database.migrate(
-            {
-                "001_jobs": "CREATE TABLE job (id INTEGER PRIMARY KEY, status TEXT NOT NULL)"
-            }
+            migration_functions(
+                {
+                    "001_jobs": "CREATE TABLE job (id INTEGER PRIMARY KEY, status TEXT NOT NULL)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(

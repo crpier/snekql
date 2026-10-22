@@ -12,6 +12,7 @@ from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, tes
 
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
+from tests.helpers import migration_functions
 from tests.runtime.test_nested_transactions import provide_nested_case
 from tests.runtime.test_raw_execution import RawCase
 from tests.runtime.test_raw_lifecycle import provide_contended_case
@@ -40,16 +41,18 @@ async def provide_constraint_case(backend: BackendFamily) -> AsyncGenerator[RawC
     """Distinct constraint domains exercise adapter classification on real servers."""
     case = await load_fixture(provide_nested_case(backend))
     await case.database.migrate(
-        {
-            "001_entries": "CREATE TABLE nested_entries (value INTEGER PRIMARY KEY)",
-            "002_constraints": """CREATE TABLE constrained_entries (
+        migration_functions(
+            {
+                "001_entries": "CREATE TABLE nested_entries (value INTEGER PRIMARY KEY)",
+                "002_constraints": """CREATE TABLE constrained_entries (
             value INTEGER PRIMARY KEY,
             label VARCHAR(40) NOT NULL UNIQUE,
             positive INTEGER NOT NULL CHECK (positive > 0),
             parent INTEGER NOT NULL,
             FOREIGN KEY (parent) REFERENCES nested_entries(value)
         )""",
-        }
+            }
+        )
     )
     async with case.database.transaction() as transaction:
         await transaction.execute(
@@ -475,13 +478,15 @@ async def deferred_constraint_fails_at_outer_commit() -> None:
     """A savepoint cannot recover a constraint the database checks only at commit."""
     case = await load_fixture(provide_nested_case("sqlite"))
     await case.database.migrate(
-        {
-            "001_entries": "CREATE TABLE nested_entries (value INTEGER PRIMARY KEY)",
-            "002_deferred": """CREATE TABLE deferred_children (
+        migration_functions(
+            {
+                "001_entries": "CREATE TABLE nested_entries (value INTEGER PRIMARY KEY)",
+                "002_deferred": """CREATE TABLE deferred_children (
             value INTEGER PRIMARY KEY,
             parent INTEGER REFERENCES nested_entries(value) DEFERRABLE INITIALLY DEFERRED
         )""",
-        }
+            }
+        )
     )
 
     with assert_raises(sqlite.DatabaseRuntimeError):

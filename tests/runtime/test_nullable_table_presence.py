@@ -6,7 +6,7 @@ from typing import ClassVar
 from snektest import Param, assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 class Anchor[S = sqlite.Pending](sqlite.Model[S]):
@@ -23,7 +23,9 @@ class NullableRow[S = sqlite.Pending](sqlite.Model[S]):
 async def nullable_rows() -> AsyncGenerator[sqlite.Database]:
     """Two anchors, one actual row whose entire declared payload is NULL."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001": sqlite.scaffold([Anchor, NullableRow])})
+        await database.migrate(
+            migration_functions({"001": sqlite.scaffold([Anchor, NullableRow])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(Anchor, [Anchor(id=1), Anchor(id=2)])
@@ -76,7 +78,9 @@ async def native_nullable_rows() -> AsyncGenerator[mariadb.Database]:
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {"001": mariadb.scaffold([NativeAnchor, NativeNullableRow])}
+            migration_functions(
+                {"001": mariadb.scaffold([NativeAnchor, NativeNullableRow])}
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(

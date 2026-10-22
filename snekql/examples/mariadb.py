@@ -2,6 +2,7 @@
 
 lazy from typing import ClassVar
 
+from snekql.sqlite import MigrationContext
 lazy from snekql import mariadb
 lazy from snekql.mariadb import Database, Pending, Row, insert, select
 
@@ -19,16 +20,21 @@ class User[S = Pending](mariadb.Model[S]):
     email: User.Col[str] = mariadb.Text(unique=True)
 
 
+async def create_user(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "CREATE TABLE `user` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+    )
+
+
+async def user_email_unique(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute("CREATE UNIQUE INDEX `ux_user_email` ON `user` (`email`)")
+
+
 MIGRATIONS = {
-    "0001_create_user": (
-        "CREATE TABLE `user` ("
-        "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, "
-        "`email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
-        ") ENGINE=InnoDB"
-    ),
-    "0002_user_email_unique": (
-        "CREATE UNIQUE INDEX `ux_user_email` ON `user` (`email`)"
-    ),
+    "0001_create_user": create_user,
+    "0002_user_email_unique": user_email_unique,
 }
 
 

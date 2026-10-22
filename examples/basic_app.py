@@ -40,33 +40,43 @@ class User[S = Pending](sqlite.Model[S]):
     )
 
 
+async def create_user(migration: sqlite.MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "email" TEXT NOT NULL, "status" TEXT NOT NULL, "created_at" TEXT NOT NULL DEFAULT (strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\'))) STRICT'
+    )
+
+
+async def create_user_temporal(migration: sqlite.MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        'CREATE TABLE "user_temporal" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "email" TEXT NOT NULL, "status" TEXT NOT NULL, "created_at" TEXT NOT NULL DEFAULT (strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\') || \'000Z\')) STRICT'
+    )
+
+
+async def copy_user_temporal(migration: sqlite.MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "INSERT INTO user_temporal (id, email, status, created_at) SELECT id, email, status, CASE WHEN length(created_at) = 24 AND strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at THEN substr(created_at, 1, 23) || '000Z' ELSE NULL END FROM user"
+    )
+
+
+async def drop_old_user(migration: sqlite.MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute('DROP TABLE "user"')
+
+
+async def rename_user_temporal(migration: sqlite.MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute('ALTER TABLE "user_temporal" RENAME TO "user"')
+
+
 MIGRATIONS = {
-    "0001_create_user": (
-        'CREATE TABLE "user" ('
-        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
-        '"email" TEXT NOT NULL, '
-        '"status" TEXT NOT NULL, '
-        '"created_at" TEXT NOT NULL DEFAULT '
-        "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
-        ") STRICT"
-    ),
-    "0003_create_user_temporal": (
-        'CREATE TABLE "user_temporal" ('
-        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
-        '"email" TEXT NOT NULL, '
-        '"status" TEXT NOT NULL, '
-        '"created_at" TEXT NOT NULL DEFAULT '
-        "(strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z')) STRICT"
-    ),
-    "0004_copy_user_temporal": (
-        "INSERT INTO user_temporal (id, email, status, created_at) "
-        "SELECT id, email, status, CASE "
-        "WHEN length(created_at) = 24 AND "
-        "strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at "
-        "THEN substr(created_at, 1, 23) || '000Z' ELSE NULL END FROM user"
-    ),
-    "0005_drop_old_user": 'DROP TABLE "user"',
-    "0006_rename_user_temporal": 'ALTER TABLE "user_temporal" RENAME TO "user"',
+    "0001_create_user": create_user,
+    "0003_create_user_temporal": create_user_temporal,
+    "0004_copy_user_temporal": copy_user_temporal,
+    "0005_drop_old_user": drop_old_user,
+    "0006_rename_user_temporal": rename_user_temporal,
 }
 
 

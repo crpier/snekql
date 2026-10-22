@@ -20,6 +20,7 @@ from snektest import (
 )
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 
 _DECLARATION = {
     "001_entries": "CREATE TABLE entries (id INTEGER PRIMARY KEY)",
@@ -56,14 +57,22 @@ async def provide_deployment() -> AsyncGenerator[Deployment]:
         async with await sqlite.Database.initialize(
             database=Path(directory) / "app.db"
         ) as database:
-            await database.migrate({"001_entries": _DECLARATION["001_entries"]})
+            await database.migrate(
+                migration_functions({"001_entries": _DECLARATION["001_entries"]})
+            )
         await AsyncPath(directory, "deployment.py").write_text(f'''"""Trusted deployment configuration."""
 from contextlib import asynccontextmanager
 from pathlib import Path
 from anyio import Path as AsyncPath
 from snekql import sqlite
 
-MIGRATIONS = {_DECLARATION!r}
+async def create_entries(migration):
+    await migration.execute({_DECLARATION["001_entries"]!r})
+
+async def add_note(migration):
+    raise RuntimeError("inspection must never execute a pending function")
+
+MIGRATIONS = {{"001_entries": create_entries, "002_note": add_note}}
 
 @asynccontextmanager
 async def open_database():
@@ -137,39 +146,8 @@ async def text_output_hides_sql(command: str) -> None:
 
 
 @test(mark="medium")
-async def plan_json_includes_only_pending_sql_when_requested() -> None:
-    """Explicit SQL inspection never includes bodies already recorded as applied."""
-    deployment = await load_fixture(provide_deployment())
-
-    completed = await deployment.run("plan", "--json", "--sql")
-
-    assert_eq(completed.returncode, 0)
-    assert_eq(
-        loads(completed.stdout)["sql"],
-        {
-            "002_note": "ALTER TABLE entries ADD COLUMN note TEXT DEFAULT 'private_body_literal'"
-        },
-    )
-
-
-@test(mark="medium")
-async def plan_text_can_show_pending_sql() -> None:
-    """Operators explicitly request SQL rather than receiving it in normal output."""
-    deployment = await load_fixture(provide_deployment())
-
-    completed = await deployment.run("plan", "--sql")
-
-    assert_eq(completed.returncode, 0)
-    assert_in(
-        "ALTER TABLE entries ADD COLUMN note TEXT DEFAULT 'private_body_literal'",
-        completed.stdout.decode(),
-    )
-    assert_not_in("CREATE TABLE", completed.stdout.decode())
-
-
-@test(mark="medium")
 async def status_rejects_sql_output() -> None:
-    """SQL disclosure is limited to the explicit plan command."""
+    """SQL preview is unavailable for function-based migrations."""
     deployment = await load_fixture(provide_deployment())
 
     completed = await deployment.run("status", "--sql")
@@ -196,7 +174,8 @@ async def history_errors_close_the_database_context() -> None:
     deployment = await load_fixture(provide_deployment())
     module = AsyncPath(deployment.directory, "deployment.py")
     await module.write_text(
-        await module.read_text() + '\nMIGRATIONS["001_entries"] = "SELECT 1"\n'
+        await module.read_text()
+        + '\nMIGRATIONS = {"different_revision": create_entries, "002_note": add_note}\n'
     )
 
     completed = await deployment.run("plan", "--json")
@@ -298,42 +277,14 @@ async def cli_inspection_does_not_apply_pending_sql() -> None:
     """Planning leaves non-idempotent pending DDL available for a separate deploy step."""
     deployment = await load_fixture(provide_deployment())
 
-    completed = await deployment.run("plan", "--sql")
+    completed = await deployment.run("plan")
     async with await sqlite.Database.initialize(
         database=Path(deployment.directory) / "app.db"
     ) as database:
-        applied = await database.migrate(_DECLARATION)
+        applied = await database.migrate(migration_functions(_DECLARATION))
 
     assert_eq(completed.returncode, 0)
     assert_eq(applied.applied, ("002_note",))
-
-
-@test(mark="medium")
-async def sql_preview_uses_the_original_declaration_snapshot() -> None:
-    """Factory-side edits cannot change the SQL paired with an inspected plan."""
-    deployment = await load_fixture(provide_deployment())
-    module = AsyncPath(deployment.directory, "deployment.py")
-    await module.write_text(
-        await module.read_text()
-        + """
-original_factory = open_database
-@asynccontextmanager
-async def open_database():
-    MIGRATIONS["002_note"] = "SELECT 'changed_after_snapshot'"
-    async with original_factory() as database:
-        yield database
-"""
-    )
-
-    completed = await deployment.run("plan", "--json", "--sql")
-
-    assert_eq(completed.returncode, 0)
-    assert_eq(
-        loads(completed.stdout)["sql"],
-        {
-            "002_note": "ALTER TABLE entries ADD COLUMN note TEXT DEFAULT 'private_body_literal'"
-        },
-    )
 
 
 @test(mark="medium")
@@ -344,7 +295,7 @@ async def suppressed_inspection_error_is_not_success() -> None:
     await module.write_text(
         await module.read_text()
         + """
-MIGRATIONS["001_entries"] = "SELECT 1"
+MIGRATIONS = {"different_revision": create_entries, "002_note": add_note}
 original_factory = open_database
 @asynccontextmanager
 async def open_database():

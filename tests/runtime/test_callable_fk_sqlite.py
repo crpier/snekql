@@ -7,6 +7,7 @@ from uuid import UUID
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 from tests.test_callable_fk_typing_sqlite import Account, Other
 
 
@@ -18,7 +19,9 @@ class ManagerRole:
 async def provide_accounts() -> AsyncGenerator[sqlite.Database]:
     """Seed a root and child using generated primary keys and callable defaults."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001": sqlite.scaffold([Other, Account])})
+        await database.migrate(
+            migration_functions({"001": sqlite.scaffold([Other, Account])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Other(account_id=1, label="root")))
             await transaction.execute(sqlite.insert(Account()))
@@ -103,7 +106,9 @@ class UuidAccount[S = sqlite.Pending](sqlite.Model[S]):
 async def provide_uuid_accounts() -> AsyncGenerator[sqlite.Database]:
     """Seed one reference whose Python domain differs from wire values."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001": sqlite.scaffold([UuidAccount])})
+        await database.migrate(
+            migration_functions({"001": sqlite.scaffold([UuidAccount])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert(UuidAccount(account_id=UUID(int=1)))

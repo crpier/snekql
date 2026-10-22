@@ -35,7 +35,6 @@ lazy from snekql.sqlite.config import Config
 lazy from snekql.sqlite.migrations import (
     SQLiteMigrationConnectionState,
     apply_sqlite_migrations,
-    validate_sqlite_migrations,
     verify_sqlite_migrations,
 )
 lazy from snekql.sqlite.pool import (
@@ -345,11 +344,6 @@ class SQLiteRuntime:
     def check_accepting_work(self) -> None:
         self.connection_pool.check_accepting_work()
 
-    def validate_migrations(self, migrations: MigrationPlan) -> None:
-        """Reject invalid SQLite bodies before any pool acquisition."""
-
-        validate_sqlite_migrations(migrations)
-
     async def _release_migration_connection(  # noqa: C901 - retain lease ownership across native cancellation
         self,
         connection: Connection,
@@ -402,8 +396,6 @@ class SQLiteRuntime:
     async def apply_migrations(
         self,
         migrations: MigrationPlan,
-        *,
-        adopt_legacy: bool = False,
     ) -> MigrationResult:
         """Apply pending migrations on a pooled connection (ADR 0007)."""
 
@@ -414,7 +406,6 @@ class SQLiteRuntime:
                 connection,
                 connection_state,
                 migrations,
-                adopt_legacy=adopt_legacy,
                 busy_retry_policy=self.busy_retry_policy,
             )
         finally:

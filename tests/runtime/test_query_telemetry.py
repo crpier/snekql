@@ -15,6 +15,7 @@ from snektest import Param, assert_eq, assert_ne, assert_raises, load_fixture, t
 
 from snekql import sqlite
 from snekql.model import BackendFamily
+from tests.helpers import migration_functions
 from tests.runtime.test_raw_execution import provide_raw_case
 
 
@@ -103,7 +104,7 @@ async def explain_packaging_is_measured() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:"), observer=events.append
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             events.clear()
             await transaction.explain(sqlite.select(Entry.number))
@@ -410,7 +411,7 @@ async def compiled_fingerprint_matches_builder_execution() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:"), observer=events.append
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             events.clear()
             await transaction.fetch_all(query)

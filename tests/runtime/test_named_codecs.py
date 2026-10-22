@@ -8,7 +8,7 @@ from pydantic import BaseModel, Json
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 class LocalDocument[S = sqlite.Pending](sqlite.Model[S]):
@@ -46,7 +46,9 @@ class FirstValue(BaseModel):
 async def provide_sqlite_documents() -> AsyncGenerator[sqlite.Database]:
     """Seed values whose logical types differ from their wire representation."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_documents": sqlite.scaffold([LocalDocument])})
+        await database.migrate(
+            migration_functions({"001_documents": sqlite.scaffold([LocalDocument])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert(LocalDocument(id=UUID(int=1), payload=[2, 3]))
@@ -89,7 +91,9 @@ async def provide_mariadb_documents() -> AsyncGenerator[mariadb.Database]:
     """Seed values whose logical types differ from their wire representation."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_documents": mariadb.scaffold([MariaDocument])})
+        await database.migrate(
+            migration_functions({"001_documents": mariadb.scaffold([MariaDocument])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert(MariaDocument(id=UUID(int=1), payload=[2, 3]))

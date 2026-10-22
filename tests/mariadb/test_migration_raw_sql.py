@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from snektest import Param, assert_eq, assert_raises, load_fixture, test
+from snektest import Param, assert_eq, load_fixture, test
 
 from snekql import mariadb
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(
@@ -36,10 +36,12 @@ async def migration_preserves_percent_literal(case: tuple[str, str]) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "create": "CREATE TABLE message (text TEXT NOT NULL) ENGINE=InnoDB",
-                "insert": case[0],
-            }
+            migration_functions(
+                {
+                    "create": "CREATE TABLE message (text TEXT NOT NULL) ENGINE=InnoDB",
+                    "insert": case[0],
+                }
+            )
         )
         async with database.transaction() as transaction:
             stored = await transaction.fetch_one(mariadb.select(Message.text))
@@ -71,10 +73,12 @@ async def migration_executes_percent_expression(body: str) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "create": "CREATE TABLE measurement (value BIGINT NOT NULL) ENGINE=InnoDB",
-                "compute": body,
-            }
+            migration_functions(
+                {
+                    "create": "CREATE TABLE measurement (value BIGINT NOT NULL) ENGINE=InnoDB",
+                    "compute": body,
+                }
+            )
         )
         async with database.transaction() as transaction:
             stored = await transaction.fetch_one(mariadb.select(Measurement.value))
@@ -90,21 +94,20 @@ async def migration_history_binds_percent_bearing_names() -> None:
     declaration = {"name'%s%%%(name)s": "SELECT '100%%'"}
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate(declaration)
-        await database.verify_migrations(declaration)
-        repeated = await database.migrate(declaration)
+        await database.migrate(migration_functions(declaration))
+        await database.verify_migrations(migration_functions(declaration))
+        repeated = await database.migrate(migration_functions(declaration))
 
     assert_eq(repeated.already_applied, ("name'%s%%%(name)s",))
     assert_eq(repeated.applied, ())
 
 
 @test(mark="slow")
-async def migration_history_keeps_exact_percent_checksum() -> None:
-    """Percent correction does not normalize or rewrite historical body checksums."""
+async def revision_identity_ignores_edits_to_percent_literals() -> None:
+    """Changing a body does not change the already-applied revision identity."""
 
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"body": "SELECT '100%%'"})
+        await database.migrate(migration_functions({"body": "SELECT '100%%'"}))
 
-        with assert_raises(mariadb.MigrationHistoryError):
-            await database.verify_migrations({"body": "SELECT '100%'"})
+        await database.verify_migrations(migration_functions({"body": "SELECT '100%'"}))

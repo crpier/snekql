@@ -8,6 +8,7 @@ from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.errors import SchemaVerificationError
+from tests.helpers import migration_functions
 
 
 class Parent[S = sqlite.Pending](sqlite.Model[S]):
@@ -54,13 +55,15 @@ async def verification_reports_extra_foreign_key(case: tuple[str, str]) -> None:
         constraints.reverse()
     async with await sqlite.Database.initialize(database=":memory:") as database:
         await database.migrate(
-            {
-                "parent": "CREATE TABLE parent (id INTEGER PRIMARY KEY) STRICT",
-                "other": "CREATE TABLE other (id INTEGER PRIMARY KEY) STRICT",
-                "child": "CREATE TABLE child (parent_id INTEGER PRIMARY KEY, "
-                + ", ".join(constraints)
-                + ") STRICT",
-            }
+            migration_functions(
+                {
+                    "parent": "CREATE TABLE parent (id INTEGER PRIMARY KEY) STRICT",
+                    "other": "CREATE TABLE other (id INTEGER PRIMARY KEY) STRICT",
+                    "child": "CREATE TABLE child (parent_id INTEGER PRIMARY KEY, "
+                    + ", ".join(constraints)
+                    + ") STRICT",
+                }
+            )
         )
         result = await database.verify([Parent, Child], policy="warn")
         with assert_raises(SchemaVerificationError):
@@ -80,10 +83,12 @@ async def renamed_single_constraint_is_not_drift() -> None:
 
     async with await sqlite.Database.initialize(database=":memory:") as database:
         await database.migrate(
-            {
-                "parent": "CREATE TABLE parent (id INTEGER PRIMARY KEY) STRICT",
-                "child": "CREATE TABLE child (parent_id INTEGER PRIMARY KEY, CONSTRAINT custom_name FOREIGN KEY (parent_id) REFERENCES parent(id)) STRICT",
-            }
+            migration_functions(
+                {
+                    "parent": "CREATE TABLE parent (id INTEGER PRIMARY KEY) STRICT",
+                    "child": "CREATE TABLE child (parent_id INTEGER PRIMARY KEY, CONSTRAINT custom_name FOREIGN KEY (parent_id) REFERENCES parent(id)) STRICT",
+                }
+            )
         )
         result = await database.verify([Parent, Child])
 
@@ -96,10 +101,12 @@ async def single_changed_constraint_keeps_existing_diagnostic() -> None:
 
     async with await sqlite.Database.initialize(database=":memory:") as database:
         await database.migrate(
-            {
-                "parent": "CREATE TABLE parent (id INTEGER PRIMARY KEY) STRICT",
-                "child": "CREATE TABLE child (parent_id INTEGER PRIMARY KEY, FOREIGN KEY (parent_id) REFERENCES parent(id) ON DELETE CASCADE) STRICT",
-            }
+            migration_functions(
+                {
+                    "parent": "CREATE TABLE parent (id INTEGER PRIMARY KEY) STRICT",
+                    "child": "CREATE TABLE child (parent_id INTEGER PRIMARY KEY, FOREIGN KEY (parent_id) REFERENCES parent(id) ON DELETE CASCADE) STRICT",
+                }
+            )
         )
         result = await database.verify([Parent, Child], policy="warn")
 

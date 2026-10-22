@@ -2,7 +2,7 @@
 
 lazy import asyncio
 lazy import logging
-lazy from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+lazy from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 lazy from contextlib import (
     AbstractAsyncContextManager,
     AbstractContextManager,
@@ -28,6 +28,7 @@ lazy import anyio.lowlevel
 
 lazy from snekql._explain import ExplainResult, compile_explain_plan
 lazy from snekql._migrations import (
+    MigrationFunction,
     MigrationPlan,
     MigrationResult,
     MigrationStatus,
@@ -305,13 +306,9 @@ class RuntimeBackend(Protocol):
 
     def check_accepting_work(self) -> None: ...
 
-    def validate_migrations(self, migrations: MigrationPlan) -> None: ...
-
     async def apply_migrations(
         self,
         migrations: MigrationPlan,
-        *,
-        adopt_legacy: bool = False,
     ) -> MigrationResult: ...
 
     async def verify_migrations(
@@ -1853,23 +1850,17 @@ class Database[FamilyT: BackendFamily]:
 
     async def migrate(
         self,
-        migrations: dict[str, str],
-        *,
-        adopt_legacy: bool = False,
+        migrations: Mapping[str, MigrationFunction],
     ) -> MigrationResult:
         """Apply pending Migrations imperatively against this live Database.
 
         Snapshots one complete ordered declaration before I/O, checks that
-        ordered checksummed history is its exact prefix, and applies the pending
+        ordered revision history is its exact prefix, and applies the pending
         suffix one migration at a time. Migrations are the sole schema-creation
         authority. Pair with `verify_migrations(...)` and `verify(...)`.
         """
 
         migration_plan = prepare_migrations(migrations)
-        if type(adopt_legacy) is not bool:
-            msg = "adopt_legacy must be an exact bool"
-            raise MigrationDeclarationError(msg)
-        self.runtime.validate_migrations(migration_plan)
         backend_family = self.runtime.backend_family
         try:
             logger.info(
@@ -1877,9 +1868,7 @@ class Database[FamilyT: BackendFamily]:
                 backend_family,
                 len(migration_plan),
             )
-            result = await self.runtime.apply_migrations(
-                migration_plan, adopt_legacy=adopt_legacy
-            )
+            result = await self.runtime.apply_migrations(migration_plan)
             logger.info(
                 "%s database migrate completed: %d migration(s)",
                 backend_family,
@@ -1890,31 +1879,32 @@ class Database[FamilyT: BackendFamily]:
             raise
         return result
 
-    async def migration_status(self, migrations: dict[str, str]) -> MigrationStatus:
-        """Inspect a complete declaration without applying or adopting migrations.
+    async def migration_status(
+        self, migrations: Mapping[str, MigrationFunction]
+    ) -> MigrationStatus:
+        """Inspect a complete declaration without executing migration functions.
 
         `status = await db.migration_status(MIGRATIONS)` returns immutable ordered
         `applied` and `pending` names plus `history_present`. Missing history means
         all declarations are pending, not that the database is empty. Malformed,
-        legacy, and divergent history raise `MigrationHistoryError`.
+        unsupported, and divergent history raise `MigrationHistoryError`.
         """
 
         migration_plan = prepare_migrations(migrations)
-        self.runtime.validate_migrations(migration_plan)
         return await self.runtime.verify_migrations(migration_plan, minimum_applied=0)
 
     async def verify_migrations(
         self,
-        migrations: dict[str, str],
+        migrations: Mapping[str, MigrationFunction],
         *,
         policy: Literal["strict", "compatible"] = "strict",
-        approved_later: dict[str, str] | None = None,
+        approved_later: Mapping[str, MigrationFunction] | None = None,
     ) -> None:
-        """Verify history without executing SQL bodies or changing the schema.
+        """Verify history without executing migration functions or changing the schema.
 
         `policy="strict"` requires the exact declared head. `policy="compatible"`
         requires the entire known declaration followed by zero or more approved
-        later migrations in order, with matching SQL checksums. Approvals are
+        later migrations in order, with matching revision IDs. Approvals are
         application-specific assertions, not proof of schema compatibility.
 
         ```python
@@ -1945,11 +1935,10 @@ class Database[FamilyT: BackendFamily]:
             minimum_applied = len(migration_plan)
             migration_plan = prepare_migrations(
                 {
-                    migration.name: migration.sql
+                    migration.name: migration.body
                     for migration in (*migration_plan, *later_plan)
                 }
             )
-        self.runtime.validate_migrations(migration_plan)
         backend_family = self.runtime.backend_family
         try:
             logger.info(

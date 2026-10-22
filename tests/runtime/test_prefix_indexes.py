@@ -7,7 +7,7 @@ from pydantic import Json
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(mark="fast")
@@ -116,9 +116,11 @@ async def hand_created_prefix_matches() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry (tenant_id BIGINT NOT NULL, title LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, INDEX ix_title (tenant_id, title(128))) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry (tenant_id BIGINT NOT NULL, title LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, INDEX ix_title (tenant_id, title(128))) ENGINE=InnoDB"
+                }
+            )
         )
         report = await database.verify([Entry])
 
@@ -179,10 +181,12 @@ async def unmanaged_prefix_is_not_hidden_as_fk_support() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": mariadb.scaffold([Parent, Child]),
-                "002": "CREATE INDEX ix_prefix ON child (title(3))",
-            }
+            migration_functions(
+                {
+                    "001": mariadb.scaffold([Parent, Child]),
+                    "002": "CREATE INDEX ix_prefix ON child (title(3))",
+                }
+            )
         )
         report = await database.verify([Child], policy="warn")
 
@@ -239,7 +243,7 @@ async def unique_prefix_rejects_distinct_suffix(storage: str) -> None:
         __indexes__: ClassVar = [mariadb.Index(title, unique=True, prefix_lengths=(2,))]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(title="🐍a-first")))
 
@@ -259,7 +263,7 @@ async def prefix_counts_characters_not_bytes() -> None:
         __indexes__: ClassVar = [mariadb.Index(title, unique=True, prefix_lengths=(2,))]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(title="🐍a")))
         async with database.transaction() as transaction:
@@ -299,9 +303,11 @@ async def changed_prefix_index_is_drift(case: str) -> None:
     index_sql = ", " + definitions[case] if definitions[case] else ""
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE entry (tenant_id BIGINT NOT NULL, title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL{index_sql}) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE entry (tenant_id BIGINT NOT NULL, title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL{index_sql}) ENGINE=InnoDB"
+                }
+            )
         )
         with assert_raises(mariadb.SchemaVerificationError) as caught:
             await database.verify([Entry])
@@ -330,7 +336,7 @@ async def prefix_at_varchar_capacity_verifies() -> None:
         __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=(3,))]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         report = await database.verify([Entry])
 
     assert_eq(report.issues, ())
@@ -442,7 +448,7 @@ async def prefix_does_not_truncate_stored_text(storage: str) -> None:
         __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=(3,))]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(title="🐍" * 300)))
         async with database.transaction() as transaction:

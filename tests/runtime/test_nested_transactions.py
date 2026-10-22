@@ -10,7 +10,7 @@ from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, tes
 
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.runtime.test_raw_execution import RawCase
 from tests.runtime.test_raw_lifecycle import provide_contended_case
 
@@ -29,7 +29,11 @@ async def provide_nested_case(backend: BackendFamily) -> AsyncGenerator[RawCase]
         )
     async with case.database:
         await case.database.migrate(
-            {"001_entries": "CREATE TABLE nested_entries (value INTEGER PRIMARY KEY)"}
+            migration_functions(
+                {
+                    "001_entries": "CREATE TABLE nested_entries (value INTEGER PRIMARY KEY)"
+                }
+            )
         )
         yield case
 

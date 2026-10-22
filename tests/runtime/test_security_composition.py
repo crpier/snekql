@@ -8,6 +8,7 @@ from snektest import Param, assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
+from tests.helpers import migration_functions
 from tests.runtime.test_raw_execution import RawCase, provide_raw_case
 
 
@@ -30,7 +31,9 @@ async def values(backend: BackendFamily, value: str) -> AsyncGenerator[RawCase]:
     """Seed both the selected value and an independently excluded sentinel."""
     case = await load_fixture(provide_raw_case(backend))
     model = LocalValue if backend == "sqlite" else NativeValue
-    await case.database.migrate({"001": case.namespace.scaffold([model])})
+    await case.database.migrate(
+        migration_functions({"001": case.namespace.scaffold([model])})
+    )
     async with case.database.transaction() as transaction:
         await transaction.execute(case.namespace.insert(model(value=value)))
         await transaction.execute(case.namespace.insert(model(value="excluded")))

@@ -7,6 +7,7 @@ from pydantic import Field
 from snektest import Param, assert_eq, fixture, load_fixture, test
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 
 
 class Name[S = sqlite.Pending](sqlite.Model[S]):
@@ -18,7 +19,7 @@ class Name[S = sqlite.Pending](sqlite.Model[S]):
 async def names() -> AsyncGenerator[sqlite.Database]:
     """Stored values satisfy the complete column contract."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001": sqlite.scaffold([Name])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Name])}))
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(Name, [Name(value="Ada"), Name(value="Grace")])

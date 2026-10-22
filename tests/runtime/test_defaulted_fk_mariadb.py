@@ -6,7 +6,7 @@ from typing import assert_type
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.test_defaulted_fk_typing_mariadb import Account, Defaults
 
 
@@ -19,7 +19,9 @@ async def provide_accounts() -> AsyncGenerator[mariadb.Database]:
     """A root, its child and a soft reference with constructor defaults."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_accounts": mariadb.scaffold([Account, Defaults])})
+        await database.migrate(
+            migration_functions({"001_accounts": mariadb.scaffold([Account, Defaults])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Account()))
             await transaction.execute(mariadb.insert(Account(manager_id=1)))
