@@ -400,10 +400,20 @@ records ordinary visibility. Comma-separated native EXTRA attributes retain each
 fact, including generated/auto-increment columns that are also invisible. This
 checks visibility metadata, not privileges, query results or all write behavior.
 
+Automatic temporal updates are also checked independently of defaults. Bounded
+DATETIME/TIMESTAMP ON UPDATE CURRENT_TIMESTAMP clauses require matching native
+EXTRA metadata; absent and unrequested clauses differ in either direction, including
+precision zero. Omitted arguments and empty parentheses inherit column precision;
+explicit precision must match it. Native metadata is read separately from other
+comma-delimited attributes. Literal/comment text and nested expressions are not
+clauses. Other function spellings, arbitrary expressions, ambiguous attribute roles
+and unsupported precision require explicit support. This does not verify defaults,
+clock/timezone semantics, actual timestamp values or general write behavior.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
 collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity,
-listed-secondary-index, generation-kind and visibility checks**, not full native
-schema verification. JSON constraint presence/shape is not an audit of stored
+listed-secondary-index, generation-kind, visibility and automatic-temporal-update
+checks**, not full native schema verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
 Application JSON shape/codec compatibility also remains separate. Defaults, charset-only declarations without a recorded collation, other
 constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
@@ -413,7 +423,7 @@ Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine, listed-secondary-index, generation-kind or visibility claim
+table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine, listed-secondary-index, generation-kind, visibility or automatic-update claim
 yields `ambiguous`, and resume cannot bypass it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope

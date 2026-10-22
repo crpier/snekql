@@ -19,6 +19,8 @@ _TYPE = re.compile(
 _DECIMAL_ARITY = 2
 _KEY_LIST_MIN_TOKENS = 3
 _JSON_CHECK_TOKENS = 4
+_EMPTY_ARGUMENT_TOKENS = 2
+_PRECISION_ARGUMENT_TOKENS = 3
 _INTEGERS = {"tinyint", "smallint", "mediumint", "int", "bigint"}
 _ALIASES = {
     "integer": "int",
@@ -52,6 +54,7 @@ _ATTRIBUTES = {
     "unique",
     "auto_increment",
     "default",
+    "on",
     "check",
     "references",
     "comment",
@@ -151,6 +154,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
                 mariadb_declared_auto_increment(column.definition)
                 mariadb_declared_generation(column.definition)
                 mariadb_declared_invisible(column.definition)
+                mariadb_declared_on_update(column.definition)
             except PackageError as error:
                 return f"{table.name!r}.{column.name!r}: {error}"
         try:
@@ -769,3 +773,124 @@ def _invisible_attribute(stream: tuple[Token, ...]) -> bool:
 def mariadb_extra_words(extra: str) -> frozenset[str]:
     """Separate native comma-delimited EXTRA attributes without losing flag words."""
     return frozenset(extra.replace(",", " ").upper().split())
+
+
+def _on_update_prefix(stream: tuple[Token, ...]) -> bool:
+    """Accept bounded attributes/default roles before an automatic-update clause."""
+    position = 0
+    literal = False
+    while position < len(stream):
+        token = stream[position]
+        position += 1
+        if (token.kind, token.value) == ("punct", "("):
+            expression = _check_expression(stream[position - 1 :])
+            position += len(expression) + 1
+            literal = False
+            continue
+        word = token.value.lower() if token.kind == "word" else None
+        if literal:
+            if (
+                token.kind != "string"
+                and word not in {"null", "current_timestamp", "true", "false"}
+                and (word is None or re.fullmatch(r"[0-9]+", word) is None)
+            ):
+                return False
+            literal = False
+        elif word in {"default", "comment"}:
+            literal = True
+        elif word not in {"null", "not", "primary", "key", "unique", "invisible"}:
+            return False
+    return not literal
+
+
+def mariadb_declared_on_update(definition: str) -> int | None:
+    """Read CURRENT_TIMESTAMP update precision; do not certify default values."""
+    column = _COLUMN.match(definition)
+    source = str(column[1]) if column is not None else ""
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB storage type syntax; explicit adapter required"
+        raise PackageError(msg)
+    try:
+        stream = tokens(source[datatype.end() :], mysql=True)
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    positions: list[int] = []
+    depth = 0
+    for index, token in enumerate(stream):
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "on"):
+            positions.append(index)
+    if not positions:
+        return None
+    if (
+        len(positions) != 1
+        or str(datatype[1]).lower() not in {"datetime", "timestamp"}
+        or not _on_update_prefix(stream[: positions[0]])
+    ):
+        msg = "unsupported MariaDB ON UPDATE position; explicit adapter required"
+        raise PackageError(msg)
+    position = positions[0]
+    clause = stream[position:]
+    words = tuple(
+        token.value.lower() if token.kind == "word" else None for token in clause
+    )
+    if words[:3] != ("on", "update", "current_timestamp"):
+        msg = "unsupported MariaDB ON UPDATE expression; explicit adapter required"
+        raise PackageError(msg)
+    precision = int(str(datatype[2])) if datatype[2] is not None else 0
+    _validate_on_update_suffix(clause[3:], precision)
+    return precision
+
+
+def _validate_on_update_suffix(remainder: tuple[Token, ...], precision: int) -> None:
+    """Normalize omitted precision and reject conflicting or unknown suffixes."""
+    if remainder and (remainder[0].kind, remainder[0].value) == ("punct", "("):
+        # An empty argument list uses the column precision, just like no list.
+        if len(remainder) >= _EMPTY_ARGUMENT_TOKENS and (
+            remainder[1].kind,
+            remainder[1].value,
+        ) == (
+            "punct",
+            ")",
+        ):
+            remainder = remainder[2:]
+        elif (
+            len(remainder) >= _PRECISION_ARGUMENT_TOKENS
+            and remainder[1].kind == "word"
+            and re.fullmatch(r"[0-6]", remainder[1].value)
+            and (remainder[2].kind, remainder[2].value) == ("punct", ")")
+        ):
+            if int(remainder[1].value) != precision:
+                msg = "MariaDB ON UPDATE precision must match the column; explicit adapter required"
+                raise PackageError(msg)
+            remainder = remainder[3:]
+        else:
+            msg = "unsupported MariaDB ON UPDATE precision; explicit adapter required"
+            raise PackageError(msg)
+    if not _on_update_prefix(remainder):
+        msg = "unsupported MariaDB ON UPDATE suffix; explicit adapter required"
+        raise PackageError(msg)
+
+
+def mariadb_observed_on_update(extra: str) -> int | None:
+    """Read the canonical native EXTRA clause without conflating other attributes."""
+    clauses = [
+        part.strip()
+        for part in extra.split(",")
+        if re.search(r"\b(?:on|update)\b", part, re.IGNORECASE | re.ASCII)
+    ]
+    if not clauses:
+        return None
+    match = re.fullmatch(
+        r"on\s+update\s+current_timestamp(?:\(([0-6]?)\))?",
+        clauses[0],
+        re.IGNORECASE | re.ASCII,
+    )
+    if len(clauses) != 1 or match is None:
+        msg = "unsupported MariaDB ON UPDATE metadata; explicit adapter required"
+        raise PackageError(msg)
+    return int(match[1] or "0")

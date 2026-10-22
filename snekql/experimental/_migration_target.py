@@ -20,11 +20,13 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declared_indexes,
     mariadb_declared_invisible,
     mariadb_declared_json_columns,
+    mariadb_declared_on_update,
     mariadb_declared_primary_key,
     mariadb_engine_obstacle,
     mariadb_extra_words,
     mariadb_json_check_columns,
     mariadb_observed_generation,
+    mariadb_observed_on_update,
     mariadb_storage_type_matches,
     validate_mariadb_declarations,
 )
@@ -541,6 +543,7 @@ class Target:
             self._mariadb_type_obstacle(table, matched)
             or self._mariadb_generation_obstacle(table, matched)
             or self._mariadb_visibility_obstacle(table, matched)
+            or self._mariadb_on_update_obstacle(table, matched)
             or self._mariadb_json_obstacle(table, matched, checked_names)
             or await self._mariadb_primary_key_obstacle(table, primary_names)
             or await self._mariadb_secondary_index_obstacle(
@@ -654,6 +657,20 @@ class Target:
                 "INVISIBLE" in mariadb_extra_words(row[6])
             ):
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} visibility differs from the recorded contract; committed MariaDB effects may remain"
+        return None
+
+    @staticmethod
+    def _mariadb_on_update_obstacle(
+        table: TableState, observed: tuple[tuple[Any, ...], ...]
+    ) -> str | None:
+        """Compare automatic-update clauses independently of defaults and values."""
+        for column, row in zip(table.columns, observed, strict=True):
+            try:
+                actual = mariadb_observed_on_update(row[6])
+            except PackageError as error:
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r}: {error}; committed MariaDB effects may remain"
+            if actual != mariadb_declared_on_update(column.definition):
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} ON UPDATE differs from the recorded contract; committed MariaDB effects may remain"
         return None
 
     async def _start_package(self, prepared: Prepared) -> None:

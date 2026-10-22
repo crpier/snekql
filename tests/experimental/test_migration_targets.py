@@ -3329,3 +3329,173 @@ async def mariadb_invisible_auto_increment_preserves_both_metadata_claims() -> N
             "applied",
         )
         assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_unrequested_timestamp_updates_cannot_complete_or_finish() -> None:
+    """Matching temporal storage does not prove that later writes leave it alone."""
+    server = await load_fixture(provide_package_server())
+    column = migrations.ColumnState(
+        name="changed",
+        definition="`changed` DATETIME(6) NULL DEFAULT NULL",
+        nullable=True,
+        storage="DATETIME",
+    )
+    table = migrations.TableState(
+        name="timestamp_entry",
+        quoted_name="`timestamp_entry`",
+        columns=(column,),
+        sql="CREATE TABLE timestamp_entry (`changed` DATETIME(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "ON UPDATE" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "ON UPDATE" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_missing_timestamp_update_clause_cannot_complete() -> None:
+    """An ordinary temporal column cannot fulfill an automatic-update contract."""
+    server = await load_fixture(provide_package_server())
+    column = migrations.ColumnState(
+        name="changed",
+        definition="`changed` DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(0)",
+        nullable=True,
+        storage="DATETIME",
+    )
+    table = migrations.TableState(
+        name="timestamp_entry",
+        quoted_name="`timestamp_entry`",
+        columns=(column,),
+        sql="CREATE TABLE timestamp_entry (`changed` DATETIME NULL DEFAULT NULL) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "ON UPDATE" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "ON UPDATE" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_timestamp_updates_bind_names_and_normalize_implicit_precision() -> (
+    None
+):
+    """Native identity and column precision determine clauses, not metadata position."""
+    server = await load_fixture(provide_package_server())
+    definitions = (
+        ("ordinary", "DATETIME(6) NULL COMMENT 'ON UPDATE CURRENT_TIMESTAMP(6)'"),
+        ("implicit", "DATETIME(6) ON UPDATE CURRENT_TIMESTAMP"),
+        ("empty", "DATETIME(3) ON UPDATE CURRENT_TIMESTAMP()"),
+        ("ex`plicit", "TIMESTAMP(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)"),
+        ("seconds", "DATETIME ON UPDATE CURRENT_TIMESTAMP(0)"),
+        ("hidden", "DATETIME(6) NULL INVISIBLE ON UPDATE CURRENT_TIMESTAMP(6)"),
+        ("text_value", "VARCHAR(64) DEFAULT 'ON UPDATE CURRENT_TIMESTAMP'"),
+    )
+    columns = tuple(
+        migrations.ColumnState(
+            name=name,
+            definition="`" + name.replace("`", "``") + "` " + definition,
+            nullable=True,
+            storage="TEXT" if definition.startswith("VARCHAR") else "DATETIME",
+        )
+        for name, definition in definitions
+    )
+    physical = ", ".join(
+        "`" + name.upper().replace("`", "``") + "` " + definition
+        for name, definition in reversed(definitions)
+    )
+    table = migrations.TableState(
+        name="timestamp_entry",
+        quoted_name="`timestamp_entry`",
+        columns=columns,
+        sql="CREATE TABLE timestamp_entry (" + physical + ") ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_unsupported_timestamp_updates_fail_before_effects() -> None:
+    """Do not guess precision mismatches, arbitrary functions or ambiguous roles."""
+    server = await load_fixture(provide_package_server())
+    for declaration in (
+        "DATETIME(6) ON UPDATE CURRENT_TIMESTAMP(0)",
+        "DATETIME ON UPDATE CURRENT_TIMESTAMP(7)",
+        "DATETIME ON UPDATE now()",
+        "DATETIME DEFAULT ON UPDATE CURRENT_TIMESTAMP",
+        "DATETIME ON UPDATE CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+        "BIGINT ON UPDATE CURRENT_TIMESTAMP",
+    ):
+        column = migrations.ColumnState(
+            name="value",
+            definition="`value` " + declaration,
+            nullable=True,
+            storage="DATETIME",
+        )
+        table = migrations.TableState(
+            name="timestamp_entry",
+            quoted_name="`timestamp_entry`",
+            columns=(column,),
+            sql="CREATE TABLE timestamp_entry (`value` "
+            + declaration
+            + ") ENGINE=InnoDB",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package, schema_writers_excluded=True)
+            assert "ON UPDATE" in str(error.exception)
+            assert_eq(await target.status(), ())
