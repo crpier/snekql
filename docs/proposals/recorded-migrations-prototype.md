@@ -390,10 +390,20 @@ fail preparation. Comparison uses the same native column-name binding as other
 column facts, not physical order. This does not compare generating expressions,
 audit generated values or prove all write/enforcement behavior.
 
+Column visibility must also match the native INVISIBLE flag in either direction;
+physical name resolution alone does not establish wildcard/positional visibility.
+The bounded declaration reader distinguishes an INVISIBLE attribute from quoted
+names, literals and parenthesized expressions. Simple literal or parenthesized
+defaults are supported before the flag; unparsed attribute positions, repeated
+flags and explicit VISIBLE syntax require explicit support. Absent INVISIBLE
+records ordinary visibility. Comma-separated native EXTRA attributes retain each
+fact, including generated/auto-increment columns that are also invisible. This
+checks visibility metadata, not privileges, query results or all write behavior.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
 collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity,
-listed-secondary-index and generation-kind checks**, not full native schema
-verification. JSON constraint presence/shape is not an audit of stored
+listed-secondary-index, generation-kind and visibility checks**, not full native
+schema verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
 Application JSON shape/codec compatibility also remains separate. Defaults, charset-only declarations without a recorded collation, other
 constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
@@ -403,7 +413,7 @@ Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine, listed-secondary-index or generation-kind claim
+table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine, listed-secondary-index, generation-kind or visibility claim
 yields `ambiguous`, and resume cannot bypass it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope

@@ -150,6 +150,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
                 mariadb_declared_collation(column.definition)
                 mariadb_declared_auto_increment(column.definition)
                 mariadb_declared_generation(column.definition)
+                mariadb_declared_invisible(column.definition)
             except PackageError as error:
                 return f"{table.name!r}.{column.name!r}: {error}"
         try:
@@ -679,7 +680,7 @@ def mariadb_declared_generation(definition: str) -> str:
 
 def mariadb_observed_generation(extra: str) -> str:
     """Read native generation flags separately from defaults and other EXTRA facts."""
-    words = set(extra.upper().split())
+    words = mariadb_extra_words(extra)
     flags = words & {"VIRTUAL", "STORED", "PERSISTENT", "GENERATED"}
     if flags == {"VIRTUAL", "GENERATED"}:
         return "virtual"
@@ -689,3 +690,82 @@ def mariadb_observed_generation(extra: str) -> str:
         return "ordinary"
     msg = "unsupported MariaDB generation metadata; explicit adapter required"
     raise PackageError(msg)
+
+
+def mariadb_declared_invisible(definition: str) -> bool:
+    """Recognize bounded visibility attributes without guessing unparsed SQL roles."""
+    column = _COLUMN.match(definition)
+    source = str(column[1]) if column is not None else ""
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB storage type syntax; explicit adapter required"
+        raise PackageError(msg)
+    tail = source[datatype.end() :].strip()
+    tail = re.sub(
+        r"^(?:character\s+set\s+utf8mb4\s+)?(?:collate\s+utf8mb4_[a-z0-9_]+\s+)?",
+        "",
+        tail,
+        flags=re.IGNORECASE | re.ASCII,
+    )
+    try:
+        stream = tokens(tail, mysql=True)
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    return _invisible_attribute(stream)
+
+
+def _invisible_attribute(stream: tuple[Token, ...]) -> bool:
+    """Keep literal/expression roles separate from visibility attribute markers."""
+    position = 0
+    literal = False
+    unparsed = False
+    found = False
+    attributes = {
+        "not",
+        "null",
+        "primary",
+        "key",
+        "unique",
+        "auto_increment",
+        "generated",
+        "always",
+        "as",
+        "virtual",
+        "stored",
+        "persistent",
+        "check",
+    }
+    while position < len(stream):
+        token = stream[position]
+        position += 1
+        if (token.kind, token.value) == ("punct", "("):
+            expression = _check_expression(stream[position - 1 :])
+            if not expression:
+                unparsed = True
+            position += len(expression) + 1
+            literal = False
+            continue
+        word = token.value.lower() if token.kind == "word" else None
+        if word in {"visible", "invisible"}:
+            if word == "visible" or literal or unparsed or found:
+                msg = "unsupported MariaDB visibility attribute position or declaration; explicit adapter required"
+                raise PackageError(msg)
+            found = True
+        elif literal:
+            if (
+                token.kind != "string"
+                and word not in {"null", "true", "false"}
+                and (word is None or re.fullmatch(r"[0-9]+", word) is None)
+            ):
+                unparsed = True
+            literal = False
+        elif word in {"default", "comment"}:
+            literal = True
+        elif word not in attributes:
+            unparsed = True
+    return found
+
+
+def mariadb_extra_words(extra: str) -> frozenset[str]:
+    """Separate native comma-delimited EXTRA attributes without losing flag words."""
+    return frozenset(extra.replace(",", " ").upper().split())

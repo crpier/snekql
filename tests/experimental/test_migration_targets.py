@@ -3135,3 +3135,197 @@ async def mariadb_ambiguous_generation_attributes_fail_before_effects() -> None:
                 await target.prepare(package, schema_writers_excluded=True)
             assert "generation clause" in str(error.exception)
             assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_visible_column_cannot_silently_become_invisible() -> None:
+    """Physical name resolution does not prove visibility for wildcard/positional SQL."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1]
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace(
+                title.definition, title.definition + " DEFAULT 'kept' INVISIBLE"
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "visibility" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "visibility" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_declared_invisible_column_cannot_become_visible() -> None:
+    """Stricter wildcard exposure is also a different recorded physical contract."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1].model_copy(
+        update={
+            "definition": original.columns[1].definition + " DEFAULT 'kept' INVISIBLE"
+        }
+    )
+    table = original.model_copy(update={"columns": (original.columns[0], title)})
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "visibility" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "visibility" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_visibility_binds_names_and_ignores_literal_words() -> None:
+    """Name/order, generation flags and SQL literal text do not define visibility."""
+    server = await load_fixture(provide_package_server())
+    definitions = (
+        ("invisible", "BIGINT DEFAULT (7) COMMENT 'INVISIBLE'"),
+        ("hid`den", "BIGINT DEFAULT (7) INVISIBLE"),
+        ("computed", "BIGINT AS (7) STORED INVISIBLE"),
+        (
+            "text_value",
+            "VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT 'INVISIBLE' INVISIBLE",
+        ),
+        ("visible_text", "VARCHAR(64) DEFAULT 'INVISIBLE VISIBLE'"),
+    )
+    columns = tuple(
+        migrations.ColumnState(
+            name=name,
+            definition="`" + name.replace("`", "``") + "` " + definition,
+            nullable=True,
+            storage="TEXT" if definition.startswith("VARCHAR") else "INTEGER",
+        )
+        for name, definition in definitions
+    )
+    physical = ", ".join(
+        "`" + name.upper().replace("`", "``") + "` " + definition
+        for name, definition in reversed(definitions)
+    )
+    table = migrations.TableState(
+        name="visibility_entry",
+        quoted_name="`visibility_entry`",
+        columns=columns,
+        sql="CREATE TABLE visibility_entry (" + physical + ") ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_ambiguous_visibility_attributes_fail_before_effects() -> None:
+    """Unparsed roles and conflicting/repeated flags need explicit support."""
+    server = await load_fixture(provide_package_server())
+    for declaration in (
+        "BIGINT DEFAULT invisible",
+        "BIGINT INVISIBLE INVISIBLE",
+        "BIGINT VISIBLE",
+        "BIGINT DEFAULT abs(7) INVISIBLE",
+        "BIGINT REFERENCES invisible(id)",
+    ):
+        column = migrations.ColumnState(
+            name="value",
+            definition="`value` " + declaration,
+            nullable=True,
+            storage="INTEGER",
+        )
+        table = migrations.TableState(
+            name="visibility_entry",
+            quoted_name="`visibility_entry`",
+            columns=(column,),
+            sql="CREATE TABLE visibility_entry (`value` "
+            + declaration
+            + ") ENGINE=InnoDB",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package, schema_writers_excluded=True)
+            assert "visibility attribute" in str(error.exception)
+            assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_invisible_auto_increment_preserves_both_metadata_claims() -> None:
+    """Comma-separated EXTRA attributes retain both generation and visibility facts."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    before = original.columns[0]
+    after = before.model_copy(
+        update={"definition": before.definition + " AUTO_INCREMENT INVISIBLE"}
+    )
+    table = original.model_copy(
+        update={
+            "columns": (after, original.columns[1]),
+            "sql": original.sql.replace(before.definition, after.definition),
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
