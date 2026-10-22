@@ -195,6 +195,22 @@ def resolve_projection_decoder(
 
             return decode_nullable
         return decode
+    # Ordinary columns avoid the scalar-specific setup branch.
+    if type(column) is _Scalar:
+        inner = require_single_column_subquery(column.subquery)
+        decode = resolve_projection_decoder(
+            inner.fields[0],
+            nullable_models=frozenset(),
+            backend=backend,
+            validate=validate,
+        )
+
+        def decode_scalar(raw: object) -> object:
+            # SQL NULL from an empty scalar bypasses even a NOT NULL source
+            # codec, just as it does on the general selectable path.
+            return None if raw is None else decode(raw)
+
+        return decode_scalar
     return partial(
         _decode_projection_field,
         column,
