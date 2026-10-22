@@ -636,3 +636,195 @@ async def sqlite_copy_contract_preserves_generated_values_and_requires_reviewed_
                     ).fetchall(),
                     [("USER", 4)],
                 )
+
+
+@test(mark="medium")
+async def sqlite_rebuild_rejects_affinity_changes_to_existing_values() -> None:
+    """A controlled legacy schema edit exposes coercion despite identical row counts."""
+    draft = m.generate("001", [Expanded], backend="sqlite")
+    before = draft.target.tables[0].model_copy(
+        update={"sql": draft.target.tables[0].sql.removesuffix(" STRICT")}
+    )
+    first = m.compile(
+        draft.model_copy(
+            update={
+                "target": m.State(backend="sqlite", tables=(before,)),
+                "operations": (m.CreateTable(table=before),),
+            }
+        )
+    )
+    after = m.generate("desired", [Contracted], backend="sqlite").target.tables[0]
+    after = after.model_copy(update={"sql": after.sql.removesuffix(" STRICT")})
+    second = m.compile(
+        m.Draft(
+            revision="002",
+            predecessor=first.digest,
+            before=first.target,
+            target=m.State(backend="sqlite", tables=(after,)),
+            operations=(
+                m.RequireNotNull(table_name="account", column_name="role"),
+                m.DropColumn(table_name="account", column_name="is_admin"),
+            ),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("ALTER TABLE account ADD COLUMN extra BLOB")
+                await app.execute("INSERT INTO account VALUES(1,1,'admin','001')")
+                await app.commit()
+                # Isolated fixture only: emulate a legacy affinity edit without rewriting rows.
+                await app.execute("PRAGMA writable_schema=ON")
+                await app.execute(
+                    "UPDATE sqlite_schema SET sql=replace(sql,'extra BLOB','extra NUMERIC') WHERE type='table' AND name='account'"
+                )
+                await app.execute("PRAGMA writable_schema=OFF")
+                version = await (await app.execute("PRAGMA schema_version")).fetchone()
+                assert version is not None
+                await app.execute(f"PRAGMA schema_version={version[0] + 1}")
+                await app.commit()
+            with assert_raises(m.PackageError) as error:
+                await target.apply(
+                    await target.prepare(second, preserve_unmanaged=True)
+                )
+            assert "copied values" in str(error.exception)
+            assert_eq([p.revision for p in await target.status()], ["001"])
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute(
+                            "SELECT is_admin,typeof(extra),extra FROM account"
+                        )
+                    ).fetchall(),
+                    [(1, "text", "001")],
+                )
+
+
+@test(mark="medium")
+async def sqlite_rebuild_compares_stored_generated_values_with_binary_collation() -> (
+    None
+):
+    """NOCASE must not hide a changed stored value after a legacy expression edit."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin"),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("ALTER TABLE account ADD COLUMN base TEXT")
+                await app.execute(
+                    "ALTER TABLE account ADD COLUMN label TEXT COLLATE NOCASE AS(upper(base)) STORED"
+                )
+                await app.execute(
+                    "INSERT INTO account(id,is_admin,role,base) VALUES(1,1,'admin','a')"
+                )
+                await app.commit()
+                # Isolated legacy fixture: change expression without recomputing stored data.
+                await app.execute("PRAGMA writable_schema=ON")
+                await app.execute(
+                    "UPDATE sqlite_schema SET sql=replace(sql,'upper(base)','lower(base)') WHERE type='table' AND name='account'"
+                )
+                await app.execute("PRAGMA writable_schema=OFF")
+                version = await (await app.execute("PRAGMA schema_version")).fetchone()
+                assert version is not None
+                await app.execute(f"PRAGMA schema_version={version[0] + 1}")
+                await app.commit()
+            with assert_raises(m.PackageError) as error:
+                await target.apply(
+                    await target.prepare(second, preserve_unmanaged=True)
+                )
+            assert "copied values" in str(error.exception)
+            assert_eq([p.revision for p in await target.status()], ["001"])
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute("SELECT is_admin,label FROM account")
+                    ).fetchall(),
+                    [(1, "A")],
+                )
+
+
+@test(mark="medium")
+async def sqlite_rebuild_preserves_mixed_storage_classes_and_precise_values() -> None:
+    """Value comparison keeps NULLs, blobs, NUL text, large integers and precise reals."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin"),
+        )
+    )
+    expected = [
+        (41, "null", None, "a"),
+        (42, "integer", 2**60, "A"),
+        (43, "real", 1.0000000000000002, "a"),
+        (44, "text", "a\x00b", "A"),
+        (45, "blob", b"\x00\xff", "a"),
+        (46, "text", "001", "A"),
+    ]
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("ALTER TABLE account ADD COLUMN opaque ANY")
+                await app.execute(
+                    "ALTER TABLE account ADD COLUMN folded TEXT COLLATE NOCASE"
+                )
+                await app.executemany(
+                    "INSERT INTO account VALUES(?,1,'admin',?,?)",
+                    [(key, value, folded) for key, _, value, folded in expected],
+                )
+                await app.commit()
+            await target.apply(await target.prepare(second, preserve_unmanaged=True))
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute(
+                            "SELECT id,typeof(opaque),opaque,folded FROM account ORDER BY id"
+                        )
+                    ).fetchall(),
+                    expected,
+                )
+
+
+@test(mark="medium")
+async def sqlite_value_comparison_preserves_hidden_identity_with_a_shadowed_alias() -> (
+    None
+):
+    """A text primary key does not replace hidden rowid, and a named alias can shadow it."""
+    first = m.compile(m.generate("001", [KeyedBefore], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [KeyedAfter], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="keyed", column_name="old"),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute('ALTER TABLE keyed ADD COLUMN "_ROWID_" TEXT')
+                await app.execute(
+                    "INSERT INTO keyed(rowid,key,old,value,_ROWID_) VALUES(-7,'one',1,'kept','shadow-one'),(900,'two',0,'kept','shadow-two')"
+                )
+                await app.commit()
+            await target.apply(await target.prepare(second, preserve_unmanaged=True))
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute(
+                            "SELECT rowid,key,value,_ROWID_ FROM keyed ORDER BY rowid"
+                        )
+                    ).fetchall(),
+                    [
+                        (-7, "one", "kept", "shadow-one"),
+                        (900, "two", "kept", "shadow-two"),
+                    ],
+                )

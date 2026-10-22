@@ -413,8 +413,9 @@ classifications, missing columns or a mismatched copy classification stop with
 
 This check uses the live source after earlier package steps, not a stale row or
 column snapshot taken during preparation. It supplements row-count, dependency,
-storage/identity and endpoint checks; it is not a proof of every copied value or
-arbitrary SQL semantics. A valid but unrecognized spelling (such as a leading
+storage/identity and endpoint checks. By itself the metadata check does not
+verify copied values; the separate comparison below checks retained SQL values,
+not arbitrary SQL semantics. A valid but unrecognized spelling (such as a leading
 BOM retained inside CREATE TABLE text) can therefore require an explicit adapter
 instead of being guessed. The whole SQLite package rolls back on rejection.
 
@@ -422,6 +423,37 @@ Older serialized SQLite rebuild plans without the copy contract must be
 re-prepared and reviewed. Empty copy metadata is omitted from serialization, so
 non-rebuild plans—including MariaDB plans—retain their existing canonical shape
 and recovery identity. No ledger or execution-package format upgrade is implied.
+
+## SQLite retained-value comparison
+
+After inserting into the rebuild staging table, and before dropping the source,
+the runner compares retained source and destination values inside the same writer
+transaction. `typeof` distinguishes SQLite storage classes and explicit BINARY
+collation prevents a declared NOCASE collation from hiding text changes. The
+projection includes hidden row identity where accessible, or the retained primary
+key of a WITHOUT ROWID table. These identities make rows distinct; combined with
+the existing equal-row-count check, one-way set difference detects changed or
+missing rows without collapsing duplicate application values.
+
+Stored generated values are included, not just ordinary copied columns. A rebuild
+must not silently refresh old stored values under a changed expression. Tests
+use isolated legacy-schema fixtures to demonstrate both affinity conversion of
+text `001` into integer `1` and a stored `A` becoming `a` despite NOCASE. Those
+fixtures edit their own schema text solely to reproduce legacy states; this is
+not a recommended application migration procedure.
+
+A mismatch raises `PackageError` and rolls back the whole package. The check does
+not stringify or hash application values, and errors do not include row contents.
+Positive coverage includes NULLs, blobs, embedded-NUL text, large integers,
+precise reals, generated values, and hidden identity with a shadowed rowid alias.
+
+Numeric values use SQLite equality, not bitwise floating-point equivalence.
+This adds a source/destination scan and SQL set comparison; large or wide tables
+remain subject to SQLite statement and resource limits, with failures rolling
+back rather than bypassing validation. It checks current SQLite value semantics,
+not physical file encoding, historical application behavior, arbitrary external
+functions, hardware power-loss durability, or application readiness. It does not
+repair earlier committed data loss or introduce MariaDB value verification.
 
 ## SQLite managed endpoint validation
 

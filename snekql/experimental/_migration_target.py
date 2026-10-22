@@ -19,7 +19,11 @@ from snekql.experimental._migration_prepare import (
     validate_preserved,
 )
 from snekql.experimental._migration_reconcile import matches_contraction
-from snekql.experimental._migration_sql import tokens, without_auto_increment_counter
+from snekql.experimental._migration_sql import (
+    ascii_lower,
+    tokens,
+    without_auto_increment_counter,
+)
 from snekql.experimental.migrations import (
     CreateTable,
     Package,
@@ -478,6 +482,49 @@ class Target:
             msg = "SQLite rebuild copy contract differs from engine column metadata; reprepare or use an explicit adapter"
             raise PackageError(msg)
 
+    async def _validate_copied_values(
+        self, tables: tuple[str, str], dropped_columns: tuple[str, ...]
+    ) -> None:
+        """Compare retained typed values and row identity before dropping the source."""
+        source, destination = tables
+        names = [
+            row[0]
+            for row in await self._query(
+                "SELECT name FROM pragma_table_xinfo(?)", (source,)
+            )
+        ]
+        retained = [name for name in names if name not in dropped_columns]
+        storage = await self._query(
+            "SELECT wr FROM pragma_table_list WHERE schema='main' AND name=?", (source,)
+        )
+        if storage == [(0,)]:
+            folded = {ascii_lower(name) for name in names}
+            rowid = next(
+                (name for name in ("_rowid_", "rowid", "oid") if name not in folded),
+                None,
+            )
+            if rowid is None:
+                msg = "rebuild copied values cannot be checked without accessible row identity"
+                raise PackageError(msg)
+            retained.append(rowid)
+        elif storage != [(1,)]:
+            msg = "rebuild copied values require known SQLite table storage"
+            raise PackageError(msg)
+        # WITHOUT ROWID tables retain their primary key in this projection; other
+        # tables include the hidden rowid. Rows are therefore distinct, and the
+        # separately checked equal row counts make one-way EXCEPT sufficient.
+        projection = ", ".join(
+            f"typeof({quote_identifier(name)}), {quote_identifier(name)} COLLATE BINARY"
+            for name in retained
+        )
+        mismatch = await self._query(
+            f"SELECT 1 FROM (SELECT {projection} FROM {quote_identifier(source)} "  # noqa: S608 - fixed placeholders or quoted identifiers
+            f"EXCEPT SELECT {projection} FROM {quote_identifier(destination)}) LIMIT 1"
+        )
+        if mismatch:
+            msg = "rebuild did not preserve copied values; transaction rolled back"
+            raise PackageError(msg)
+
     async def _execute_step(self, step: ExecutionStep) -> None:
         await self._check_required(step)
         await self._validate_copy_contract(step)
@@ -508,6 +555,9 @@ class Target:
                 if copied != count:
                     msg = "rebuild did not preserve row count"
                     raise PackageError(msg)
+                await self._validate_copied_values(
+                    step.copy_tables, step.dropped_columns
+                )
         if step.validate_triggers:
             await self._validate_triggers()
         if sequence:
