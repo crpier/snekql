@@ -7,10 +7,9 @@ classes globally: all other driver methods retain their original implementation.
 """
 
 lazy import sqlite3
-
-lazy import aiosqlite
 lazy from typing import Any
 
+lazy import aiosqlite
 lazy from aiosqlite import Connection
 
 
