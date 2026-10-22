@@ -204,3 +204,6 @@ models, Linux), with per-query bytes unchanged:
 control: unchanged within noise, confirming the gain comes from the reordered
 checks rather than run drift. `dataclasses.replace` remains the next bottleneck
 to target.
+
+The [immutable query-construction measurements](query-construction-481.md) cover
+#481’s state-copy optimization, including the retained-intermediate memory tradeoff.

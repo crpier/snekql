@@ -66,6 +66,7 @@ lazy from snekql._query_state import (
     LockWait,
     SelectState,
     UpdateState,
+    replace_query_state,
     require_column_model,
     require_field,
     require_insert_model,
@@ -301,7 +302,7 @@ class _BaseSelectQuery(_SqlInspectionMixin):
 
         >>> query = select(User).where(User.id.eq(1)).for_update(wait="nowait")
         """
-        return self._replace_state(replace(self.state, lock_wait=wait))
+        return self._replace_state(replace_query_state(self.state, lock_wait=wait))
 
     def distinct(self) -> Self:
         """Collapse duplicate rows by emitting ``SELECT DISTINCT``."""
@@ -474,7 +475,7 @@ def _project_state(
         ):
             nullable = selectable.__nullable_when_extended__()
         projection.check_binding(label, selectable, nullable=nullable)
-    return replace(
+    return replace_query_state(
         state, fields=selectables, returns_model=False, named_projection=projection
     )
 
@@ -493,7 +494,7 @@ def _named_returning_state[StateT: InsertState | UpdateState | DeleteState](
     for label, selectable in zip(projection.labels, selectables, strict=True):
         column = require_field(selectable)
         projection.check_binding(label, column, nullable=column.nullable)
-    return replace(
+    return replace_query_state(
         state, returning=True, returning_fields=selectables, named_projection=projection
     )
 
@@ -1395,7 +1396,7 @@ class _BaseInsertQuery[FamilyT, OwnerT: Table[Any]](_SqlInspectionMixin):
             msg = "on_conflict action must be DoUpdate(...) or DoNothing"
             raise QueryConstructionError(msg)
         return type(self)(
-            replace(
+            replace_query_state(
                 self.state,
                 conflict_action=action,
                 conflict_targets=tuple(checked_targets),
@@ -1735,9 +1736,9 @@ def _insert_returning(
     """
 
     if not fields:
-        return model_query(replace(state, returning=True))
+        return model_query(replace_query_state(state, returning=True))
     selectables = require_returning_fields(state, fields)
-    projected = replace(
+    projected = replace_query_state(
         state, returning=True, returning_fields=selectables, named_projection=None
     )
     if len(selectables) == 1:
@@ -2257,7 +2258,7 @@ def _empty_select_state() -> SelectState:
 def _select_distinct(state: SelectState) -> SelectState:
     if state.distinct:
         return state
-    return replace(state, distinct=True)
+    return replace_query_state(state, distinct=True)
 
 
 def _require_factory_predicates(
@@ -2279,7 +2280,9 @@ def _select_where(
     checked_predicates = _require_factory_predicates(predicates)
     for predicate in checked_predicates:
         ensure_predicate_targets_models(predicate, scope)
-    return replace(state, predicates=(*state.predicates, *checked_predicates))
+    return replace_query_state(
+        state, predicates=(*state.predicates, *checked_predicates)
+    )
 
 
 def _select_order_by(
@@ -2297,7 +2300,7 @@ def _select_order_by(
             raise QueryConstructionError(msg)
         ensure_ordering_targets_models(ordering, scope)
         checked_orderings.append(ordering)
-    return replace(state, orderings=(*state.orderings, *checked_orderings))
+    return replace_query_state(state, orderings=(*state.orderings, *checked_orderings))
 
 
 def _select_group_by(
@@ -2312,7 +2315,7 @@ def _select_group_by(
         grouped,
         ScopeResolver(own_models=state.result_models()),
     )
-    return replace(state, groupings=(*state.groupings, *grouped))
+    return replace_query_state(state, groupings=(*state.groupings, *grouped))
 
 
 def _select_having(
@@ -2326,7 +2329,7 @@ def _select_having(
     checked_predicates = _require_factory_predicates(predicates)
     for predicate in checked_predicates:
         ensure_having_targets(predicate, state, scope)
-    return replace(state, having=(*state.having, *checked_predicates))
+    return replace_query_state(state, having=(*state.having, *checked_predicates))
 
 
 def _select_join(
@@ -2380,10 +2383,10 @@ def _select_join(
     if project:
         # Projection selects keep their fixed projected columns; a join only
         # brings the table into the FROM graph, it never widens the SELECT list.
-        return replace(state, joins=(*state.joins, spec))
+        return replace_query_state(state, joins=(*state.joins, spec))
     joins = (*state.joins, spec)
     shape = JoinedRowShape.for_sources(state.model, joins)
-    return replace(
+    return replace_query_state(
         state,
         fields=shape.fields,
         named_projection=None,
@@ -2393,11 +2396,11 @@ def _select_join(
 
 
 def _select_limit(state: SelectState, value: NonNegativeInt) -> SelectState:
-    return replace(state, limit_value=value)
+    return replace_query_state(state, limit_value=value)
 
 
 def _select_offset(state: SelectState, value: NonNegativeInt) -> SelectState:
-    return replace(state, offset_value=value)
+    return replace_query_state(state, offset_value=value)
 
 
 def _update_returning(state: UpdateState, fields: tuple[object, ...]) -> object:
@@ -2405,10 +2408,12 @@ def _update_returning(state: UpdateState, fields: tuple[object, ...]) -> object:
 
     if not fields:
         return UpdateReturningQuery[Any, Any, Any, Any](
-            replace(state, returning=True, returning_fields=(), named_projection=None)
+            replace_query_state(
+                state, returning=True, returning_fields=(), named_projection=None
+            )
         )
     selectables = require_model_returning_fields(state.model, fields)
-    projected = replace(
+    projected = replace_query_state(
         state, returning=True, returning_fields=selectables, named_projection=None
     )
     if len(selectables) == 1:
@@ -2421,10 +2426,12 @@ def _delete_returning(state: DeleteState, fields: tuple[object, ...]) -> object:
 
     if not fields:
         return DeleteReturningQuery[Any, Any, Any, Any](
-            replace(state, returning=True, returning_fields=(), named_projection=None)
+            replace_query_state(
+                state, returning=True, returning_fields=(), named_projection=None
+            )
         )
     selectables = require_model_returning_fields(state.model, fields)
-    projected = replace(
+    projected = replace_query_state(
         state, returning=True, returning_fields=selectables, named_projection=None
     )
     if len(selectables) == 1:
@@ -2438,7 +2445,7 @@ def _update_all(state: UpdateState) -> UpdateState:
         raise QueryConstructionError(msg)
     if state.explicit_all:
         return state
-    return replace(state, explicit_all=True)
+    return replace_query_state(state, explicit_all=True)
 
 
 def _update_set(
@@ -2456,7 +2463,9 @@ def _update_set(
             raise QueryConstructionError(msg)
         ensure_assignment_targets_model(assignment, scope)
         checked_assignments.append(assignment)
-    return replace(state, assignments=(*state.assignments, *checked_assignments))
+    return replace_query_state(
+        state, assignments=(*state.assignments, *checked_assignments)
+    )
 
 
 def _update_where(
@@ -2473,7 +2482,9 @@ def _update_where(
     checked_predicates = _require_factory_predicates(predicates)
     for predicate in checked_predicates:
         ensure_predicate_targets_models(predicate, scope)
-    return replace(state, predicates=(*state.predicates, *checked_predicates))
+    return replace_query_state(
+        state, predicates=(*state.predicates, *checked_predicates)
+    )
 
 
 def _delete_all(state: DeleteState) -> DeleteState:
@@ -2482,7 +2493,7 @@ def _delete_all(state: DeleteState) -> DeleteState:
         raise QueryConstructionError(msg)
     if state.explicit_all:
         return state
-    return replace(state, explicit_all=True)
+    return replace_query_state(state, explicit_all=True)
 
 
 def _delete_where(
@@ -2499,7 +2510,9 @@ def _delete_where(
     checked_predicates = _require_factory_predicates(predicates)
     for predicate in checked_predicates:
         ensure_predicate_targets_models(predicate, scope)
-    return replace(state, predicates=(*state.predicates, *checked_predicates))
+    return replace_query_state(
+        state, predicates=(*state.predicates, *checked_predicates)
+    )
 
 
 @overload
