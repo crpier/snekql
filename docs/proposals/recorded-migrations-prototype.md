@@ -428,8 +428,14 @@ catalog before completion or finish. A dangling relationship or a view with the
 referenced name is not sufficient, even when foreign_key_checks=0 allowed its
 creation. Checking an unmanaged parent does not acquire ownership. Existing
 AUTO_INCREMENT-counter normalization allows ordinary parent inserts without schema
-drift. This is base-table availability, not independent referenced-column, index,
-engine or type compatibility verification, data auditing or session-policy proof.
+drift. Referenced storage must also be provably InnoDB in that server-resolved
+metadata; a present MyISAM/MEMORY parent or hidden/unsupported engine rendering is
+not sufficient. This condition applies to referenced parents, not unrelated
+unmanaged tables, and does not acquire ownership. NO_TABLE_OPTIONS can therefore
+leave completion/finish uncertain even with correct actual InnoDB storage. This is
+base-table availability and bounded engine identity, not independent referenced-
+column/index/type compatibility, engine-property verification, data auditing or
+session-policy proof.
 
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
 collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity,

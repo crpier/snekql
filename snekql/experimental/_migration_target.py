@@ -30,6 +30,7 @@ from snekql.experimental._migration_mariadb import (
     mariadb_observed_generation,
     mariadb_observed_on_update,
     mariadb_storage_type_matches,
+    mariadb_table_engine,
     validate_mariadb_declarations,
 )
 from snekql.experimental._migration_prepare import (
@@ -500,7 +501,7 @@ class Target:
     async def _mariadb_reference_obstacle(
         self, table: TableState, definitions: set[str], *, backslash_escapes: bool
     ) -> str | None:
-        """Resolve referenced base tables without acquiring ownership of them."""
+        """Resolve referenced InnoDB base tables without acquiring ownership of them."""
         for key in mariadb_declared_foreign_keys(table):
             try:
                 resolved = await self._query(
@@ -518,6 +519,14 @@ class Target:
                 not in definitions
             ):
                 return f"managed table postcondition failed: {table.name!r} referenced table {key.target!r} is not an observed base table; committed MariaDB effects may remain"
+            try:
+                engine = mariadb_table_engine(
+                    resolved[0][1], backslash_escapes=backslash_escapes
+                )
+            except PackageError as error:
+                return f"managed table postcondition failed: {table.name!r} referenced table {key.target!r} has unsupported engine metadata: {error}; committed MariaDB effects may remain"
+            if engine != "innodb":
+                return f"managed table postcondition failed: {table.name!r} referenced table {key.target!r} does not prove InnoDB storage; committed MariaDB effects may remain"
         return None
 
     async def _mariadb_column_obstacle(

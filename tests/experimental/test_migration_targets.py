@@ -3941,6 +3941,7 @@ async def mariadb_unmanaged_reference_targets_remain_unowned_and_allow_counter_c
     await server.run_sql(
         "CREATE TABLE `unmanaged``parent` (`Id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB"
     )
+    await server.run_sql("CREATE TABLE unrelated (id BIGINT) ENGINE=MyISAM")
     column = migrations.ColumnState(
         name="parent_id",
         definition="`parent_id` BIGINT NULL",
@@ -3974,3 +3975,109 @@ async def mariadb_unmanaged_reference_targets_remain_unowned_and_allow_counter_c
             ),
             "already_applied",
         )
+
+
+@test(mark="slow")
+async def mariadb_foreign_keys_cannot_certify_non_innodb_parents() -> None:
+    """With checks disabled, a present base table need not support the relationship."""
+    with TemporaryDirectory(
+        prefix="packages-reference-engine-", dir=".snektest"
+    ) as directory:
+        async with temporary_mariadb_server(
+            data_directory=Path(directory) / "data"
+        ) as server:
+            await server.run_sql("SET GLOBAL foreign_key_checks=0")
+            for engine in ("MyISAM", "MEMORY"):
+                await server.reset_database()
+                await server.run_sql(
+                    "CREATE TABLE parent (id BIGINT NOT NULL PRIMARY KEY) ENGINE="
+                    + engine
+                )
+                column = migrations.ColumnState(
+                    name="parent_id",
+                    definition="`parent_id` BIGINT NULL",
+                    nullable=True,
+                    storage="INTEGER",
+                )
+                table = migrations.TableState(
+                    name="child",
+                    quoted_name="`child`",
+                    columns=(column,),
+                    sql="CREATE TABLE child (parent_id BIGINT NULL, FOREIGN KEY(parent_id) REFERENCES parent(id)) ENGINE=InnoDB",
+                )
+                draft = migrations.generate("001", [], backend="mariadb")
+                package = migrations.compile(
+                    draft.model_copy(
+                        update={
+                            "target": migrations.State(
+                                backend="mariadb", tables=(table,)
+                            ),
+                            "operations": (migrations.CreateTable(table=table),),
+                        }
+                    )
+                )
+                async with migrations.connect(server.config()) as target:
+                    plan = await target.prepare(package, schema_writers_excluded=True)
+                    with assert_raises(migrations.PackageError) as error:
+                        await target.apply(plan)
+                    assert "referenced table" in str(error.exception)
+                    assert "InnoDB" in str(error.exception)
+                    assert_eq((await target.status())[0].phase, "uncertain")
+
+
+@test(mark="slow")
+async def mariadb_hidden_reference_engine_cannot_certify_completion_or_finish() -> None:
+    """Correct actual storage is not proof when native rendering hides its identity."""
+    with TemporaryDirectory(
+        prefix="packages-reference-hidden-engine-", dir=".snektest"
+    ) as directory:
+        async with temporary_mariadb_server(
+            data_directory=Path(directory) / "data"
+        ) as server:
+            await server.run_sql(
+                "CREATE TABLE parent (id BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB"
+            )
+            await server.run_sql(
+                "SET GLOBAL sql_mode='STRICT_ALL_TABLES,NO_TABLE_OPTIONS'"
+            )
+            column = migrations.ColumnState(
+                name="parent_id",
+                definition="`parent_id` BIGINT NULL",
+                nullable=True,
+                storage="INTEGER",
+            )
+            # No fixed engine claim on the managed table: isolate referenced storage proof.
+            table = migrations.TableState(
+                name="child",
+                quoted_name="`child`",
+                columns=(column,),
+                sql="CREATE TABLE child (parent_id BIGINT NULL, FOREIGN KEY(parent_id) REFERENCES parent(id))",
+            )
+            draft = migrations.generate("001", [], backend="mariadb")
+            package = migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+            async with migrations.connect(server.config()) as target:
+                plan = await target.prepare(package, schema_writers_excluded=True)
+                with assert_raises(migrations.PackageError) as error:
+                    await target.apply(plan)
+                assert "referenced table 'parent' does not prove InnoDB storage" in str(
+                    error.exception
+                )
+                assert_eq((await target.status())[0].phase, "uncertain")
+            async with migrations.connect(server.config()) as target:
+                recovery = await target.inspect_recovery(
+                    plan, schema_writers_excluded=True
+                )
+                assert_eq(recovery.disposition, "ambiguous")
+                assert (
+                    "referenced table 'parent' does not prove InnoDB storage"
+                    in recovery.explanation
+                )
+                with assert_raises(migrations.PackageError):
+                    await target.resume(recovery, schema_writers_excluded=True)
