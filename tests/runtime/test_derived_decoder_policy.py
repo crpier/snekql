@@ -14,6 +14,7 @@ from tests.query.test_column_protocol_dispatch import (
     PolicySqlReading,
     SqlReading,
 )
+from tests.runtime.test_joined_row_shape import Anchor
 
 
 class InnerRole:
@@ -179,3 +180,98 @@ async def derived_null_extension_retains_each_query_scope(
             async with tx.fetch_chunks(query, size=1) as chunks:
                 rows = [row async for chunk in chunks for row in chunk]
         assert_eq(sorted((row.value for row in rows), key=lambda x: x or 0), [None, 1])
+
+
+@test(
+    [Param(kind, name=kind) for kind in ("dialect", "policy", "policy_only")],
+    [Param(mode, name=mode) for mode in ("buffered", "streamed")],
+    mark="medium",
+)
+async def joined_named_rows_keep_source_policy_and_missing_rows(
+    kind: str, mode: str
+) -> None:
+    model: Any = {
+        "dialect": SqlReading,
+        "policy": PolicySqlReading,
+        "policy_only": PolicyOnlySqlReading,
+    }[kind]
+    async with (
+        await initialized_database(database=":memory:", models=[model]) as db,
+        db.transaction() as tx,
+    ):
+        await tx.execute(
+            sqlite.insert_many(model, [model(key=1, value=7), model(key=2, value=8)])
+        )
+        token = model.value.label("value")
+        inner = (
+            sqlite.select(model)
+            .where(model.key.eq(1))
+            .project(Intermediate, value=token)
+            .cte(InnerRole, name="inner_values")
+        )
+        outer = (
+            sqlite.select(inner)
+            .project(Final, value=inner.column(token))
+            .cte(OuterRole, name="outer_values")
+        )
+        alias = sqlite.alias(outer, AliasRole, name="readings")
+        query = (
+            sqlite.select(model)
+            .left_join(alias, on=model.key.eq(1))
+            .order_by(model.key.asc())
+        )
+        for validate in (False, True, False):
+            if mode == "buffered":
+                rows = await tx.fetch_all(query, validate=validate)
+            else:
+                async with tx.fetch_chunks(query, size=1, validate=validate) as chunks:
+                    rows = [row async for chunk in chunks for row in chunk]
+            expected = {
+                "dialect": 1327,
+                "policy": 1127 if validate else 1227,
+                "policy_only": 1107 if validate else 1207,
+            }[kind]
+            pairs = cast("Any", rows)
+            assert_eq(
+                [(a.key, None if b is None else b.value) for a, b in pairs],
+                [(1, expected), (2, None)],
+            )
+            assert_eq(
+                [a.value for a, _ in pairs],
+                [7, 8] if kind == "policy_only" else [27, 28],
+            )
+
+
+@test([Param(mode, name=mode) for mode in ("buffered", "streamed")], mark="medium")
+async def joined_named_query_reuses_current_column_validation(mode: str) -> None:
+    async with (
+        await initialized_database(database=":memory:", models=[Anchor, Input]) as db,
+        db.transaction() as tx,
+    ):
+        await tx.execute(sqlite.insert(Anchor(id=1)))
+        await tx.execute(sqlite.raw('INSERT INTO "input" (value) VALUES (-5)'))
+        token = Input.value.label("value")
+        inner = (
+            sqlite.select(Input)
+            .project(Intermediate, value=token)
+            .cte(InnerRole, name="input_values")
+        )
+        outer = (
+            sqlite.select(inner)
+            .project(Final, value=inner.column(token))
+            .cte(OuterRole, name="results")
+        )
+        query = sqlite.select(Anchor).join(outer, on=Anchor.id.eq(1))
+
+        async def read(*, validate: bool) -> list[int]:
+            if mode == "buffered":
+                rows = await tx.fetch_all(query, validate=validate)
+            else:
+                async with tx.fetch_chunks(query, size=1, validate=validate) as chunks:
+                    rows = [row async for chunk in chunks for row in chunk]
+            return [cast("tuple[object, Final]", pair)[1].value for pair in rows]
+
+        assert_eq(await read(validate=False), [995])
+        with assert_raises(ModelValidationError):
+            await read(validate=True)
+        assert_eq(await read(validate=False), [995])

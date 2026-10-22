@@ -8,7 +8,11 @@ query state, never on the Query Builder classes.
 lazy from collections.abc import Callable, Sequence
 lazy from dataclasses import dataclass
 
-lazy from snekql._materialization_shape import JoinedRowShape, SourceRowShape
+lazy from snekql._materialization_shape import (
+    JoinedRowShape,
+    SourceDecoders,
+    SourceRowShape,
+)
 lazy from snekql._model_materialization import decode_model_row
 lazy from snekql._named_projection import NamedProjection
 lazy from snekql._query_state import (
@@ -75,6 +79,7 @@ class SelectMaterialization:
     joined: JoinedRowShape | None
     decoders: tuple[Callable[[object], object], ...]
     source: SourceRowShape | None
+    joined_decoders: tuple[SourceDecoders, ...]
 
     @classmethod
     def for_state(
@@ -112,6 +117,9 @@ class SelectMaterialization:
             backend=backend,
             validate=validate,
             joined=joined,
+            joined_decoders=joined.resolve_decoders(backend=backend, validate=validate)
+            if joined is not None
+            else (),
             source=source,
             decoders=decoders,
         )
@@ -123,7 +131,10 @@ class SelectMaterialization:
         )
         if self.joined is not None:
             return self.joined.materialize(
-                row, backend=self.backend, validate=self.validate
+                row,
+                backend=self.backend,
+                validate=self.validate,
+                decoders=self.joined_decoders,
             )
         if self.source is not None:
             return self.source.materialize(

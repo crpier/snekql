@@ -226,3 +226,7 @@ and descriptor assignment, with wide-read and single-row controls.
 [Derived-output decoder resolution](derived-decoders-500.md) measures resolving
 built-in CTE wire-source chains once per execution, with flat/nested CTE reads,
 ordinary projection controls, memory samples and preserved validation policies.
+
+[Whole-source joined CTE decoding](joined-derived-502.md) measures execution-local
+named-source decoders while preserving physical-model assignment and joined-row
+presence witnesses, with wide/point controls and longer single-row follow-ups.
