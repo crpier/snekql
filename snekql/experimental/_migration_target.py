@@ -448,15 +448,17 @@ class Target:
         return None
 
     async def _mariadb_column_obstacle(self, table: TableState) -> str | None:
-        """Resolve claims against physical column names, not native pseudo-columns."""
+        """Check physical column names and their recorded nullability."""
         if not table.columns:
             return None
         observed = await self._query(
             "SHOW COLUMNS FROM " + quote_identifier(table.name)
         )
-        if not observed:
-            return f"managed column postcondition failed: {table.name!r} has no visible physical columns; committed MariaDB effects may remain"
-        namespace = ", ".join(f"NULL AS {quote_identifier(row[0])}" for row in observed)
+        if not observed or any(row[2] not in {"YES", "NO"} for row in observed):
+            return f"managed column postcondition failed: {table.name!r} has no visible columns or unsupported nullability metadata; committed MariaDB effects may remain"
+        namespace = ", ".join(
+            f"'{row[2]}' AS {quote_identifier(row[0])}" for row in observed
+        )
         projection = ", ".join(
             quote_identifier(column.name) for column in table.columns
         )
@@ -464,13 +466,18 @@ class Target:
         # exposes only catalog names, including invisible columns, while letting
         # the server perform identifier matching without fetching application data.
         try:
-            await self._query(
-                f"SELECT {projection} FROM (SELECT {namespace} LIMIT 0) AS snekql_columns LIMIT 0"  # noqa: S608 - quoted catalog identifiers and constants only
+            resolved = await self._query(
+                f"SELECT {projection} FROM (SELECT {namespace}) AS snekql_columns LIMIT 1"  # noqa: S608 - quoted identifiers and validated metadata constants only
             )
         except (aiomysql.ProgrammingError, aiomysql.OperationalError) as error:
             if error.args[:1] != (_MARIADB_UNKNOWN_COLUMN,):
                 raise
             return f"managed column postcondition failed: declared columns of {table.name!r} do not all resolve in the observed physical column namespace; committed MariaDB effects may remain"
+        if len(resolved) != 1 or len(resolved[0]) != len(table.columns):
+            return f"managed column postcondition failed: {table.name!r} has ambiguous resolved metadata; committed MariaDB effects may remain"
+        for column, nullable in zip(table.columns, resolved[0], strict=True):
+            if nullable != ("YES" if column.nullable else "NO"):
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} nullability differs from the recorded contract; committed MariaDB effects may remain"
         return None
 
     async def _start_package(self, prepared: Prepared) -> None:

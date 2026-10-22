@@ -274,7 +274,7 @@ earlier structured steps without executing them. Separate expand/backfill/contra
 revisions remain useful for application rollout compatibility; completing a
 migration does not establish application readiness.
 
-## MariaDB managed table and column presence guards
+## MariaDB managed table and column checks
 
 Before recording a new completion, MariaDB requires every table in the target
 managed scope to resolve to an observed base table. A missing table or a view with
@@ -291,8 +291,9 @@ ordinary inserts do not change structural identity.
 Once a claimed base table resolves, the runner reads its physical column names
 with SHOW COLUMNS and asks MariaDB to resolve the declared names against a
 constant derived-table namespace containing exactly those observed names.
-The probe uses NULL aliases and LIMIT 0, not application data. This avoids
-reimplementing native identifier case rules or parsing localized driver messages.
+The probe returns one row of validated YES/NO nullability metadata constants,
+not application data. This avoids reimplementing native identifier case rules or
+parsing localized driver messages.
 It also prevents the native `_rowid` pseudo-column from satisfying a physical
 column claim merely because a primary key exists. Real physical columns with
 that spelling, including INVISIBLE columns omitted by SELECT *, remain supported.
@@ -302,19 +303,27 @@ must be visible to the migration connection; unrelated server errors propagate
 rather than being mislabeled as missing columns. This is not a data SELECT or an
 application-permission check.
 
-These are deliberately **presence and object-kind guards**, not full native schema
-verification. Matching the resolved definition to the observed catalog and resolving
-column names does not compare types, nullability, defaults, constraints, indexes,
-engines, codecs or values against the recorded contract. Those native endpoint
-checks remain future work. Construction SQL remains trusted executable input,
+Each resolved nullability flag must exactly match the recorded column: an absent
+NOT NULL attribute and an unrequested NOT NULL attribute both reject completion.
+Flags bind by server-resolved names, not physical column order; differing casing,
+invisible columns and implicit primary-key NOT NULL metadata remain supported.
+Missing, unsupported or ambiguous metadata stops rather than being guessed.
+
+This checks the server's nullable/not-null attribute, not equivalence through CHECK
+constraints, defaults, expressions or SQL modes, and it does not inspect stored
+values. These are bounded **presence, object-kind and nullability checks**, not full
+native schema verification. Types, defaults, other constraints, indexes, engines,
+codecs and values are not compared against the recorded contract. Those native
+endpoint checks remain future work. Construction SQL remains trusted executable input,
 not a sandbox.
 
 Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table or column claim yields `ambiguous`, and resume cannot bypass it. There is no
-automatic repair, cleanup, force-completion or history rewriting. Earlier records already
+table, column-name or nullability claim yields `ambiguous`, and resume cannot bypass
+it. There is no automatic repair, cleanup, force-completion or history rewriting.
+Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope
 does not re-adopt old tables.
 

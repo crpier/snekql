@@ -1292,3 +1292,154 @@ async def mariadb_physical_invisible_rowid_column_remains_a_valid_claim() -> Non
             ),
             [{"physical_value": "kept"}],
         )
+
+
+@test(mark="slow")
+async def mariadb_nullable_column_cannot_satisfy_a_required_contract() -> None:
+    """Resolvable names are insufficient when the declared NOT NULL fact is absent."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    table = draft.target.tables[0].model_copy(
+        update={
+            "sql": "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NULL) ENGINE=InnoDB"
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "nullability" in str(error.exception)
+        assert "title" in str(error.exception)
+        assert_eq(
+            [
+                (p.phase, p.acknowledged_steps, p.total_steps)
+                for p in await target.status()
+            ],
+            [("uncertain", 1, 1)],
+        )
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "nullability" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        await tx.execute(mariadb.raw("INSERT INTO entry VALUES(1,NULL)"))
+        assert_eq(
+            await tx.fetch_all(mariadb.raw("SELECT title FROM entry")),
+            [{"title": None}],
+        )
+
+
+@test(mark="slow")
+async def mariadb_required_column_cannot_satisfy_a_nullable_contract() -> None:
+    """An unrequested NOT NULL constraint is also a recorded-structure mismatch."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1].model_copy(
+        update={
+            "nullable": True,
+            "definition": "`title` TEXT NULL",
+            "query_type": "str | None",
+        }
+    )
+    table = original.model_copy(update={"columns": (original.columns[0], title)})
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "nullability" in str(error.exception)
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' AND COLUMN_NAME='title'"
+                )
+            ),
+            [{"IS_NULLABLE": "NO"}],
+        )
+
+
+@test(mark="slow")
+async def mariadb_nullability_matches_names_not_physical_column_order() -> None:
+    """Opposite flags, differing case and reversed physical order bind to the right claims."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1].model_copy(
+        update={
+            "nullable": True,
+            "definition": "`title` TEXT NULL",
+            "query_type": "str | None",
+        }
+    )
+    table = original.model_copy(
+        update={
+            "sql": "CREATE TABLE entry(TITLE TEXT NULL, ID INTEGER PRIMARY KEY) ENGINE=InnoDB",
+            "columns": (original.columns[0], title),
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        await tx.execute(mariadb.raw("INSERT INTO entry(id,title) VALUES(3,NULL)"))
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw("SELECT ID AS id,TITLE AS title FROM entry")
+            ),
+            [{"id": 3, "title": None}],
+        )
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT COLUMN_NAME,IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' ORDER BY ORDINAL_POSITION"
+                )
+            ),
+            [
+                {"COLUMN_NAME": "TITLE", "IS_NULLABLE": "YES"},
+                {"COLUMN_NAME": "ID", "IS_NULLABLE": "NO"},
+            ],
+        )

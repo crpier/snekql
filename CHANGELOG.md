@@ -25,7 +25,8 @@
   proven remaining work without replaying acknowledged updates. New native completion
   and finish recovery require each managed table to resolve to an observed base
   table and its declared columns to resolve against observed physical column names,
-  without fetching application rows or accepting native pseudo-column aliases;
+  without fetching application rows or accepting native pseudo-column aliases.
+  Native nullability metadata must match the recorded columns in both directions;
   failures retain uncertain progress without claiming DDL rollback. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
