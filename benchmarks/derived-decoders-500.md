@@ -1,6 +1,6 @@
 # Execution-local derived-output decoding — #500
 
-Measured 2026-10-23: merged baseline `dafc719` (including #499) versus clean
+Measured 2026-10-22: merged baseline `dafc719` (including #499) versus clean
 implementation `79d6e6e`. This is an incremental comparison, not a multiplication
 of earlier gains.
 
