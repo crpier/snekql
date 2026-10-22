@@ -164,6 +164,10 @@ bytes per built query (`tracemalloc` snapshot diff with every query held alive).
 The [pagination-validation measurements](pagination-validation-481.md) cover
 strict integer argument handling, including keyword/subtype and execution controls.
 
+[Combined construction measurements](combined-construction-481.md) establish the
+merged baseline; [column protocol dispatch](column-protocols-494.md) measures the
+next compilation optimization, with execution controls and a SQLite follow-up.
+
 ### Variance
 
 Within-run variance is small (CV typically < 1%). The larger source of noise is
