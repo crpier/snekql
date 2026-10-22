@@ -1059,3 +1059,236 @@ async def mariadb_table_postcondition_uses_server_identifier_resolution() -> Non
                     ),
                     [{"TABLE_NAME": "mixedentry"}],
                 )
+
+
+@test(mark="slow")
+async def mariadb_missing_declared_column_blocks_completion_and_finish() -> None:
+    """A real base table is insufficient if a recorded column cannot resolve."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    table = draft.target.tables[0].model_copy(
+        update={"sql": "CREATE TABLE entry(id INTEGER PRIMARY KEY) ENGINE=InnoDB"}
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "managed column postcondition" in str(error.exception)
+        assert "entry" in str(error.exception)
+        assert_eq(
+            [
+                (p.phase, p.acknowledged_steps, p.total_steps)
+                for p in await target.status()
+            ],
+            [("uncertain", 1, 1)],
+        )
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "managed column postcondition" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry'"
+                )
+            ),
+            [{"COLUMN_NAME": "id"}],
+        )
+
+
+@test(mark="slow")
+async def mariadb_column_presence_uses_native_case_rules_and_identifier_quoting() -> (
+    None
+):
+    """Escaped names and differing physical case remain queryable, including populated tables."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1].model_copy(
+        update={
+            "name": "odd`name",
+            "definition": original.columns[1].definition.replace(
+                "`title`", "`odd``name`"
+            ),
+        }
+    )
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace("`id`", "`ID`").replace(
+                "`title`", "`ODD``NAME`"
+            ),
+            "columns": (original.columns[0], title),
+        }
+    )
+    first = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    second = migrations.compile(
+        migrations.Draft(
+            revision="002",
+            predecessor=first.digest,
+            before=first.target,
+            target=first.target,
+            operations=(),
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(first, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        async with (
+            await mariadb.Database.initialize(server.config()) as db,
+            db.transaction() as tx,
+        ):
+            await tx.execute(
+                mariadb.raw("INSERT INTO entry(id,`odd``name`) VALUES(1,'kept')")
+            )
+        assert_eq(
+            await target.apply(
+                await target.prepare(second, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq([p.phase for p in await target.status()], ["complete", "complete"])
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw("SELECT ID AS id, `ODD``NAME` AS title FROM entry")
+            ),
+            [{"id": 1, "title": "kept"}],
+        )
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' ORDER BY ORDINAL_POSITION"
+                )
+            ),
+            [{"COLUMN_NAME": "ID"}, {"COLUMN_NAME": "ODD`NAME"}],
+        )
+
+
+@test(mark="slow")
+async def mariadb_pseudo_column_cannot_satisfy_a_physical_column_claim() -> None:
+    """The native _rowid alias can resolve without a separately declared column."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    alias = original.columns[1].model_copy(
+        update={"name": "_rowid", "definition": "`_rowid` TEXT NOT NULL"}
+    )
+    table = original.model_copy(
+        update={
+            "sql": "CREATE TABLE entry(id INTEGER PRIMARY KEY) ENGINE=InnoDB",
+            "columns": (original.columns[0], alias),
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "managed column postcondition" in str(error.exception)
+        assert_eq(
+            (
+                await target.inspect_recovery(plan, schema_writers_excluded=True)
+            ).disposition,
+            "ambiguous",
+        )
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        await tx.execute(mariadb.raw("INSERT INTO entry VALUES(7)"))
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw("SELECT `_rowid` AS alias_value FROM entry")
+            ),
+            [{"alias_value": 7}],
+        )
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry'"
+                )
+            ),
+            [{"COLUMN_NAME": "id"}],
+        )
+
+
+@test(mark="slow")
+async def mariadb_physical_invisible_rowid_column_remains_a_valid_claim() -> None:
+    """Catalog-backed matching accepts a real invisible column with the alias spelling."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    column = original.columns[1].model_copy(
+        update={
+            "name": "_rowid",
+            "definition": "`_rowid` TEXT NOT NULL DEFAULT 'kept' INVISIBLE",
+        }
+    )
+    table = original.model_copy(
+        update={
+            "sql": "CREATE TABLE entry(id INTEGER PRIMARY KEY, `_rowid` TEXT NOT NULL DEFAULT 'kept' INVISIBLE) ENGINE=InnoDB",
+            "columns": (original.columns[0], column),
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        await tx.execute(mariadb.raw("INSERT INTO entry(id) VALUES(9)"))
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw("SELECT `_rowid` AS physical_value FROM entry")
+            ),
+            [{"physical_value": "kept"}],
+        )

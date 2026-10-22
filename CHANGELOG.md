@@ -24,7 +24,9 @@
   table, avoiding oversized projections for ordinary wide tables. MariaDB can resume
   proven remaining work without replaying acknowledged updates. New native completion
   and finish recovery require each managed table to resolve to an observed base
-  table; failures retain uncertain progress without claiming DDL rollback. Exact observed
+  table and its declared columns to resolve against observed physical column names,
+  without fetching application rows or accepting native pseudo-column aliases;
+  failures retain uncertain progress without claiming DDL rollback. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations

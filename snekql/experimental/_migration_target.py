@@ -28,6 +28,7 @@ from snekql.experimental.migrations import (
     CreateTable,
     Package,
     PackageError,
+    TableState,
     _canonical,
     _digest,
     _Value,
@@ -38,6 +39,7 @@ from snekql.sqlite.config import Config as SQLiteConfig
 
 _HISTORY = "snekql_experimental_migrations"
 _MARIADB_NO_SUCH_TABLE = 1146
+_MARIADB_UNKNOWN_COLUMN = 1054
 
 
 class Reconciliation(_Value):
@@ -400,7 +402,9 @@ class Target:
         completed_catalog = await self._catalog()
         if self._sqlite:
             validate_completed(package, completed_catalog)
-        elif obstacle := await self._mariadb_table_obstacle(package, completed_catalog):
+        elif obstacle := await self._mariadb_presence_obstacle(
+            package, completed_catalog
+        ):
             raise PackageError(obstacle)
         await self._query(
             "UPDATE `snekql_experimental_migrations` SET phase='complete', catalog="  # noqa: S608 - fixed placeholders or quoted identifiers
@@ -411,10 +415,10 @@ class Target:
         )
         await self._connection.commit()
 
-    async def _mariadb_table_obstacle(
+    async def _mariadb_presence_obstacle(
         self, package: Package, catalog: list[tuple[Any, ...]]
     ) -> str | None:
-        """Explain a claimed table that does not resolve to an observed base table."""
+        """Explain a managed table or column that cannot resolve on this server."""
         if not package.target.tables:
             return None
         mode = (await self._query("SELECT @@SESSION.sql_mode"))[0][0]
@@ -439,6 +443,34 @@ class Target:
                 not in definitions
             ):
                 return f"managed table postcondition failed: {table.name!r} is not an observed base table; committed MariaDB effects may remain"
+            if obstacle := await self._mariadb_column_obstacle(table):
+                return obstacle
+        return None
+
+    async def _mariadb_column_obstacle(self, table: TableState) -> str | None:
+        """Resolve claims against physical column names, not native pseudo-columns."""
+        if not table.columns:
+            return None
+        observed = await self._query(
+            "SHOW COLUMNS FROM " + quote_identifier(table.name)
+        )
+        if not observed:
+            return f"managed column postcondition failed: {table.name!r} has no visible physical columns; committed MariaDB effects may remain"
+        namespace = ", ".join(f"NULL AS {quote_identifier(row[0])}" for row in observed)
+        projection = ", ".join(
+            quote_identifier(column.name) for column in table.columns
+        )
+        # A constant derived table has no primary-key alias such as _rowid. It
+        # exposes only catalog names, including invisible columns, while letting
+        # the server perform identifier matching without fetching application data.
+        try:
+            await self._query(
+                f"SELECT {projection} FROM (SELECT {namespace} LIMIT 0) AS snekql_columns LIMIT 0"  # noqa: S608 - quoted catalog identifiers and constants only
+            )
+        except (aiomysql.ProgrammingError, aiomysql.OperationalError) as error:
+            if error.args[:1] != (_MARIADB_UNKNOWN_COLUMN,):
+                raise
+            return f"managed column postcondition failed: declared columns of {table.name!r} do not all resolve in the observed physical column namespace; committed MariaDB effects may remain"
         return None
 
     async def _start_package(self, prepared: Prepared) -> None:
@@ -721,7 +753,7 @@ class Target:
                 )
                 explanation = "catalog matches the last durable acknowledgement; transactional updates and their markers commit together"
                 if disposition == "finish" and (
-                    obstacle := await self._mariadb_table_obstacle(
+                    obstacle := await self._mariadb_presence_obstacle(
                         prepared.package, observation
                     )
                 ):
