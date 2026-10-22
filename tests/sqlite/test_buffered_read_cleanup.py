@@ -240,3 +240,32 @@ async def late_buffered_constraint_does_not_become_savepoint_recoverable(
             inject_failure = False
             with assert_raises(DatabaseRuntimeError):
                 await transaction.fetch_all(query)
+
+
+@test(mark="medium")
+async def buffered_execution_failure_preserves_explicit_driver_cause() -> None:
+    """Values diagnostics retain a native exception's explicit causal chain."""
+    query = sqlite.select(CleanupReading.value)
+    target_sql = query.compile().sql
+
+    class FaultConnection(sqlite3.Connection):
+        def execute(self, sql: str, parameters: Any = (), /) -> sqlite3.Cursor:
+            if sql == target_sql:
+                cause = ValueError("native execution cause")
+                raise sqlite3.IntegrityError("native execution failure") from cause
+            return super().execute(sql, parameters)
+
+    connect = partial(sqlite3.connect, factory=FaultConnection)
+    with patch.object(sqlite3, "connect", connect):
+        async with (
+            await initialized_database(
+                sqlite.Config(database=":memory:", parameter_visibility="values"),
+                models=[CleanupReading],
+            ) as database,
+            database.transaction() as transaction,
+        ):
+            with assert_raises(ExecutionError) as caught:
+                await transaction.fetch_all(query)
+            native = caught.exception.__cause__
+            assert native is not None
+            assert_eq(str(native.__cause__), "native execution cause")

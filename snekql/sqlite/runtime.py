@@ -201,9 +201,11 @@ class SQLiteConnectionAdapter:
             )
         except BufferedExecuteConstraintError as failure:
             error = failure.original
-            if self._recoverable_constraint(error):
-                raise StatementConstraintError(error) from error
-            raise error from None
+        # Raise outside the wrapper handler, preserving the driver's own cause
+        # without installing the private stage marker as exception context.
+        if self._recoverable_constraint(error):
+            raise StatementConstraintError(error) from error
+        raise error
 
     async def execute_stream(
         self,
