@@ -26,8 +26,11 @@
   and finish recovery require each managed table to resolve to an observed base
   table and its declared columns to resolve against observed physical column names,
   without fetching application rows or accepting native pseudo-column aliases.
-  Native nullability metadata must match the recorded columns in both directions;
-  failures retain uncertain progress without claiming DDL rollback. Exact observed
+  Native nullability and bounded storage-type metadata must match the recorded
+  columns, including lengths, precision and signedness. Known aliases normalize;
+  unsupported recorded types/modifiers fail preparation before DDL. Endpoint
+  failures retain uncertain progress without claiming DDL rollback. JSON storage
+  comparison does not certify its validity constraint or collation. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations

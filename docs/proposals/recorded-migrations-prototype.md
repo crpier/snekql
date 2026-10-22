@@ -291,8 +291,8 @@ ordinary inserts do not change structural identity.
 Once a claimed base table resolves, the runner reads its physical column names
 with SHOW COLUMNS and asks MariaDB to resolve the declared names against a
 constant derived-table namespace containing exactly those observed names.
-The probe returns one row of validated YES/NO nullability metadata constants,
-not application data. This avoids reimplementing native identifier case rules or
+The probe returns one row of constant metadata-row keys, binding the observed
+nullability and type metadata by name without selecting application data. This avoids reimplementing native identifier case rules or
 parsing localized driver messages.
 It also prevents the native `_rowid` pseudo-column from satisfying a physical
 column claim merely because a primary key exists. Real physical columns with
@@ -311,17 +311,27 @@ Missing, unsupported or ambiguous metadata stops rather than being guessed.
 
 This checks the server's nullable/not-null attribute, not equivalence through CHECK
 constraints, defaults, expressions or SQL modes, and it does not inspect stored
-values. These are bounded **presence, object-kind and nullability checks**, not full
-native schema verification. Types, defaults, other constraints, indexes, engines,
-codecs and values are not compared against the recorded contract. Those native
-endpoint checks remain future work. Construction SQL remains trusted executable input,
-not a sandbox.
+values. Storage types are also compared using a bounded declaration-prefix grammar:
+recognized aliases, non-ZEROFILL integer display widths and implicit parameters
+normalize, while storage families, character/binary lengths, decimal precision and
+scale, temporal precision and signedness must match. Unsupported recorded types or
+modifiers fail preparation before DDL; unsupported observed types block completion
+and finish recovery. ZEROFILL, enum/set, mode-dependent REAL and binary-charset
+conversion declarations require explicit support rather than guesses. The understood
+character-set/collation modifier syntax is restricted to emitted utf8mb4 forms;
+this is not a general SQL parser or a charset/collation equivalence check.
+
+These remain bounded **presence, object-kind, nullability and storage-type checks**,
+not full native schema verification. JSON here proves only LONGTEXT storage, not
+JSON validity or its collation. Defaults, charset/collation facts, other constraints,
+indexes, engines, codecs and values remain unverified. Construction SQL remains
+trusted executable input, not a sandbox.
 
 Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name or nullability claim yields `ambiguous`, and resume cannot bypass
+table, column-name, nullability or storage-type claim yields `ambiguous`, and resume cannot bypass
 it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope

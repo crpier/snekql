@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import Field
 
 from snekql.errors import SchemaError
+from snekql.experimental._migration_mariadb import validate_mariadb_declarations
 from snekql.experimental._migration_sql import (
     Token,
     ascii_lower,
@@ -51,6 +52,7 @@ def prepare_steps(
     package: Package, catalog: list[tuple[Any, ...]]
 ) -> tuple[ExecutionStep, ...]:
     """Resolve deferred steps; do not open a database or execute authoring code."""
+    validate_mariadb_declarations(package.target)
     objects = list(catalog)
     steps: list[ExecutionStep] = []
     for index, (sql, params, transactional, contraction) in enumerate(

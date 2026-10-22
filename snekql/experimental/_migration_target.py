@@ -11,6 +11,11 @@ import anyio
 lazy import aiomysql
 lazy import aiosqlite
 
+from snekql.experimental._migration_mariadb import (
+    mariadb_declaration_obstacle,
+    mariadb_storage_type_matches,
+    validate_mariadb_declarations,
+)
 from snekql.experimental._migration_prepare import (
     ExecutionStep,
     prepare_steps,
@@ -360,6 +365,7 @@ class Target:
         self, prepared: Prepared, *, start: int | None = None
     ) -> None:
         package = prepared.package
+        validate_mariadb_declarations(package.target)
         first = start or 0
         if first < len(prepared.steps):
             await self._check_required(prepared.steps[first])
@@ -448,7 +454,7 @@ class Target:
         return None
 
     async def _mariadb_column_obstacle(self, table: TableState) -> str | None:
-        """Check physical column names and their recorded nullability."""
+        """Bind physical metadata by server-resolved names, then check recorded facts."""
         if not table.columns:
             return None
         observed = await self._query(
@@ -456,8 +462,10 @@ class Target:
         )
         if not observed or any(row[2] not in {"YES", "NO"} for row in observed):
             return f"managed column postcondition failed: {table.name!r} has no visible columns or unsupported nullability metadata; committed MariaDB effects may remain"
+        metadata = {str(index): row for index, row in enumerate(observed)}
         namespace = ", ".join(
-            f"'{row[2]}' AS {quote_identifier(row[0])}" for row in observed
+            f"'{index}' AS {quote_identifier(row[0])}"
+            for index, row in metadata.items()
         )
         projection = ", ".join(
             quote_identifier(column.name) for column in table.columns
@@ -473,11 +481,30 @@ class Target:
             if error.args[:1] != (_MARIADB_UNKNOWN_COLUMN,):
                 raise
             return f"managed column postcondition failed: declared columns of {table.name!r} do not all resolve in the observed physical column namespace; committed MariaDB effects may remain"
-        if len(resolved) != 1 or len(resolved[0]) != len(table.columns):
+        if (
+            len(resolved) != 1
+            or len(resolved[0]) != len(table.columns)
+            or any(key not in metadata for key in resolved[0])
+        ):
             return f"managed column postcondition failed: {table.name!r} has ambiguous resolved metadata; committed MariaDB effects may remain"
-        for column, nullable in zip(table.columns, resolved[0], strict=True):
-            if nullable != ("YES" if column.nullable else "NO"):
+        matched = tuple(metadata[key] for key in resolved[0])
+        for column, row in zip(table.columns, matched, strict=True):
+            if row[2] != ("YES" if column.nullable else "NO"):
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} nullability differs from the recorded contract; committed MariaDB effects may remain"
+        return self._mariadb_type_obstacle(table, matched)
+
+    @staticmethod
+    def _mariadb_type_obstacle(
+        table: TableState, observed: tuple[tuple[Any, ...], ...]
+    ) -> str | None:
+        """Explain an unsupported or different physical storage type."""
+        for column, row in zip(table.columns, observed, strict=True):
+            try:
+                matches = mariadb_storage_type_matches(column.definition, row[1])
+            except PackageError as error:
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r}: {error}; committed MariaDB effects may remain"
+            if not matches:
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} storage type differs from the recorded contract; committed MariaDB effects may remain"
         return None
 
     async def _start_package(self, prepared: Prepared) -> None:
@@ -747,8 +774,12 @@ class Target:
             "retry_remaining", "finish", "ambiguous", "reconcile_structural"
         ] = "ambiguous"
         explanation = "catalog differs from the last acknowledgement; structural completion needs reconciliation"
-        if recorded["profile"] != list(profile):
-            explanation = "server/session rendering profile differs from the acknowledged observation"
+        declaration_obstacle = mariadb_declaration_obstacle(prepared.package.target)
+        if recorded["profile"] != list(profile) or declaration_obstacle:
+            explanation = (
+                declaration_obstacle
+                or "server/session rendering profile differs from the acknowledged observation"
+            )
         elif catalog == row[4]:
             if await self._transactional_obstacles():
                 explanation = "transactional recovery is not proven with non-InnoDB tables, triggers or stored routines"

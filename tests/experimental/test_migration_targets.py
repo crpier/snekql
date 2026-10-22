@@ -4,9 +4,12 @@ import asyncio
 import os
 import signal
 from collections.abc import AsyncGenerator
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import ClassVar
+from uuid import UUID
 
 import aiomysql
 import anyio
@@ -1067,7 +1070,7 @@ async def mariadb_missing_declared_column_blocks_completion_and_finish() -> None
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
     table = draft.target.tables[0].model_copy(
-        update={"sql": "CREATE TABLE entry(id INTEGER PRIMARY KEY) ENGINE=InnoDB"}
+        update={"sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY) ENGINE=InnoDB"}
     )
     package = migrations.compile(
         draft.model_copy(
@@ -1203,7 +1206,7 @@ async def mariadb_pseudo_column_cannot_satisfy_a_physical_column_claim() -> None
     )
     table = original.model_copy(
         update={
-            "sql": "CREATE TABLE entry(id INTEGER PRIMARY KEY) ENGINE=InnoDB",
+            "sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY) ENGINE=InnoDB",
             "columns": (original.columns[0], alias),
         }
     )
@@ -1261,7 +1264,7 @@ async def mariadb_physical_invisible_rowid_column_remains_a_valid_claim() -> Non
     )
     table = original.model_copy(
         update={
-            "sql": "CREATE TABLE entry(id INTEGER PRIMARY KEY, `_rowid` TEXT NOT NULL DEFAULT 'kept' INVISIBLE) ENGINE=InnoDB",
+            "sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY, `_rowid` TEXT NOT NULL DEFAULT 'kept' INVISIBLE) ENGINE=InnoDB",
             "columns": (original.columns[0], column),
         }
     )
@@ -1301,7 +1304,7 @@ async def mariadb_nullable_column_cannot_satisfy_a_required_contract() -> None:
     draft = migrations.generate("001", [Entry], backend="mariadb")
     table = draft.target.tables[0].model_copy(
         update={
-            "sql": "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NULL) ENGINE=InnoDB"
+            "sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY, title TEXT NULL) ENGINE=InnoDB"
         }
     )
     package = migrations.compile(
@@ -1401,7 +1404,7 @@ async def mariadb_nullability_matches_names_not_physical_column_order() -> None:
     )
     table = original.model_copy(
         update={
-            "sql": "CREATE TABLE entry(TITLE TEXT NULL, ID INTEGER PRIMARY KEY) ENGINE=InnoDB",
+            "sql": "CREATE TABLE entry(TITLE TEXT NULL, ID BIGINT PRIMARY KEY) ENGINE=InnoDB",
             "columns": (original.columns[0], title),
         }
     )
@@ -1443,3 +1446,324 @@ async def mariadb_nullability_matches_names_not_physical_column_order() -> None:
                 {"COLUMN_NAME": "ID", "IS_NULLABLE": "NO"},
             ],
         )
+
+
+@test(mark="slow")
+async def mariadb_wrong_physical_type_blocks_completion_and_finish() -> None:
+    """Generic text storage is not proof of the recorded bounded VARCHAR type."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    table = original.model_copy(
+        update={"sql": original.sql.replace("VARCHAR(255)", "LONGTEXT")}
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "type differs" in str(error.exception)
+        assert "title" in str(error.exception)
+        assert_eq(
+            [
+                (p.phase, p.acknowledged_steps, p.total_steps)
+                for p in await target.status()
+            ],
+            [("uncertain", 1, 1)],
+        )
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "type differs" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' AND COLUMN_NAME='title'"
+                )
+            ),
+            [{"DATA_TYPE": "longtext"}],
+        )
+
+
+class NativeTypes[S = mariadb.Pending](mariadb.Model[S]):
+    """Frozen declarations for the generated native storage families."""
+
+    __row_type__: ClassVar[mariadb.ReadType[NativeTypes[mariadb.Row]]]
+    id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+    label: mariadb.Col[str] = mariadb.Text(length=12)
+    amount: mariadb.Col[Decimal] = mariadb.Decimal(12, 3)
+    at: mariadb.Col[mariadb.UtcDatetime] = mariadb.DateTime(precision=6)
+    day: mariadb.Col[date] = mariadb.Date()
+    enabled: mariadb.Col[bool] = mariadb.Boolean()
+    ratio: mariadb.Col[float] = mariadb.Real()
+    payload: mariadb.Col[bytes] = mariadb.Blob()
+    notes: mariadb.Col[str] = mariadb.LongText()
+    metadata: mariadb.JsonCol[dict[str, int]] = mariadb.Json()
+    key: mariadb.Col[UUID] = mariadb.Uuid()
+
+
+@test(mark="slow")
+async def mariadb_generated_storage_families_match_native_type_rendering() -> None:
+    """Native aliases and integer display widths do not reject generated storage."""
+    server = await load_fixture(provide_package_server())
+    package = migrations.compile(
+        migrations.generate("001", [NativeTypes], backend="mariadb")
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT COLUMN_NAME,DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='native_types' ORDER BY ORDINAL_POSITION"
+                )
+            ),
+            [
+                {"COLUMN_NAME": "id", "DATA_TYPE": "bigint"},
+                {"COLUMN_NAME": "label", "DATA_TYPE": "varchar"},
+                {"COLUMN_NAME": "amount", "DATA_TYPE": "decimal"},
+                {"COLUMN_NAME": "at", "DATA_TYPE": "datetime"},
+                {"COLUMN_NAME": "day", "DATA_TYPE": "date"},
+                {"COLUMN_NAME": "enabled", "DATA_TYPE": "tinyint"},
+                {"COLUMN_NAME": "ratio", "DATA_TYPE": "double"},
+                {"COLUMN_NAME": "payload", "DATA_TYPE": "blob"},
+                {"COLUMN_NAME": "notes", "DATA_TYPE": "longtext"},
+                {"COLUMN_NAME": "metadata", "DATA_TYPE": "longtext"},
+                {"COLUMN_NAME": "key", "DATA_TYPE": "uuid"},
+            ],
+        )
+
+
+@test(mark="slow")
+async def mariadb_type_parameters_and_signedness_cannot_silently_change() -> None:
+    """Widths, numeric/temporal precision and unsigned domains are physical facts."""
+    server = await load_fixture(provide_package_server())
+    for old, new, column in (
+        ("VARCHAR(12)", "VARCHAR(13)", "label"),
+        ("DECIMAL(12,3)", "DECIMAL(13,3)", "amount"),
+        ("DECIMAL(12,3)", "DECIMAL(12,2)", "amount"),
+        ("DATETIME(6)", "DATETIME(3)", "at"),
+        ("BIGINT", "BIGINT UNSIGNED", "id"),
+        ("DOUBLE", "FLOAT", "ratio"),
+    ):
+        await server.reset_database()
+        draft = migrations.generate("001", [NativeTypes], backend="mariadb")
+        original = draft.target.tables[0]
+        assert old in original.sql
+        table = original.model_copy(update={"sql": original.sql.replace(old, new, 1)})
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            plan = await target.prepare(package, schema_writers_excluded=True)
+            with assert_raises(migrations.PackageError) as error:
+                await target.apply(plan)
+            assert "type differs" in str(error.exception)
+            assert repr(column) in str(error.exception)
+            assert_eq((await target.status())[0].phase, "uncertain")
+            assert_eq(
+                (
+                    await target.inspect_recovery(plan, schema_writers_excluded=True)
+                ).disposition,
+                "ambiguous",
+            )
+
+
+@test(mark="slow")
+async def mariadb_unsupported_recorded_type_is_rejected_before_execution() -> None:
+    """An unimplemented modifier must not first commit avoidable native DDL."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    first = original.columns[0].model_copy(
+        update={
+            "definition": original.columns[0].definition.replace(
+                "BIGINT", "BIGINT ZEROFILL"
+            )
+        }
+    )
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace("BIGINT", "BIGINT ZEROFILL"),
+            "columns": (first, original.columns[1]),
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        with assert_raises(migrations.PackageError) as error:
+            await target.prepare(package, schema_writers_excluded=True)
+        assert "unsupported MariaDB type modifier" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW TABLES")), [])
+
+
+@test(mark="slow")
+async def mariadb_binary_charset_type_conversion_needs_explicit_support() -> None:
+    """Do not mistake VARCHAR's binary-charset alias for ordinary text storage."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1].model_copy(
+        update={"definition": "`title` VARCHAR(255) CHARACTER SET binary NOT NULL"}
+    )
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace(
+                original.columns[1].definition, title.definition
+            ),
+            "columns": (original.columns[0], title),
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        with assert_raises(migrations.PackageError) as error:
+            await target.prepare(package, schema_writers_excluded=True)
+        assert "unsupported MariaDB type modifier" in str(error.exception)
+        assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_observed_unsupported_type_cannot_finish_recovery() -> None:
+    """Unknown physical metadata is not permission to certify a known declaration."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace(
+                original.columns[1].definition, "`title` ENUM('one','two') NOT NULL"
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "unsupported MariaDB storage type" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "unsupported MariaDB storage type" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_storage_aliases_and_implicit_parameters_preserve_identity() -> None:
+    """Literal native spellings bind by name, not order or display formatting."""
+    server = await load_fixture(provide_package_server())
+    declarations = (
+        ("INTEGER", "INT(7)"),
+        ("BOOL", "TINYINT(4)"),
+        ("NUMERIC", "DECIMAL(10,0)"),
+        ("DEC(9)", "DECIMAL(9,0)"),
+        ("FIXED(9,2)", "DECIMAL(9,2)"),
+        ("DOUBLE PRECISION", "DOUBLE"),
+        ("DATETIME(0)", "DATETIME"),
+        ("TIME", "TIME(0)"),
+        ("TIMESTAMP(0)", "TIMESTAMP"),
+        ("CHAR", "CHAR(1)"),
+        ("BINARY", "BINARY(1)"),
+        ("VARBINARY(8)", "VARBINARY(8)"),
+        ("BIT", "BIT(1)"),
+        ("TINYTEXT", "TINYTEXT"),
+        ("TEXT", "TEXT"),
+        ("MEDIUMTEXT", "MEDIUMTEXT"),
+        ("TINYBLOB", "TINYBLOB"),
+        ("MEDIUMBLOB", "MEDIUMBLOB"),
+        ("LONGBLOB", "LONGBLOB"),
+        ("FLOAT", "FLOAT"),
+        ("SMALLINT(8)", "SMALLINT(5)"),
+        ("MEDIUMINT", "MEDIUMINT(9)"),
+        ("BIGINT UNSIGNED", "BIGINT(20) UNSIGNED"),
+        ("DECIMAL(7,2) UNSIGNED", "DECIMAL(7,2) UNSIGNED"),
+        ("DOUBLE UNSIGNED", "DOUBLE UNSIGNED"),
+        ("INTEGER SIGNED", "INT(11)"),
+    )
+    columns = tuple(
+        migrations.ColumnState(
+            name=f"c{index}",
+            definition=f"`c{index}` {declared} NOT NULL",
+            nullable=False,
+            storage="native",
+        )
+        for index, (declared, _) in enumerate(declarations)
+    )
+    definitions = ", ".join(
+        f"`C{index}` {physical} NOT NULL"
+        for index, (_, physical) in reversed(tuple(enumerate(declarations)))
+    )
+    table = migrations.TableState(
+        name="aliases",
+        quoted_name="`aliases`",
+        columns=columns,
+        sql=f"CREATE TABLE aliases ({definitions}) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
