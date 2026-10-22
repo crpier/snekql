@@ -12,11 +12,24 @@ from benchmarks._asyncmy_adapter import PrototypeConfig
 from benchmarks._asyncmy_commit import _CommitRelay
 from benchmarks._asyncmy_constraints import probe as constraint_probe
 from benchmarks._asyncmy_public_cancellation import probe as public_cancellation_probe
+from benchmarks._asyncmy_sessions import (
+    cancelled_shutdown_probe,
+    mutation_probe,
+    shutdown_probe,
+)
+from benchmarks._asyncmy_sessions import probe as session_probe
 from benchmarks._asyncmy_values import probe as value_probe
 from benchmarks._asyncmy_values import warning_probe
 from snekql import mariadb
 from snekql.errors import DatabaseRuntimeError
 from snekql.testing.mariadb import temporary_mariadb_server
+
+_SESSION_SCENARIOS = {
+    "session-settings": session_probe,
+    "session-mutations": mutation_probe,
+    "shutdown-timeout": shutdown_probe,
+    "shutdown-cancel": cancelled_shutdown_probe,
+}
 
 
 async def _stream(config: mariadb.Config) -> dict[str, Any]:
@@ -126,6 +139,10 @@ async def main() -> None:
     parser.add_argument(
         "--scenario",
         choices=(
+            "shutdown-timeout",
+            "shutdown-cancel",
+            "session-settings",
+            "session-mutations",
             "constraint-unique",
             "constraint-no-savepoint",
             "constraint-lock-timeout",
@@ -161,7 +178,15 @@ async def main() -> None:
         for name, config in (("aiomysql", baseline), ("asyncmy", prototype)):
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
-                if args.scenario.startswith(("cancel-", "deadline-")):
+                if args.scenario in _SESSION_SCENARIOS:
+                    probe_config = (
+                        replace(config, acquire_timeout=0.5)
+                        if args.scenario == "shutdown-timeout"
+                        else config
+                    )
+                    async with asyncio.timeout(15):
+                        result = await _SESSION_SCENARIOS[args.scenario](probe_config)
+                elif args.scenario.startswith(("cancel-", "deadline-")):
                     result = await public_cancellation_probe(
                         config, name, args.scenario
                     )
