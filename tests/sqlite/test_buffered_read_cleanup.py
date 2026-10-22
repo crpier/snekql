@@ -143,3 +143,100 @@ async def interrupted_read_cleanup_retains_capacity_until_physical_close(
             with fail_after(2):
                 async with database.transaction() as transaction:
                     assert_eq(await transaction.fetch_all(query), [7])
+
+
+@test(mark="medium")
+async def buffered_fetch_failure_keeps_cleanup_failure_precedence() -> None:
+    """A failing fetch still closes; a cleanup failure remains the primary cause."""
+    query = sqlite.select(CleanupReading.value)
+    target_sql = query.compile().sql
+
+    class FaultCursor(sqlite3.Cursor):
+        inject_failure = False
+
+        def fetchall(self) -> list[Any]:
+            if self.inject_failure:
+                msg = "injected native fetch failure"
+                raise sqlite3.OperationalError(msg)
+            return super().fetchall()
+
+        def close(self) -> None:
+            super().close()
+            if self.inject_failure:
+                msg = "injected native cleanup failure"
+                raise sqlite3.OperationalError(msg)
+
+    class FaultConnection(sqlite3.Connection):
+        def execute(self, sql: str, parameters: Any = (), /) -> sqlite3.Cursor:
+            cursor = self.cursor(factory=FaultCursor)
+            cursor.execute(sql, parameters)
+            cursor.inject_failure = sql == target_sql
+            return cursor
+
+    connect = partial(sqlite3.connect, factory=FaultConnection)
+    with patch.object(sqlite3, "connect", connect):
+        async with (
+            await initialized_database(
+                sqlite.Config(database=":memory:", parameter_visibility="values"),
+                models=[CleanupReading],
+            ) as database,
+            database.transaction() as transaction,
+        ):
+            with assert_raises(ExecutionError) as caught:
+                await transaction.fetch_all(query)
+            assert_eq(
+                str(caught.exception.__cause__), "injected native cleanup failure"
+            )
+
+
+@test(
+    [Param(value="fetch", name="fetch"), Param(value="close", name="close")],
+    mark="medium",
+)
+async def late_buffered_constraint_does_not_become_savepoint_recoverable(
+    stage: str,
+) -> None:
+    """Only execution-time constraints can recover through a savepoint."""
+    query = sqlite.select(CleanupReading.value)
+    target_sql = query.compile().sql
+    inject_failure = True
+
+    def fail() -> None:
+        error = sqlite3.IntegrityError("injected late constraint")
+        error.sqlite_errorcode = sqlite3.SQLITE_CONSTRAINT_UNIQUE
+        raise error
+
+    class FaultCursor(sqlite3.Cursor):
+        targeted = False
+
+        def fetchall(self) -> list[Any]:
+            if self.targeted and stage == "fetch":
+                fail()
+            return super().fetchall()
+
+        def close(self) -> None:
+            super().close()
+            if self.targeted and stage == "close":
+                fail()
+
+    class FaultConnection(sqlite3.Connection):
+        def execute(self, sql: str, parameters: Any = (), /) -> sqlite3.Cursor:
+            cursor = self.cursor(factory=FaultCursor)
+            cursor.execute(sql, parameters)
+            cursor.targeted = inject_failure and sql == target_sql
+            return cursor
+
+    connect = partial(sqlite3.connect, factory=FaultConnection)
+    with patch.object(sqlite3, "connect", connect):
+        async with (
+            await initialized_database(
+                database=":memory:", models=[CleanupReading]
+            ) as database,
+            database.transaction() as transaction,
+        ):
+            with assert_raises(ExecutionError):
+                async with transaction.begin_nested():
+                    await transaction.fetch_all(query)
+            inject_failure = False
+            with assert_raises(DatabaseRuntimeError):
+                await transaction.fetch_all(query)

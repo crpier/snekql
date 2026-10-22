@@ -8,7 +8,7 @@ lazy from pathlib import Path
 lazy from typing import Literal, NoReturn
 
 lazy import anyio
-lazy from aiosqlite import Connection, Error, connect
+lazy from aiosqlite import Connection, Error
 
 lazy from snekql._pool_gate import FairAdmissionGate
 lazy from snekql.errors import (
@@ -18,6 +18,7 @@ lazy from snekql.errors import (
     DatabaseRuntimeError,
     PoolTimeoutError,
 )
+lazy from snekql.sqlite._buffered_connection import connect
 lazy from snekql.sqlite.settings import apply_sqlite_connection_settings
 lazy from snekql.validation import NonNegativeFloat, PositiveInt
 
@@ -44,7 +45,7 @@ async def open_sqlite_connection(
 
     connection: Connection | None = None
     try:
-        connection = await connect(database_path, isolation_level=None)
+        connection = await connect(database_path)
         cursor = await connection.execute("SELECT 1")
         try:
             _ = await cursor.fetchone()

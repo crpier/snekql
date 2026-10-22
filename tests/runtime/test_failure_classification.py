@@ -356,16 +356,21 @@ async def late_cursor_failure_keeps_classification(operation: str) -> None:
     """Late driver failures get metadata but never become savepoint-recoverable."""
     case = await load_fixture(provide_constraint_case("sqlite"))
 
-    async def fail_cursor(
-        self: SQLiteCursor, size: int = 1
-    ) -> list[tuple[object, ...]]:
+    async def fail_cursor(self: object, size: int = 1) -> list[tuple[object, ...]]:
         del self, size
         error = OperationalError("private_driver_value")
         error.sqlite_errorcode = 5
         raise error
 
+    async def fail_buffered(
+        self: SQLiteConnection, sql: str, parameters: Iterable[object] | None = None
+    ) -> list[tuple[object, ...]]:
+        del sql, parameters
+        return await fail_cursor(self)
+
     async with case.database.transaction() as transaction:
         with (
+            patch.object(SQLiteConnection, "execute_fetchall", fail_buffered),
             patch.object(SQLiteCursor, operation, fail_cursor),
             assert_raises(sqlite.ExecutionError) as caught,
         ):
@@ -464,13 +469,20 @@ async def missing_native_code_does_not_trigger_message_guessing() -> None:
     """A constraint-looking message is not structured evidence of a unique violation."""
     case = await load_fixture(provide_constraint_case("sqlite"))
 
-    async def fail_fetch(self: SQLiteCursor) -> list[tuple[object, ...]]:
+    async def fail_fetch(self: object) -> list[tuple[object, ...]]:
         del self
         message = "UNIQUE constraint failed: private_table.private_value"
         raise OperationalError(message)
 
+    async def fail_buffered(
+        self: SQLiteConnection, sql: str, parameters: Iterable[object] | None = None
+    ) -> list[tuple[object, ...]]:
+        del sql, parameters
+        return await fail_fetch(self)
+
     async with case.database.transaction() as transaction:
         with (
+            patch.object(SQLiteConnection, "execute_fetchall", fail_buffered),
             patch.object(SQLiteCursor, "fetchall", fail_fetch),
             assert_raises(sqlite.ExecutionError) as caught,
         ):
@@ -493,12 +505,19 @@ async def non_driver_exception_does_not_supply_native_evidence() -> None:
             super().__init__("application error")
             self.sqlite_errorcode: int = 1555
 
-    async def fail_fetch(self: SQLiteCursor) -> list[tuple[object, ...]]:
+    async def fail_fetch(self: object) -> list[tuple[object, ...]]:
         del self
         raise ImpostorError
 
+    async def fail_buffered(
+        self: SQLiteConnection, sql: str, parameters: Iterable[object] | None = None
+    ) -> list[tuple[object, ...]]:
+        del sql, parameters
+        return await fail_fetch(self)
+
     async with case.database.transaction() as transaction:
         with (
+            patch.object(SQLiteConnection, "execute_fetchall", fail_buffered),
             patch.object(SQLiteCursor, "fetchall", fail_fetch),
             assert_raises(sqlite.ExecutionError) as caught,
         ):

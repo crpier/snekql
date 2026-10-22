@@ -208,6 +208,19 @@ class RuntimeConnection(Protocol):
         ...
 
 
+@runtime_checkable
+class BufferedSelectConnection(Protocol):
+    """Optional adapter capability; owns execution, full fetch and cursor cleanup.
+
+    The caller retains the operation deadline, diagnostics and materialization.
+    Adapters without this capability keep the ordinary cursor lifecycle.
+    """
+
+    async def execute_buffered_select(
+        self, sql: str, params: tuple[object, ...]
+    ) -> Sequence[Sequence[object]]: ...
+
+
 class LockingRuntimeConnection(Protocol):
     """Backends emitting locking SELECTs expose effective transaction access mode."""
 
@@ -1530,6 +1543,12 @@ class Transaction[FamilyT: BackendFamily]:
         fetch_limit = plan.fetch_limit
 
         async def collect() -> tuple[int, Sequence[Sequence[object]]]:
+            if (
+                isinstance(plan, SelectPlan)
+                and fetch_limit is None
+                and isinstance(connection, BufferedSelectConnection)
+            ):
+                return -1, await connection.execute_buffered_select(sql, plan.params)
             cursor = await self._open_cursor(connection, plan)
             pending: BaseException | None = None
             try:
