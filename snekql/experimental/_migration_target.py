@@ -16,11 +16,13 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declaration_obstacle,
     mariadb_declared_auto_increment,
     mariadb_declared_collation,
+    mariadb_declared_generation,
     mariadb_declared_indexes,
     mariadb_declared_json_columns,
     mariadb_declared_primary_key,
     mariadb_engine_obstacle,
     mariadb_json_check_columns,
+    mariadb_observed_generation,
     mariadb_storage_type_matches,
     validate_mariadb_declarations,
 )
@@ -535,6 +537,7 @@ class Target:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} nullability differs from the recorded contract; committed MariaDB effects may remain"
         return (
             self._mariadb_type_obstacle(table, matched)
+            or self._mariadb_generation_obstacle(table, matched)
             or self._mariadb_json_obstacle(table, matched, checked_names)
             or await self._mariadb_primary_key_obstacle(table, primary_names)
             or await self._mariadb_secondary_index_obstacle(
@@ -622,6 +625,20 @@ class Target:
             collation = mariadb_declared_collation(column.definition)
             if collation is not None and row[2] != collation:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} collation differs from the recorded contract; committed MariaDB effects may remain"
+        return None
+
+    @staticmethod
+    def _mariadb_generation_obstacle(
+        table: TableState, observed: tuple[tuple[Any, ...], ...]
+    ) -> str | None:
+        """Compare generation storage kind, not expression or resulting values."""
+        for column, row in zip(table.columns, observed, strict=True):
+            try:
+                generation = mariadb_observed_generation(row[6])
+            except PackageError as error:
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r}: {error}; committed MariaDB effects may remain"
+            if generation != mariadb_declared_generation(column.definition):
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} generation kind differs from the recorded contract; committed MariaDB effects may remain"
         return None
 
     async def _start_package(self, prepared: Prepared) -> None:

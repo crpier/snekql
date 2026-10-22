@@ -2954,3 +2954,184 @@ async def mariadb_unsupported_index_forms_fail_before_effects() -> None:
                 await target.prepare(package, schema_writers_excluded=True)
             assert "secondary index" in str(error.exception)
             assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_ordinary_column_cannot_silently_become_generated() -> None:
+    """Matching nullable BIGINT storage does not prove an ordinary writable column."""
+    server = await load_fixture(provide_package_server())
+    column = migrations.ColumnState(
+        name="value", definition="`value` BIGINT NULL", nullable=True, storage="INTEGER"
+    )
+    table = migrations.TableState(
+        name="generated_entry",
+        quoted_name="`generated_entry`",
+        columns=(column,),
+        sql="CREATE TABLE generated_entry (`value` BIGINT AS (7) VIRTUAL) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "generation kind" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "generation kind" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_generated_column_storage_modes_cannot_silently_change() -> None:
+    """Ordinary, virtual and stored columns are different physical contracts."""
+    server = await load_fixture(provide_package_server())
+    for declared, physical in (
+        ("AS (7) VIRTUAL", "NULL"),
+        ("AS (7) STORED", "AS (7) VIRTUAL"),
+        ("AS (7) VIRTUAL", "AS (7) STORED"),
+        ("NULL", "AS (7) STORED"),
+    ):
+        await server.reset_database()
+        column = migrations.ColumnState(
+            name="value",
+            definition="`value` BIGINT " + declared,
+            nullable=True,
+            storage="INTEGER",
+        )
+        table = migrations.TableState(
+            name="generated_entry",
+            quoted_name="`generated_entry`",
+            columns=(column,),
+            sql="CREATE TABLE generated_entry (`value` BIGINT "
+            + physical
+            + ") ENGINE=InnoDB",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            plan = await target.prepare(package, schema_writers_excluded=True)
+            with assert_raises(migrations.PackageError) as error:
+                await target.apply(plan)
+            assert "generation kind" in str(error.exception)
+            assert_eq((await target.status())[0].phase, "uncertain")
+            recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+            assert_eq(recovery.disposition, "ambiguous")
+            assert "generation kind" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_generation_kinds_bind_names_and_accept_native_aliases() -> None:
+    """Storage aliases/defaults do not conflate metadata position with identity."""
+    server = await load_fixture(provide_package_server())
+    definitions = (
+        (
+            "or`dinary",
+            "BIGINT DEFAULT (CAST(7 AS SIGNED)) COMMENT 'AS STORED GENERATED'",
+        ),
+        ("implicit", "BIGINT AS (7)"),
+        ("virtual", "BIGINT GENERATED ALWAYS AS (CAST(7 AS SIGNED)) VIRTUAL"),
+        ("stored", "BIGINT AS (7) STORED"),
+        ("persistent", "BIGINT GENERATED ALWAYS AS (7) PERSISTENT"),
+        (
+            "literal",
+            "VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT 'AS (7) STORED GENERATED'",
+        ),
+        (
+            "text_value",
+            "VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin AS ('VIRTUAL AS') PERSISTENT",
+        ),
+    )
+    columns = tuple(
+        migrations.ColumnState(
+            name=name,
+            definition="`" + name.replace("`", "``") + "` " + definition,
+            nullable=True,
+            storage="TEXT" if definition.startswith("VARCHAR") else "INTEGER",
+        )
+        for name, definition in definitions
+    )
+    physical = ", ".join(
+        "`" + name.upper().replace("`", "``") + "` " + definition
+        for name, definition in reversed(definitions)
+    )
+    table = migrations.TableState(
+        name="generated_entry",
+        quoted_name="`generated_entry`",
+        columns=columns,
+        sql="CREATE TABLE generated_entry (" + physical + ") ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_ambiguous_generation_attributes_fail_before_effects() -> None:
+    """Do not find generation clauses after unparsed attributes or accept two modes."""
+    server = await load_fixture(provide_package_server())
+    for declaration in (
+        "BIGINT DEFAULT (7) AS (7)",
+        "BIGINT AS (7) VIRTUAL STORED",
+        "BIGINT AS (7) COMMENT 'x' PERSISTENT",
+        "BIGINT GENERATED ALWAYS",
+    ):
+        column = migrations.ColumnState(
+            name="value",
+            definition="`value` " + declaration,
+            nullable=True,
+            storage="INTEGER",
+        )
+        table = migrations.TableState(
+            name="generated_entry",
+            quoted_name="`generated_entry`",
+            columns=(column,),
+            sql="CREATE TABLE generated_entry (`value` "
+            + declaration
+            + ") ENGINE=InnoDB",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package, schema_writers_excluded=True)
+            assert "generation clause" in str(error.exception)
+            assert_eq(await target.status(), ())

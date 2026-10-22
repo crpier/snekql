@@ -149,6 +149,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
                 _signature(column.definition, declaration=True)
                 mariadb_declared_collation(column.definition)
                 mariadb_declared_auto_increment(column.definition)
+                mariadb_declared_generation(column.definition)
             except PackageError as error:
                 return f"{table.name!r}.{column.name!r}: {error}"
         try:
@@ -609,3 +610,82 @@ def mariadb_declared_indexes(table: TableState) -> tuple[MariaDBIndex, ...]:
         msg = "duplicate MariaDB secondary index claims require an explicit adapter"
         raise PackageError(msg)
     return indexes
+
+
+def _generation_words(stream: tuple[Token, ...]) -> tuple[str, ...]:
+    """Find attribute words without interpreting quoted names/literals or expressions."""
+    depth = 0
+    result: list[str] = []
+    for token in stream:
+        if token.kind == "punct" and token.value == "(":
+            depth += 1
+        elif token.kind == "punct" and token.value == ")":
+            depth -= 1
+        elif (
+            depth == 0
+            and token.kind == "word"
+            and token.value.lower()
+            in {"as", "generated", "always", "virtual", "stored", "persistent"}
+        ):
+            result.append(token.value.lower())
+    return tuple(result)
+
+
+def mariadb_declared_generation(definition: str) -> str:
+    """Classify a bounded AS(expression) clause, without proving its expression."""
+    column = _COLUMN.match(definition)
+    source = str(column[1]) if column is not None else ""
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB storage type syntax; explicit adapter required"
+        raise PackageError(msg)
+    tail = source[datatype.end() :].strip()
+    tail = re.sub(
+        r"^(?:character\s+set\s+utf8mb4\s+)?(?:collate\s+utf8mb4_[a-z0-9_]+\s+)?",
+        "",
+        tail,
+        flags=re.IGNORECASE | re.ASCII,
+    )
+    try:
+        stream = tokens(tail, mysql=True)
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    if not _generation_words(stream):
+        return "ordinary"
+    words = tuple(
+        token.value.lower() if token.kind == "word" else None for token in stream
+    )
+    position = 2 if words[:2] == ("generated", "always") else 0
+    expression = _check_expression(stream[position + 1 :])
+    if words[position : position + 1] != ("as",) or not expression:
+        msg = (
+            "unsupported MariaDB generation clause position; explicit adapter required"
+        )
+        raise PackageError(msg)
+    remainder = stream[position + len(expression) + 3 :]
+    kind = "virtual"
+    if (
+        remainder
+        and remainder[0].kind == "word"
+        and remainder[0].value.lower() in {"virtual", "stored", "persistent"}
+    ):
+        kind = "virtual" if remainder[0].value.lower() == "virtual" else "stored"
+        remainder = remainder[1:]
+    if _generation_words(remainder):
+        msg = "unsupported MariaDB generation clause suffix; explicit adapter required"
+        raise PackageError(msg)
+    return kind
+
+
+def mariadb_observed_generation(extra: str) -> str:
+    """Read native generation flags separately from defaults and other EXTRA facts."""
+    words = set(extra.upper().split())
+    flags = words & {"VIRTUAL", "STORED", "PERSISTENT", "GENERATED"}
+    if flags == {"VIRTUAL", "GENERATED"}:
+        return "virtual"
+    if flags == {"STORED", "GENERATED"}:
+        return "stored"
+    if not flags:
+        return "ordinary"
+    msg = "unsupported MariaDB generation metadata; explicit adapter required"
+    raise PackageError(msg)

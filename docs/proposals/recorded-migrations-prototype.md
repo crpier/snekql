@@ -381,9 +381,19 @@ indexes, FULLTEXT/SPATIAL, extra options and other unsupported declarations fail
 preparation. Unlisted and inline-only secondary indexes remain outside this check.
 Prefix/full-column equivalence beyond exact native metadata is not guessed.
 
+Recorded columns also require matching ordinary, virtual-generated or
+stored-generated kinds from SHOW FULL COLUMNS EXTRA metadata. The bounded
+AS(expression) clause supports optional GENERATED ALWAYS, implicit/explicit VIRTUAL
+and STORED/PERSISTENT aliases. Quoted names/literals and nested expression AS words
+are not generation attributes. Ambiguous positions or conflicting storage kinds
+fail preparation. Comparison uses the same native column-name binding as other
+column facts, not physical order. This does not compare generating expressions,
+audit generated values or prove all write/enforcement behavior.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
-collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity and
-listed-secondary-index checks**, not full native schema verification. JSON constraint presence/shape is not an audit of stored
+collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity,
+listed-secondary-index and generation-kind checks**, not full native schema
+verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
 Application JSON shape/codec compatibility also remains separate. Defaults, charset-only declarations without a recorded collation, other
 constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
@@ -393,7 +403,7 @@ Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine or listed-secondary-index claim
+table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine, listed-secondary-index or generation-kind claim
 yields `ambiguous`, and resume cannot bypass it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope
