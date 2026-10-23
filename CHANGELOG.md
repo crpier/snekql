@@ -66,6 +66,9 @@
   parents remain unowned, and ordinary AUTO_INCREMENT advances are not schema drift.
   Referenced storage must be provably InnoDB; incompatible or hidden engine metadata
   blocks certification without imposing that requirement on unrelated tables.
+  Explicit nullable DEFAULT NULL claims require SQL-NULL default metadata, not
+  a string 'NULL' or another scalar. Parenthesized/implicit nullable NULL normalize;
+  other default values and expressions remain unverified.
   Exact observed contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations

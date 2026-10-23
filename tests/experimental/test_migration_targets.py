@@ -4081,3 +4081,184 @@ async def mariadb_hidden_reference_engine_cannot_certify_completion_or_finish() 
                 )
                 with assert_raises(migrations.PackageError):
                     await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_null_default_cannot_become_the_string_null() -> None:
+    """SQL NULL and a literal string spelling NULL are different physical defaults."""
+    server = await load_fixture(provide_package_server())
+    column = migrations.ColumnState(
+        name="value",
+        definition="`value` VARCHAR(32) NULL DEFAULT NULL",
+        nullable=True,
+        storage="TEXT",
+    )
+    table = migrations.TableState(
+        name="null_default",
+        quoted_name="`null_default`",
+        columns=(column,),
+        sql="CREATE TABLE null_default (`value` VARCHAR(32) NULL DEFAULT 'NULL') ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "DEFAULT NULL" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "DEFAULT NULL" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_null_default_cannot_become_a_numeric_value() -> None:
+    """NULL-default proof does not accept another native scalar default."""
+    server = await load_fixture(provide_package_server())
+    column = migrations.ColumnState(
+        name="value",
+        definition="`value` BIGINT NULL DEFAULT (NULL)",
+        nullable=True,
+        storage="INTEGER",
+    )
+    table = migrations.TableState(
+        name="null_default",
+        quoted_name="`null_default`",
+        columns=(column,),
+        sql="CREATE TABLE null_default (`value` BIGINT NULL DEFAULT 7) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "DEFAULT NULL" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        assert_eq(
+            (
+                await target.inspect_recovery(plan, schema_writers_excluded=True)
+            ).disposition,
+            "ambiguous",
+        )
+
+
+@test(mark="slow")
+async def mariadb_null_defaults_bind_names_and_accept_nullable_implicit_null() -> None:
+    """Quoted/default-expression words are not NULL claims; nullable omission is NULL."""
+    server = await load_fixture(provide_package_server())
+    definitions = (
+        (
+            "nu`ll",
+            "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL DEFAULT NULL",
+            "VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL",
+        ),
+        ("wrapped", "BIGINT NULL DEFAULT ((NULL))", "BIGINT NULL DEFAULT NULL"),
+        (
+            "literal",
+            "VARCHAR(32) NULL DEFAULT 'NULL'",
+            "VARCHAR(32) NULL DEFAULT 'NULL'",
+        ),
+        (
+            "comment",
+            "BIGINT NULL DEFAULT 7 COMMENT 'DEFAULT NULL'",
+            "BIGINT NULL DEFAULT 7 COMMENT 'DEFAULT NULL'",
+        ),
+        (
+            "expression",
+            "BIGINT NULL DEFAULT (coalesce(NULL, 7))",
+            "BIGINT NULL DEFAULT (coalesce(NULL, 7))",
+        ),
+    )
+    columns = tuple(
+        migrations.ColumnState(
+            name=name,
+            definition="`" + name.replace("`", "``") + "` " + definition,
+            nullable=True,
+            storage="TEXT" if definition.startswith("VARCHAR") else "INTEGER",
+        )
+        for name, definition, _ in definitions
+    )
+    physical = ", ".join(
+        "`" + name.upper().replace("`", "``") + "` " + actual
+        for name, _, actual in reversed(definitions)
+    )
+    table = migrations.TableState(
+        name="null_default",
+        quoted_name="`null_default`",
+        columns=columns,
+        sql="CREATE TABLE null_default (" + physical + ") ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_ambiguous_null_defaults_fail_before_effects() -> None:
+    """Do not confuse absence on NOT NULL with NULL or guess attribute precedence."""
+    server = await load_fixture(provide_package_server())
+    for declaration, nullable in (
+        ("BIGINT NOT NULL DEFAULT NULL", False),
+        ("BIGINT NULL DEFAULT NULL DEFAULT 7", True),
+        ("BIGINT NULL DEFAULT NULL + 1", True),
+        ("BIGINT REFERENCES parent(id) DEFAULT NULL", True),
+    ):
+        column = migrations.ColumnState(
+            name="value",
+            definition="`value` " + declaration,
+            nullable=nullable,
+            storage="INTEGER",
+        )
+        table = migrations.TableState(
+            name="null_default",
+            quoted_name="`null_default`",
+            columns=(column,),
+            sql="CREATE TABLE null_default (`value` " + declaration + ") ENGINE=InnoDB",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package, schema_writers_excluded=True)
+            assert "DEFAULT" in str(error.exception)
+            assert_eq(await target.status(), ())

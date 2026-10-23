@@ -410,6 +410,14 @@ clauses. Other function spellings, arbitrary expressions, ambiguous attribute ro
 and unsupported precision require explicit support. This does not verify defaults,
 clock/timezone semantics, actual timestamp values or general write behavior.
 
+Explicit DEFAULT NULL claims on nullable columns now require SQL-NULL native
+default metadata. Bare and parenthesized NULL are recognized; implicit NULL on a
+nullable column is equivalent for this bounded check. A non-NULL scalar, including
+the string 'NULL', cannot satisfy it. Nonnullable NULL claims, duplicate defaults
+and ambiguous NULL attribute positions fail preparation. Other default literals and
+expressions remain unverified; expression evaluation/equivalence and general
+absence-of-default proof are not attempted.
+
 Foreign-key definitions are compared against the already server-resolved SHOW CREATE
 TABLE definition. Ordinary table-level declarations and simple inline references
 from recorded ColumnState definitions contribute ordered local/referenced members,
@@ -437,10 +445,16 @@ base-table availability and bounded engine identity, not independent referenced-
 column/index/type compatibility, engine-property verification, data auditing or
 session-policy proof.
 
+Known native-rendering blocker: MariaDB 12.2.2 can emit an unescaped backtick in
+SHOW CREATE foreign-key column names. The escaped-name positive test fails on that
+version; an isolated 12.2.2 probe reproduced the malformed output. It remains
+unsupported rather than repaired/guessed, and the CI failure is not resolved.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
 collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity,
 listed-secondary-index, generation-kind, visibility, automatic-temporal-update
-and foreign-key-definition checks**, not full native schema verification. JSON constraint presence/shape is not an audit of stored
+foreign-key-definition and explicit-NULL-default checks**, not full native schema
+verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
 Application JSON shape/codec compatibility also remains separate. Defaults, charset-only declarations without a recorded collation, other
 other constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains

@@ -156,6 +156,11 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
                 mariadb_declared_generation(column.definition)
                 mariadb_declared_invisible(column.definition)
                 mariadb_declared_on_update(column.definition)
+                if (
+                    mariadb_declared_null_default(column.definition)
+                    and not column.nullable
+                ):
+                    return f"{table.name!r}.{column.name!r}: MariaDB DEFAULT NULL requires a nullable recorded column; explicit adapter required"
             except PackageError as error:
                 return f"{table.name!r}.{column.name!r}: {error}"
         try:
@@ -1071,3 +1076,85 @@ def mariadb_foreign_key_obstacle(
     if Counter(actual) != Counter(mariadb_declared_foreign_keys(table)):
         return f"managed table postcondition failed: {table.name!r} foreign-key definitions differ from the recorded contract; committed MariaDB effects may remain"
     return None
+
+
+def mariadb_declared_null_default(definition: str) -> bool:
+    """Identify explicit bare/parenthesized SQL NULL, not general default expressions."""
+    column = _COLUMN.match(definition)
+    source = str(column[1]) if column is not None else ""
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB storage type syntax; explicit adapter required"
+        raise PackageError(msg)
+    tail = re.sub(
+        r"^(?:character\s+set\s+utf8mb4\s+)?(?:collate\s+utf8mb4_[a-z0-9_]+\s+)?",
+        "",
+        source[datatype.end() :].strip(),
+        flags=re.IGNORECASE | re.ASCII,
+    )
+    try:
+        stream = tokens(tail, mysql=True)
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    depth = 0
+    positions: list[int] = []
+    for index, token in enumerate(stream):
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "default"):
+            positions.append(index)
+    if not positions:
+        return False
+    if len(positions) != 1:
+        msg = "unsupported multiple MariaDB DEFAULT declarations; explicit adapter required"
+        raise PackageError(msg)
+    position = positions[0]
+    return _null_default_value(stream[:position], stream[position + 1 :])
+
+
+def _null_default_value(prefix: tuple[Token, ...], stream: tuple[Token, ...]) -> bool:
+    """Prove only a standalone NULL term in a bounded attribute position."""
+    if not stream:
+        msg = "unsupported empty MariaDB DEFAULT declaration"
+        raise PackageError(msg)
+    expression = stream[:1]
+    remainder = stream[1:]
+    if (stream[0].kind, stream[0].value) == ("punct", "("):
+        expression = _check_expression(stream)
+        remainder = stream[len(expression) + 2 :]
+        while expression and (expression[0].kind, expression[0].value) == (
+            "punct",
+            "(",
+        ):
+            inner = _check_expression(expression)
+            if len(inner) != len(expression) - 2:
+                return False
+            expression = inner
+    if [(token.kind, token.value.lower()) for token in expression] != [
+        ("word", "null")
+    ]:
+        return False  # Other literals/functions remain outside this NULL-only check.
+    if not _on_update_prefix(prefix) or (
+        remainder
+        and (
+            remainder[0].kind != "word"
+            or remainder[0].value.lower()
+            not in {
+                "comment",
+                "invisible",
+                "on",
+                "check",
+                "references",
+                "unique",
+                "primary",
+                "not",
+                "null",
+                "auto_increment",
+            }
+        )
+    ):
+        msg = "unsupported MariaDB DEFAULT NULL position or suffix; explicit adapter required"
+        raise PackageError(msg)
+    return True

@@ -21,6 +21,7 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declared_indexes,
     mariadb_declared_invisible,
     mariadb_declared_json_columns,
+    mariadb_declared_null_default,
     mariadb_declared_on_update,
     mariadb_declared_primary_key,
     mariadb_engine_obstacle,
@@ -590,6 +591,7 @@ class Target:
             or self._mariadb_generation_obstacle(table, matched)
             or self._mariadb_visibility_obstacle(table, matched)
             or self._mariadb_on_update_obstacle(table, matched)
+            or self._mariadb_null_default_obstacle(table, matched)
             or self._mariadb_json_obstacle(table, matched, checked_names)
             or await self._mariadb_primary_key_obstacle(table, primary_names)
             or await self._mariadb_secondary_index_obstacle(
@@ -717,6 +719,16 @@ class Target:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r}: {error}; committed MariaDB effects may remain"
             if actual != mariadb_declared_on_update(column.definition):
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} ON UPDATE differs from the recorded contract; committed MariaDB effects may remain"
+        return None
+
+    @staticmethod
+    def _mariadb_null_default_obstacle(
+        table: TableState, observed: tuple[tuple[Any, ...], ...]
+    ) -> str | None:
+        """Require native NULL default metadata for explicit nullable NULL claims."""
+        for column, row in zip(table.columns, observed, strict=True):
+            if mariadb_declared_null_default(column.definition) and row[5] is not None:
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} DEFAULT NULL differs from native default metadata; committed MariaDB effects may remain"
         return None
 
     async def _start_package(self, prepared: Prepared) -> None:
