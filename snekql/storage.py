@@ -1243,6 +1243,7 @@ class Attr[
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
         self._resolved_logical_type_cache: tuple[object] | None = None
+        self._numeric_type_cache: bool | None = None
         self._temporal_type_cache: (
             tuple[type[UtcDatetime | LocalDatetime | ZonedDatetime] | None] | None
         ) = None
@@ -1461,6 +1462,7 @@ class Attr[
             "_logical_adapter_cache",
             "_is_json_cache",
             "_resolved_logical_type_cache",
+            "_numeric_type_cache",
             "_temporal_type_cache",
         ):
             return
@@ -2045,18 +2047,24 @@ class Attr[
         it subclasses ``int``: summing/averaging a boolean column is not a boolean.
         """
 
+        cached = self._numeric_type_cache
+        if cached is not None:
+            return cached
         logical = self._resolved_logical_type()
         if logical is None:
             return None
         cores = _annotation_core_types(logical)
-        if not cores:
-            return False
-        return all(
+        result = bool(cores) and all(
             isinstance(core, type)
             and issubclass(core, (Decimal, int, float))
             and not issubclass(core, bool)
             for core in cores
         )
+        # Only the resolved annotation cache proves this answer is stable.
+        # Unbound/forward declarations must retry; aliases retain source meaning.
+        if self._resolved_logical_type_cache is not None:
+            self._numeric_type_cache = result
+        return result
 
     def _coerce_int_column_bool(self, value: object) -> object:
         """Coerce a ``bool`` to ``int`` for an integer-logical column.
