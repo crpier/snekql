@@ -242,3 +242,7 @@ controls, CPU-affinity/reversed-order follow-ups, and separate memory/profiles.
 [Ordinary SUM normalization](sum-decoders-508.md) measures execution-local numeric
 policy resolution with SQLite/MariaDB contract tests, grouped numeric workloads,
 and forward/reverse/pinned single-row controls with CPU-time accounting.
+
+[Fixed COUNT/AVG decoders](fixed-aggregates-510.md) measures stateless numeric
+decoder resolution, with native backend contract tests, wide grouped reads,
+and retained unfavorable single-row results alongside matched control repeats.
