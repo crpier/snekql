@@ -1242,8 +1242,7 @@ class Attr[
         self.unique: bool = unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
-        self._resolved_logical_type_cache: tuple[object] | None = None
-        self._numeric_type_cache: bool | None = None
+        self._resolved_logical_type_cache: tuple[object, bool | None] | None = None
         self._temporal_type_cache: (
             tuple[type[UtcDatetime | LocalDatetime | ZonedDatetime] | None] | None
         ) = None
@@ -1462,7 +1461,6 @@ class Attr[
             "_logical_adapter_cache",
             "_is_json_cache",
             "_resolved_logical_type_cache",
-            "_numeric_type_cache",
             "_temporal_type_cache",
         ):
             return
@@ -1985,6 +1983,8 @@ class Attr[
         types are retained per descriptor, like the logical validator; unresolved
         references and resolution failures must be retried. Query aliases retain
         their source annotation and may share the resolved type object.
+        The second cache item retains numeric classification when first needed;
+        sharing this cache avoids another descriptor dictionary key.
         """
 
         cached = self._resolved_logical_type_cache
@@ -2001,7 +2001,7 @@ class Attr[
         except ModelDeclarationError, NameError, TypeError:
             return None
         if not _contains_forward_ref(logical):
-            self._resolved_logical_type_cache = (logical,)
+            self._resolved_logical_type_cache = (logical, None)
         return logical
 
     def _require_ordering(self) -> None:
@@ -2047,9 +2047,9 @@ class Attr[
         it subclasses ``int``: summing/averaging a boolean column is not a boolean.
         """
 
-        cached = self._numeric_type_cache
-        if cached is not None:
-            return cached
+        cached = self._resolved_logical_type_cache
+        if cached is not None and cached[1] is not None:
+            return cached[1]
         logical = self._resolved_logical_type()
         if logical is None:
             return None
@@ -2063,7 +2063,7 @@ class Attr[
         # Only the resolved annotation cache proves this answer is stable.
         # Unbound/forward declarations must retry; aliases retain source meaning.
         if self._resolved_logical_type_cache is not None:
-            self._numeric_type_cache = result
+            self._resolved_logical_type_cache = (logical, result)
         return result
 
     def _coerce_int_column_bool(self, value: object) -> object:
