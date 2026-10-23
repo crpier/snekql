@@ -1,0 +1,208 @@
+# Recorded migration contract inventory (#477)
+
+Status: **engineering audit / proposed hardening scope, not a release contract**.
+Audited implementation: `1a69b5c` on the experimental PR #482 branch.
+See [prototype status](recorded-migrations-prototype.md) for execution and recovery.
+This document does not change runtime behavior, publish a supported-version promise,
+or supersede the existing migration ADRs. User-guide work remains deferred.
+
+## Objective and evidence rules
+
+The first production proposal should cover a deliberately bounded set of physical
+facts emitted by the existing model compiler. It should not require understanding
+arbitrary SQL, and it must not silently treat an unverified fact as verified.
+Model/query use must remain independent of migration ownership.
+
+The inventory follows the actual experimental call chain, not the separate
+released `Database.verify` implementation:
+
+- `migrations.generate` uses `build_schema_plan`, backend column compilation,
+  `compile_create_table_sql`, and `compile_create_index_sql`.
+- `ColumnState` records name, definition, nullability, storage and optional historical
+  query annotation. `TableState` records columns, construction SQL and listed index
+  SQL. These are not a durable Python codec contract.
+- `prepare_steps` validates bounded native declarations. SQLite completion uses
+  `validate_managed`; native completion uses `_mariadb_presence_obstacle` and its
+  subordinate checks. Recovery reuses native endpoint checks when it can collect
+  usable observations and otherwise satisfy recovery prerequisites.
+- `Package.load` recompiles the draft for consistency/integrity. This is not a
+  general semantic proof that every SQL fragment agrees with every recorded field.
+
+**Compared** below means the implementation compares the stated fact, within the
+listed limits. It does not mean full SQL equivalence or that every possible form
+has a dedicated test. **Unclaimed** means there is no corresponding endpoint proof;
+it does not mean the declaration is rejected. **Rejected** identifies a supported
+refusal, which can happen before execution or after irreversible native effects.
+No new passing-suite claim is made by this source audit.
+
+## Generated physical facts
+
+| Model/compiler input | Recorded/generated form | SQLite endpoint | MariaDB endpoint |
+| --- | --- | --- | --- |
+| Table and column names | `TableState`, `ColumnState`, quoted DDL | Recorded table presence and declaration token comparison | Base-table resolution and physical-column namespace binding; no `_rowid` alias shortcut |
+| Storage family and parameters | Backend column definition | Declaration tokens, not the released verifier's affinity-only comparison | Bounded native storage signatures, lengths/precision/signedness and known aliases |
+| Nullable/required | Column flag and DDL | Declaration comparison; separate row/precondition checks for contraction | Exact native nullability in both directions |
+| Single/composite primary key | Inline or table-level primary-key DDL | Declaration comparison | Ordered full ascending native primary key; ordinary unique indexes are not a substitute |
+| Automatic integer identity | AUTOINCREMENT / AUTO_INCREMENT | Declaration, preserved rebuild sequence high-water and identity checks | Attribute identity compared; changing counter values are intentionally not schema drift |
+| Text collation | SQLite non-BINARY override; native utf8mb4 charset plus collation | Recorded declaration comparison | Supported explicit utf8mb4 collation, plus implicit JSON collation; arbitrary charset-only claims unclaimed |
+| No SQL default marker | No DEFAULT clause; ordinary Python defaults/factories do not become schema defaults | Recorded declaration tokens | **General absence-of-default semantics unclaimed**; nullable implicit NULL is not the same problem as a required column with no default |
+| `LiteralDefault(None)` | `DEFAULT NULL` on a supported nullable non-key column | Recorded declaration tokens | Compared against NULL native metadata; implicit nullable NULL accepted; not proof of explicit clause spelling |
+| Integer / Boolean `LiteralDefault` | Decimal integer SQL; Boolean encoded as 0/1 | Recorded declaration tokens | **Unclaimed default value**; storage/nullability checks do not prove it |
+| Text `LiteralDefault` | SQLite quoted text or hex CAST; native UTF-8 hex CONVERT expression | Recorded declaration tokens | **Unclaimed default value**; not necessarily emitted as a quoted SQL string |
+| `CurrentTimestamp` | Backend clock expression for supported destination storage | Recorded expression tokens; not clock/value semantics | **Unclaimed default expression**, including DATETIME precision and text representation |
+| Column `unique` / `index` | Separate named CREATE [UNIQUE] INDEX, not inline UNIQUE | Listed index declaration signatures | Listed index name, uniqueness, ordered native-bound members, exact prefixes, ascending BTREE and non-ignored state |
+| Table-level indexes | Same listed index route; SQLite predicate / native prefix options | Predicate included in signature; no general expression equivalence | Supported full/prefix column members compared; unsupported expression/direction/index-option forms rejected |
+| Scalar/table foreign keys | Ordered table-level relationships and declared actions | Declaration tokens; separate rebuild foreign-key check | Relationship members/target/actions/multiplicity compared; parent must resolve to an observed InnoDB base table |
+| Named `CheckConstraint` | Named CHECK with bounded local predicate syntax | Recorded declaration tokens | **General CHECK definitions unclaimed**; JSON validity checking is not a general CHECK verifier |
+| JSON storage | Backend storage declaration; MariaDB JSON alias | Recorded storage declaration, not application JSON shape | LONGTEXT storage, required collation and bounded JSON_VALID constraint shape; no stored-data or application-codec audit |
+| Table storage | Generated SQLite STRICT / native ENGINE=InnoDB | Table suffix comparison | Explicit engine identity compared; missing/hidden identity cannot certify it |
+
+The literal-default authoring surface is already bounded by
+`_server_defaults.bind_literal_default`: ordinary integer, Boolean and text
+storage; typed values; supported nullable NULL; no auto-increment combination.
+The encoded wire value can differ from its logical Python value. Native text
+emission is `(CONVERT(X'...' USING utf8mb4))`. A verifier designed only around
+`DEFAULT 'text'` would therefore miss the compiler's normal output.
+
+Clock emission also has more than one form. Native DateTime uses
+`CURRENT_TIMESTAMP(precision)`; supported text destinations use a CONCAT/REPLACE
+expression. Neither is covered by the implemented **ON UPDATE** check. ON UPDATE
+and DEFAULT are different physical claims.
+
+The CHECK compiler emits comparisons, IS [NOT] NULL, NOT, IN/NOT IN, BETWEEN,
+AND/OR, and encoded literals. Supporting this finite generated language is a
+smaller objective than arbitrary SQL predicate equivalence. Definition presence
+and equivalence would still not prove that application sessions enforce checks.
+
+## Edited construction and native-only forms
+
+Some existing native checks cover reviewed construction SQL beyond what the
+ordinary model compiler emits. Their existence must not inflate the generated
+surface's coverage:
+
+| Form/fact | Current limit |
+| --- | --- |
+| Virtual/stored generation | Kind compared; expression equivalence and generated values unclaimed |
+| INVISIBLE | Visibility compared; not a general write-behavior proof |
+| ON UPDATE CURRENT_TIMESTAMP | Bounded temporal precision compared; other functions/expressions rejected by that parser |
+| Inline UNIQUE or unlisted indexes | Not covered by the listed-secondary-index proof; generated `unique=True` uses a listed index instead |
+| Arbitrary defaults, comments and table options | No general endpoint equivalence proof; supported syntax prefixes do not imply every trailing attribute is verified |
+| Foreign-key reference compatibility | Parent availability and engine identity compared; no independent referenced-column/index/type compatibility proof |
+| Malformed base-table catalog SQL | Explicit PackageError, including the known MariaDB 12.2.2 escaped-FK rendering; not guessed repair |
+
+MariaDB rejection after DDL preserves committed effects and uncertainty. Unreadable
+catalog SQL can prevent recovery inspection entirely; it does not necessarily
+produce an `ambiguous` Recovery object. For readable observations, other recovery
+prerequisites can still block finish/retry/reconciliation.
+
+## What the audit demonstrated natively
+
+Four temporary negative tests used the approved generation, compilation,
+preparation and application seams on an isolated owned native server. Each started
+with a model-generated draft, retained its `ColumnState` default declaration, and
+intentionally changed the table's construction SQL:
+
+| Recorded column claim | Construction substitution | Observed result at `1a69b5c` |
+| --- | --- | --- |
+| Integer DEFAULT 7 | DEFAULT 8 | `applied`, phase `complete` |
+| Boolean DEFAULT 1 | DEFAULT 0 | `applied`, phase `complete` |
+| Text UTF-8 CONVERT default for `seed` | DEFAULT 'other' | `applied`, phase `complete` |
+| DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) | Default removed | `applied`, phase `complete` |
+
+All four tests expected PackageError and failed because no exception was raised.
+These are **open-gap evidence, not passing validation or new committed regression
+tests**. They show that the native endpoint guard does not enforce these recorded
+column defaults, not that unmodified `generate` emits incorrect SQL. They also
+expose an authoring consideration: construction SQL and column declarations are
+separate representations; compilation does not generally prove their semantic
+agreement. SQLite's endpoint comparison instead follows recorded table SQL, so
+these native probes are not evidence of an equivalent SQLite default-value gap.
+
+Evidence is retained locally in `.snektest/477-contract-inventory/`, including the
+probe source and completed four-failure report. The initial probe used an invalid
+plain datetime annotation; its collection failure is excluded. Corrected probes
+use UtcDatetime. The temporary test module was removed; no deliberately failing
+suite or changed runtime behavior is committed by this audit.
+
+## Ownership, route, observation and readiness are separate
+
+- Defining a model is not ownership. Passing it to generation selects desired
+  managed scope; whole-table relinquishment removes a claim without deleting data.
+- Creation support is not alteration support. `_changes` accepts only routes
+  representable by current operations. Changing defaults, indexes or CHECKs is not
+  automatically supported merely because an initial CREATE can emit them.
+- SQLite adoption is intentionally stricter than normal endpoint checks: exact
+  bounded declarations/indexes/storage and additional guards, rather than the
+  managed-subset check used when preserving unmanaged additions. MariaDB adoption
+  remains rejected.
+- Managed scope is not uniform rejection of every extra object. SQLite managed
+  validation permits extra declaration parts; native physical-column presence and
+  listed-index checks do not reject all extra columns/indexes. Native foreign-key
+  comparison, in contrast, includes unexpected relationships. Decide the intended
+  negative claims explicitly; do not advertise full schema equality.
+- Whole-catalog drift detection binds execution to accepted observations. It does
+  not turn an unverified endpoint fact into a verified one.
+- SQLite copied-value/identity checks protect the supported rebuild route. Native
+  transactional UPDATE receipts and structural reconciliation address different
+  guarantees; neither establishes general application-data correctness.
+- Completion is not application readiness, privilege sufficiency, session-policy
+  enforcement, codec compatibility, arbitrary expression equivalence or power-loss
+  durability. Historical contracts do not freeze arbitrary Python codecs.
+- The released `Database.verify`/TableShape implementation is a separate interface.
+  Its existing literal-default or CHECK support cannot be credited to this runner
+  without an explicit, tested integration that preserves model-free deployment.
+
+## Proposed order of remaining work
+
+This is the working engineering order, not a promise that every current experimental
+form will be production-supported:
+
+1. **Finish current-revision CI.** The known malformed-rendering case must exercise
+   explicit refusal, while ordinary/valid escaped-name routes continue to pass.
+   A green refusal test does not make the affected schema executable on 12.2.2.
+2. **Close the ordinary generated-default gap.** Begin with integer/Boolean
+   constants, then generated UTF-8 text literals and the compiler's clock forms.
+   Use native negatives and positives through preparation/application/recovery;
+   do not evaluate arbitrary default expressions or reuse model-dependent runtime
+   verification wholesale. Unsupported forms must have an explicit policy.
+3. **Bound generated CHECK verification or reject it before effects.** Start from
+   the compiler's finite emitted language. Do not let JSON_VALID support stand in
+   for this work. Preserve multiplicity and distinguish definition from enforcement.
+4. **Reconcile the claim inventory with preparation.** Decide what is authoritative
+   when reviewed construction SQL and recorded column fields differ. Every proposed
+   initial physical claim needs a proof or an explicit pre-effect refusal; adding
+   one rejection must not silently bless unrelated unclaimed attributes. No new
+   public adapter/coverage API or artifact format is prescribed by this audit.
+5. **Then exercise whole routes and deployment evolution.** Create/add/backfill/
+   contract, SQLite adoption/relinquishment/re-adoption, native interrupted recovery,
+   package/compiler compatibility, coordination and resource limits. Broader native
+   adoption, arbitrary SQL equivalence, multiple heads, implicit stamping and
+   cross-system orchestration are not prerequisites for this bounded proposal.
+
+All runtime changes still require TDD at the approved public seams. Do not add
+long-lived characterization tests asserting false completion as desired behavior.
+The initial release scope, production integration and release decision remain open.
+
+## Source map
+
+Paths are relative to the repository root; function names identify the audited
+implementation without relying on unstable line numbers.
+
+- `snekql/experimental/migrations.py`: state records, `generate`, `Package.load`,
+  `_changes`, `_contract_table`.
+- `snekql/_schema_plan.py`: `PlannedModel`, `_column_indexes`, foreign-key planning.
+- `snekql/_schema_compile.py`: CREATE TABLE/index and CHECK/FK construction.
+- `snekql/sqlite/_schema_ddl.py`, `snekql/mariadb/schema.py`: backend column DDL and
+  table suffixes. Their expected-shape/runtime verification paths are not the
+  experimental runner's endpoint proof.
+- `snekql/defaults.py`, `snekql/_server_defaults.py`, backend `_dialect_sql.py`:
+  allowed markers, encoded literals and clock SQL.
+- `snekql/_checks.py`: bounded predicate rendering.
+- `snekql/experimental/_migration_prepare.py`: preparation, declaration signatures,
+  managed-subset validation, exact adoption and rebuild preparation.
+- `snekql/experimental/_migration_mariadb.py`: bounded native declaration parsing.
+- `snekql/experimental/_migration_target.py`: native observation, physical name
+  binding, endpoint checks, history and execution/recovery.
+- `tests/experimental/test_migration_targets.py` and
+  `tests/experimental/test_migration_contraction.py`: existing public-seam native
+  and SQLite behaviors; not a claim that every source-audit row is fully tested.

@@ -784,7 +784,11 @@ Do not run two suite invocations concurrently if both use the existing shared
 ## Hardening gates before production integration
 
 These are remaining engineering gates, not a release announcement or an expanded
-support promise. Stop extending individual checks without closing these gates:
+support promise. Use these gates to select further verification work rather than
+extending individual checks indefinitely. The
+[contract inventory](recorded-migrations-contract-inventory.md) maps the generated
+physical facts to actual verification, rejection and remaining gaps; it proposes
+generated defaults and CHECKs as the next priorities, not arbitrary SQL equivalence:
 
 1. **Native compatibility:** complete the current-revision backend matrix. Treat
    known malformed metadata as an explicit refusal contract; do not equate a
