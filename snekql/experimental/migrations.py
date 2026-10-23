@@ -10,12 +10,13 @@ import keyword
 from collections.abc import Sequence
 from typing import Any, Literal, Self, get_args
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 
 from snekql._scaffold import require_scaffold_models
 from snekql._schema_compile import compile_create_index_sql, compile_create_table_sql
 from snekql._schema_plan import build_schema_plan
 from snekql.errors import SnekqlError
+from snekql.experimental._migration_package import read_package
 from snekql.experimental._migration_sql import references, required_definition
 from snekql.model import Table
 from snekql.query import Write
@@ -295,9 +296,9 @@ class Package(_Value):
     def load(cls, text: str) -> Self:
         """Reject corrupt, unsupported, or internally inconsistent packages."""
         try:
-            package = cls.model_validate_json(text)
-        except ValidationError as error:
-            msg = "invalid or unsupported execution package format"
+            package = cls.model_validate(read_package(text))
+        except ValueError as error:
+            msg = f"invalid or unsupported execution package format: {error}"
             raise PackageError(msg) from error
         expected = compile(package.draft)
         if package != expected:

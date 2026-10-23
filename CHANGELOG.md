@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Bound experimental migration package decoding by UTF-8 bytes, JSON nesting and
+  structural units. Reject duplicate decoded keys, implicit/coerced versions and
+  omitted operation kinds rather than selecting semantics through reader defaults.
+  Fixed prior-writer artifacts now exercise stable identities and model-free
+  deployment. Format 2 is unchanged; no ledger conversion, retrospective
+  recertification or whole-program resource guarantee is introduced.
+
 - Add an opt-in recorded-state migration prototype in
   `snekql.experimental.migrations`: structured drafts, named historical query
   contracts, frozen execution packages, explicit target preparation, and

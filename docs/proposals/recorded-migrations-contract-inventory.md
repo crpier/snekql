@@ -186,7 +186,13 @@ form will be production-supported:
    route covers create/add/backfill/contract, transactional recovery and native
    relinquishment without importing models. Remaining hardening includes combining
    SQLite adoption/relinquishment/re-adoption routes, additional native interruption
-   windows, package/compiler compatibility, coordination and resource limits. Broader native
+   windows, package/compiler compatibility, coordination and resource limits.
+   The reader now bounds wire bytes, JSON nesting and structural units, rejects
+   duplicate keys and requires explicit integer versions/operation kinds. Two
+   fixed prior-writer packages deploy through the current reader with stable
+   identities. This is input-decoding coverage, not whole-program resource bounds,
+   general compiler compatibility or ledger evolution; no automatic conversion
+   or retrospective recertification is available. Broader native
    adoption, arbitrary SQL equivalence, multiple heads, implicit stamping and
    cross-system orchestration are not prerequisites for this bounded proposal.
 
