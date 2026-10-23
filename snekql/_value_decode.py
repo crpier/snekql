@@ -241,7 +241,11 @@ def _resolve_expression_decoder(
 def _resolve_column_aggregate_decoder(
     aggregate: _Aggregate[Any, Any], *, backend: StorageBackend, validate: bool
 ) -> Callable[[object], object] | None:
-    """Bind ordinary aggregate codecs, retaining distinct extension policies."""
+    """Bind aggregate codecs, retaining distinct fixed and source-policy domains."""
+    if aggregate.func == "COUNT":
+        return _decode_count
+    if aggregate.func == "AVG":
+        return _decode_average
     source = aggregate.column
     if not isinstance(source, Attr):
         return None
@@ -258,3 +262,13 @@ def _resolve_column_aggregate_decoder(
         return None if raw is None else decode(raw)
 
     return decode_nullable
+
+
+def _decode_count(value: object) -> object:
+    """Keep SQL NULLs distinct from COUNT's ordinary zero result."""
+    return None if value is None else int(cast("int", value))
+
+
+def _decode_average(value: object) -> object:
+    """AVG uses a nullable float domain, not the source column's codec."""
+    return None if value is None else float(cast("float", value))
