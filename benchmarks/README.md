@@ -234,3 +234,7 @@ presence witnesses, with wide/point controls and longer single-row follow-ups.
 [Scalar-subquery decoder resolution](scalar-decoders-504.md) measures execution-local
 source decoding while preserving scalar NULLs and validation, including initial
 and final measurements, guard-order refinement and longer single-row controls.
+
+[Ordinary MIN/MAX decoder resolution](extrema-decoders-506.md) measures grouped
+extrema with preserved source-policy semantics, including unfavorable single-row
+controls, CPU-affinity/reversed-order follow-ups, and separate memory/profiles.
