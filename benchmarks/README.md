@@ -246,3 +246,7 @@ and forward/reverse/pinned single-row controls with CPU-time accounting.
 [Fixed COUNT/AVG decoders](fixed-aggregates-510.md) measures stateless numeric
 decoder resolution, with native backend contract tests, wide grouped reads,
 and retained unfavorable single-row results alongside matched control repeats.
+
+[Derived SUM provenance decoding](derived-sum-512.md) measures binding the existing
+numeric provenance path while retaining its per-value gate, with native backend
+contracts, grouped reads, memory/profiles and unfavorable point-read controls.
