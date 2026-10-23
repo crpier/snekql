@@ -250,3 +250,7 @@ and retained unfavorable single-row results alongside matched control repeats.
 [Derived SUM provenance decoding](derived-sum-512.md) measures binding the existing
 numeric provenance path while retaining its per-value gate, with native backend
 contracts, grouped reads, memory/profiles and unfavorable point-read controls.
+
+[Resolved numeric classification](numeric-classification-514.md) retains derived
+SUM's per-value gates while avoiding repeated annotation analysis, with rejected
+initial layout costs, revised declaration memory, controls and reproducible data.
