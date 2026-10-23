@@ -69,6 +69,10 @@
   Explicit nullable DEFAULT NULL claims require SQL-NULL default metadata, not
   a string 'NULL' or another scalar. Parenthesized/implicit nullable NULL normalize;
   other default values and expressions remain unverified.
+  Malformed native base-table catalog SQL now raises an object-specific PackageError.
+  Preparation remains read-only; after DDL, progress stays uncertain and unreadable
+  metadata prevents recovery inspection. MariaDB 12.2.2's malformed escaped foreign-
+  key rendering is explicitly refused, not guessed or repaired.
   Exact observed contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations

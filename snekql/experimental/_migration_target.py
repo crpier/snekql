@@ -11,6 +11,7 @@ import anyio
 lazy import aiomysql
 lazy import aiosqlite
 
+from snekql.errors import SchemaError
 from snekql.experimental._migration_mariadb import (
     MariaDBIndex,
     mariadb_declaration_obstacle,
@@ -187,10 +188,15 @@ class Target:
                     await self._query("SHOW CREATE TABLE " + quote_identifier(name))
                 )[0][1]
                 if kind == "BASE TABLE":
-                    sql = without_auto_increment_counter(
-                        sql,
-                        backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
-                    )
+                    try:
+                        sql = without_auto_increment_counter(
+                            sql,
+                            backslash_escapes="NO_BACKSLASH_ESCAPES"
+                            not in mode.split(","),
+                        )
+                    except SchemaError as error:
+                        msg = f"unsupported MariaDB catalog metadata for {name!r}: {error}; cannot verify schema or recover from this rendering; committed MariaDB effects may remain"
+                        raise PackageError(msg) from error
                 observed.append((kind, name, sql))
             return sorted(observed)
         return await self._query(

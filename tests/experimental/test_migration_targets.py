@@ -3705,8 +3705,8 @@ async def mariadb_inline_foreign_key_names_and_default_actions_can_complete() ->
             storage="INTEGER",
         ),
         migrations.ColumnState(
-            name="par`ent",
-            definition="`par``ent` BIGINT NULL REFERENCES `entry` (`id`)",
+            name="parent_id",
+            definition="`parent_id` BIGINT NULL REFERENCES `entry` (`id`)",
             nullable=True,
             storage="INTEGER",
         ),
@@ -3715,7 +3715,7 @@ async def mariadb_inline_foreign_key_names_and_default_actions_can_complete() ->
         name="entry",
         quoted_name="`entry`",
         columns=columns,
-        sql="CREATE TABLE entry (`id` BIGINT NOT NULL PRIMARY KEY, `par``ent` BIGINT NULL REFERENCES `entry` (`id`) ON DELETE NO ACTION ON UPDATE RESTRICT) ENGINE=InnoDB",
+        sql="CREATE TABLE entry (`id` BIGINT NOT NULL PRIMARY KEY, `parent_id` BIGINT NULL REFERENCES `entry` (`id`) ON DELETE NO ACTION ON UPDATE RESTRICT) ENGINE=InnoDB",
     )
     draft = migrations.generate("001", [], backend="mariadb")
     package = migrations.compile(
@@ -4262,3 +4262,77 @@ async def mariadb_ambiguous_null_defaults_fail_before_effects() -> None:
                 await target.prepare(package, schema_writers_excluded=True)
             assert "DEFAULT" in str(error.exception)
             assert_eq(await target.status(), ())
+
+
+async def _assert_escaped_foreign_key_catalog_contract(config: mariadb.Config) -> None:
+    """Require valid native quoting or explicit durable refusal, without version skips."""
+    columns = (
+        migrations.ColumnState(
+            name="id",
+            definition="`id` BIGINT NOT NULL PRIMARY KEY",
+            nullable=False,
+            storage="INTEGER",
+        ),
+        migrations.ColumnState(
+            name="par`ent",
+            definition="`par``ent` BIGINT NULL REFERENCES `entry` (`id`)",
+            nullable=True,
+            storage="INTEGER",
+        ),
+    )
+    table = migrations.TableState(
+        name="entry",
+        quoted_name="`entry`",
+        columns=columns,
+        sql="CREATE TABLE entry (`id` BIGINT NOT NULL PRIMARY KEY, `par``ent` BIGINT NULL REFERENCES `entry` (`id`) ON DELETE NO ACTION ON UPDATE RESTRICT) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with await mariadb.Database.initialize(config) as db, db.transaction() as tx:
+        await tx.execute(mariadb.raw(table.sql))
+        rows = await tx.fetch_all(mariadb.raw("SHOW CREATE TABLE entry"))
+    rendered = str(rows[0]["Create Table"])
+    malformed = "FOREIGN KEY (`par`ent`)" in rendered
+    assert malformed or "FOREIGN KEY (`par``ent`)" in rendered
+    if malformed:
+        async with migrations.connect(config) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package, schema_writers_excluded=True)
+            assert "unsupported MariaDB catalog metadata" in str(error.exception)
+            assert "'entry'" in str(error.exception)
+            assert_eq(await target.status(), ())
+    async with await mariadb.Database.initialize(config) as db, db.transaction() as tx:
+        await tx.execute(mariadb.raw("DROP TABLE entry"))
+    async with migrations.connect(config) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        if not malformed:
+            assert_eq(await target.apply(plan), "applied")
+            assert_eq((await target.status())[0].phase, "complete")
+            return
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "unsupported MariaDB catalog metadata" in str(error.exception)
+        assert "committed MariaDB effects may remain" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "uncertain progress" in str(error.exception)
+    async with migrations.connect(config) as target:
+        with assert_raises(migrations.PackageError) as error:
+            await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert "unsupported MariaDB catalog metadata" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+
+
+@test(mark="slow")
+async def mariadb_escaped_foreign_keys_require_well_formed_native_catalog() -> None:
+    """Known malformed native quoting must refuse certification, never skip testing."""
+    server = await load_fixture(provide_package_server())
+    await _assert_escaped_foreign_key_catalog_contract(server.config())
