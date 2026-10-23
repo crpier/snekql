@@ -68,7 +68,13 @@
   blocks certification without imposing that requirement on unrelated tables.
   Explicit nullable DEFAULT NULL claims require SQL-NULL default metadata, not
   a string 'NULL' or another scalar. Parenthesized/implicit nullable NULL normalize;
-  other default values and expressions remain unverified.
+  Generated integer/Boolean and UTF-8 text defaults and compiler clock forms are
+  now checked against quoted native definitions; other default expressions and
+  general CHECK declarations fail preparation rather than being silently unclaimed.
+  The existing bounded JSON-validity proof remains separate. A model-free subprocess
+  route covers default preservation, nullable addition, backfill, contraction,
+  interrupted data recovery without replay, and ownership relinquishment. General
+  absence-of-default semantics and compiler/ledger evolution remain outside this slice.
   Malformed native base-table catalog SQL now raises an object-specific PackageError.
   Preparation remains read-only; after DDL, progress stays uncertain and unreadable
   metadata prevents recovery inspection. MariaDB 12.2.2's malformed escaped foreign-

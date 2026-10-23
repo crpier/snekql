@@ -25,6 +25,7 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declared_null_default,
     mariadb_declared_on_update,
     mariadb_declared_primary_key,
+    mariadb_default_obstacle,
     mariadb_engine_obstacle,
     mariadb_extra_words,
     mariadb_foreign_key_obstacle,
@@ -500,7 +501,10 @@ class Target:
                 else ()
             )
             if obstacle := await self._mariadb_column_obstacle(
-                table, json_checks=checks
+                table,
+                json_checks=checks,
+                observed_definition=resolved[0][1],
+                backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
             ):
                 return obstacle
         return None
@@ -537,7 +541,12 @@ class Target:
         return None
 
     async def _mariadb_column_obstacle(
-        self, table: TableState, *, json_checks: tuple[str, ...] = ()
+        self,
+        table: TableState,
+        *,
+        json_checks: tuple[str, ...] = (),
+        observed_definition: str,
+        backslash_escapes: bool,
     ) -> str | None:
         """Bind physical metadata by server-resolved names, then check recorded facts."""
         primary = mariadb_declared_primary_key(table)
@@ -598,6 +607,12 @@ class Target:
             or self._mariadb_visibility_obstacle(table, matched)
             or self._mariadb_on_update_obstacle(table, matched)
             or self._mariadb_null_default_obstacle(table, matched)
+            or mariadb_default_obstacle(
+                table,
+                observed_definition,
+                tuple(row[0] for row in matched),
+                backslash_escapes=backslash_escapes,
+            )
             or self._mariadb_json_obstacle(table, matched, checked_names)
             or await self._mariadb_primary_key_obstacle(table, primary_names)
             or await self._mariadb_secondary_index_obstacle(

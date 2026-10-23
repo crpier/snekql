@@ -3,6 +3,10 @@
 Status: **engineering audit / proposed hardening scope, not a release contract**.
 Audited implementation: `1a69b5c` on the experimental PR #482 branch.
 See [prototype status](recorded-migrations-prototype.md) for execution and recovery.
+Follow-up in this PR now implements bounded generated-default verification,
+pre-effect refusal of unsupported defaults/general CHECKs, and a separate-process
+native deployment/recovery route. The historical four-failure audit below remains
+evidence for `1a69b5c`; it is not the current outcome of those cases.
 This document does not change runtime behavior, publish a supported-version promise,
 or supersede the existing migration ADRs. User-guide work remains deferred.
 
@@ -33,7 +37,8 @@ listed limits. It does not mean full SQL equivalence or that every possible form
 has a dedicated test. **Unclaimed** means there is no corresponding endpoint proof;
 it does not mean the declaration is rejected. **Rejected** identifies a supported
 refusal, which can happen before execution or after irreversible native effects.
-No new passing-suite claim is made by this source audit.
+The original source audit is not itself passing-suite evidence; follow-up runtime
+changes have separate public-seam tests.
 
 ## Generated physical facts
 
@@ -47,13 +52,13 @@ No new passing-suite claim is made by this source audit.
 | Text collation | SQLite non-BINARY override; native utf8mb4 charset plus collation | Recorded declaration comparison | Supported explicit utf8mb4 collation, plus implicit JSON collation; arbitrary charset-only claims unclaimed |
 | No SQL default marker | No DEFAULT clause; ordinary Python defaults/factories do not become schema defaults | Recorded declaration tokens | **General absence-of-default semantics unclaimed**; nullable implicit NULL is not the same problem as a required column with no default |
 | `LiteralDefault(None)` | `DEFAULT NULL` on a supported nullable non-key column | Recorded declaration tokens | Compared against NULL native metadata; implicit nullable NULL accepted; not proof of explicit clause spelling |
-| Integer / Boolean `LiteralDefault` | Decimal integer SQL; Boolean encoded as 0/1 | Recorded declaration tokens | **Unclaimed default value**; storage/nullability checks do not prove it |
-| Text `LiteralDefault` | SQLite quoted text or hex CAST; native UTF-8 hex CONVERT expression | Recorded declaration tokens | **Unclaimed default value**; not necessarily emitted as a quoted SQL string |
-| `CurrentTimestamp` | Backend clock expression for supported destination storage | Recorded expression tokens; not clock/value semantics | **Unclaimed default expression**, including DATETIME precision and text representation |
+| Integer / Boolean `LiteralDefault` | Decimal integer SQL; Boolean encoded as 0/1 | Recorded declaration tokens | Compared through bounded quoted native default definitions; Boolean wire values are 0/1 |
+| Text `LiteralDefault` | SQLite quoted text or hex CAST; native UTF-8 hex CONVERT expression | Recorded declaration tokens | Compared through supported UTF-8 hex CONVERT/literal forms; string identity preserved |
+| `CurrentTimestamp` | Backend clock expression for supported destination storage | Recorded expression tokens; not clock/value semantics | Compiler DATETIME/text clock forms compared; unsupported expressions rejected; no clock/timezone/value proof |
 | Column `unique` / `index` | Separate named CREATE [UNIQUE] INDEX, not inline UNIQUE | Listed index declaration signatures | Listed index name, uniqueness, ordered native-bound members, exact prefixes, ascending BTREE and non-ignored state |
 | Table-level indexes | Same listed index route; SQLite predicate / native prefix options | Predicate included in signature; no general expression equivalence | Supported full/prefix column members compared; unsupported expression/direction/index-option forms rejected |
 | Scalar/table foreign keys | Ordered table-level relationships and declared actions | Declaration tokens; separate rebuild foreign-key check | Relationship members/target/actions/multiplicity compared; parent must resolve to an observed InnoDB base table |
-| Named `CheckConstraint` | Named CHECK with bounded local predicate syntax | Recorded declaration tokens | **General CHECK definitions unclaimed**; JSON validity checking is not a general CHECK verifier |
+| Named `CheckConstraint` | Named CHECK with bounded local predicate syntax | Recorded declaration tokens | General CHECK declarations now rejected during preparation; bounded JSON validity is a separate exemption |
 | JSON storage | Backend storage declaration; MariaDB JSON alias | Recorded storage declaration, not application JSON shape | LONGTEXT storage, required collation and bounded JSON_VALID constraint shape; no stored-data or application-codec audit |
 | Table storage | Generated SQLite STRICT / native ENGINE=InnoDB | Table suffix comparison | Explicit engine identity compared; missing/hidden identity cannot certify it |
 
@@ -66,8 +71,8 @@ emission is `(CONVERT(X'...' USING utf8mb4))`. A verifier designed only around
 
 Clock emission also has more than one form. Native DateTime uses
 `CURRENT_TIMESTAMP(precision)`; supported text destinations use a CONCAT/REPLACE
-expression. Neither is covered by the implemented **ON UPDATE** check. ON UPDATE
-and DEFAULT are different physical claims.
+expression. Both now receive a dedicated default check. They are not covered by the separate
+**ON UPDATE** check; ON UPDATE and DEFAULT remain different physical claims.
 
 The CHECK compiler emits comparisons, IS [NOT] NULL, NOT, IN/NOT IN, BETWEEN,
 AND/OR, and encoded literals. Supporting this finite generated language is a
@@ -86,7 +91,7 @@ surface's coverage:
 | INVISIBLE | Visibility compared; not a general write-behavior proof |
 | ON UPDATE CURRENT_TIMESTAMP | Bounded temporal precision compared; other functions/expressions rejected by that parser |
 | Inline UNIQUE or unlisted indexes | Not covered by the listed-secondary-index proof; generated `unique=True` uses a listed index instead |
-| Arbitrary defaults, comments and table options | No general endpoint equivalence proof; supported syntax prefixes do not imply every trailing attribute is verified |
+| Arbitrary defaults, comments and table options | Unsupported explicit default expressions now rejected; no general comment/table-option equivalence proof or full attribute-grammar claim |
 | Foreign-key reference compatibility | Parent availability and engine identity compared; no independent referenced-column/index/type compatibility proof |
 | Malformed base-table catalog SQL | Explicit PackageError, including the known MariaDB 12.2.2 escaped-FK rendering; not guessed repair |
 
@@ -157,25 +162,28 @@ suite or changed runtime behavior is committed by this audit.
 This is the working engineering order, not a promise that every current experimental
 form will be production-supported:
 
-1. **Finish current-revision CI.** The known malformed-rendering case must exercise
+1. **Finish each implementation revision's CI.** The known malformed-rendering case must exercise
    explicit refusal, while ordinary/valid escaped-name routes continue to pass.
    A green refusal test does not make the affected schema executable on 12.2.2.
-2. **Close the ordinary generated-default gap.** Begin with integer/Boolean
-   constants, then generated UTF-8 text literals and the compiler's clock forms.
+2. **Harden the implemented generated-default proof.** Integer/Boolean constants,
+   generated UTF-8 text and compiler clock forms now have bounded checks.
    Use native negatives and positives through preparation/application/recovery;
    do not evaluate arbitrary default expressions or reuse model-dependent runtime
    verification wholesale. Unsupported forms must have an explicit policy.
-3. **Bound generated CHECK verification or reject it before effects.** Start from
-   the compiler's finite emitted language. Do not let JSON_VALID support stand in
+3. **Keep general CHECKs explicitly rejected until verified.** Pre-effect rejection
+   is implemented. Future verification should start from the compiler's finite
+   emitted language. Do not let JSON_VALID support stand in
    for this work. Preserve multiplicity and distinguish definition from enforcement.
 4. **Reconcile the claim inventory with preparation.** Decide what is authoritative
    when reviewed construction SQL and recorded column fields differ. Every proposed
    initial physical claim needs a proof or an explicit pre-effect refusal; adding
    one rejection must not silently bless unrelated unclaimed attributes. No new
    public adapter/coverage API or artifact format is prescribed by this audit.
-5. **Then exercise whole routes and deployment evolution.** Create/add/backfill/
-   contract, SQLite adoption/relinquishment/re-adoption, native interrupted recovery,
-   package/compiler compatibility, coordination and resource limits. Broader native
+5. **Expand whole-route and deployment-evolution coverage.** One new subprocess
+   route covers create/add/backfill/contract, transactional recovery and native
+   relinquishment without importing models. Remaining hardening includes combining
+   SQLite adoption/relinquishment/re-adoption routes, additional native interruption
+   windows, package/compiler compatibility, coordination and resource limits. Broader native
    adoption, arbitrary SQL equivalence, multiple heads, implicit stamping and
    cross-system orchestration are not prerequisites for this bounded proposal.
 

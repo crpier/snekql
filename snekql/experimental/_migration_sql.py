@@ -59,7 +59,9 @@ def tokens(
         char = sql[index]
         if char.isspace() and (mysql or char.isascii()):
             index += 1
-        elif sql.startswith("--", index):
+        elif sql.startswith("--", index) and (
+            not mysql or index + 2 == len(sql) or ord(sql[index + 2]) <= ord(" ")
+        ):
             end = sql.find("\n", index)
             index = len(sql) if end < 0 else end + 1
         elif sql.startswith("/*", index):

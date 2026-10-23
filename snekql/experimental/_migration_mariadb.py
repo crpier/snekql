@@ -4,8 +4,9 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
+from snekql._check_catalog import parse_default_literal
 from snekql.errors import SchemaError
-from snekql.experimental._migration_sql import Token, split_table, tokens
+from snekql.experimental._migration_sql import Token, column_name, split_table, tokens
 from snekql.experimental.migrations import PackageError, State, TableState
 
 _COLUMN = re.compile(
@@ -156,6 +157,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
                 mariadb_declared_generation(column.definition)
                 mariadb_declared_invisible(column.definition)
                 mariadb_declared_on_update(column.definition)
+                mariadb_declared_default(column.definition)
                 if (
                     mariadb_declared_null_default(column.definition)
                     and not column.nullable
@@ -168,7 +170,8 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
             mariadb_table_engine(table.sql)
             mariadb_declared_indexes(table)
             mariadb_declared_foreign_keys(table)
-        except PackageError as error:
+            _validate_check_claims(table)
+        except (PackageError, SchemaError) as error:
             return f"{table.name!r}: {error}"
     return None
 
@@ -1158,3 +1161,171 @@ def _null_default_value(prefix: tuple[Token, ...], stream: tuple[Token, ...]) ->
         msg = "unsupported MariaDB DEFAULT NULL position or suffix; explicit adapter required"
         raise PackageError(msg)
     return True
+
+
+def mariadb_declared_default(
+    definition: str, *, backslash_escapes: bool = True
+) -> tuple[str, object] | None:
+    """Read bounded constant/clock defaults without evaluating SQL expressions."""
+    column = _COLUMN.match(definition)
+    source = str(column[1]) if column is not None else ""
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB default storage declaration"
+        raise PackageError(msg)
+    tail = source[datatype.end() :].strip()
+    tail = re.sub(
+        r"^(?:character\s+set\s+utf8mb4\s+)?(?:collate\s+utf8mb4_[a-z0-9_]+\s+)?",
+        "",
+        tail,
+        flags=re.IGNORECASE | re.ASCII,
+    )
+    stream = tokens(tail, mysql=backslash_escapes)
+    positions: list[int] = []
+    depth = 0
+    for index, token in enumerate(stream):
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "default"):
+            positions.append(index)
+    if not positions:
+        return None
+    if len(positions) != 1 or not _on_update_prefix(stream[: positions[0]]):
+        msg = "unsupported MariaDB DEFAULT position; explicit adapter required"
+        raise PackageError(msg)
+    expression = _default_expression(tail, stream, positions[0] + 1)
+    return _default_signature(expression, definition)
+
+
+def _default_expression(tail: str, stream: tuple[Token, ...], start: int) -> str:
+    """Separate a default term from subsequent column attributes without execution."""
+    end = len(stream)
+    depth = 0
+    for index in range(start, len(stream)):
+        token = stream[index]
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif (
+            index > start
+            and depth == 0
+            and token.kind == "word"
+            and token.value.lower() in _ATTRIBUTES
+        ):
+            end = index
+            break
+    if start == end:
+        msg = "unsupported empty MariaDB DEFAULT"
+        raise PackageError(msg)
+    return tail[
+        stream[start].start : stream[end].start if end < len(stream) else len(tail)
+    ]
+
+
+def _default_signature(expression: str, definition: str) -> tuple[str, object]:
+    """Normalize only known literal and compiler clock forms, retaining string identity."""
+    stream = tokens(expression, mysql=True)
+    while stream and (stream[0].kind, stream[0].value) == ("punct", "("):
+        inner = _check_expression(stream)
+        if len(inner) != len(stream) - 2:
+            break
+        stream = inner
+        expression = expression[stream[0].start : stream[-1].end] if stream else ""
+        stream = tokens(expression, mysql=True)
+    # MariaDB SHOW CREATE renders UTF-8 hex CONVERT constants using 0x spelling.
+    if match := re.fullmatch(
+        r"convert\s*\(\s*0x([0-9a-f]*)\s+using\s+utf8mb4\s*\)",
+        expression,
+        re.IGNORECASE | re.ASCII,
+    ):
+        expression = "CONVERT(X'" + str(match[1]) + "' USING utf8mb4)"
+    literal = parse_default_literal(expression, mariadb=True)
+    family, parameters, _ = _signature(definition, declaration=True)
+    if literal is not None and (
+        literal.value is None
+        or (type(literal.value) is int and family in _INTEGERS)
+        or (
+            type(literal.value) is str
+            and family
+            in {"char", "varchar", "tinytext", "text", "mediumtext", "longtext"}
+        )
+    ):
+        return "literal", literal.value
+    signature = tuple(
+        (t.kind, t.value.lower() if t.kind == "word" else t.value) for t in stream
+    )
+    if family in {"datetime", "timestamp"}:
+        clock = f"CURRENT_TIMESTAMP({parameters[0]})"
+    else:
+        clock = "CONCAT(REPLACE(CURRENT_TIMESTAMP(6), ' ', 'T'), 'Z')"
+        if family not in {
+            "char",
+            "varchar",
+            "tinytext",
+            "text",
+            "mediumtext",
+            "longtext",
+        }:
+            clock = ""
+    if clock and signature == tuple(
+        (t.kind, t.value.lower() if t.kind == "word" else t.value)
+        for t in tokens(clock, mysql=True)
+    ):
+        return "clock", signature
+    msg = "unsupported MariaDB DEFAULT expression or storage; explicit adapter required"
+    raise PackageError(msg)
+
+
+def mariadb_default_obstacle(
+    table: TableState, observed: str, names: tuple[str, ...], *, backslash_escapes: bool
+) -> str | None:
+    """Compare declared defaults against quoted native DDL, not lossy SHOW COLUMNS text."""
+    try:
+        _, parts, _ = split_table(observed, mysql=backslash_escapes)
+        definitions = {
+            name: part
+            for part in parts
+            if (name := column_name(part, mysql=True)) is not None
+        }
+        for column, name in zip(table.columns, names, strict=True):
+            expected = mariadb_declared_default(column.definition)
+            if expected is None:
+                continue  # Absence-of-default semantics are not a new claim here.
+            actual = mariadb_declared_default(
+                definitions[name], backslash_escapes=backslash_escapes
+            )
+            if expected != actual:
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} default differs from the recorded contract; committed MariaDB effects may remain"
+    except (SchemaError, PackageError, KeyError) as error:
+        return f"managed table postcondition failed: {table.name!r} has unsupported default metadata: {error}; committed MariaDB effects may remain"
+    return None
+
+
+def _validate_check_claims(table: TableState) -> None:
+    """Refuse general CHECKs; only the already verified JSON-alias predicate is exempt."""
+    prefix = tokens(table.sql, mysql=True)[:2]
+    parts = (
+        split_table(table.sql, mysql=True)[1]
+        if tuple((t.kind, t.value.lower()) for t in prefix)
+        == (("word", "create"), ("word", "table"))
+        else ()
+    )
+    json_columns = frozenset(mariadb_declared_json_columns(table))
+    for part in (*parts, *(column.definition for column in table.columns)):
+        stream = tokens(part, mysql=True)
+        depth = 0
+        for index, token in enumerate(stream):
+            if (token.kind, token.value) == ("punct", "("):
+                depth += 1
+            elif (token.kind, token.value) == ("punct", ")"):
+                depth -= 1
+            elif depth == 0 and (token.kind, token.value.lower()) == ("word", "check"):
+                reference = _json_check_reference(
+                    _check_expression(stream[index + 1 :])
+                )
+                if reference not in json_columns:
+                    msg = "general MariaDB CHECK declarations require endpoint verification support; explicit adapter required"
+                    raise PackageError(msg)

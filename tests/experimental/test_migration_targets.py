@@ -2420,6 +2420,12 @@ async def mariadb_json_checks_on_other_columns_or_weaker_expressions_do_not_prov
             )
         )
         async with migrations.connect(server.config()) as target:
+            if clause:
+                with assert_raises(migrations.PackageError) as error:
+                    await target.prepare(package, schema_writers_excluded=True)
+                assert "CHECK" in str(error.exception)
+                assert_eq(await target.status(), ())
+                continue
             plan = await target.prepare(package, schema_writers_excluded=True)
             with assert_raises(migrations.PackageError) as error:
                 await target.apply(plan)
@@ -2456,16 +2462,10 @@ async def mariadb_json_valid_constant_is_not_a_column_constraint() -> None:
         )
     )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "JSON validity constraint" in str(error.exception)
-        assert_eq(
-            (
-                await target.inspect_recovery(plan, schema_writers_excluded=True)
-            ).disposition,
-            "ambiguous",
-        )
+            await target.prepare(package, schema_writers_excluded=True)
+        assert "CHECK" in str(error.exception)
+        assert_eq(await target.status(), ())
 
 
 @test(mark="slow")
@@ -3044,7 +3044,7 @@ async def mariadb_generation_kinds_bind_names_and_accept_native_aliases() -> Non
     definitions = (
         (
             "or`dinary",
-            "BIGINT DEFAULT (CAST(7 AS SIGNED)) COMMENT 'AS STORED GENERATED'",
+            "BIGINT DEFAULT (7) COMMENT 'AS STORED GENERATED'",
         ),
         ("implicit", "BIGINT AS (7)"),
         ("virtual", "BIGINT GENERATED ALWAYS AS (CAST(7 AS SIGNED)) VIRTUAL"),
@@ -4184,8 +4184,8 @@ async def mariadb_null_defaults_bind_names_and_accept_nullable_implicit_null() -
         ),
         (
             "expression",
-            "BIGINT NULL DEFAULT (coalesce(NULL, 7))",
-            "BIGINT NULL DEFAULT (coalesce(NULL, 7))",
+            "BIGINT NULL DEFAULT 7 COMMENT '(coalesce(NULL, 7))'",
+            "BIGINT NULL DEFAULT 7 COMMENT '(coalesce(NULL, 7))'",
         ),
     )
     columns = tuple(

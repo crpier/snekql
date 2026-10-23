@@ -414,9 +414,26 @@ Explicit DEFAULT NULL claims on nullable columns now require SQL-NULL native
 default metadata. Bare and parenthesized NULL are recognized; implicit NULL on a
 nullable column is equivalent for this bounded check. A non-NULL scalar, including
 the string 'NULL', cannot satisfy it. Nonnullable NULL claims, duplicate defaults
-and ambiguous NULL attribute positions fail preparation. Other default literals and
-expressions remain unverified; expression evaluation/equivalence and general
-absence-of-default proof are not attempted.
+and ambiguous NULL attribute positions fail preparation. Generated integer/Boolean and UTF-8 text literal defaults, plus the compiler's
+DATETIME and text CurrentTimestamp forms, now receive a bounded endpoint check too.
+Comparison uses quoted SHOW CREATE column definitions bound through native column
+metadata, not ambiguous SHOW COLUMNS default text. NULL, the string 'NULL', and a
+literal spelling of a clock expression remain distinct; text comparisons do not
+borrow case-insensitive column collations. Known UTF-8 hex CONVERT renderings and
+parentheses normalize without evaluating SQL. Unsupported default expressions or
+storage combinations now fail preparation instead of remaining unclaimed.
+General absence-of-default proof and clock/timezone/value semantics remain outside
+this check. Adding a defaulted column or changing a default is still not a newly
+supported migration operation merely because initial creation verifies it.
+
+General MariaDB CHECK declarations now fail preparation until their endpoint proof
+exists. Both recorded column definitions and ordinary table construction SQL are
+inspected. The exemption is the existing bounded JSON_VALID predicate referring to
+a recorded JSON column (exact recorded spelling at this preparation seam); it does
+not verify constraint names or general CHECK semantics. Other-column, constant or
+weakened JSON predicates are rejected before effects. SQLite CHECK declaration
+comparison remains unchanged. These are intentional experimental support
+restrictions, not silent verification claims or a new adapter interface.
 
 Foreign-key definitions are compared against the already server-resolved SHOW CREATE
 TABLE definition. Ordinary table-level declarations and simple inline references
@@ -462,11 +479,11 @@ performed, and upgrading a server does not itself authorize recovery.
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
 collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity,
 listed-secondary-index, generation-kind, visibility, automatic-temporal-update,
-foreign-key-definition and explicit-NULL-default checks**, not full native schema
+foreign-key-definition and supported-default checks**, not full native schema
 verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
-Application JSON shape/codec compatibility also remains separate. Non-NULL defaults, charset-only declarations without a recorded collation,
-other constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
+Application JSON shape/codec compatibility also remains separate. General absence-of-default semantics, charset-only declarations without a recorded
+collation, other unclaimed constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
 trusted executable input, not a sandbox.
 
 Unlike SQLite, rejected completion cannot roll back already committed MariaDB
@@ -809,3 +826,21 @@ generated defaults and CHECKs as the next priorities, not arbitrary SQL equivale
 5. **Readiness review:** complete broad validation and review the public API and
    module boundaries before production integration. Schema completion remains
    distinct from data/application readiness. User-guide work remains deferred.
+
+### Executable model-free route coverage
+
+A separate-process native test now loads frozen packages without importing the
+application model module. It creates a table with an integer default, inserts a
+row omitting that field, adds an unconstrained nullable column, backfills it,
+requires it, and confirms the original default still works for another insert.
+It then commits one non-idempotent increment, encounters a transactional key
+conflict, reconnects after an explicit application-data repair, resumes only the
+unacknowledged work, and relinquishes ownership without deleting the data. The
+final count proves the acknowledged increment was not replayed.
+
+This is one bounded route, not a claim that all recovery windows, deployment
+versions or power-loss cases are covered. Defaulted nullable additions remain
+unsupported; the test deliberately does not extend that operation. Existing
+SQLite adoption/relinquishment/re-adoption coverage remains separate. Compiler
+and ledger evolution policies, broader adoption and resource limits are still
+open hardening gates.
