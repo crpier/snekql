@@ -238,3 +238,7 @@ and final measurements, guard-order refinement and longer single-row controls.
 [Ordinary MIN/MAX decoder resolution](extrema-decoders-506.md) measures grouped
 extrema with preserved source-policy semantics, including unfavorable single-row
 controls, CPU-affinity/reversed-order follow-ups, and separate memory/profiles.
+
+[Ordinary SUM normalization](sum-decoders-508.md) measures execution-local numeric
+policy resolution with SQLite/MariaDB contract tests, grouped numeric workloads,
+and forward/reverse/pinned single-row controls with CPU-time accounting.
