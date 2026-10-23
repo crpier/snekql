@@ -247,9 +247,13 @@ def _resolve_column_aggregate_decoder(
     if aggregate.func == "AVG":
         return _decode_average
     source = aggregate.column
-    if not isinstance(source, Attr):
+    if aggregate.func == "SUM" and type(source) is _CteOutput:
+        # Bind the existing numeric provenance path, not its original codec.
+        # Keep the numeric gate per value to preserve errors and source behavior.
+        decode = source.__output_slot__().provenance.decode_sum
+    elif not isinstance(source, Attr):
         return None
-    if aggregate.func in ("MIN", "MAX") and not is_policy_selectable(source):
+    elif aggregate.func in ("MIN", "MAX") and not is_policy_selectable(source):
         # Extrema do not adopt dialect-only projection hooks.
         decode = partial(source.decode, backend=backend, validate=validate)
     elif aggregate.func == "SUM" and not isinstance(source, NumericAggregatePolicy):
