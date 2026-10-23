@@ -223,20 +223,12 @@ def _resolve_expression_decoder(
             return None if raw is None else decode(raw)
 
         return decode_scalar
-    if (
-        type(column) is _Aggregate
-        and column.func in ("MIN", "MAX")
-        and isinstance(column.column, Attr)
-        and not is_policy_selectable(column.column)
-    ):
-        # Extrema use the column codec, not dialect-only projection hooks.
-        # Policy extensions and non-column sources retain general dispatch.
-        decode = partial(column.column.decode, backend=backend, validate=validate)
-
-        def decode_extremum(raw: object) -> object:
-            return None if raw is None else decode(raw)
-
-        return decode_extremum
+    if type(column) is _Aggregate:
+        aggregate_decoder = _resolve_column_aggregate_decoder(
+            column, backend=backend, validate=validate
+        )
+        if aggregate_decoder is not None:
+            return aggregate_decoder
     return partial(
         _decode_projection_field,
         column,
@@ -244,3 +236,25 @@ def _resolve_expression_decoder(
         backend=backend,
         validate=validate,
     )
+
+
+def _resolve_column_aggregate_decoder(
+    aggregate: _Aggregate[Any, Any], *, backend: StorageBackend, validate: bool
+) -> Callable[[object], object] | None:
+    """Bind ordinary aggregate codecs, retaining distinct extension policies."""
+    source = aggregate.column
+    if not isinstance(source, Attr):
+        return None
+    if aggregate.func in ("MIN", "MAX") and not is_policy_selectable(source):
+        # Extrema do not adopt dialect-only projection hooks.
+        decode = partial(source.decode, backend=backend, validate=validate)
+    elif aggregate.func == "SUM" and not isinstance(source, NumericAggregatePolicy):
+        # SUM normalizes its SQL numeric domain, not the column's logical type.
+        decode = partial(_normalize_sum, source)
+    else:
+        return None
+
+    def decode_nullable(raw: object) -> object:
+        return None if raw is None else decode(raw)
+
+    return decode_nullable
