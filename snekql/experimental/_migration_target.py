@@ -14,6 +14,7 @@ lazy import aiosqlite
 from snekql.errors import SchemaError
 from snekql.experimental._migration_mariadb import (
     MariaDBIndex,
+    mariadb_check_obstacle,
     mariadb_declaration_obstacle,
     mariadb_declared_auto_increment,
     mariadb_declared_collation,
@@ -559,7 +560,9 @@ class Target:
             + index_columns
         )
         if not names:
-            return await self._mariadb_primary_key_obstacle(table, ())
+            return mariadb_check_obstacle(
+                table, observed_definition, ()
+            ) or await self._mariadb_primary_key_obstacle(table, ())
         observed = await self._query(
             "SHOW FULL COLUMNS FROM " + quote_identifier(table.name)
         )
@@ -612,6 +615,9 @@ class Target:
                 observed_definition,
                 tuple(row[0] for row in matched),
                 backslash_escapes=backslash_escapes,
+            )
+            or mariadb_check_obstacle(
+                table, observed_definition, tuple(row[0] for row in matched)
             )
             or self._mariadb_json_obstacle(table, matched, checked_names)
             or await self._mariadb_primary_key_obstacle(table, primary_names)

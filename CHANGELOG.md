@@ -69,8 +69,11 @@
   Explicit nullable DEFAULT NULL claims require SQL-NULL default metadata, not
   a string 'NULL' or another scalar. Parenthesized/implicit nullable NULL normalize;
   Generated integer/Boolean and UTF-8 text defaults and compiler clock forms are
-  now checked against quoted native definitions; other default expressions and
-  general CHECK declarations fail preparation rather than being silently unclaimed.
+  now checked against quoted native definitions; unsupported default and CHECK
+  expressions fail preparation rather than being silently unclaimed. Finite compiler
+  CHECK expressions now execute with endpoint comparison of names and multiplicity,
+  redundant column-claim agreement and bounded expression parsing/normalization.
+  A changed native CHECK meaning blocks completion and recovery finish.
   The existing bounded JSON-validity proof remains separate. A model-free subprocess
   route covers default preservation, nullable addition, backfill, contraction,
   interrupted data recovery without replay, and ownership relinquishment. General

@@ -4,7 +4,7 @@ Status: **engineering audit / proposed hardening scope, not a release contract**
 Audited implementation: `1a69b5c` on the experimental PR #482 branch.
 See [prototype status](recorded-migrations-prototype.md) for execution and recovery.
 Follow-up in this PR now implements bounded generated-default verification,
-pre-effect refusal of unsupported defaults/general CHECKs, and a separate-process
+pre-effect refusal of unsupported defaults/CHECK expressions, and a separate-process
 native deployment/recovery route. The historical four-failure audit below remains
 evidence for `1a69b5c`; it is not the current outcome of those cases.
 This document does not change runtime behavior, publish a supported-version promise,
@@ -58,7 +58,7 @@ changes have separate public-seam tests.
 | Column `unique` / `index` | Separate named CREATE [UNIQUE] INDEX, not inline UNIQUE | Listed index declaration signatures | Listed index name, uniqueness, ordered native-bound members, exact prefixes, ascending BTREE and non-ignored state |
 | Table-level indexes | Same listed index route; SQLite predicate / native prefix options | Predicate included in signature; no general expression equivalence | Supported full/prefix column members compared; unsupported expression/direction/index-option forms rejected |
 | Scalar/table foreign keys | Ordered table-level relationships and declared actions | Declaration tokens; separate rebuild foreign-key check | Relationship members/target/actions/multiplicity compared; parent must resolve to an observed InnoDB base table |
-| Named `CheckConstraint` | Named CHECK with bounded local predicate syntax | Recorded declaration tokens | General CHECK declarations now rejected during preparation; bounded JSON validity is a separate exemption |
+| Named `CheckConstraint` | Named CHECK with bounded local predicate syntax | Recorded declaration tokens | Finite compiler expressions, declared names and multiplicity compared; unsupported expressions rejected; bounded JSON validity remains separate |
 | JSON storage | Backend storage declaration; MariaDB JSON alias | Recorded storage declaration, not application JSON shape | LONGTEXT storage, required collation and bounded JSON_VALID constraint shape; no stored-data or application-codec audit |
 | Table storage | Generated SQLite STRICT / native ENGINE=InnoDB | Table suffix comparison | Explicit engine identity compared; missing/hidden identity cannot certify it |
 
@@ -170,10 +170,13 @@ form will be production-supported:
    Use native negatives and positives through preparation/application/recovery;
    do not evaluate arbitrary default expressions or reuse model-dependent runtime
    verification wholesale. Unsupported forms must have an explicit policy.
-3. **Keep general CHECKs explicitly rejected until verified.** Pre-effect rejection
-   is implemented. Future verification should start from the compiler's finite
-   emitted language. Do not let JSON_VALID support stand in
-   for this work. Preserve multiplicity and distinguish definition from enforcement.
+3. **Harden the implemented compiler-language CHECK proof.** Finite expressions,
+   names and multiplicity now receive endpoint checks; unsupported forms remain
+   rejected before effects. Known NOT/association/singleton-IN renderings normalize,
+   not arbitrary equivalence. Redundant column CHECK claims must agree with table
+   construction. Expression token/parenthesis/tree limits are implemented, not
+   general package/database resource limits. Definition still does not prove
+   session enforcement or existing data correctness.
 4. **Reconcile the claim inventory with preparation.** Decide what is authoritative
    when reviewed construction SQL and recorded column fields differ. Every proposed
    initial physical claim needs a proof or an explicit pre-effect refusal; adding

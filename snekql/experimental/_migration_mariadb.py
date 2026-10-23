@@ -4,7 +4,8 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 
-from snekql._check_catalog import parse_default_literal
+from snekql._check_catalog import normalize_check, parse_check, parse_default_literal
+from snekql._checks import CheckExpression
 from snekql.errors import SchemaError
 from snekql.experimental._migration_sql import Token, column_name, split_table, tokens
 from snekql.experimental.migrations import PackageError, State, TableState
@@ -22,6 +23,12 @@ _DECIMAL_ARITY = 2
 _KEY_LIST_MIN_TOKENS = 3
 _JSON_CHECK_TOKENS = 4
 _EMPTY_ARGUMENT_TOKENS = 2
+_CHECK_TOKEN_LIMIT = 4096
+_CHECK_PAREN_LIMIT = 32
+_CHECK_TREE_LIMIT = 64
+_CHECK_WORK_LIMIT = 4096
+_CONSTRAINT_PREFIX_TOKENS = 2
+_SINGLE_MEMBERSHIP_ARITY = 2
 _PRECISION_ARGUMENT_TOKENS = 3
 _INTEGERS = {"tinyint", "smallint", "mediumint", "int", "bigint"}
 _ALIASES = {
@@ -1304,28 +1311,136 @@ def mariadb_default_obstacle(
     return None
 
 
-def _validate_check_claims(table: TableState) -> None:
-    """Refuse general CHECKs; only the already verified JSON-alias predicate is exempt."""
-    prefix = tokens(table.sql, mysql=True)[:2]
-    parts = (
-        split_table(table.sql, mysql=True)[1]
-        if tuple((t.kind, t.value.lower()) for t in prefix)
-        == (("word", "create"), ("word", "table"))
-        else ()
+def _bounded_check_expression(sql: str, inner: tuple[Token, ...]) -> CheckExpression:
+    """Bound parsing and normalization before recursive tree work on either input."""
+    msg = "general MariaDB CHECK declaration exceeds supported grammar or resource limits; explicit adapter required"
+    if not inner or len(inner) > _CHECK_TOKEN_LIMIT:
+        raise PackageError(msg)
+    depth = 0
+    for token in inner:
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+            if depth > _CHECK_PAREN_LIMIT:
+                raise PackageError(msg)
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+    expression = parse_check(sql[inner[0].start : inner[-1].end])
+    if expression is None or expression.operator in {"literal", "column"}:
+        raise PackageError(msg)
+    pending = [(expression, 1, 1)]
+    work = 0
+    while pending:
+        node, depth, weight = pending.pop()
+        # NOT normalization may visit a subtree again after a De Morgan rewrite.
+        weight *= 2 if node.operator == "NOT" else 1
+        work += weight
+        if depth > _CHECK_TREE_LIMIT or work > _CHECK_WORK_LIMIT:
+            raise PackageError(msg)
+        pending.extend((child, depth + 1, weight) for child in node.arguments)
+    return _normalize_single_membership(normalize_check(expression))
+
+
+def _normalize_single_membership(expression: CheckExpression) -> CheckExpression:
+    """MariaDB renders singleton IN/NOT IN as equality/inequality."""
+    arguments = tuple(
+        _normalize_single_membership(child) for child in expression.arguments
     )
-    json_columns = frozenset(mariadb_declared_json_columns(table))
-    for part in (*parts, *(column.definition for column in table.columns)):
-        stream = tokens(part, mysql=True)
-        depth = 0
-        for index, token in enumerate(stream):
-            if (token.kind, token.value) == ("punct", "("):
-                depth += 1
-            elif (token.kind, token.value) == ("punct", ")"):
-                depth -= 1
-            elif depth == 0 and (token.kind, token.value.lower()) == ("word", "check"):
-                reference = _json_check_reference(
-                    _check_expression(stream[index + 1 :])
-                )
-                if reference not in json_columns:
-                    msg = "general MariaDB CHECK declarations require endpoint verification support; explicit adapter required"
-                    raise PackageError(msg)
+    operator = expression.operator
+    if operator in {"IN", "NOT IN"} and len(arguments) == _SINGLE_MEMBERSHIP_ARITY:
+        operator = "eq" if operator == "IN" else "ne"
+    return CheckExpression(operator, arguments, expression.value)
+
+
+def _declared_checks(
+    sql: str, json_columns: frozenset[str]
+) -> tuple[tuple[str | None, CheckExpression], ...]:
+    """Read a finite CHECK language, preserving names and multiplicity."""
+    stream = tokens(sql, mysql=True)
+    depth = 0
+    result: list[tuple[str | None, CheckExpression]] = []
+    for index, token in enumerate(stream):
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "check"):
+            inner = _check_expression(stream[index + 1 :])
+            if _json_check_reference(inner) in json_columns:
+                continue
+            expression = _bounded_check_expression(sql, inner)
+            name = None
+            if index >= _CONSTRAINT_PREFIX_TOKENS and (
+                stream[index - 2].kind,
+                stream[index - 2].value.lower(),
+            ) == ("word", "constraint"):
+                name = stream[index - 1].value
+            result.append((name, expression))
+    return tuple(result)
+
+
+def _table_checks(
+    table: TableState, sql: str, *, json_columns: frozenset[str] | None = None
+) -> tuple[tuple[str | None, CheckExpression], ...]:
+    """Collect table and inline declarations without treating a view as a table."""
+    prefix = tokens(sql, mysql=True)[:2]
+    if tuple((t.kind, t.value.lower()) for t in prefix) != (
+        ("word", "create"),
+        ("word", "table"),
+    ):
+        return ()
+    parts = split_table(sql, mysql=True)[1]
+    if json_columns is None:
+        json_columns = frozenset(mariadb_declared_json_columns(table))
+    return tuple(
+        check for part in parts for check in _declared_checks(part, json_columns)
+    )
+
+
+def _validate_check_claims(table: TableState) -> None:
+    """Require supported CHECKs and agreement of redundant column declarations."""
+    declared = _table_checks(table, table.sql)
+    columns = tuple(
+        check
+        for column in table.columns
+        for check in _declared_checks(
+            column.definition, frozenset(mariadb_declared_json_columns(table))
+        )
+    )
+    if Counter(expression for _, expression in columns) - Counter(
+        expression for _, expression in declared
+    ) or Counter(
+        (name, expression) for name, expression in columns if name is not None
+    ) - Counter(
+        (name, expression) for name, expression in declared if name is not None
+    ):
+        msg = "recorded column CHECK claims differ from construction SQL; explicit adapter required"
+        raise PackageError(msg)
+
+
+def mariadb_check_obstacle(
+    table: TableState, observed: str, names: tuple[str, ...]
+) -> str | None:
+    """Verify supported CHECK definitions, not session enforcement or existing data."""
+    try:
+        expected = _table_checks(table, table.sql)
+        json_claims = frozenset(mariadb_declared_json_columns(table))
+        actual = _table_checks(
+            table,
+            observed,
+            json_columns=frozenset(
+                name
+                for column, name in zip(table.columns, names, strict=True)
+                if column.name in json_claims
+            ),
+        )
+        if Counter(expression for _, expression in expected) != Counter(
+            expression for _, expression in actual
+        ) or Counter(
+            (name, expression) for name, expression in expected if name is not None
+        ) - Counter(
+            (name, expression) for name, expression in actual if name is not None
+        ):
+            return f"managed table postcondition failed: {table.name!r} CHECK definitions differ; committed MariaDB effects may remain"
+    except (SchemaError, PackageError) as error:
+        return f"managed table postcondition failed: {table.name!r} has unsupported CHECK metadata: {error}; committed MariaDB effects may remain"
+    return None

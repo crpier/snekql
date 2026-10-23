@@ -426,14 +426,33 @@ General absence-of-default proof and clock/timezone/value semantics remain outsi
 this check. Adding a defaulted column or changing a default is still not a newly
 supported migration operation merely because initial creation verifies it.
 
-General MariaDB CHECK declarations now fail preparation until their endpoint proof
-exists. Both recorded column definitions and ordinary table construction SQL are
-inspected. The exemption is the existing bounded JSON_VALID predicate referring to
-a recorded JSON column (exact recorded spelling at this preparation seam); it does
-not verify constraint names or general CHECK semantics. Other-column, constant or
-weakened JSON predicates are rejected before effects. SQLite CHECK declaration
-comparison remains unchanged. These are intentional experimental support
-restrictions, not silent verification claims or a new adapter interface.
+MariaDB CHECK creation now supports the compiler's finite expression language:
+comparisons, NULL predicates, membership, BETWEEN, NOT and ordered boolean
+composition with encoded integer/Boolean/text literals. Quoted native definitions
+are compared through bounded expression trees; only known NOT/association and
+singleton-IN renderings normalize. Declared names and expression multiplicity are
+retained. Unknown expressions still fail preparation; this is not arbitrary SQL
+or logical equivalence. Redundant recorded column CHECKs must be present in the
+construction SQL with matching expressions, counts and explicit names.
+
+The existing JSON_VALID proof remains a separate exemption for recorded JSON
+columns; its constraint names and multiplicity are still not claimed. Other-column, constant or
+weakened JSON predicates remain rejected. SQLite CHECK comparison is unchanged.
+Native expression rewrites that cannot prove the recorded tree block completion
+and recovery finish, leaving committed effects and uncertain history. The native
+HIGH_NOT_PRECEDENCE scenario exercises this through application and reopened
+recovery; removing the endpoint guard makes the test fail.
+
+The new non-JSON CHECK expressions are limited to 4,096 tokens, 32 inner
+parenthesis levels and 64 parsed tree levels before recursive normalization.
+A 4,096-unit weighted traversal budget additionally doubles subtree weight under
+NOT, conservatively refusing repeated-negation workloads before normalization.
+These are experimental
+expression limits, not whole-artifact size, database-operation deadline or memory
+limits: tokenizing the complete DDL, catalog observation and other package work
+remain outside this resource bound, as does the pre-existing JSON predicate
+recognizer. Matching CHECK definitions does not prove
+session enforcement, privileges, existing data correctness or deployment readiness.
 
 Foreign-key definitions are compared against the already server-resolved SHOW CREATE
 TABLE definition. Ordinary table-level declarations and simple inline references
