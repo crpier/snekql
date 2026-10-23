@@ -235,7 +235,7 @@ def _rebuild(
     columns = {
         column_name(part): part for part in parts if column_name(part) is not None
     }
-    if not {*change.required, *change.dropped} <= columns.keys():
+    if not {*change.required, *change.dropped, *change.defaults} <= columns.keys():
         msg = f"{table}: contraction columns are missing"
         raise PackageError(msg)
     retained = [part for part in parts if column_name(part) not in change.dropped]
@@ -274,6 +274,16 @@ def _rebuild(
     revised = [
         required_definition(part) if column_name(part) in change.required else part
         for part in retained
+    ]
+    revised = [
+        next(
+            column.definition
+            for column in change.after.columns
+            if column.name == column_name(part)
+        )
+        if column_name(part) in change.defaults
+        else part
+        for part in revised
     ]
     copied = [
         column_name(part)

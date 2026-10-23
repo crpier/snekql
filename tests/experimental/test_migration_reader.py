@@ -26,7 +26,7 @@ def duplicate_package_keys_are_not_silently_resolved() -> None:
 def package_version_is_explicit_and_not_coerced() -> None:
     """Omission or numeric coercion must not silently select a compiler epoch."""
     package = m.compile(m.generate("001", [], backend="sqlite"))
-    for version in (None, 2.0, "2", 1, 3):
+    for version in (None, 2.0, "2", 1, 4):
         payload = json.loads(package.dump())
         if version is None:
             del payload["version"]
@@ -105,6 +105,11 @@ async def prior_writer_packages_deploy_without_their_models() -> None:
         "2fa94d43755cd8bae4d4cb1dfc1c0fd315b69c0c512a71f8ae307f7d041d9d12",
     )
     assert_eq(second.draft.predecessor, first.digest)
+    third = m.Package.load(await asyncio.to_thread((root / "003.json").read_text))
+    assert_eq(
+        third.digest, "4d7ad269242d5e41585f5016becb0f8d3b78b6d12e9af2ef00c08e3f5ba00004"
+    )
+    assert_eq(third.draft.predecessor, second.digest)
     with TemporaryDirectory() as directory:
         config = sqlite.Config(database=Path(directory) / "recorded.db")
         async with m.connect(config) as target:
@@ -124,11 +129,18 @@ async def prior_writer_packages_deploy_without_their_models() -> None:
             await sqlite.Database.initialize(config) as database,
             database.transaction() as transaction,
         ):
+            await transaction.execute(sqlite.raw("UPDATE recorded SET note='filled'"))
+        async with m.connect(config) as target:
+            assert_eq(await target.apply(await target.prepare(third)), "applied")
+        async with (
+            await sqlite.Database.initialize(config) as database,
+            database.transaction() as transaction,
+        ):
             assert_eq(
                 await transaction.fetch_all(
                     sqlite.raw("SELECT id, count, note FROM recorded")
                 ),
-                [{"id": 1, "count": 7, "note": None}],
+                [{"id": 1, "count": 7, "note": "filled"}],
             )
 
 

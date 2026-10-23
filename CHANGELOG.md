@@ -4,6 +4,14 @@
 
 ### Experimental
 
+- Add SQLite default-only alteration through frozen `ChangeDefault` operations:
+  set, change or remove a SQL default without backfilling existing rows. Reuse
+  checked rebuild preservation and atomic rollback/retry. New operations require
+  package format 3; unchanged format-2 routes retain their identities. Fixed
+  old-writer contraction and fresh-process deployment coverage exercise the
+  boundary. MariaDB default alteration remains explicitly unsupported; no ledger
+  conversion or retrospective recertification is introduced.
+
 - Bound experimental migration package decoding by UTF-8 bytes, JSON nesting and
   structural units. Reject duplicate decoded keys, implicit/coerced versions and
   omitted operation kinds rather than selecting semantics through reader defaults.

@@ -134,8 +134,10 @@ suite or changed runtime behavior is committed by this audit.
 - Defining a model is not ownership. Passing it to generation selects desired
   managed scope; whole-table relinquishment removes a claim without deleting data.
 - Creation support is not alteration support. `_changes` accepts only routes
-  representable by current operations. Changing defaults, indexes or CHECKs is not
-  automatically supported merely because an initial CREATE can emit them.
+  representable by current operations. SQLite default-only alteration now has a
+  structured operation and strict endpoint declaration checks, including removal.
+  Native default alteration, automatic defaulted additions, and index/CHECK
+  alteration are not enabled merely because initial CREATE can emit them.
 - SQLite adoption is intentionally stricter than normal endpoint checks: exact
   bounded declarations/indexes/storage and additional guards, rather than the
   managed-subset check used when preserving unmanaged additions. MariaDB adoption
@@ -188,9 +190,12 @@ form will be production-supported:
    SQLite adoption/relinquishment/re-adoption routes, additional native interruption
    windows, package/compiler compatibility, coordination and resource limits.
    The reader now bounds wire bytes, JSON nesting and structural units, rejects
-   duplicate keys and requires explicit integer versions/operation kinds. Two
-   fixed prior-writer packages deploy through the current reader with stable
-   identities. This is input-decoding coverage, not whole-program resource bounds,
+   duplicate keys and requires explicit integer versions/operation kinds. Three
+   fixed prior-writer packages (including contraction) deploy with stable
+   identities. Format 3 adds SQLite `ChangeDefault`; format 2 refuses that operation
+   and its new metadata. Unchanged old routes keep their format and digests; an
+   isolated preceding reader refuses format 3. Model-free default changes,
+   preservation and atomic rollback/retry now have public route coverage. This is input-decoding coverage, not whole-program resource bounds,
    general compiler compatibility or ledger evolution; no automatic conversion
    or retrospective recertification is available. Broader native
    adoption, arbitrary SQL equivalence, multiple heads, implicit stamping and

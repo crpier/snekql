@@ -220,3 +220,52 @@ def without_auto_increment_counter(sql: str, *, backslash_escapes: bool) -> str:
             ):
                 return sql[: token.start].rstrip() + sql[number.end :]
     return sql
+
+
+def without_default(definition: str) -> str:
+    """Remove one SQLite DEFAULT clause, retaining all other declaration text."""
+    stream = tokens(definition)
+    depth = 0
+    starts: list[int] = []
+    for index, token in enumerate(stream):
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif depth == 0 and (token.kind, ascii_lower(token.value)) == (
+            "word",
+            "default",
+        ):
+            starts.append(index)
+    if not starts:
+        return definition
+    if len(starts) != 1:
+        msg = "multiple DEFAULT clauses require an explicit adapter"
+        raise SchemaError(msg)
+    start = starts[0]
+    end = start + 1
+    if end < len(stream) and stream[end].value in {"+", "-"}:
+        end += 1
+    if end >= len(stream):
+        msg = "empty DEFAULT clause"
+        raise SchemaError(msg)
+    end = _default_end(stream, end)
+    return definition[: stream[start].start].rstrip() + definition[stream[end].end :]
+
+
+def _default_end(stream: tuple[Token, ...], end: int) -> int:
+    """Locate the last token of a scalar or parenthesized default expression."""
+    if (stream[end].kind, stream[end].value) == ("punct", "("):
+        depth = 1
+        end += 1
+        while end < len(stream) and depth:
+            if (stream[end].kind, stream[end].value) == ("punct", "("):
+                depth += 1
+            elif (stream[end].kind, stream[end].value) == ("punct", ")"):
+                depth -= 1
+            end += 1
+        if depth:
+            msg = "unbalanced DEFAULT expression"
+            raise SchemaError(msg)
+        end -= 1
+    return end

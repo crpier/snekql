@@ -1,7 +1,8 @@
 """Experimental recorded-state migration authoring and frozen execution packages.
 
-Format 2 is a prototype, not a supported long-term interchange contract. Models
-are consulted only during generation; loading execution packages imports none.
+Formats 2/3 are prototypes, not a supported long-term interchange contract.
+Format 3 adds SQLite default transitions; unchanged operations retain format 2.
+Models are consulted only during generation; loading packages imports none.
 """
 
 import hashlib
@@ -10,14 +11,18 @@ import keyword
 from collections.abc import Sequence
 from typing import Any, Literal, Self, get_args
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from snekql._scaffold import require_scaffold_models
 from snekql._schema_compile import compile_create_index_sql, compile_create_table_sql
 from snekql._schema_plan import build_schema_plan
-from snekql.errors import SnekqlError
+from snekql.errors import SchemaError, SnekqlError
 from snekql.experimental._migration_package import read_package
-from snekql.experimental._migration_sql import references, required_definition
+from snekql.experimental._migration_sql import (
+    references,
+    required_definition,
+    without_default,
+)
 from snekql.model import Table
 from snekql.query import Write
 from snekql.storage import _extract_logical_type, _resolve_model_hint
@@ -100,6 +105,19 @@ class RequireNotNull(_Value):
     column_name: str
 
 
+class ChangeDefault(_Value):
+    """Change only a SQLite column's default; existing values are preserved."""
+
+    kind: Literal["change_default"] = "change_default"
+    table_name: str
+    column: ColumnState
+
+    @property
+    def column_name(self) -> str:
+        """Identify the managed column whose declaration supplies the new default."""
+        return self.column.name
+
+
 class DropColumn(_Value):
     """Explicit authorization to remove one managed column, not its dependencies."""
 
@@ -122,6 +140,7 @@ class Contraction(_Value):
     after: TableState
     required: tuple[str, ...] = ()
     dropped: tuple[str, ...] = ()
+    defaults: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
 
 
 class Checkpoint(_Value):
@@ -180,6 +199,7 @@ class Draft(_Value):
         | AdoptTable
         | AddColumn
         | RequireNotNull
+        | ChangeDefault
         | DropColumn
         | RelinquishTable
         | Checkpoint
@@ -194,6 +214,7 @@ class Draft(_Value):
         | AdoptTable
         | AddColumn
         | RequireNotNull
+        | ChangeDefault
         | DropColumn
         | RelinquishTable
         | Checkpoint
@@ -261,7 +282,7 @@ class Package(_Value):
     Digests detect changes, not malicious publishers. Load only trusted packages.
     """
 
-    version: Literal[2] = 2
+    version: Literal[2, 3] = 2
     draft: Draft
     statements: tuple[str | None, ...]
     contractions: tuple[Contraction | None, ...]
@@ -318,7 +339,8 @@ def generate(
 
     Unsupported alterations and ownership removal remain explicit unresolved
     decisions. Supported routes include creation, nullable additions, typed
-    backfills, contraction, explicit whole-table relinquishment, and SQLite adoption.
+    backfills, contraction, explicit whole-table relinquishment, and SQLite adoption
+    and default-only alterations.
     """
     require_scaffold_models(backend, models)
     if previous is not None:
@@ -357,7 +379,7 @@ def generate(
     old = {table.name: table for table in before.tables}
     desired = {table.name: table for table in tables}
     unresolved = [_relinquish_decision(name) for name in old.keys() - desired.keys()]
-    operations: list[CreateTable | AddColumn | RequireNotNull] = []
+    operations: list[CreateTable | AddColumn | RequireNotNull | ChangeDefault] = []
     for table in tables:
         if table.name not in old:
             operations.append(CreateTable(table=table))
@@ -383,8 +405,8 @@ def generate(
 
 def _changes(
     current: TableState, desired: TableState, backend: Backend
-) -> tuple[list[AddColumn | RequireNotNull], list[str]]:
-    candidates: list[AddColumn | RequireNotNull] = []
+) -> tuple[list[AddColumn | RequireNotNull | ChangeDefault], list[str]]:
+    candidates: list[AddColumn | RequireNotNull | ChangeDefault] = []
     removed = [
         column.name
         for column in current.columns
@@ -399,9 +421,18 @@ def _changes(
             current = _add_column(current, column)
             candidates.append(change)
         elif existing != column:
-            change = RequireNotNull(table_name=desired.name, column_name=column.name)
-            current = _contract_table(current, change, backend)
-            candidates.append(change)
+            try:
+                default_change = ChangeDefault(table_name=desired.name, column=column)
+                revised = _contract_table(current, default_change, backend)
+            except PackageError:
+                change = RequireNotNull(
+                    table_name=desired.name, column_name=column.name
+                )
+                current = _contract_table(current, change, backend)
+                candidates.append(change)
+            else:
+                current = revised
+                candidates.append(default_change)
     for name in removed:
         current = _contract_table(
             current, DropColumn(table_name=desired.name, column_name=name), backend
@@ -436,7 +467,9 @@ def _drop_decision(table: str, column: str) -> str:
 
 
 def _contract_table(
-    table: TableState, operation: RequireNotNull | DropColumn, backend: Backend
+    table: TableState,
+    operation: RequireNotNull | DropColumn | ChangeDefault,
+    backend: Backend,
 ) -> TableState:
     column = next(
         (item for item in table.columns if item.name == operation.column_name), None
@@ -451,7 +484,12 @@ def _contract_table(
         msg = "recorded table and column definitions disagree"
         raise PackageError(msg)
     tail = table.sql[len(prefix) :]
-    if isinstance(operation, DropColumn):
+    if isinstance(operation, ChangeDefault):
+        replacement = _changed_default_column(column, operation.column, backend)
+        columns = tuple(
+            replacement if item == column else item for item in table.columns
+        )
+    elif isinstance(operation, DropColumn):
         dependencies = (
             tail,
             *table.indexes,
@@ -497,6 +535,30 @@ def _contract_table(
     return table.model_copy(update={"columns": columns, "sql": sql})
 
 
+def _changed_default_column(
+    column: ColumnState, replacement: ColumnState, backend: Backend
+) -> ColumnState:
+    """Keep all non-default declaration text and recorded column facts unchanged."""
+    if backend != "sqlite":
+        msg = "default alteration currently supports SQLite only"
+        raise PackageError(msg)
+    try:
+        unchanged = without_default(column.definition) == without_default(
+            replacement.definition
+        )
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    if (
+        not unchanged
+        or column == replacement
+        or column.model_copy(update={"definition": replacement.definition})
+        != replacement
+    ):
+        msg = "ChangeDefault must change only the default of an existing column"
+        raise PackageError(msg)
+    return replacement
+
+
 def _query_type(model: type[Table[Any]], name: str) -> str | None:
     logical = _extract_logical_type(_resolve_model_hint(model, name), name)
     types = get_args(logical) or (logical,)
@@ -529,7 +591,7 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
             tables[operation.table_name] = _add_column(
                 _managed_table(tables, operation.table_name), operation.column
             )
-        elif isinstance(operation, RequireNotNull | DropColumn):
+        elif isinstance(operation, RequireNotNull | DropColumn | ChangeDefault):
             tables[operation.table_name] = _contract_table(
                 _managed_table(tables, operation.table_name),
                 operation,
@@ -559,7 +621,7 @@ def contract_digest(draft: Draft, *, point: str) -> str:
             tables[operation.table_name] = _add_column(
                 _managed_table(tables, operation.table_name), operation.column
             )
-        elif isinstance(operation, RequireNotNull | DropColumn):
+        elif isinstance(operation, RequireNotNull | DropColumn | ChangeDefault):
             tables[operation.table_name] = _contract_table(
                 _managed_table(tables, operation.table_name),
                 operation,
@@ -706,7 +768,7 @@ class _Emission:
         self,
         before: TableState,
         after: TableState,
-        operation: RequireNotNull | DropColumn,
+        operation: RequireNotNull | DropColumn | ChangeDefault,
     ) -> None:
         if self.pending is not None and self.pending.before.name != before.name:
             self.flush()
@@ -720,6 +782,9 @@ class _Emission:
                 "dropped": (*pending.dropped, operation.column_name)
                 if isinstance(operation, DropColumn)
                 else pending.dropped,
+                "defaults": (*pending.defaults, operation.column_name)
+                if isinstance(operation, ChangeDefault)
+                else pending.defaults,
             }
         )
 
@@ -791,7 +856,7 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
             _relinquish(tables, operation.table_name)
             emission.relinquished.add(operation.table_name)
             continue
-        if isinstance(operation, RequireNotNull | DropColumn):
+        if isinstance(operation, RequireNotNull | DropColumn | ChangeDefault):
             before = _managed_table(tables, operation.table_name)
             after = _contract_table(before, operation, draft.target.backend)
             tables[operation.table_name] = after
@@ -824,7 +889,9 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
         raise PackageError(msg)
     emission.flush()
     payload = {
-        "version": 2,
+        "version": 3
+        if any(isinstance(op, ChangeDefault) for op in draft.operations)
+        else 2,
         "draft": draft.model_dump(mode="json"),
         "statements": emission.statements,
         "bindings": emission.bindings,
@@ -835,6 +902,9 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
         ],
     }
     return Package(
+        version=3
+        if any(isinstance(op, ChangeDefault) for op in draft.operations)
+        else 2,
         draft=draft,
         statements=tuple(emission.statements),
         bindings=tuple(emission.bindings),
@@ -849,6 +919,7 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
 __all__ = [
     "AddColumn",
     "AdoptTable",
+    "ChangeDefault",
     "Checkpoint",
     "ColumnState",
     "Contraction",

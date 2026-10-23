@@ -11,9 +11,14 @@ The writer's application models are not shipped/imported by the deployment test.
   predecessor identity; digest
   `2fa94d43755cd8bae4d4cb1dfc1c0fd315b69c0c512a71f8ae307f7d041d9d12`.
 
+- `003.json`: require populated `note`, retaining default 7; digest
+  `4d7ad269242d5e41585f5016becb0f8d3b78b6d12e9af2ef00c08e3f5ba00004`.
+  Added from the same isolated old writer when format 3 was introduced; existing
+  fixture bytes were not rewritten. Exercises old contraction serialization.
+
 Keep the bytes fixed. A changed compiler must either continue to accept and deploy
 these identities, or make an explicit unsupported-format decision in its tests and
 engineering contract. Do not regenerate the fixtures to hide a compatibility
 break, rewrite an old digest, stamp old history, or infer codec compatibility.
-These two fixtures do not certify every historical compiler or operation.
+These three fixtures do not certify every historical compiler or operation.
 There is still no general old-format or ledger-upgrade support promise.

@@ -4,7 +4,8 @@ import json
 from collections.abc import Iterator
 from typing import Any
 
-_FORMAT_VERSION = 2
+_OLD_FORMAT = 2
+_FORMAT_VERSIONS = {_OLD_FORMAT, 3}
 _MAX_BYTES = 8 * 1024 * 1024
 _MAX_DEPTH = 64
 _MAX_STRUCTURE = 100_000
@@ -65,7 +66,7 @@ def read_package(text: str) -> Any:
     if (
         not isinstance(value, dict)
         or type(value.get("version")) is not int
-        or value["version"] != _FORMAT_VERSION
+        or value["version"] not in _FORMAT_VERSIONS
     ):
         msg = "unsupported execution package version; no automatic conversion"
         raise ValueError(msg)
@@ -76,5 +77,26 @@ def read_package(text: str) -> Any:
         for operation in operations
     ):
         msg = "serialized execution operation requires an explicit kind"
+        raise ValueError(msg)
+    contractions = value.get("contractions")
+    if value["version"] == _OLD_FORMAT and (
+        (
+            isinstance(operations, list)
+            and any(
+                isinstance(op, dict) and op.get("kind") == "change_default"
+                for op in operations
+            )
+        )
+        or (
+            isinstance(contractions, list)
+            and any(
+                isinstance(change, dict) and "defaults" in change
+                for change in contractions
+            )
+        )
+    ):
+        msg = (
+            "default transition operations/metadata require execution package version 3"
+        )
         raise ValueError(msg)
     return value
