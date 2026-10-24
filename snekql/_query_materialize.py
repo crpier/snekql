@@ -26,6 +26,19 @@ lazy from snekql.model import require_model_columns
 lazy from snekql.storage import StorageBackend
 
 
+def _decode_field(decode: Callable[[object], object], value: object) -> object:
+    """Apply a decoder without letting StopIteration truncate native iteration.
+
+    The former generator expression converted a hook's StopIteration into this
+    RuntimeError. A bare map would instead silently return an incomplete row.
+    """
+    try:
+        return decode(value)
+    except StopIteration as error:
+        msg = "generator raised StopIteration"
+        raise RuntimeError(msg) from error
+
+
 def _materialize_insert_returning_fields(
     fields: tuple[Selectable, ...],
     rows: Sequence[Sequence[object]],
@@ -62,9 +75,7 @@ def _materialize_insert_returning_fields(
         assert len(row) == len(fields), (  # noqa: S101
             "returning row shape did not match the projection"
         )
-        decoded = tuple(
-            decode(value) for decode, value in zip(decoders, row, strict=True)
-        )
+        decoded = tuple(map(_decode_field, decoders, row, strict=True))
         materialized.append(
             projection.materialize(decoded) if projection is not None else decoded
         )
@@ -154,9 +165,7 @@ class SelectMaterialization:
                 if self.state.named_projection is not None
                 else value
             )
-        decoded_values = tuple(
-            decode(value) for decode, value in zip(self.decoders, row, strict=True)
-        )
+        decoded_values = tuple(map(_decode_field, self.decoders, row, strict=True))
         if self.state.named_projection is not None:
             return self.state.named_projection.materialize(decoded_values)
         return decoded_values
