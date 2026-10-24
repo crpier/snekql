@@ -266,3 +266,7 @@ NULL-context regressions, output memory and reproducible scripts.
 [Native integer literal decoding](literal-decoders-520.md) binds the retained
 per-value policy per execution, with UNION/recursive regressions, unchanged output
 retention, adverse repeated pinned controls and reproducible scripts.
+
+[Whole-model RETURNING decoding](model-returning-522.md) reuses ordered decoding
+with batch-local metadata, preserving descriptors/validation and publishing
+SQLite UPDATE results, memory, mixed read controls and reproduction scripts.
