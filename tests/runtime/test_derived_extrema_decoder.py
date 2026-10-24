@@ -103,7 +103,7 @@ class Numbers(BaseModel):
 
     @field_validator("low")
     @classmethod
-    def transform_low(cls, value: int | float | None) -> int | float | None:
+    def transform_low(cls, value: float | None) -> int | float | None:
         return None if value is None else value + 1000
 
 
@@ -167,18 +167,20 @@ async def derived_extrema_keep_source_validation_domains_and_nulls(
                 Numbers, low=low.min(), high=high.max(), total=total.min()
             )
 
-            async def read(validate: bool) -> list[Any]:
+            async def read(selected: Any, *, validate: bool) -> list[Any]:
                 if mode == "buffered":
-                    return list(await tx.fetch_all(query, validate=validate))
-                async with tx.fetch_chunks(query, size=1, validate=validate) as chunks:
+                    return list(await tx.fetch_all(selected, validate=validate))
+                async with tx.fetch_chunks(
+                    selected, size=1, validate=validate
+                ) as chunks:
                     return [row async for chunk in chunks for row in chunk]
 
             for validate in (False, True, False):
                 if kind == "columns" and subset == "all" and validate:
                     with assert_raises(ModelValidationError):
-                        await read(True)
+                        await read(query, validate=True)
                     continue
-                rows = await read(validate)
+                rows = await read(query, validate=validate)
                 expected = (
                     ((995, 2, -5) if kind == "columns" else (998.5, 2, -3))
                     if subset == "all"
