@@ -12,6 +12,7 @@ lazy from snekql._dialect_expr import (
     NumericAggregatePolicy,
     PolicySelectable,
 )
+lazy from snekql._literal import _IntegerLiteral
 lazy from snekql._query_state import (
     Selectable,
     require_column_model,
@@ -222,6 +223,12 @@ def _resolve_expression_decoder(
 
             return decode_value_nullable
         return decode
+    if type(column) is _IntegerLiteral:
+        # UNION/recursive rows may differ from the declared constant. Retain the
+        # policy's per-value backend/type checks, not a cached literal value.
+        return partial(
+            column.__decode_with_policy__, backend=backend, validate=validate
+        )
     if type(column) is _Scalar:
         inner = require_single_column_subquery(column.subquery)
         decode = resolve_projection_decoder(
