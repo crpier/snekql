@@ -12,6 +12,7 @@ lazy import aiomysql
 lazy import aiosqlite
 
 from snekql.errors import SchemaError
+from snekql.experimental._migration_indexes import removed_indexes
 from snekql.experimental._migration_mariadb import (
     MariaDBIndex,
     mariadb_check_obstacle,
@@ -52,6 +53,7 @@ from snekql.experimental._migration_sql import (
 )
 from snekql.experimental.migrations import (
     CreateTable,
+    DropIndex,
     Package,
     PackageError,
     TableState,
@@ -318,6 +320,7 @@ class Target:
             else:
                 self._check_catalog_history(rows, catalog)
             if not already_applied:
+                await self._index_removal_environment(package)
                 validate_adopted(package, objects)
                 names = {row[1] for row in objects}
                 conflicts = [
@@ -447,12 +450,47 @@ class Target:
         )
         await self._connection.commit()
 
+    async def _index_removal_environment(self, package: Package) -> None:
+        """Keep engine FK protection and refuse opaque application programs for DROP."""
+        if self._sqlite or not any(
+            isinstance(op, DropIndex) for op in package.draft.operations
+        ):
+            return
+        checks = await self._query("SELECT @@SESSION.foreign_key_checks")
+        triggers = await self._query("SHOW TRIGGERS")
+        routines = await self._query(
+            "SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA=DATABASE()"
+        )
+        if checks != [(1,)] or any(row[2] != _HISTORY for row in triggers) or routines:
+            msg = "index removal requires foreign_key_checks=1 and no opaque application triggers/routines; explicit adapter required"
+            raise PackageError(msg)
+
+    async def _removed_index_obstacle(
+        self, package: Package, catalog: list[tuple[Any, ...]]
+    ) -> str | None:
+        """Prove negative index claims for completion and recovery finish alike."""
+        for owner, name in removed_indexes(package):
+            present = any(
+                kind == "BASE TABLE" and ascii_lower(table) == ascii_lower(owner)
+                for kind, table, _ in catalog
+            )
+            if not present or any(
+                ascii_lower(row[2]) == ascii_lower(name)
+                for row in await self._query(
+                    "SHOW INDEX FROM " + quote_identifier(owner)
+                )
+            ):
+                return f"removed index postcondition failed: {owner!r}.{name!r} remains or its owner is unavailable; committed MariaDB effects may remain"
+        return None
+
     async def _mariadb_presence_obstacle(
         self, package: Package, catalog: list[tuple[Any, ...]]
     ) -> str | None:
         """Explain a managed table or column that cannot resolve on this server."""
-        if not package.target.tables:
-            return None
+        await self._index_removal_environment(package)
+        obstacle = await self._removed_index_obstacle(package, catalog)
+        if obstacle or not package.target.tables:
+            return obstacle
         mode = (await self._query("SELECT @@SESSION.sql_mode"))[0][0]
         definitions = {sql for kind, _, sql in catalog if kind == "BASE TABLE"}
         for table in package.target.tables:
@@ -1007,6 +1045,7 @@ class Target:
         self._check_history(
             prepared.package, [item for item in rows if item[3] == "complete"]
         )
+        await self._index_removal_environment(prepared.package)
         observation = await self._catalog()
         catalog = _digest(observation)
         recorded = json.loads(row[9])
@@ -1191,6 +1230,7 @@ class Target:
                 if already_applied:
                     await self._connection.rollback()
                     return "already_applied"
+                await self._index_removal_environment(package)
                 validate_adopted(package, objects)
                 if prepared.catalog_digest != catalog:
                     msg = "prepared catalog is stale; prepare and review again"

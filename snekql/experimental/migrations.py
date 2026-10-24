@@ -1,7 +1,7 @@
 """Experimental recorded-state migration authoring and frozen execution packages.
 
-Formats 2/3/4/5 are prototypes, not a supported long-term interchange contract.
-Format 3 adds defaults, format 4 relaxation and format 5 index creation;
+Formats 2/3/4/5/6 are prototypes, not a supported long-term interchange contract.
+Formats 3/4 add defaults/relaxation; formats 5/6 add index creation/removal;
 older routes retain their existing formats.
 Models are consulted only during generation; loading packages imports none.
 """
@@ -29,7 +29,11 @@ from snekql.experimental._migration_sql import (
 from snekql.model import Table
 from snekql.query import Write
 from snekql.storage import _extract_logical_type, _resolve_model_hint
-lazy from snekql.experimental._migration_indexes import add_index
+lazy from snekql.experimental._migration_indexes import (
+    add_index,
+    drop_index,
+    index_removals,
+)
 lazy from snekql.experimental._migration_mariadb import mariadb_default_parts
 lazy from snekql.experimental._migration_target import (
     Prepared,
@@ -93,6 +97,14 @@ class CreateIndex(_Value):
     kind: Literal["create_index"] = "create_index"
     table_name: str
     sql: str
+
+
+class DropIndex(_Value):
+    """Explicitly remove one named managed secondary index, including uniqueness."""
+
+    kind: Literal["drop_index"] = "drop_index"
+    table_name: str
+    index_name: str
 
 
 class AdoptTable(_Value):
@@ -220,6 +232,7 @@ class Draft(_Value):
         CreateTable
         | AdoptTable
         | CreateIndex
+        | DropIndex
         | AddColumn
         | RequireNotNull
         | AllowNull
@@ -237,6 +250,7 @@ class Draft(_Value):
         *operations: CreateTable
         | AdoptTable
         | CreateIndex
+        | DropIndex
         | AddColumn
         | RequireNotNull
         | AllowNull
@@ -273,13 +287,15 @@ class Draft(_Value):
             }
         )
 
-    def resolve(self, *removals: DropColumn | RelinquishTable) -> Self:
-        """Resolve named column deletions or table relinquishments, never infer either."""
+    def resolve(self, *removals: DropColumn | DropIndex | RelinquishTable) -> Self:
+        """Authorize named removals; index removals precede dependent alterations."""
         unresolved = list(self.unresolved)
         for removal in removals:
             decision = (
                 _relinquish_decision(removal.table_name)
                 if isinstance(removal, RelinquishTable)
+                else _index_decision(removal.table_name, removal.index_name)
+                if isinstance(removal, DropIndex)
                 else _drop_decision(removal.table_name, removal.column_name)
             )
             if decision not in unresolved:
@@ -288,7 +304,11 @@ class Draft(_Value):
             unresolved.remove(decision)
         return self.model_copy(
             update={
-                "operations": (*self.operations, *removals),
+                "operations": (
+                    *(op for op in removals if isinstance(op, DropIndex)),
+                    *self.operations,
+                    *(op for op in removals if not isinstance(op, DropIndex)),
+                ),
                 "unresolved": tuple(unresolved),
             }
         )
@@ -308,7 +328,7 @@ class Package(_Value):
     Digests detect changes, not malicious publishers. Load only trusted packages.
     """
 
-    version: Literal[2, 3, 4, 5] = 2
+    version: Literal[2, 3, 4, 5, 6] = 2
     draft: Draft
     statements: tuple[str | None, ...]
     contractions: tuple[Contraction | None, ...]
@@ -414,6 +434,7 @@ def generate(
     operations: list[
         CreateTable
         | CreateIndex
+        | DropIndex
         | AddColumn
         | RequireNotNull
         | AllowNull
@@ -424,8 +445,11 @@ def generate(
             operations.append(CreateTable(table=table))
         elif old[table.name] != table:
             try:
+                current, removed_indexes = index_removals(
+                    old[table.name], table, backend
+                )
                 candidates, removed = _changes(
-                    old[table.name], table, backend, defaulted_additions
+                    current, table, backend, defaulted_additions
                 )
             except PackageError:
                 unresolved.append(
@@ -433,6 +457,9 @@ def generate(
                 )
             else:
                 operations.extend(candidates)
+                unresolved.extend(
+                    _index_decision(table.name, name) for name in removed_indexes
+                )
                 unresolved.extend(_drop_decision(table.name, name) for name in removed)
     return Draft(
         revision=revision,
@@ -553,6 +580,11 @@ def _relinquish(tables: dict[str, TableState], name: str) -> None:
         msg = f"cannot relinquish unmanaged table {name!r}"
         raise PackageError(msg)
     del tables[name]
+
+
+def _index_decision(table: str, name: str) -> str:
+    """Name an unresolved destructive index decision without authorizing it."""
+    return f"{table}: explicitly authorize removal of index {name!r}"
 
 
 def _drop_decision(table: str, column: str) -> str:
@@ -708,6 +740,12 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
             _relinquish(tables, operation.table_name)
         elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
+        elif isinstance(operation, DropIndex):
+            tables[operation.table_name] = drop_index(
+                _managed_table(tables, operation.table_name),
+                operation.index_name,
+                draft.target.backend,
+            )
         elif isinstance(operation, CreateIndex):
             tables[operation.table_name] = add_index(
                 _managed_table(tables, operation.table_name),
@@ -746,6 +784,12 @@ def contract_digest(draft: Draft, *, point: str) -> str:
             _relinquish(tables, operation.table_name)
         elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
+        elif isinstance(operation, DropIndex):
+            tables[operation.table_name] = drop_index(
+                _managed_table(tables, operation.table_name),
+                operation.index_name,
+                draft.target.backend,
+            )
         elif isinstance(operation, CreateIndex):
             tables[operation.table_name] = add_index(
                 _managed_table(tables, operation.table_name),
@@ -984,10 +1028,19 @@ class _Emission:
 
 
 def _emit_table(
-    operation: CreateTable | AdoptTable | CreateIndex,
+    operation: CreateTable | AdoptTable | CreateIndex | DropIndex,
     tables: dict[str, TableState],
     emission: _Emission,
 ) -> None:
+    if isinstance(operation, DropIndex):
+        table = _managed_table(tables, operation.table_name)
+        tables[operation.table_name] = drop_index(
+            table, operation.index_name, emission.backend
+        )
+        name = "`" + operation.index_name.replace("`", "``") + "`"
+        suffix = " ON " + table.quoted_name if emission.backend == "mariadb" else ""
+        emission.emit("DROP INDEX " + name + suffix)
+        return
     if isinstance(operation, CreateIndex):
         table = _managed_table(tables, operation.table_name)
         tables[operation.table_name] = add_index(table, operation.sql, emission.backend)
@@ -1104,7 +1157,9 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
         raise PackageError(msg)
     emission.flush()
     version = (
-        5
+        6
+        if any(isinstance(op, DropIndex) for op in draft.operations)
+        else 5
         if any(isinstance(op, CreateIndex) for op in draft.operations)
         else 4
         if any(isinstance(op, AllowNull) for op in draft.operations)
@@ -1149,6 +1204,7 @@ __all__ = [
     "DataChange",
     "Draft",
     "DropColumn",
+    "DropIndex",
     "Package",
     "PackageError",
     "Prepared",

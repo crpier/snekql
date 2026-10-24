@@ -143,8 +143,8 @@ suite or changed runtime behavior is committed by this audit.
   Nullable defaulted additions now require explicit `defaulted_additions="leave_null"`:
   add without a default, then set the future-write default. Required additions and
   implicit fill-with-default policies remain unsupported. Named whole-column index
-  additions now have a bounded format-5 route; index removal/replacement and CHECK
-  alterations remain unsupported.
+  additions use format 5; explicit bounded index removal/replacement now uses
+  format 6. CHECK alterations remain unsupported.
 - SQLite adoption is intentionally stricter than normal endpoint checks: exact
   bounded declarations/indexes/storage and additional guards, rather than the
   managed-subset check used when preserving unmanaged additions. MariaDB adoption
@@ -271,7 +271,7 @@ empty new metadata; older operation sets retain their existing formats and diges
 An actual archived `5b2b891` reader refuses the new backend artifacts. A separate
 SQLite process deploys the frozen route without authoring models. This does not
 establish general compiler/codec compatibility, a ledger upgrade, or all interruption
-windows. Index removal/replacement, CHECK changes and the broader audit queue remain open.
+windows. Broader index variants, CHECK changes and the audit queue remain open.
 
 ### Named index creation checkpoint
 
@@ -290,7 +290,39 @@ verification after native effects; it does not complete. Archived c27bf4d refuse
 format 5; current reader keeps prior format-4 artifacts and fixed format-2/3 fixture
 identities. Model-free SQLite deployment enforces uniqueness. No ledger conversion.
 
-Next: explicit index removal/replacement with negative postconditions, then bounded
-CHECK changes. Construction/claim authority, unexpected-object ownership boundaries,
+Explicit bounded index removal/replacement now has negative postconditions below;
+bounded CHECK changes remain next. Construction/claim authority, unexpected-object ownership boundaries,
 FK referenced-column/index/type proof, broader workflow/recovery/resource/evolution
 coverage remain unfinished. Guides/release-scope/API reconciliation are deferred.
+
+### Explicit index deletion checkpoint
+
+Format 6 adds DropIndex, resolved by exact managed name rather than inferred from
+absence. Bounded replacement is DROP plus CREATE; surviving-then-new declaration
+ordering still limits automatic generation. Unowned/implicit/primary indexes and
+unsupported index forms are not newly authorized.
+
+Negative endpoint checks supplement positive managed-subset checks. They run before
+SQLite commit and native completion/recovery finish, with same-name replacements
+proved positively. SQLite DROP projection prevents a later rebuild resurrecting the
+removed index. Counterfactual skipped DROP formerly completed; it now refuses on both
+engines and cannot finish native recovery. Unrelated native prefix indexes retain
+their own verifier grammar rather than being forced through the deletion grammar.
+
+Pre-effect conservative dependency checks include observed SQL, before/target and
+intermediate table sources—even a created then relinquished child. SQLite FK and
+INDEXED BY dependencies refuse; native FK checking must remain enabled and opaque
+visible application triggers/routines refuse. Checks are not a global dependency,
+privilege or session-enforcement proof. Construction SQL remains trusted executable
+input, not a sandbox or fully proven construction/claim agreement.
+
+SQLite failed replacement restores the old index/rows/receipt; native failed CREATE
+retains acknowledged DROP and permits CREATE-only retry after explicit data correction.
+Lost DROP receipt remains ambiguous, with no automatic repair/structural acceptance.
+Native replacement has an application-visible gap and no write-pause guarantee.
+
+An archived 6c15088 reader refuses format 6; preceding format4/5 artifacts and fixed
+format2/3 identities remain unchanged. Model-free SQLite deployment preserves values
+and permits duplicates after explicit removal. No ledger conversion. CHECK changes,
+general construction/claim/negative-ownership/FK compatibility, combined workflows,
+resource limits and genuine compiler/codec/ledger evolution remain unfinished.

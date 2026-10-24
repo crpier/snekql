@@ -156,7 +156,7 @@ def index_additions_have_closed_grammar_and_explicit_format() -> None:
 
 
 @test(mark="fast")
-def removing_or_replacing_an_index_remains_an_explicit_unsupported_decision() -> None:
+def removing_an_index_remains_unresolved_without_explicit_authority() -> None:
     """Addition support does not silently remove a unique constraint or reuse its name."""
     first = m.compile(m.generate("001", [Indexed], backend="sqlite"))
     draft = m.generate("002", [Required], backend="sqlite", previous=first)

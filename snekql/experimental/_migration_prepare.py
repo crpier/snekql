@@ -6,6 +6,10 @@ from typing import Any
 from pydantic import Field
 
 from snekql.errors import SchemaError
+from snekql.experimental._migration_indexes import (
+    validate_index_dependencies,
+    validate_removed_sqlite_indexes,
+)
 from snekql.experimental._migration_mariadb import validate_mariadb_declarations
 from snekql.experimental._migration_sql import (
     Token,
@@ -54,6 +58,7 @@ def prepare_steps(
 ) -> tuple[ExecutionStep, ...]:
     """Resolve deferred steps; do not open a database or execute authoring code."""
     validate_mariadb_declarations(package.target)
+    validate_index_dependencies(package, catalog)
     objects = list(catalog)
     steps: list[ExecutionStep] = []
     for index, (sql, params, transactional, contraction) in enumerate(
@@ -98,6 +103,12 @@ def _project(sql: str, objects: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
     words = [
         ascii_lower(token.value) if token.kind == "word" else None for token in stream
     ]
+    if words[:2] == ["drop", "index"]:
+        return [
+            row
+            for row in objects
+            if not (row[0] == "index" and row[1] == stream[2].value)
+        ]
     if words[:2] == ["create", "table"]:
         name = stream[2].value
         return [*objects, ("table", name, name, sql)]
@@ -422,6 +433,7 @@ def validate_completed(package: Package, objects: list[tuple[Any, ...]]) -> None
     """Require the managed SQLite endpoint before committing completion evidence."""
     try:
         validate_managed(package.target, objects)
+        validate_removed_sqlite_indexes(package, objects)
     except (PackageError, SchemaError) as error:
         msg = f"managed schema postcondition failed; transaction rolled back: {error}"
         raise PackageError(msg) from error

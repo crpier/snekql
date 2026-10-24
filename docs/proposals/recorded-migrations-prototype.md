@@ -5,9 +5,10 @@ Status: **experimental, incomplete, not ready for production or merge**.
 This implements the first vertical slices of the design discussed in #475,
 replacing the function-only direction in draft #476. The prototype lives in
 `snekql.experimental.migrations`; existing migration interfaces are unchanged.
-Artifact formats 2, 3, 4 and 5 are provisional. Format 3 adds explicit default
+Artifact formats 2 through 6 are provisional. Format 3 adds explicit default
 transitions; format 4 adds required-to-nullable relaxation and format 5 adds
-named index creation on both backends.
+named index creation on both backends. Format 6 adds explicit index removal and
+bounded replacement.
 Unchanged operation sets retain their existing format. Format 1 remains
 unsupported, and old experimental ledgers have no automatic upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
@@ -43,16 +44,17 @@ validation. Escaped quotes, backslashes and punctuation inside strings do not
 consume structural units. Duplicate decoded object keys are refused at every
 level, including differently escaped spellings of the same key.
 
-The version must be an explicit JSON integer `2`, `3`, `4` or `5`; omission, numeric
+The version must be an explicit JSON integer `2`, `3`, `4`, `5` or `6`; omission, numeric
 coercion, unknown versions and omitted operation kinds cannot select a reader/
-compiler through defaults or union ordering. `CreateIndex` selects format 5;
+compiler through defaults or union ordering. `DropIndex` selects format 6;
+otherwise `CreateIndex` selects format 5;
 otherwise `AllowNull` selects format 4;
 otherwise `ChangeDefault` selects format 3, and old operation sets select format 2.
-Formats 2/3/4 refuse `create_index`. Format 2 refuses default operations/metadata. Formats 2/3 refuse relaxation
+Formats 2/3/4/5 refuse `drop_index`; formats 2/3/4 refuse `create_index`. Format 2 refuses default operations/metadata. Formats 2/3 refuse relaxation
 operations and even an empty `relaxed` contraction field. Empty new fields are
 omitted from older routes, preserving their shapes and identities.
 The format is a package capability, not a monotonically increasing history
-counter: an unchanged operation set can still emit format 2 after a format-5
+counter: an unchanged operation set can still emit format 2 after a format-6
 predecessor. The reader checks the compiler-selected format as part of integrity. The current reader still recompiles the
 recorded draft and requires the frozen execution and digest to agree. These
 checks do not authenticate publishers or make construction SQL a sandbox.
@@ -519,8 +521,9 @@ retrospective recertification is introduced. User guides remain deferred.
 ## Named index additions
 
 `CreateIndex(table_name=..., sql=...)` creates a new named index on an already
-managed table. Generation derives appended ordinary index declarations; removals,
-replacements and reordering existing recorded declarations remain unresolved. The
+managed table. Generation derives appended ordinary index declarations. Removal
+and replacement require the separate authorization below; arbitrary reordering of
+existing recorded declarations remains unresolved. The
 operation does not rebuild rows or infer ownership of an existing physical index.
 
 The bounded grammar is unconditional `CREATE [UNIQUE] INDEX`, quoted names, the
@@ -553,8 +556,62 @@ format-4 artifacts byte-for-byte and the fixed format-2/3 identities. A model-fr
 SQLite child deploys format 2 then 5, preserves old rows/defaults and demonstrates
 unique enforcement. No general compatibility or retrospective certification claim.
 
-Index removal/replacement still needs explicit authorization and a negative
-postcondition proving disappearance; CHECK alterations remain separate next work.
+Explicit removal/replacement adds separate authorization and negative postconditions
+below. CHECK alterations remain separate next work.
+
+## Explicit index removal and replacement
+
+Generation leaves an index-removal decision unresolved. Authorize it with
+`draft.resolve(DropIndex(table_name=..., index_name=...))`; compilation cannot
+silently remove uniqueness or infer authority from a missing target declaration.
+The exact name must identify one explicitly recorded bounded secondary index, not
+an unowned/implicit index or primary-key constraint. Index deletions are placed
+before dependent generated alterations; column deletions retain their separate
+explicit decision. Editing a route still requires regenerating checkpoint contracts.
+
+Replacement composes an authorized DROP with ordinary CREATE, including a same-name
+uniqueness change. The finite declaration grammar remains that of CreateIndex.
+The current ordering is surviving recorded declarations followed by new declarations;
+replacing an earlier index among several may therefore require explicit declaration
+reordering/review, otherwise generation remains unresolved. This is not a general
+index-diff, reorder or constraint-rewrite facility.
+
+Preparation conservatively checks observed catalog SQL, before/target table sources
+and intermediate CreateTable/AdoptTable sources. Possible FK-adjacent table and
+stored-object index-name dependencies require an adapter. A newly created child
+cannot evade this check by relinquishing ownership before dropping its parent's
+index. SQLite legacy single-quoted REFERENCES and INDEXED BY views are covered.
+Native removal additionally requires `foreign_key_checks=1` and no visible opaque
+application triggers/routines; it does not silently change session policy. These
+checks recur at application/recovery boundaries. This is not a complete dependency
+graph, cross-schema/application-query proof, privilege audit or SQL sandbox.
+
+SQLite DROP projection removes the index from subsequent rebuild planning rather
+than recreating it. An explicit negative endpoint check proves absence before commit;
+positive subset verification alone is insufficient. A failing same-name unique
+replacement rolls back DROP, CREATE and receipt, restoring the old nonunique index
+and rows. Explicit data correction permits original-plan retry.
+
+Native DROP is an acknowledged progress step separate from CREATE. If a replacement
+unique build fails, the old index remains gone: there is a real construction gap,
+not rollback/atomic replacement. Explicit duplicate-data correction permits CREATE
+retry without replaying DROP. Application writes are not paused by schema-writer
+exclusion. Lost DROP receipts remain ambiguous even with a correct absent endpoint;
+there is no index-specific structural reconciliation or automatic repair.
+
+Negative endpoint claims require removed indexes to be absent, or, for recorded
+same-name replacements, the existing positive index verifier to prove the new
+contract. Native completion and recovery finish both apply this rule. Unrelated
+indexes retain their existing grammar (including native prefix indexes). A skipped-
+DROP counterfactual previously falsely completed on both engines; it now rolls back
+SQLite or leaves native uncertainty and refuses recovery finish. Whole-catalog drift
+checks remain; this does not establish a general negative-ownership policy.
+
+**Format 6** carries `drop_index`. Formats 2–5 refuse it; an actual archived `6c15088`
+reader refuses both new backend artifacts. Fixed format-2/3 fixtures and preceding
+format-4/5 artifacts retain identity. A model-free SQLite child deploys format 2→6,
+retaining rows/defaults and allowing duplicates after explicit uniqueness removal.
+No ledger-layout change, conversion, retrospective certification or user guide.
 
 ## Required-to-nullable relaxation
 
@@ -1114,7 +1171,7 @@ on MariaDB, including the period between preparation and application.
 | Required-column enforcement and explicit column removal | Executed on both engines; populated full SQLite expand/backfill/contract route tested; rename and dependent-object changes remain unsupported |
 | Long resumable backfill | Unimplemented; only individual bounded UPDATE operations |
 | General custom SQL / Python | Unimplemented; typed UPDATE output only |
-| Historical codec/compiler evolution | Formats 2/3/4/5 checked against their operation vocabulary; fixed old-writer creation/addition/contraction fixtures retain identity; no general codec or long-term compatibility promise |
+| Historical codec/compiler evolution | Formats 2/3/4/5/6 checked against their operation vocabulary; fixed old-writer creation/addition/contraction fixtures retain identity; no general codec or long-term compatibility promise |
 | Source freshness / collaboration tooling | No file-management or automatic semantic rebase interface |
 
 The dedicated connection currently uses path/credentials/TLS and SQLite busy

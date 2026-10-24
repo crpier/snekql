@@ -4,6 +4,15 @@
 
 ### Experimental
 
+- Add explicit bounded `DropIndex` authorization and DROP/CREATE replacement on
+  SQLite and MariaDB (format 6). Prove removed-index absence before completion and
+  native recovery finish; project SQLite deletion through later rebuilds. Refuse
+  possible catalog/intermediate FK or stored-object dependencies and weak native
+  FK/opaque-program environments. Cover atomic SQLite replacement rollback, native
+  acknowledged DROP/failed CREATE retry and ambiguous lost receipts. Native
+  replacement has a real gap; no automatic repair, ledger conversion or general
+  index-reordering/dependency guarantee.
+
 - Add bounded `CreateIndex` generation/execution for appended named whole-column
   indexes on SQLite and MariaDB. Format 5 carries the new operation; older routes
   retain formats/identities. Cover SQLite duplicate-data rollback and rebuild

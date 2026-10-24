@@ -7,7 +7,14 @@ from typing import Any
 _OLD_FORMAT = 2
 _RELAXATION_FORMAT = 4
 _INDEX_FORMAT = 5
-_FORMAT_VERSIONS = {_OLD_FORMAT, 3, _RELAXATION_FORMAT, _INDEX_FORMAT}
+_DROP_INDEX_FORMAT = 6
+_FORMAT_VERSIONS = {
+    _OLD_FORMAT,
+    3,
+    _RELAXATION_FORMAT,
+    _INDEX_FORMAT,
+    _DROP_INDEX_FORMAT,
+}
 _MAX_BYTES = 8 * 1024 * 1024
 _MAX_DEPTH = 64
 _MAX_STRUCTURE = 100_000
@@ -89,6 +96,15 @@ def read_package(text: str) -> Any:
         )
     ):
         msg = "index creation operations require execution package version 5"
+        raise ValueError(msg)
+    if (
+        value["version"] < _DROP_INDEX_FORMAT
+        and isinstance(operations, list)
+        and any(
+            isinstance(op, dict) and op.get("kind") == "drop_index" for op in operations
+        )
+    ):
+        msg = "index removal operations require execution package version 6"
         raise ValueError(msg)
     contractions = value.get("contractions")
     if value["version"] == _OLD_FORMAT and (
