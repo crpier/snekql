@@ -669,6 +669,35 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Identifier claim bindings before execution
+
+Compilation (also invoked by package loading) rejects a table `quoted_name` that
+is not one complete quoted identifier naming exactly `TableState.name`. Comments,
+SQL tails, strings and unquoted names are not accepted in that executable fragment.
+Every `ColumnState.name` must exactly name the first identifier in its definition.
+Empty identifiers and duplicate/ASCII-case-colliding table or column claims refuse
+rather than silently collapsing under dictionary projection. This conservative
+collision rule does not promise equivalence for every native identifier namespace,
+Unicode case behavior or deployment-specific table-name policy.
+
+The checks include before/target snapshots, intermediate CreateTable/AdoptTable
+payloads even if later relinquished, and AddColumn/ChangeDefault definitions. An
+otherwise-unused bad executable name cannot be certified on initial creation for
+later use by an alteration. This is not a SQL sandbox: reviewed construction SQL
+remains trusted executable input, and these identifier bindings do **not** prove
+CREATE TABLE header agreement, complete declaration/column coverage, physical
+nullability/storage/default consistency, index/constraint binding, publisher
+authentication or general construction/claim agreement. Those need separate proof
+or pre-effect refusal in subsequent work.
+
+No new wire vocabulary/version: valid packages retain format2–8 identities. Fixed
+artifacts from real writer `3456c05` preserve one valid format2 dump and explicitly
+refuse another that the old writer/reader accepted with `quoted_name="unowned"`
+while constructing `entries`. Loading does not rewrite its digest or receipt. A
+counterfactual in an isolated copied source tree bypasses the gate and reproduces
+acceptance; the working source is not mutated during native suites. Reader
+tightening is explicit refusal, not general backwards compatibility or conversion.
+
 ## Explicit named CHECK removal and bounded replacement
 
 `DropCheck(table_name=..., check_name=...)` authorizes exactly one recorded bounded

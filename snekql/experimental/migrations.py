@@ -21,9 +21,12 @@ from snekql._schema_plan import build_schema_plan
 from snekql.errors import SchemaError, SnekqlError
 from snekql.experimental._migration_package import read_package
 from snekql.experimental._migration_sql import (
+    ascii_lower,
+    column_name,
     nullable_definition,
     references,
     required_definition,
+    tokens,
     without_default,
 )
 from snekql.model import Table
@@ -942,7 +945,71 @@ def _add_column(table: TableState, column: ColumnState) -> TableState:
 _RESERVED = frozenset({"snekql_migrations", "snekql_experimental_migrations"})
 
 
+def _validate_column_identifier(column: ColumnState, backend: Backend) -> None:
+    """Bind independently recorded names to executable column definitions."""
+    try:
+        stream = tokens(column.definition, mysql=backend == "mariadb")
+        if (
+            not column.name
+            or not stream
+            or stream[0].kind not in {"identifier", "word"}
+            or column_name(column.definition, mysql=backend == "mariadb") != column.name
+        ):
+            msg = "column identifier claim must match its SQL definition"
+            raise PackageError(msg)
+    except SchemaError as error:
+        msg = f"column identifier claim is invalid: {error}"
+        raise PackageError(msg) from error
+
+
+def _unique_identifiers(names: Iterable[str]) -> None:
+    seen: set[str] = set()
+    for name in names:
+        folded = ascii_lower(name)
+        if not name or folded in seen:
+            msg = "ambiguous recorded identifiers require an explicit adapter"
+            raise PackageError(msg)
+        seen.add(folded)
+
+
+def _validate_table_identifiers(table: TableState, backend: Backend) -> None:
+    """Bind identifiers without claiming SQL equivalence or codec correctness."""
+    try:
+        identifier = tokens(table.quoted_name, mysql=backend == "mariadb")
+    except SchemaError as error:
+        msg = f"table identifier claim is invalid: {error}"
+        raise PackageError(msg) from error
+    if (
+        not table.name
+        or len(identifier) != 1
+        or identifier[0].kind != "identifier"
+        or identifier[0].value != table.name
+        or table.quoted_name
+        != table.quoted_name[identifier[0].start : identifier[0].end]
+    ):
+        msg = "table identifier claim must match its single quoted SQL name"
+        raise PackageError(msg)
+    _unique_identifiers(column.name for column in table.columns)
+    for column in table.columns:
+        _validate_column_identifier(column, backend)
+
+
 def _validate_draft(draft: Draft) -> None:
+    for state in (draft.before, draft.target):
+        _unique_identifiers(table.name for table in state.tables)
+    for table in chain(
+        draft.before.tables,
+        draft.target.tables,
+        (
+            op.table
+            for op in draft.operations
+            if isinstance(op, CreateTable | AdoptTable)
+        ),
+    ):
+        _validate_table_identifiers(table, draft.target.backend)
+    for op in draft.operations:
+        if isinstance(op, AddColumn | ChangeDefault):
+            _validate_column_identifier(op.column, draft.target.backend)
     if any(
         table.name.casefold() in _RESERVED
         for table in (

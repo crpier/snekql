@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Refuse inconsistent experimental identifier claims during compilation/loading:
+  table quoted-name fragments and column definitions must bind to their recorded
+  names, including before/intermediate states and alteration payloads. Reject empty,
+  duplicate and ASCII-case-colliding names rather than silently collapsing claims.
+  Existing valid formats retain identities; historical mismatches explicitly refuse,
+  without conversion. This is not full construction/claim equivalence or a SQL sandbox.
+
 - Add explicit `DropCheck` and bounded replacement on SQLite/MariaDB (format 8),
   with negative endpoint proof even after relinquishment. SQLite retains rollback,
   preservation and corrected retry; native DROP/ADD leaves a real gap on failure.

@@ -384,3 +384,25 @@ Archived84574ce refuses artifacts; format4/5/6/7 identities and fixed format2/3 
 remain. Model-free SQLite2→7→8 preserves42/default7 and allows-1. Removal/relinquishment/
 readoption (SQLite) and native relinquishment routes are covered. No ledger conversion.
 Broader points1–4 remain incomplete; guides deferred.
+
+### Identifier binding checkpoint
+
+Compiler/load-time binding now requires one complete quoted table identifier exactly
+matching its recorded name, and each column definition's first identifier must match
+its separate name. Empty/duplicate/ASCII-case-colliding recorded names refuse rather
+than being silently collapsed. Before/target snapshots, intermediate CREATE/ADOPT
+(including subsequent relinquishment), ADD COLUMN and ChangeDefault payloads are
+checked. SQL tails/comments/string/bare-name quoted_name fragments refuse.
+
+Actual archived3456c05 writer/reader accepted a mismatched quoted_name artifact;
+current loading explicitly refuses it while preserving the valid companion dump and
+preceding format2–8 identities. Fixed fixtures preserve these bytes. Isolated-copy
+counterfactual bypass reproduces acceptance without mutating working source. No new
+format/ledger/receipt conversion or publisher authentication.
+
+This closes identifier-representation gaps, **not** overall construction/claim
+agreement. Table SQL header, redundant column coverage/physical storage/nullability/
+defaults, broader namespaces/Unicode/native-case policies, indexes/constraints,
+privilege visibility and unexpected-object/negative-ownership/FK compatibility still
+need independent proof/refusal. Trusted construction SQL is not sandboxed. The
+remaining workflow/interruption/resource/compiler/codec/ledger queue stays open.
