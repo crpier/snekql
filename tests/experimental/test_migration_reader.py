@@ -155,3 +155,48 @@ def serialized_operations_require_explicit_kinds() -> None:
     with assert_raises(m.PackageError) as error:
         m.Package.load(json.dumps(payload))
     assert "explicit kind" in str(error.exception)
+
+
+@test(mark="medium")
+async def prior_format_three_composition_retains_identity_and_deploys() -> None:
+    """Old explicit composition remains executable when new generation learns it."""
+    root = Path(__file__).parent / "fixtures" / "format3"
+    first = m.Package.load(await asyncio.to_thread((root / "001.json").read_text))
+    second = m.Package.load(await asyncio.to_thread((root / "002.json").read_text))
+    assert_eq(
+        first.digest, "9b6fe83e9a0f4dac823c5d26b2001cdf36ba5d578838c730752b174da9b482c5"
+    )
+    assert_eq(
+        second.digest,
+        "0dd3db18f19647b3e10f08abd913f33999859273cd8c9123f76f51fab3d6ab52",
+    )
+    assert_eq(second.version, 3)
+    assert_eq(second.draft.predecessor, first.digest)
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "defaults.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+        async with (
+            await sqlite.Database.initialize(config) as database,
+            database.transaction() as transaction,
+        ):
+            await transaction.execute(
+                sqlite.raw("INSERT INTO settings(id,value) VALUES(1,42)")
+            )
+        async with m.connect(config) as target:
+            assert_eq(await target.apply(await target.prepare(second)), "applied")
+            assert_eq(
+                await target.apply(await target.prepare(second)), "already_applied"
+            )
+            assert_eq({item.phase for item in await target.status()}, {"complete"})
+        async with (
+            await sqlite.Database.initialize(config) as database,
+            database.transaction() as transaction,
+        ):
+            await transaction.execute(sqlite.raw("INSERT INTO settings(id) VALUES(2)"))
+            assert_eq(
+                await transaction.fetch_all(
+                    sqlite.raw("SELECT value FROM settings ORDER BY id")
+                ),
+                [{"value": 42}, {"value": 8}],
+            )

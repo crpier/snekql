@@ -421,8 +421,8 @@ def _changes(
             current = _add_column(current, column)
             candidates.append(change)
         elif existing != column:
+            default_change = ChangeDefault(table_name=desired.name, column=column)
             try:
-                default_change = ChangeDefault(table_name=desired.name, column=column)
                 revised = _contract_table(current, default_change, backend)
             except PackageError:
                 change = RequireNotNull(
@@ -430,6 +430,12 @@ def _changes(
                 )
                 current = _contract_table(current, change, backend)
                 candidates.append(change)
+                required_column = next(
+                    item for item in current.columns if item.name == column.name
+                )
+                if required_column != column:
+                    current = _contract_table(current, default_change, backend)
+                    candidates.append(default_change)
             else:
                 current = revised
                 candidates.append(default_change)

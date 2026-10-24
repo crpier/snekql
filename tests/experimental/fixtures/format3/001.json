@@ -1,0 +1,80 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "9b6fe83e9a0f4dac823c5d26b2001cdf36ba5d578838c730752b174da9b482c5",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"value\" INTEGER",
+              "name": "value",
+              "nullable": true,
+              "query_type": "int | None",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "settings",
+          "quoted_name": "\"settings\"",
+          "sql": "CREATE TABLE \"settings\" (\"id\" INTEGER PRIMARY KEY, \"value\" INTEGER) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"value\" INTEGER",
+              "name": "value",
+              "nullable": true,
+              "query_type": "int | None",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "settings",
+          "quoted_name": "\"settings\"",
+          "sql": "CREATE TABLE \"settings\" (\"id\" INTEGER PRIMARY KEY, \"value\" INTEGER) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE \"settings\" (\"id\" INTEGER PRIMARY KEY, \"value\" INTEGER) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}
+

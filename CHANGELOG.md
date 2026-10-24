@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Generate combined SQLite nullable-to-required/default transitions using the
+  existing structured operations and format 3. Refuse existing NULLs instead of
+  backfilling implicitly; support an explicitly authored typed backfill before the
+  transition. Fixed preceding-writer composition artifacts retain their identities
+  and deploy without authoring models. Native alteration, nullable relaxation and
+  defaulted additions remain unsupported.
+
 - Add SQLite default-only alteration through frozen `ChangeDefault` operations:
   set, change or remove a SQL default without backfilling existing rows. Reuse
   checked rebuild preservation and atomic rollback/retry. New operations require

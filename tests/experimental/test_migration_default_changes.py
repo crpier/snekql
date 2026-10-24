@@ -12,6 +12,7 @@ import aiosqlite
 from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
+from snekql.errors import ExecutionError
 from snekql.experimental import migrations as m
 
 
@@ -461,6 +462,7 @@ _MODEL_FREE_DEFAULT = r"""
 import asyncio,json,sys
 from pathlib import Path
 from snekql import sqlite
+from snekql.errors import ExecutionError
 from snekql.experimental import migrations as m
 async def main():
     root=Path(sys.argv[1])
@@ -539,3 +541,148 @@ def ambiguous_default_declarations_fail_compilation() -> None:
                 )
             )
         assert "DEFAULT" in str(error.exception)
+
+
+@test(mark="medium")
+async def required_default_transition_refuses_nulls_without_backfilling() -> None:
+    """A future insertion default cannot repair existing NULLs implicitly."""
+    first = m.compile(m.generate("001", [Nullable], backend="sqlite"))
+    draft = m.generate("002", [Changed], backend="sqlite", previous=first)
+    assert_eq(draft.unresolved, ())
+    second = m.Package.load(m.compile(draft).dump())
+    assert_eq(second.version, 3)
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "combined.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+        async with (
+            await sqlite.Database.initialize(config) as database,
+            database.transaction() as transaction,
+        ):
+            await transaction.execute(
+                sqlite.raw("INSERT INTO settings(id,value) VALUES(1,NULL),(2,42)")
+            )
+        async with m.connect(config) as target:
+            plan = await target.prepare(second)
+            with assert_raises(m.PackageError) as error:
+                await target.apply(plan)
+            assert "NULL rows remain" in str(error.exception)
+            assert_eq([entry.revision for entry in await target.status()], ["001"])
+        async with (
+            await sqlite.Database.initialize(config) as database,
+            database.transaction() as transaction,
+        ):
+            # Refusal leaves both the old values and the old nullable/default-free schema.
+            await transaction.execute(sqlite.raw("INSERT INTO settings(id) VALUES(3)"))
+            assert_eq(
+                await transaction.fetch_all(
+                    sqlite.raw("SELECT value FROM settings ORDER BY id")
+                ),
+                [{"value": None}, {"value": 42}, {"value": None}],
+            )
+            await transaction.execute(
+                sqlite.raw("UPDATE settings SET value=5 WHERE value IS NULL")
+            )
+        async with m.connect(config) as target:
+            assert_eq(await target.apply(plan), "applied")
+            assert_eq(
+                await target.apply(await target.prepare(second)), "already_applied"
+            )
+        async with (
+            await sqlite.Database.initialize(config) as database,
+            database.transaction() as transaction,
+        ):
+            await transaction.execute(sqlite.raw("INSERT INTO settings(id) VALUES(4)"))
+            assert_eq(
+                await transaction.fetch_all(
+                    sqlite.raw("SELECT value FROM settings ORDER BY id")
+                ),
+                [{"value": 5}, {"value": 42}, {"value": 5}, {"value": 8}],
+            )
+        async with await sqlite.Database.initialize(config) as database:
+            with assert_raises(ExecutionError):
+                async with database.transaction() as transaction:
+                    await transaction.execute(
+                        sqlite.raw("INSERT INTO settings(id,value) VALUES(5,NULL)")
+                    )
+
+
+@test(mark="medium")
+async def required_default_removal_can_follow_an_explicit_typed_backfill() -> None:
+    """A composed route fills only selected rows before enforcing the new contract."""
+    first = m.compile(m.generate("001", [NegativeDefault], backend="sqlite"))
+    generated = m.generate("002", [Required], backend="sqlite", previous=first)
+    assert_eq(generated.unresolved, ())
+    staged = generated.model_copy(update={"operations": ()}).then(
+        m.Checkpoint(name="nullable")
+    )
+    staged = staged.then(
+        m.DataChange.from_query(
+            sqlite.update(NegativeDefault)
+            .set(NegativeDefault.value.to(5))
+            .where(NegativeDefault.value.is_null()),
+            checkpoint="nullable",
+            contract_digest=m.contract_digest(staged, point="nullable"),
+        )
+    )
+    for operation in generated.operations:
+        staged = staged.then(operation)
+    package = m.Package.load(m.compile(staged).dump())
+    assert_eq(package.version, 3)
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "backfill.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+        async with (
+            await sqlite.Database.initialize(config) as database,
+            database.transaction() as transaction,
+        ):
+            await transaction.execute(
+                sqlite.raw("INSERT INTO settings(id,value) VALUES(1,NULL)")
+            )
+            await transaction.execute(sqlite.raw("INSERT INTO settings(id) VALUES(2)"))
+        async with m.connect(config) as target:
+            assert_eq(await target.apply(await target.prepare(package)), "applied")
+        async with (
+            await sqlite.Database.initialize(config) as database,
+            database.transaction() as transaction,
+        ):
+            assert_eq(
+                await transaction.fetch_all(
+                    sqlite.raw("SELECT value FROM settings ORDER BY id")
+                ),
+                [{"value": 5}, {"value": -9}],
+            )
+        async with await sqlite.Database.initialize(config) as database:
+            with assert_raises(ExecutionError):
+                async with database.transaction() as transaction:
+                    await transaction.execute(
+                        sqlite.raw("INSERT INTO settings(id) VALUES(3)")
+                    )
+
+
+class NativeNullable[S = mariadb.Pending](mariadb.Model[S]):
+    """Native nullability support must not imply native default alteration."""
+
+    __tablename__ = "native_defaults"
+    __row_type__: ClassVar[mariadb.ReadType[NativeNullable[mariadb.Row]]]
+    value: mariadb.GenCol[int | None] = mariadb.Integer(
+        nullable=True, default=mariadb.LiteralDefault(7)
+    )
+
+
+@test(mark="fast")
+def combined_default_generation_keeps_unsupported_changes_unresolved() -> None:
+    """Composition cannot authorize native defaults or nullable relaxation."""
+    native = m.compile(m.generate("001", [NativeNullable], backend="mariadb"))
+    unsupported = m.generate("002", [NativeAfter], backend="mariadb", previous=native)
+    assert unsupported.unresolved
+    assert_eq(unsupported.operations, ())
+    with assert_raises(m.PackageError):
+        m.compile(unsupported)
+    required = m.compile(m.generate("001", [Original], backend="sqlite"))
+    relaxed = m.generate("002", [NegativeDefault], backend="sqlite", previous=required)
+    assert relaxed.unresolved
+    assert_eq(relaxed.operations, ())
+    with assert_raises(m.PackageError):
+        m.compile(relaxed)

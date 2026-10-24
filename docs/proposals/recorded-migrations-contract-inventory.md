@@ -136,6 +136,8 @@ suite or changed runtime behavior is committed by this audit.
 - Creation support is not alteration support. `_changes` accepts only routes
   representable by current operations. SQLite default-only alteration now has a
   structured operation and strict endpoint declaration checks, including removal.
+  SQLite generation also composes nullable-to-required enforcement with a default
+  transition, refusing old NULLs unless an explicit earlier backfill fixes them.
   Native default alteration, automatic defaulted additions, and index/CHECK
   alteration are not enabled merely because initial CREATE can emit them.
 - SQLite adoption is intentionally stricter than normal endpoint checks: exact
@@ -195,7 +197,10 @@ form will be production-supported:
    identities. Format 3 adds SQLite `ChangeDefault`; format 2 refuses that operation
    and its new metadata. Unchanged old routes keep their format and digests; an
    isolated preceding reader refuses format 3. Model-free default changes,
-   preservation and atomic rollback/retry now have public route coverage. This is input-decoding coverage, not whole-program resource bounds,
+   preservation and atomic rollback/retry now have public route coverage. A second
+   fixed chain from writer `7932c4f` preserves an explicitly authored format-3
+   required/default composition while current generation learns to derive it;
+   existing NULLs block it, and an explicit typed-backfill route is covered. This is input-decoding coverage, not whole-program resource bounds,
    general compiler compatibility or ledger evolution; no automatic conversion
    or retrospective recertification is available. Broader native
    adoption, arbitrary SQL equivalence, multiple heads, implicit stamping and
