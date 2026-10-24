@@ -142,7 +142,9 @@ suite or changed runtime behavior is committed by this audit.
   required/default changes use the existing MODIFY route and NULL preconditions.
   Nullable defaulted additions now require explicit `defaulted_additions="leave_null"`:
   add without a default, then set the future-write default. Required additions and
-  implicit fill-with-default policies remain unsupported, as do index/CHECK alterations.
+  implicit fill-with-default policies remain unsupported. Named whole-column index
+  additions now have a bounded format-5 route; index removal/replacement and CHECK
+  alterations remain unsupported.
 - SQLite adoption is intentionally stricter than normal endpoint checks: exact
   bounded declarations/indexes/storage and additional guards, rather than the
   managed-subset check used when preserving unmanaged additions. MariaDB adoption
@@ -269,4 +271,26 @@ empty new metadata; older operation sets retain their existing formats and diges
 An actual archived `5b2b891` reader refuses the new backend artifacts. A separate
 SQLite process deploys the frozen route without authoring models. This does not
 establish general compiler/codec compatibility, a ledger upgrade, or all interruption
-windows. Bounded index/CHECK changes and the broader audit queue remain open.
+windows. Index removal/replacement, CHECK changes and the broader audit queue remain open.
+
+### Named index creation checkpoint
+
+Format 5 adds CreateIndex for appended unconditional, quoted, whole-column indexes
+on managed tables, unique or nonunique. Existing recorded index declarations must
+also fit the bounded grammar; expressions/prefixes/directions/predicates/options,
+comments and IF NOT EXISTS require adapters. No inferred deletion, replacement,
+reordering or physical-index adoption. Source/emitted SQL uses the existing byte
+budgets; this is not a total-work/index-size/identifier/catalog/IO budget.
+
+Public routes cover duplicate-data SQLite rollback/correction/retry, index-before-
+rebuild with unmanaged object/value preservation, native missing-index drift,
+acknowledged CREATE followed by resumable data failure, and ambiguous lost CREATE
+receipts. A counterfactual emitting nonunique SQL for a unique claim fails endpoint
+verification after native effects; it does not complete. Archived c27bf4d refuses
+format 5; current reader keeps prior format-4 artifacts and fixed format-2/3 fixture
+identities. Model-free SQLite deployment enforces uniqueness. No ledger conversion.
+
+Next: explicit index removal/replacement with negative postconditions, then bounded
+CHECK changes. Construction/claim authority, unexpected-object ownership boundaries,
+FK referenced-column/index/type proof, broader workflow/recovery/resource/evolution
+coverage remain unfinished. Guides/release-scope/API reconciliation are deferred.

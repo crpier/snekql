@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Add bounded `CreateIndex` generation/execution for appended named whole-column
+  indexes on SQLite and MariaDB. Format 5 carries the new operation; older routes
+  retain formats/identities. Cover SQLite duplicate-data rollback and rebuild
+  preservation, native acknowledged-step recovery and ambiguous lost receipts.
+  Conditional adoption, expressions/prefixes/options and index removal/replacement
+  remain unsupported; no ledger conversion or automatic repair.
+
 - Add bounded required-to-nullable `AllowNull` generation/execution on SQLite and
   MariaDB, preserving values and composing with default changes/removal. Coupled
   constraints and lexer comments are refused; opposing nullability operations need

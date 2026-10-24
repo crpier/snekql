@@ -26,7 +26,7 @@ def duplicate_package_keys_are_not_silently_resolved() -> None:
 def package_version_is_explicit_and_not_coerced() -> None:
     """Omission or numeric coercion must not silently select a compiler epoch."""
     package = m.compile(m.generate("001", [], backend="sqlite"))
-    for version in (None, 2.0, "2", 1, 4.0, 5):
+    for version in (None, 2.0, "2", 1, 4.0, 5.0, 6):
         payload = json.loads(package.dump())
         if version is None:
             del payload["version"]

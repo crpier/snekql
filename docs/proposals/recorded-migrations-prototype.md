@@ -5,8 +5,9 @@ Status: **experimental, incomplete, not ready for production or merge**.
 This implements the first vertical slices of the design discussed in #475,
 replacing the function-only direction in draft #476. The prototype lives in
 `snekql.experimental.migrations`; existing migration interfaces are unchanged.
-Artifact formats 2, 3 and 4 are provisional. Format 3 adds explicit default
-transitions; format 4 adds required-to-nullable relaxation on both backends.
+Artifact formats 2, 3, 4 and 5 are provisional. Format 3 adds explicit default
+transitions; format 4 adds required-to-nullable relaxation and format 5 adds
+named index creation on both backends.
 Unchanged operation sets retain their existing format. Format 1 remains
 unsupported, and old experimental ledgers have no automatic upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
@@ -42,15 +43,16 @@ validation. Escaped quotes, backslashes and punctuation inside strings do not
 consume structural units. Duplicate decoded object keys are refused at every
 level, including differently escaped spellings of the same key.
 
-The version must be an explicit JSON integer `2`, `3` or `4`; omission, numeric
+The version must be an explicit JSON integer `2`, `3`, `4` or `5`; omission, numeric
 coercion, unknown versions and omitted operation kinds cannot select a reader/
-compiler through defaults or union ordering. `AllowNull` selects format 4;
+compiler through defaults or union ordering. `CreateIndex` selects format 5;
+otherwise `AllowNull` selects format 4;
 otherwise `ChangeDefault` selects format 3, and old operation sets select format 2.
-Format 2 refuses default operations/metadata. Formats 2/3 refuse relaxation
+Formats 2/3/4 refuse `create_index`. Format 2 refuses default operations/metadata. Formats 2/3 refuse relaxation
 operations and even an empty `relaxed` contraction field. Empty new fields are
 omitted from older routes, preserving their shapes and identities.
 The format is a package capability, not a monotonically increasing history
-counter: an unchanged operation set can still emit format 2 after a format-4
+counter: an unchanged operation set can still emit format 2 after a format-5
 predecessor. The reader checks the compiler-selected format as part of integrity. The current reader still recompiles the
 recorded draft and requires the frozen execution and digest to agree. These
 checks do not authenticate publishers or make construction SQL a sandbox.
@@ -513,6 +515,46 @@ chosen data-fill policy from preservation of existing non-NULL values and future
 insertion defaults. Separate routes above cover native defaults and explicit
 nullable defaulted additions; relaxation is described below. No ledger upgrade or
 retrospective recertification is introduced. User guides remain deferred.
+
+## Named index additions
+
+`CreateIndex(table_name=..., sql=...)` creates a new named index on an already
+managed table. Generation derives appended ordinary index declarations; removals,
+replacements and reordering existing recorded declarations remain unresolved. The
+operation does not rebuild rows or infer ownership of an existing physical index.
+
+The bounded grammar is unconditional `CREATE [UNIQUE] INDEX`, quoted names, the
+exact recorded owner, and a nonempty comma-separated list of whole managed columns.
+Existing recorded indexes must also fit this grammar for addition. Expressions,
+prefix lengths, explicit directions/collations, predicates, options, conditional
+`IF NOT EXISTS`, lexer comments and extra statements require an adapter. ASCII-case
+colliding recorded names are refused. This is not a full SQL parser or universal
+preflight: engine name collisions, permissions, data and engine limits may still
+refuse execution. Unconditional CREATE cannot silently adopt an existing index.
+
+SQLite unique-index failure on existing duplicates rolls back the receipt and
+leaves rows unchanged; explicit data correction permits the original prepared-plan
+retry. An explicitly ordered index-then-relaxation route projects the new index
+through the existing rebuild, retaining an unmanaged BLOB/default/index/view/trigger
+without firing the insert trigger during copying. This is not new deletion authority.
+
+Native endpoint checks prove the listed index facts. Missing-index drift blocks a
+subsequent route. An acknowledged CREATE followed by a failed typed UPDATE resumes
+the UPDATE after explicit data correction, not CREATE. A lost CREATE receipt remains
+ambiguous even when the correct index is present: no replay, implicit adoption or
+structural reconciliation is authorized. Application writes are not paused by schema
+writer exclusion; concurrent writes and engine-specific build behavior remain caller
+rollout concerns, not an atomic native package promise.
+
+**Format 5** introduces `create_index`, with no new contraction field or ledger
+layout. Formats 2/3/4 explicitly refuse the operation. Actual archived reader
+`c27bf4d` refuses both new backend artifacts; current reading retains the preceding
+format-4 artifacts byte-for-byte and the fixed format-2/3 identities. A model-free
+SQLite child deploys format 2 then 5, preserves old rows/defaults and demonstrates
+unique enforcement. No general compatibility or retrospective certification claim.
+
+Index removal/replacement still needs explicit authorization and a negative
+postcondition proving disappearance; CHECK alterations remain separate next work.
 
 ## Required-to-nullable relaxation
 
@@ -1072,7 +1114,7 @@ on MariaDB, including the period between preparation and application.
 | Required-column enforcement and explicit column removal | Executed on both engines; populated full SQLite expand/backfill/contract route tested; rename and dependent-object changes remain unsupported |
 | Long resumable backfill | Unimplemented; only individual bounded UPDATE operations |
 | General custom SQL / Python | Unimplemented; typed UPDATE output only |
-| Historical codec/compiler evolution | Formats 2/3/4 checked against their operation vocabulary; fixed old-writer creation/addition/contraction fixtures retain identity; no general codec or long-term compatibility promise |
+| Historical codec/compiler evolution | Formats 2/3/4/5 checked against their operation vocabulary; fixed old-writer creation/addition/contraction fixtures retain identity; no general codec or long-term compatibility promise |
 | Source freshness / collaboration tooling | No file-management or automatic semantic rebase interface |
 
 The dedicated connection currently uses path/credentials/TLS and SQLite busy

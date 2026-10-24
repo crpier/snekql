@@ -1,8 +1,8 @@
 """Experimental recorded-state migration authoring and frozen execution packages.
 
-Formats 2/3/4 are prototypes, not a supported long-term interchange contract.
-Format 3 adds defaults and format 4 adds nullability relaxation; older routes
-retain their existing formats.
+Formats 2/3/4/5 are prototypes, not a supported long-term interchange contract.
+Format 3 adds defaults, format 4 relaxation and format 5 index creation;
+older routes retain their existing formats.
 Models are consulted only during generation; loading packages imports none.
 """
 
@@ -29,6 +29,7 @@ from snekql.experimental._migration_sql import (
 from snekql.model import Table
 from snekql.query import Write
 from snekql.storage import _extract_logical_type, _resolve_model_hint
+lazy from snekql.experimental._migration_indexes import add_index
 lazy from snekql.experimental._migration_mariadb import mariadb_default_parts
 lazy from snekql.experimental._migration_target import (
     Prepared,
@@ -84,6 +85,14 @@ class CreateTable(_Value):
 
     kind: Literal["create_table"] = "create_table"
     table: TableState
+
+
+class CreateIndex(_Value):
+    """Create a new named whole-column index on a managed table, without adoption."""
+
+    kind: Literal["create_index"] = "create_index"
+    table_name: str
+    sql: str
 
 
 class AdoptTable(_Value):
@@ -210,6 +219,7 @@ class Draft(_Value):
     operations: tuple[
         CreateTable
         | AdoptTable
+        | CreateIndex
         | AddColumn
         | RequireNotNull
         | AllowNull
@@ -226,6 +236,7 @@ class Draft(_Value):
         self,
         *operations: CreateTable
         | AdoptTable
+        | CreateIndex
         | AddColumn
         | RequireNotNull
         | AllowNull
@@ -297,7 +308,7 @@ class Package(_Value):
     Digests detect changes, not malicious publishers. Load only trusted packages.
     """
 
-    version: Literal[2, 3, 4] = 2
+    version: Literal[2, 3, 4, 5] = 2
     draft: Draft
     statements: tuple[str | None, ...]
     contractions: tuple[Contraction | None, ...]
@@ -401,7 +412,12 @@ def generate(
     desired = {table.name: table for table in tables}
     unresolved = [_relinquish_decision(name) for name in old.keys() - desired.keys()]
     operations: list[
-        CreateTable | AddColumn | RequireNotNull | AllowNull | ChangeDefault
+        CreateTable
+        | CreateIndex
+        | AddColumn
+        | RequireNotNull
+        | AllowNull
+        | ChangeDefault
     ] = []
     for table in tables:
         if table.name not in old:
@@ -433,8 +449,13 @@ def _changes(
     desired: TableState,
     backend: Backend,
     defaulted_additions: Literal["leave_null"] | None,
-) -> tuple[list[AddColumn | RequireNotNull | AllowNull | ChangeDefault], list[str]]:
-    candidates: list[AddColumn | RequireNotNull | AllowNull | ChangeDefault] = []
+) -> tuple[
+    list[AddColumn | RequireNotNull | AllowNull | ChangeDefault | CreateIndex],
+    list[str],
+]:
+    candidates: list[
+        AddColumn | RequireNotNull | AllowNull | ChangeDefault | CreateIndex
+    ] = []
     removed = [
         column.name
         for column in current.columns
@@ -480,10 +501,23 @@ def _changes(
         current = _contract_table(
             current, DropColumn(table_name=desired.name, column_name=name), backend
         )
+    current, indexes = _index_additions(current, desired, backend)
+    candidates.extend(indexes)
     if current != desired:
         msg = "alteration is not representable by supported operations"
         raise PackageError(msg)
     return candidates, removed
+
+
+def _index_additions(
+    current: TableState, desired: TableState, backend: Backend
+) -> tuple[TableState, list[CreateIndex]]:
+    additions = []
+    for sql in desired.indexes:
+        if sql not in current.indexes:
+            current = add_index(current, sql, backend)
+            additions.append(CreateIndex(table_name=desired.name, sql=sql))
+    return current, additions
 
 
 def _addition_column(
@@ -674,6 +708,12 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
             _relinquish(tables, operation.table_name)
         elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
+        elif isinstance(operation, CreateIndex):
+            tables[operation.table_name] = add_index(
+                _managed_table(tables, operation.table_name),
+                operation.sql,
+                draft.target.backend,
+            )
         elif isinstance(operation, AddColumn):
             tables[operation.table_name] = _add_column(
                 _managed_table(tables, operation.table_name), operation.column
@@ -706,6 +746,12 @@ def contract_digest(draft: Draft, *, point: str) -> str:
             _relinquish(tables, operation.table_name)
         elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
+        elif isinstance(operation, CreateIndex):
+            tables[operation.table_name] = add_index(
+                _managed_table(tables, operation.table_name),
+                operation.sql,
+                draft.target.backend,
+            )
         elif isinstance(operation, AddColumn):
             tables[operation.table_name] = _add_column(
                 _managed_table(tables, operation.table_name), operation.column
@@ -938,10 +984,15 @@ class _Emission:
 
 
 def _emit_table(
-    operation: CreateTable | AdoptTable,
+    operation: CreateTable | AdoptTable | CreateIndex,
     tables: dict[str, TableState],
     emission: _Emission,
 ) -> None:
+    if isinstance(operation, CreateIndex):
+        table = _managed_table(tables, operation.table_name)
+        tables[operation.table_name] = add_index(table, operation.sql, emission.backend)
+        emission.emit(operation.sql)
+        return
     table = operation.table
     if isinstance(operation, AdoptTable):
         _emit_adoption(table, tables, emission)
@@ -986,7 +1037,7 @@ def _draft_sql(draft: Draft) -> Iterator[str]:
             yield from _table_sql(operation.table)
         elif isinstance(operation, AddColumn | ChangeDefault):
             yield operation.column.definition
-        elif isinstance(operation, DataChange):
+        elif isinstance(operation, DataChange | CreateIndex):
             yield operation.sql
 
 
@@ -1053,7 +1104,9 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
         raise PackageError(msg)
     emission.flush()
     version = (
-        4
+        5
+        if any(isinstance(op, CreateIndex) for op in draft.operations)
+        else 4
         if any(isinstance(op, AllowNull) for op in draft.operations)
         else 3
         if any(isinstance(op, ChangeDefault) for op in draft.operations)
@@ -1091,6 +1144,7 @@ __all__ = [
     "Checkpoint",
     "ColumnState",
     "Contraction",
+    "CreateIndex",
     "CreateTable",
     "DataChange",
     "Draft",
