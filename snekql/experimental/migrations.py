@@ -1,8 +1,8 @@
 """Experimental recorded-state migration authoring and frozen execution packages.
 
-Formats 2/3/4/5/6/7 are prototypes, not a supported long-term interchange contract.
+Formats 2/3/4/5/6/7/8 are prototypes, not a supported long-term interchange contract.
 Formats 3/4 add defaults/relaxation; formats 5/6 add index creation/removal;
-format 7 adds named CHECKs. Older routes retain their existing formats.
+format 7 adds named CHECKs and format 8 removes them. Older routes retain their existing formats.
 Models are consulted only during generation; loading packages imports none.
 """
 
@@ -29,7 +29,12 @@ from snekql.experimental._migration_sql import (
 from snekql.model import Table
 from snekql.query import Write
 from snekql.storage import _extract_logical_type, _resolve_model_hint
-lazy from snekql.experimental._migration_checks import add_check, check_additions
+lazy from snekql.experimental._migration_checks import (
+    add_check,
+    check_additions,
+    check_removals,
+    drop_check,
+)
 lazy from snekql.experimental._migration_indexes import (
     add_index,
     drop_index,
@@ -116,6 +121,14 @@ class AddCheck(_Value):
     definition: str
 
 
+class DropCheck(_Value):
+    """Explicitly remove one recorded named table CHECK, never an implicit constraint."""
+
+    kind: Literal["drop_check"] = "drop_check"
+    table_name: str
+    check_name: str
+
+
 class AdoptTable(_Value):
     """Claim a matching existing SQLite table without creating or changing it."""
 
@@ -184,6 +197,9 @@ class Contraction(_Value):
     dropped: tuple[str, ...] = ()
     defaults: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
     relaxed: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
+    removed_checks: tuple[str, ...] = Field(
+        default=(), exclude_if=lambda value: not value
+    )
     added_checks: tuple[str, ...] = Field(
         default=(), exclude_if=lambda value: not value
     )
@@ -244,6 +260,7 @@ class Draft(_Value):
         CreateTable
         | AdoptTable
         | AddCheck
+        | DropCheck
         | CreateIndex
         | DropIndex
         | AddColumn
@@ -263,6 +280,7 @@ class Draft(_Value):
         *operations: CreateTable
         | AdoptTable
         | AddCheck
+        | DropCheck
         | CreateIndex
         | DropIndex
         | AddColumn
@@ -301,8 +319,10 @@ class Draft(_Value):
             }
         )
 
-    def resolve(self, *removals: DropColumn | DropIndex | RelinquishTable) -> Self:
-        """Authorize named removals; index removals precede dependent alterations."""
+    def resolve(
+        self, *removals: DropColumn | DropIndex | DropCheck | RelinquishTable
+    ) -> Self:
+        """Authorize named removals; index/CHECK removals precede dependent alterations."""
         unresolved = list(self.unresolved)
         for removal in removals:
             decision = (
@@ -310,6 +330,8 @@ class Draft(_Value):
                 if isinstance(removal, RelinquishTable)
                 else _index_decision(removal.table_name, removal.index_name)
                 if isinstance(removal, DropIndex)
+                else _check_decision(removal.table_name, removal.check_name)
+                if isinstance(removal, DropCheck)
                 else _drop_decision(removal.table_name, removal.column_name)
             )
             if decision not in unresolved:
@@ -319,9 +341,13 @@ class Draft(_Value):
         return self.model_copy(
             update={
                 "operations": (
-                    *(op for op in removals if isinstance(op, DropIndex)),
+                    *(op for op in removals if isinstance(op, DropIndex | DropCheck)),
                     *self.operations,
-                    *(op for op in removals if not isinstance(op, DropIndex)),
+                    *(
+                        op
+                        for op in removals
+                        if not isinstance(op, DropIndex | DropCheck)
+                    ),
                 ),
                 "unresolved": tuple(unresolved),
             }
@@ -342,7 +368,7 @@ class Package(_Value):
     Digests detect changes, not malicious publishers. Load only trusted packages.
     """
 
-    version: Literal[2, 3, 4, 5, 6, 7] = 2
+    version: Literal[2, 3, 4, 5, 6, 7, 8] = 2
     draft: Draft
     statements: tuple[str | None, ...]
     contractions: tuple[Contraction | None, ...]
@@ -448,6 +474,7 @@ def generate(
     operations: list[
         CreateTable
         | AddCheck
+        | DropCheck
         | CreateIndex
         | DropIndex
         | AddColumn
@@ -463,6 +490,7 @@ def generate(
                 current, removed_indexes = index_removals(
                     old[table.name], table, backend
                 )
+                current, removed_checks = check_removals(current, table, backend)
                 candidates, removed = _changes(
                     current, table, backend, defaulted_additions
                 )
@@ -472,6 +500,9 @@ def generate(
                 )
             else:
                 operations.extend(candidates)
+                unresolved.extend(
+                    _check_decision(table.name, name) for name in removed_checks
+                )
                 unresolved.extend(
                     _index_decision(table.name, name) for name in removed_indexes
                 )
@@ -602,6 +633,10 @@ def _relinquish(tables: dict[str, TableState], name: str) -> None:
         msg = f"cannot relinquish unmanaged table {name!r}"
         raise PackageError(msg)
     del tables[name]
+
+
+def _check_decision(table: str, name: str) -> str:
+    return f"{table}: explicitly authorize removal of CHECK {name!r}"
 
 
 def _index_decision(table: str, name: str) -> str:
@@ -751,9 +786,13 @@ def _query_type(model: type[Table[Any]], name: str) -> str | None:
 
 
 def _auxiliary_change(
-    table: TableState, operation: AddCheck | CreateIndex | DropIndex, backend: Backend
+    table: TableState,
+    operation: AddCheck | DropCheck | CreateIndex | DropIndex,
+    backend: Backend,
 ) -> TableState:
     """Project non-column structural operations at historical query checkpoints."""
+    if isinstance(operation, DropCheck):
+        return drop_check(table, operation.check_name, backend)
     if isinstance(operation, AddCheck):
         return add_check(table, operation.definition, backend)
     if isinstance(operation, DropIndex):
@@ -773,7 +812,7 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
             _relinquish(tables, operation.table_name)
         elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
-        elif isinstance(operation, AddCheck | CreateIndex | DropIndex):
+        elif isinstance(operation, AddCheck | DropCheck | CreateIndex | DropIndex):
             tables[operation.table_name] = _auxiliary_change(
                 _managed_table(tables, operation.table_name),
                 operation,
@@ -811,7 +850,7 @@ def contract_digest(draft: Draft, *, point: str) -> str:
             _relinquish(tables, operation.table_name)
         elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
-        elif isinstance(operation, AddCheck | CreateIndex | DropIndex):
+        elif isinstance(operation, AddCheck | DropCheck | CreateIndex | DropIndex):
             tables[operation.table_name] = _auxiliary_change(
                 _managed_table(tables, operation.table_name),
                 operation,
@@ -1040,6 +1079,10 @@ class _Emission:
                     "ALTER COLUMN `" + name.replace("`", "``") + "` " + action
                 )
         clauses.extend("ADD " + definition for definition in pending.added_checks)
+        clauses.extend(
+            "DROP CONSTRAINT `" + name.replace("`", "``") + "`"
+            for name in pending.removed_checks
+        )
         sql = (
             None
             if self.backend == "sqlite"
@@ -1055,17 +1098,29 @@ class _Emission:
 
 
 def _emit_table(
-    operation: CreateTable | AdoptTable | CreateIndex | DropIndex | AddCheck,
+    operation: CreateTable
+    | AdoptTable
+    | CreateIndex
+    | DropIndex
+    | AddCheck
+    | DropCheck,
     tables: dict[str, TableState],
     emission: _Emission,
 ) -> None:
-    if isinstance(operation, AddCheck):
+    if isinstance(operation, AddCheck | DropCheck):
         emission.flush()
         table = _managed_table(tables, operation.table_name)
-        after = add_check(table, operation.definition, emission.backend)
+        after = _auxiliary_change(table, operation, emission.backend)
         tables[operation.table_name] = after
         emission.pending = Contraction(
-            before=table, after=after, added_checks=(operation.definition,)
+            before=table,
+            after=after,
+            added_checks=(operation.definition,)
+            if isinstance(operation, AddCheck)
+            else (),
+            removed_checks=(operation.check_name,)
+            if isinstance(operation, DropCheck)
+            else (),
         )
         emission.flush()
         return
@@ -1196,7 +1251,9 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
         raise PackageError(msg)
     emission.flush()
     version = (
-        7
+        8
+        if any(isinstance(op, DropCheck) for op in draft.operations)
+        else 7
         if any(isinstance(op, AddCheck) for op in draft.operations)
         else 6
         if any(isinstance(op, DropIndex) for op in draft.operations)
@@ -1245,6 +1302,7 @@ __all__ = [
     "CreateTable",
     "DataChange",
     "Draft",
+    "DropCheck",
     "DropColumn",
     "DropIndex",
     "Package",

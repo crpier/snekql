@@ -5,10 +5,11 @@ Status: **experimental, incomplete, not ready for production or merge**.
 This implements the first vertical slices of the design discussed in #475,
 replacing the function-only direction in draft #476. The prototype lives in
 `snekql.experimental.migrations`; existing migration interfaces are unchanged.
-Artifact formats 2 through 7 are provisional. Format 3 adds explicit default
+Artifact formats 2 through 8 are provisional. Format 3 adds explicit default
 transitions; format 4 adds required-to-nullable relaxation and format 5 adds
 named index creation on both backends. Format 6 adds explicit index removal and
-bounded replacement; format 7 adds named table CHECKs.
+bounded replacement; format 7 adds named table CHECKs and format 8 explicitly
+removes/replaces them.
 Unchanged operation sets retain their existing format. Format 1 remains
 unsupported, and old experimental ledgers have no automatic upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
@@ -44,19 +45,21 @@ validation. Escaped quotes, backslashes and punctuation inside strings do not
 consume structural units. Duplicate decoded object keys are refused at every
 level, including differently escaped spellings of the same key.
 
-The version must be an explicit JSON integer `2`, `3`, `4`, `5`, `6` or `7`; omission, numeric
+The version must be an explicit JSON integer `2`, `3`, `4`, `5`, `6`, `7` or `8`; omission, numeric
 coercion, unknown versions and omitted operation kinds cannot select a reader/
-compiler through defaults or union ordering. `AddCheck` selects format 7;
+compiler through defaults or union ordering. `DropCheck` selects format 8;
+otherwise `AddCheck` selects format 7;
 otherwise `DropIndex` selects format 6;
 otherwise `CreateIndex` selects format 5;
 otherwise `AllowNull` selects format 4;
 otherwise `ChangeDefault` selects format 3, and old operation sets select format 2.
+Formats 2–7 refuse `drop_check` and even empty `removed_checks` metadata.
 Formats 2–6 refuse `add_check` and even empty `added_checks` metadata.
 Formats 2/3/4/5 refuse `drop_index`; formats 2/3/4 refuse `create_index`. Format 2 refuses default operations/metadata. Formats 2/3 refuse relaxation
 operations and even an empty `relaxed` contraction field. Empty new fields are
 omitted from older routes, preserving their shapes and identities.
 The format is a package capability, not a monotonically increasing history
-counter: an unchanged operation set can still emit format 2 after a format-7
+counter: an unchanged operation set can still emit format 2 after a format-8
 predecessor. The reader checks the compiler-selected format as part of integrity. The current reader still recompiles the
 recorded draft and requires the frozen execution and digest to agree. These
 checks do not authenticate publishers or make construction SQL a sandbox.
@@ -559,7 +562,7 @@ SQLite child deploys format 2 then 5, preserves old rows/defaults and demonstrat
 unique enforcement. No general compatibility or retrospective certification claim.
 
 Explicit removal/replacement adds separate authorization and negative postconditions
-below. Named CHECK additions are supported separately; removal/replacement remains next work.
+below. Named CHECK additions and explicit bounded removal/replacement are supported separately.
 
 ## Explicit index removal and replacement
 
@@ -619,8 +622,8 @@ No ledger-layout change, conversion, retrospective certification or user guide.
 
 `AddCheck(table_name=..., definition=...)` adds one named table constraint to an
 already managed table. Generation derives appended named table CHECK declarations;
-removing/replacing/reordering old CHECKs and changing inline column constraints
-remain unresolved. Names must be new among recorded constraints, expressions may
+removing/replacing old CHECKs requires the explicit decisions described below.
+Reordering and changing inline column constraints remain unresolved. Names must be new among recorded constraints, expressions may
 reference only managed columns, and comments, suffixes and extra statements refuse.
 SQLite preparation also checks names in the observed definition, so preservation
 cannot accidentally reuse an unmanaged constraint name.
@@ -663,8 +666,62 @@ Actual archived reader `10863c4` refuses the new backend artifacts. Preceding
 format-4/5/6 artifacts stay byte-identical and fixed format-2/3 identities remain.
 A model-free SQLite child deploys format 2→7, preserves rows/defaults and rejects an
 invalid subsequent insert. No ledger conversion, general compatibility promise or
-user guide. CHECK removal/replacement still needs its own explicit authority and
-endpoint proof; broader approved hardening remains incomplete.
+user guide. Explicit removal/replacement is described below; broader approved
+hardening remains incomplete.
+
+## Explicit named CHECK removal and bounded replacement
+
+`DropCheck(table_name=..., check_name=...)` authorizes exactly one recorded bounded
+named table CHECK. Omission or changed declaration produces an unresolved decision;
+`draft.resolve(DropCheck(...))` supplies exact-name authority before dependent changes.
+No implicit removal of inline/unnamed/JSON-alias/unowned constraints, primary/unique
+keys or foreign keys. Ambiguous recorded names refuse. Only surviving-then-new
+ordering is derived; arbitrary constraint reordering remains unsupported.
+
+SQLite removes the identified declaration through the observed-definition rebuild,
+retaining other constraints, values/defaults and unmanaged BLOB/index/view/trigger.
+A later nullable rebuild cannot resurrect the removed rule. Same-name replacement
+composes DROP with AddCheck: invalid old data rolls the entire SQLite package back,
+including its receipt and old CHECK. Explicit data correction allows original-plan
+retry without copying through insert triggers.
+
+Native ALTER TABLE DROP CONSTRAINT is **not intrinsically CHECK-specific**. A real
+owned-server probe found that an implicitly named FK sharing the CHECK name was
+removed instead, leaving the CHECK behind. Endpoint refusal alone was too late.
+Preparation now refuses observed ambiguous constraint types, and every DROP rechecks
+`information_schema.TABLE_CONSTRAINTS` for exactly one CHECK before executing.
+Missing metadata is never permission to DROP. Constraints created earlier in the
+package are checked when materialized; refusal can leave those earlier authorized
+CREATEs committed/acknowledged, but does not execute the unsafe DROP. Recovery also
+refuses such an unverifiable next step rather than offering it as retryable. Tests
+learn actual native implicit names, not version-dependent naming guesses.
+
+An acknowledged native DROP followed by rejected ADD leaves a real constraint gap.
+Data correction permits ADD-only retry, not replaying DROP. Lost DROP receipts stay
+ambiguous even if the old CHECK is absent; no CHECK-aware structural reconciliation
+or automatic repair. The native boundary is not an atomic replacement/rollout.
+
+Explicit removal adds a negative endpoint claim: the old named CHECK must be absent
+and its physical owner available, even after relinquishment. Same-name replacements
+are excluded from the absence set and verified positively in the managed target.
+Skipped-DROP counterfactuals previously falsely completed on both backends after
+relinquishment. SQLite now rolls back, while native uncertainty remains and recovery
+finish refuses. These are name-scoped claims, not a promise that no other constraint
+restricts the same values. General unexpected-object, privilege-visibility and
+cross-schema/application dependency guarantees remain separate.
+
+**Format 8** carries `drop_check` and `removed_checks`; formats 2–7 refuse either,
+even empty metadata. Older routes omit the field and keep identities. Archived
+`84574ce` refuses new backend artifacts; format4/5/6/7 artifacts remain byte-identical
+and fixed format2/3 fixtures pass. Model-free SQLite format2→7→8 deployment preserves
+42/default7 and accepts -1 after removal. No ledger conversion or retrospective
+certificate. SQLite removal/relinquishment/readoption and native removal/relinquishment
+are covered, not all mixed ownership workflows.
+
+The bounded common-change slices now include these CHECK routes. Broader
+construction/claim authority, negative-ownership/drift and FK compatibility,
+workflow/interruption coverage, resource bounds and compiler/codec/ledger evolution
+remain open. No production-readiness, merge/release authorization or user guides.
 
 ## Required-to-nullable relaxation
 
@@ -1224,7 +1281,7 @@ on MariaDB, including the period between preparation and application.
 | Required-column enforcement and explicit column removal | Executed on both engines; populated full SQLite expand/backfill/contract route tested; rename and dependent-object changes remain unsupported |
 | Long resumable backfill | Unimplemented; only individual bounded UPDATE operations |
 | General custom SQL / Python | Unimplemented; typed UPDATE output only |
-| Historical codec/compiler evolution | Formats 2/3/4/5/6/7 checked against their operation vocabulary; fixed old-writer creation/addition/contraction fixtures retain identity; no general codec or long-term compatibility promise |
+| Historical codec/compiler evolution | Formats 2/3/4/5/6/7/8 checked against their operation vocabulary; fixed old-writer creation/addition/contraction fixtures retain identity; no general codec or long-term compatibility promise |
 | Source freshness / collaboration tooling | No file-management or automatic semantic rebase interface |
 
 The dedicated connection currently uses path/credentials/TLS and SQLite busy

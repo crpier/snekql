@@ -6,7 +6,11 @@ from typing import Any
 from pydantic import Field
 
 from snekql.errors import SchemaError
-from snekql.experimental._migration_checks import add_check
+from snekql.experimental._migration_checks import (
+    add_check,
+    drop_check,
+    removed_check_obstacle,
+)
 from snekql.experimental._migration_indexes import (
     validate_index_dependencies,
     validate_removed_sqlite_indexes,
@@ -245,6 +249,9 @@ def _rebuild(
         msg = f"missing table {table!r} for contraction"
         raise PackageError(msg)
     observed = change.before.model_copy(update={"sql": source})
+    for name in change.removed_checks:
+        observed = drop_check(observed, name, "sqlite")
+    source = observed.sql
     for definition in change.added_checks:
         observed = add_check(observed, definition, "sqlite")
     _, parts, suffix = split_table(source)
@@ -442,6 +449,8 @@ def validate_completed(package: Package, objects: list[tuple[Any, ...]]) -> None
     except (PackageError, SchemaError) as error:
         msg = f"managed schema postcondition failed; transaction rolled back: {error}"
         raise PackageError(msg) from error
+    if obstacle := removed_check_obstacle(package, objects):
+        raise PackageError(obstacle)
 
 
 def _part_signature(sql: str) -> tuple[str | None, tuple[tuple[str, str], ...]]:

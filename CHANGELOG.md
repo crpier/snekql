@@ -4,13 +4,19 @@
 
 ### Experimental
 
+- Add explicit `DropCheck` and bounded replacement on SQLite/MariaDB (format 8),
+  with negative endpoint proof even after relinquishment. SQLite retains rollback,
+  preservation and corrected retry; native DROP/ADD leaves a real gap on failure.
+  Verify native constraint authority before DROP so an implicitly named foreign key
+  cannot be removed instead of the CHECK. Lost receipts remain ambiguous, and unsafe
+  intermediate names refuse before DROP/recovery; no repair or ledger conversion.
+
 - Add bounded named-table `AddCheck` generation/execution on SQLite and MariaDB
   (format 7), reusing the finite CHECK grammar/work and SQL-byte envelopes. Require
   enabled engine checking without changing session policy, and refuse SQLite
   observed-name collisions. Cover old-data rejection, rollback/preservation,
   corrected native retry, acknowledged-step recovery and ambiguous lost receipts.
-  CHECK removal/replacement and inline rewrites remain unresolved; no general
-  enforcement certificate, automatic repair or ledger conversion.
+  Inline rewrites remain unresolved; no general enforcement certificate, automatic repair or ledger conversion.
 
 - Add explicit bounded `DropIndex` authorization and DROP/CREATE replacement on
   SQLite and MariaDB (format 6). Prove removed-index absence before completion and

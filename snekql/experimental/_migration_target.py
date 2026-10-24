@@ -12,6 +12,7 @@ lazy import aiomysql
 lazy import aiosqlite
 
 from snekql.errors import SchemaError
+from snekql.experimental._migration_checks import removed_check_obstacle
 from snekql.experimental._migration_indexes import removed_indexes
 from snekql.experimental._migration_mariadb import (
     MariaDBIndex,
@@ -323,6 +324,7 @@ class Target:
             if not already_applied:
                 await self._index_removal_environment(package)
                 await self._check_addition_environment(package)
+                await self._check_removal_authority(package)
                 validate_adopted(package, objects)
                 names = {row[1] for row in objects}
                 conflicts = [
@@ -405,6 +407,7 @@ class Target:
         marker = "?" if self._sqlite else "%s"
         for index, step in enumerate(prepared.steps[first:], start=first + 1):
             await self._check_addition_environment(package)
+            await self._check_removal_authority(package, step=index - 1)
             if step.transactional and not self._sqlite:
                 if await self._transactional_obstacles():
                     msg = "transactional data changes require InnoDB tables without triggers or stored routines"
@@ -453,6 +456,33 @@ class Target:
             (_digest(completed_catalog), package.digest),
         )
         await self._connection.commit()
+
+    async def _check_removal_authority(
+        self, package: Package, *, step: int | None = None
+    ) -> None:
+        """Disambiguate native DROP CONSTRAINT before it can remove an implicit FK."""
+        if self._sqlite:
+            return
+        changes = (
+            package.contractions
+            if step is None
+            else package.contractions[step : step + 1]
+        )
+        for change in changes:
+            if change is None:
+                continue
+            for name in change.removed_checks:
+                rows = await self._query(
+                    "SELECT CONSTRAINT_TYPE FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s AND CONSTRAINT_NAME=%s",
+                    (change.before.name, name),
+                )
+                # A declaration may be created by an earlier package step. Its
+                # actual namespace must be checked again immediately before DROP.
+                if not rows and step is None:
+                    continue
+                if rows != [("CHECK",)]:
+                    msg = "CHECK removal requires an unambiguous native CHECK name; an implicit FK/other constraint or unavailable metadata requires an explicit adapter"
+                    raise PackageError(msg)
 
     async def _check_addition_environment(self, package: Package) -> None:
         """Require engine CHECK validation without changing the caller's session policy."""
@@ -507,6 +537,8 @@ class Target:
         """Explain a managed table or column that cannot resolve on this server."""
         await self._index_removal_environment(package)
         obstacle = await self._removed_index_obstacle(package, catalog)
+        if check_obstacle := removed_check_obstacle(package, catalog):
+            obstacle = check_obstacle + "; committed MariaDB effects may remain"
         if obstacle or not package.target.tables:
             return obstacle
         mode = (await self._query("SELECT @@SESSION.sql_mode"))[0][0]
@@ -1090,6 +1122,7 @@ class Target:
                 or "server/session rendering profile differs from the acknowledged observation"
             )
         elif catalog == row[4]:
+            await self._check_removal_authority(prepared.package, step=acknowledged)
             if await self._transactional_obstacles():
                 explanation = "transactional recovery is not proven with non-InnoDB tables, triggers or stored routines"
             else:
@@ -1251,6 +1284,7 @@ class Target:
                     return "already_applied"
                 await self._index_removal_environment(package)
                 await self._check_addition_environment(package)
+                await self._check_removal_authority(package)
                 validate_adopted(package, objects)
                 if prepared.catalog_digest != catalog:
                     msg = "prepared catalog is stale; prepare and review again"

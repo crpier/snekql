@@ -144,8 +144,8 @@ suite or changed runtime behavior is committed by this audit.
   add without a default, then set the future-write default. Required additions and
   implicit fill-with-default policies remain unsupported. Named whole-column index
   additions use format 5; explicit bounded index removal/replacement now uses
-  format 6. Named table CHECK additions use format 7; CHECK removal/replacement
-  and inline alterations remain unsupported.
+  format 6. Named table CHECK additions use format 7; explicit bounded removal/replacement
+  uses format 8. Inline changes and arbitrary reordering remain unsupported.
 - SQLite adoption is intentionally stricter than normal endpoint checks: exact
   bounded declarations/indexes/storage and additional guards, rather than the
   managed-subset check used when preserving unmanaged additions. MariaDB adoption
@@ -272,7 +272,7 @@ empty new metadata; older operation sets retain their existing formats and diges
 An actual archived `5b2b891` reader refuses the new backend artifacts. A separate
 SQLite process deploys the frozen route without authoring models. This does not
 establish general compiler/codec compatibility, a ledger upgrade, or all interruption
-windows. Broader index variants, CHECK removal/replacement and the audit queue remain open.
+windows. Broader index variants, broader CHECK forms and the audit queue remain open.
 
 ### Named index creation checkpoint
 
@@ -292,7 +292,7 @@ format 5; current reader keeps prior format-4 artifacts and fixed format-2/3 fix
 identities. Model-free SQLite deployment enforces uniqueness. No ledger conversion.
 
 Explicit bounded index removal/replacement now has negative postconditions below;
-named CHECK additions are covered below; removal/replacement remains next. Construction/claim authority, unexpected-object ownership boundaries,
+named CHECK additions and explicit removal/replacement are covered below. Construction/claim authority, unexpected-object ownership boundaries,
 FK referenced-column/index/type proof, broader workflow/recovery/resource/evolution
 coverage remain unfinished. Guides/release-scope/API reconciliation are deferred.
 
@@ -351,6 +351,36 @@ with no new structural reconciliation. Native effects are not rolled back as a p
 
 Archived 10863c4 refuses format7; format4/5/6 artifacts and fixed format2/3 identities
 remain unchanged. Model-free SQLite deployment preserves rows/default and rejects an
-invalid insert. No ledger conversion. Next CHECK removal/replacement, followed by the
+invalid insert. No ledger conversion. CHECK removal/replacement is covered below; remaining work includes the
 remaining construction/claim/negative-ownership/FK compatibility, workflow/interruption,
 resource and genuine compiler/codec/ledger evolution work. Guides remain deferred.
+
+### Explicit CHECK removal/replacement checkpoint
+
+DropCheck requires an exact uniquely recorded bounded named table CHECK. Generation
+leaves destructive decisions unresolved; resolution precedes dependent changes.
+No inline/unnamed/JSON-alias/unowned removal, and no arbitrary reordering. SQLite
+rebuild retains other constraints/unmanaged objects/values/defaults, never resurrects
+the rule during later relaxation, and rolls back failed same-name replacement. Explicit
+data correction permits retry; no copy-time insert trigger execution.
+
+Native DROP CONSTRAINT can resolve an implicit FK sharing the CHECK name! A genuine
+owned-server probe removed that FK and left the CHECK. New catalog authority gates
+refuse ambiguous existing names at preparation and recheck exactly one native CHECK
+before every DROP. Intermediate CREATEs may remain committed when their generated
+names cannot be verified; the unsafe DROP is not issued and recovery refuses that
+next step. Tests learn actual implicit names. This is not general privilege-visibility,
+construction/claim, dependency or FK type/index compatibility proof.
+
+Native acknowledged DROP/failed ADD leaves a gap, with corrected ADD-only retry.
+Lost receipts stay ambiguous; no new structural reconciliation/automatic repair.
+Explicit negative endpoint proof survives relinquishment and checks physical owner
+availability. Same-name managed replacements use positive proof. Skipped-DROP
+counterfactuals exposed false completion after relinquishment on both engines; guarded
+SQLite rolls back and native uncertainty/finish refusal remain.
+
+Format8 adds drop_check/removed_checks; formats2–7 refuse vocabulary/empty metadata.
+Archived84574ce refuses artifacts; format4/5/6/7 identities and fixed format2/3 fixtures
+remain. Model-free SQLite2→7→8 preserves42/default7 and allows-1. Removal/relinquishment/
+readoption (SQLite) and native relinquishment routes are covered. No ledger conversion.
+Broader points1–4 remain incomplete; guides deferred.
