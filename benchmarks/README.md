@@ -254,3 +254,7 @@ contracts, grouped reads, memory/profiles and unfavorable point-read controls.
 [Resolved numeric classification](numeric-classification-514.md) retains derived
 SUM's per-value gates while avoiding repeated annotation analysis, with rejected
 initial layout costs, revised declaration memory, controls and reproducible data.
+
+[Derived MIN/MAX decoding](derived-extrema-516.md) resolves retained projection
+policies per execution, with clean-revision measurements, adverse one-row controls,
+matched repeats, retained-output memory and reproducible scripts.
