@@ -258,3 +258,7 @@ initial layout costs, revised declaration memory, controls and reproducible data
 [Derived MIN/MAX decoding](derived-extrema-516.md) resolves retained projection
 policies per execution, with clean-revision measurements, adverse one-row controls,
 matched repeats, retained-output memory and reproducible scripts.
+
+[Built-in value-expression decoding](value-expressions-518.md) binds native-domain
+decoders per execution, with ordinary/extrema controls, adverse point-read results,
+NULL-context regressions, output memory and reproducible scripts.
