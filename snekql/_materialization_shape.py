@@ -175,7 +175,6 @@ class _RowSpan:
 
     nullable: bool
     offset: int
-    stop: int
     shape: SourceRowShape
 
 
@@ -198,13 +197,8 @@ class JoinedRowShape:
             *((join.model, join.join_type == "LEFT") for join in joins),
         ):
             shape = SourceRowShape.for_source(source, presence=True)
-            offset = len(fields)
+            spans.append(_RowSpan(shape=shape, offset=len(fields), nullable=nullable))
             fields.extend(shape.fields)
-            spans.append(
-                _RowSpan(
-                    shape=shape, offset=offset, stop=len(fields), nullable=nullable
-                )
-            )
         return cls(fields=tuple(fields), spans=tuple(spans))
 
     def resolve_decoders(
@@ -239,7 +233,7 @@ class JoinedRowShape:
         """Split joined rows using the same spans that expanded the SQL fields."""
         return tuple(
             span.shape.materialize(
-                row[span.offset : span.stop],
+                row[span.offset : span.offset + span.shape.width],
                 backend=backend,
                 validate=validate,
                 nullable=span.nullable,
