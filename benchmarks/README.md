@@ -286,3 +286,8 @@ results, with static-contract tests and reproduction scripts.
 [Joined span endpoint investigation](joined-spans-530.md) records a **shelved**
 candidate: removed width calls, modest LEFT-join gains, mixed other throughput,
 point-read declines and added plan memory. No production change proposed.
+
+[Guarded multi-field iteration](multi-field-532.md) measures explicit SELECT and
+RETURNING projections: repeated wide tuple gains, variable named results,
+unchanged output retention and mixed point controls. StopIteration behavior and
+all per-field/final contracts retained; no general point/backend gain claim.
