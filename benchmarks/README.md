@@ -274,3 +274,7 @@ SQLite UPDATE results, memory, mixed read controls and reproduction scripts.
 [Single-field SELECT materialization](single-field-524.md) avoids projection
 iteration while retaining collection/scalar/named shapes, with SQLite throughput,
 unchanged retention, adverse one-row controls and reproduction scripts.
+
+[Single-field RETURNING materialization](single-returning-526.md) selects direct
+single-value decoding per batch, with SQLite UPDATE evidence, unchanged retention,
+adverse point/control results and reproduction scripts.
