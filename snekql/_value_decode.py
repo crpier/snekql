@@ -18,6 +18,7 @@ lazy from snekql._query_state import (
     require_field,
     require_single_column_subquery,
 )
+lazy from snekql._value_expression import ValueExpression
 lazy from snekql.errors import QueryCompilationError
 lazy from snekql.expressions import _Aggregate, _Scalar
 lazy from snekql.storage import Attr, StorageBackend
@@ -208,6 +209,19 @@ def _resolve_expression_decoder(
     validate: bool,
 ) -> Callable[[object], object]:
     """Resolve built-in expressions off the ordinary-column dispatch path."""
+    if type(column) is ValueExpression:
+        decode = column.__decode__
+        if nullable_models and column.owner in nullable_models:
+
+            def decode_value_nullable(raw: object) -> object:
+                # Keep NULL-extension evaluation at the original value boundary:
+                # CASE/COALESCE may produce a value even without their owner row.
+                if raw is None and column.__nullable_when_extended__():
+                    return None
+                return decode(raw)
+
+            return decode_value_nullable
+        return decode
     if type(column) is _Scalar:
         inner = require_single_column_subquery(column.subquery)
         decode = resolve_projection_decoder(
