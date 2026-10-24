@@ -4,6 +4,15 @@
 
 ### Experimental
 
+- Add explicit `generate(..., defaulted_additions="leave_null")` for nullable
+  defaulted additions on SQLite and MariaDB. Frozen ADD-without-default followed
+  by ChangeDefault leaves existing rows NULL and sets defaults for future writes;
+  required additions and implicit backfill remain unsupported. Cover SQLite
+  rollback/unmanaged-object preservation and native acknowledged-ADD/lost-default
+  recovery. Native steps are not atomic; intervening application writes can see
+  NULL. The preceding reader loads the frozen route unchanged; no new artifact
+  format or ledger conversion is introduced.
+
 - Enable bounded MariaDB set/change/remove-default migrations through frozen
   `ChangeDefault` operations. Default-only changes use targeted ALTER COLUMN;
   required/default composition retains NULL preconditions and requires explicit

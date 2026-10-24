@@ -140,7 +140,9 @@ suite or changed runtime behavior is committed by this audit.
   transition, refusing old NULLs unless an explicit earlier backfill fixes them.
   Bounded native default alteration now uses targeted SET/DROP DEFAULT; combined
   required/default changes use the existing MODIFY route and NULL preconditions.
-  Automatic defaulted additions and index/CHECK alteration remain unsupported.
+  Nullable defaulted additions now require explicit `defaulted_additions="leave_null"`:
+  add without a default, then set the future-write default. Required additions and
+  implicit fill-with-default policies remain unsupported, as do index/CHECK alterations.
 - SQLite adoption is intentionally stricter than normal endpoint checks: exact
   bounded declarations/indexes/storage and additional guards, rather than the
   managed-subset check used when preserving unmanaged additions. MariaDB adoption
@@ -180,6 +182,9 @@ form will be production-supported:
    does not promise omission failure under every session mode or identity policy.
    Native set/change/remove defaults now execute, including required composition,
    preserved values, model-free deployment/relinquishment and acknowledged recovery.
+   Nullable defaulted additions have an explicit leave-NULL policy, tested with
+   scalar/text/NULL/clocks, SQLite preservation/rollback and native partial progress.
+   Native ADD/default steps are separate; writes in between can receive NULL.
    Lost default receipts remain ambiguous: require/drop-only reconciliation cannot
    certify ignored defaults. Old completed receipts are not retrospectively certified.
 3. **Harden the implemented compiler-language CHECK proof.** Finite expressions,
@@ -211,6 +216,9 @@ form will be production-supported:
    existing NULLs block it, and an explicit typed-backfill route is covered.
    Native transitions now use the same operation vocabulary; an actual `a650a3b`
    reader explicitly refuses them rather than silently executing unsupported work.
+   New defaulted-addition generation uses the existing AddColumn/ChangeDefault
+   vocabulary: an actual `9795442` reader loads both backend artifacts unchanged
+   and deploys SQLite without authoring models. No new format or ledger conversion.
    Compilation now separately limits SQL to 1 MiB per source and 4 MiB aggregate,
    including repeated input, emitted SQL and frozen contraction SQL; output is
    charged incrementally. An actual older oversized artifact is explicitly refused,

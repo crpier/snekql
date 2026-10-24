@@ -336,14 +336,20 @@ def generate(
     *,
     backend: Backend,
     previous: Package | None = None,
+    defaulted_additions: Literal["leave_null"] | None = None,
 ) -> Draft:
     """Draft changes against recorded intent, never against a developer database.
 
     Unsupported alterations and ownership removal remain explicit unresolved
     decisions. Supported routes include creation, nullable additions, typed
-    backfills, contraction, explicit whole-table relinquishment, and SQLite adoption
-    and default-only alterations.
+    backfills, contraction, default alterations, explicit whole-table relinquishment,
+    and SQLite adoption. Opting into ``defaulted_additions="leave_null"`` adds
+    nullable columns without defaults, then sets defaults for future writes. It
+    never infers an existing-row backfill or permits required additions.
     """
+    if defaulted_additions not in (None, "leave_null"):
+        msg = "unsupported defaulted-addition policy"
+        raise PackageError(msg)
     require_scaffold_models(backend, models)
     if previous is not None:
         Package.load(previous.dump())
@@ -387,7 +393,9 @@ def generate(
             operations.append(CreateTable(table=table))
         elif old[table.name] != table:
             try:
-                candidates, removed = _changes(old[table.name], table, backend)
+                candidates, removed = _changes(
+                    old[table.name], table, backend, defaulted_additions
+                )
             except PackageError:
                 unresolved.append(
                     f"{table.name}: alteration requires a supported structured operation"
@@ -406,7 +414,10 @@ def generate(
 
 
 def _changes(
-    current: TableState, desired: TableState, backend: Backend
+    current: TableState,
+    desired: TableState,
+    backend: Backend,
+    defaulted_additions: Literal["leave_null"] | None,
 ) -> tuple[list[AddColumn | RequireNotNull | ChangeDefault], list[str]]:
     candidates: list[AddColumn | RequireNotNull | ChangeDefault] = []
     removed = [
@@ -419,9 +430,14 @@ def _changes(
             (item for item in current.columns if item.name == column.name), None
         )
         if existing is None:
-            change = AddColumn(table_name=desired.name, column=column)
-            current = _add_column(current, column)
+            initial = _addition_column(column, backend, defaulted_additions)
+            change = AddColumn(table_name=desired.name, column=initial)
+            current = _add_column(current, initial)
             candidates.append(change)
+            if initial != column:
+                default_change = ChangeDefault(table_name=desired.name, column=column)
+                current = _contract_table(current, default_change, backend)
+                candidates.append(default_change)
         elif existing != column:
             default_change = ChangeDefault(table_name=desired.name, column=column)
             try:
@@ -449,6 +465,22 @@ def _changes(
         msg = "alteration is not representable by supported operations"
         raise PackageError(msg)
     return candidates, removed
+
+
+def _addition_column(
+    column: ColumnState, backend: Backend, policy: Literal["leave_null"] | None
+) -> ColumnState:
+    if policy is None:
+        return column
+    try:
+        definition = (
+            mariadb_default_parts(column.definition)[0]
+            if backend == "mariadb"
+            else without_default(column.definition)
+        )
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    return column.model_copy(update={"definition": definition})
 
 
 def _relinquish_decision(table: str) -> str:

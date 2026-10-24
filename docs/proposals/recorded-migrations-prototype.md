@@ -383,6 +383,49 @@ earlier structured steps without executing them. Separate expand/backfill/contra
 revisions remain useful for application rollout compatibility; completing a
 migration does not establish application readiness.
 
+## Defaulted additions: explicit existing-row policy
+
+Defaulted additions to an existing table remain unresolved unless generation is
+called with `defaulted_additions="leave_null"`. That opt-in applies to new nullable
+columns: add an unconstrained column **without** its default, then set the desired
+default using `ChangeDefault`. It does not authorize required additions, other
+constraints, or any backfill. Existing ordinary nullable additions and creation
+behavior are unchanged. Required additions need an explicit nullable stage and
+chosen data work before required enforcement.
+
+The policy is frozen as existing ordered operations, not a deployment-time option:
+`AddColumn` followed by `ChangeDefault`. Format 3 already represents that route;
+no new operation, reader field or ledger conversion is introduced. An actual archived
+`9795442` reader loads the new SQLite and MariaDB artifacts byte-for-byte unchanged,
+and deploys the SQLite route without importing authoring models. Existing historical
+fixture identities remain unchanged. This demonstrates that bounded compatibility,
+not arbitrary compiler/codec evolution.
+
+Old rows receive SQL NULL, not the scalar/text/clock default. Future omitted-value
+writes after completion use the requested default; explicit NULL stays NULL. Integer,
+encoded text (including DEFAULT/quotes/backslash/NUL/Unicode), explicit NULL and clock
+routes cover both backends, including multiple added columns. A counterfactual that
+puts DEFAULT 7 directly on native ADD fails the old-row assertion despite reaching
+the expected endpoint schema: schema proof alone does not establish this data policy.
+
+SQLite's ADD and subsequent rebuild share the writer transaction with later data
+work. A conflicting UPDATE rolls back the column, rebuild and new receipt. After
+explicit row correction, the original plan succeeds while preserving an unmanaged
+blob/default, index, view and insert-trigger behavior; rebuilding does not fire the
+application insert trigger.
+
+MariaDB has separate durable ADD and default steps, **not an atomic multi-step schema
+transition**. The policy concerns rows present at ADD, not a row snapshot at prepare.
+Application inserts between ADD and SET DEFAULT may also receive NULL; schema-writer
+exclusion is not an application-write pause. Rollout compatibility remains the caller's
+responsibility. A lost default receipt after acknowledged ADD remains ambiguous and
+cannot authorize resume. A test explicitly restores the default-free acknowledged
+schema, then resumes only the default step without repeating ADD. That operator
+restoration is not automatic repair or a general recovery recipe.
+
+No fill-with-default policy, required-addition shortcut, nullable relaxation or
+new default-aware structural reconciliation is enabled here.
+
 ## MariaDB default alterations
 
 `generate` and explicit `ChangeDefault` now support setting, changing and removing
@@ -972,7 +1015,7 @@ on MariaDB, including the period between preparation and application.
 | --- | --- |
 | Greenfield creation | Executed on SQLite and MariaDB, including repeat application |
 | Consecutive unapplied revisions | Generated against recorded state without a database |
-| Nullable addition | Executes while preserving populated rows; automatic defaulted additions remain unsupported |
+| Nullable addition | Ordinary additions supported; nullable defaulted additions require explicit `defaulted_additions="leave_null"`, preserving old NULLs rather than backfilling |
 | Default changes | SQLite rebuilds and bounded native SET/DROP DEFAULT; required composition and acknowledged native recovery tested; lost native default receipts remain ambiguous |
 | Typed intermediate backfill | Generated source type-checks; typed UPDATE and scalar bindings execute on both engines; is_admin-to-nullable-role expand/backfill tested |
 | Route edited after backfill authoring | Stale checkpoint digest rejected |
