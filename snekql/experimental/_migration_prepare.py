@@ -11,6 +11,7 @@ from snekql.experimental._migration_sql import (
     Token,
     ascii_lower,
     column_name,
+    nullable_definition,
     references,
     required_definition,
     split_table,
@@ -235,7 +236,10 @@ def _rebuild(
     columns = {
         column_name(part): part for part in parts if column_name(part) is not None
     }
-    if not {*change.required, *change.dropped, *change.defaults} <= columns.keys():
+    if (
+        not {*change.required, *change.dropped, *change.defaults, *change.relaxed}
+        <= columns.keys()
+    ):
         msg = f"{table}: contraction columns are missing"
         raise PackageError(msg)
     retained = [part for part in parts if column_name(part) not in change.dropped]
@@ -274,6 +278,10 @@ def _rebuild(
     revised = [
         required_definition(part) if column_name(part) in change.required else part
         for part in retained
+    ]
+    revised = [
+        nullable_definition(part) if column_name(part) in change.relaxed else part
+        for part in revised
     ]
     revised = [
         next(

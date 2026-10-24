@@ -5,7 +5,8 @@ from collections.abc import Iterator
 from typing import Any
 
 _OLD_FORMAT = 2
-_FORMAT_VERSIONS = {_OLD_FORMAT, 3}
+_RELAXATION_FORMAT = 4
+_FORMAT_VERSIONS = {_OLD_FORMAT, 3, _RELAXATION_FORMAT}
 _MAX_BYTES = 8 * 1024 * 1024
 _MAX_DEPTH = 64
 _MAX_STRUCTURE = 100_000
@@ -98,5 +99,23 @@ def read_package(text: str) -> Any:
         msg = (
             "default transition operations/metadata require execution package version 3"
         )
+        raise ValueError(msg)
+    if value["version"] < _RELAXATION_FORMAT and (
+        (
+            isinstance(operations, list)
+            and any(
+                isinstance(op, dict) and op.get("kind") == "allow_null"
+                for op in operations
+            )
+        )
+        or (
+            isinstance(contractions, list)
+            and any(
+                isinstance(change, dict) and "relaxed" in change
+                for change in contractions
+            )
+        )
+    ):
+        msg = "nullability relaxation operations/metadata require execution package version 4"
         raise ValueError(msg)
     return value

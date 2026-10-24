@@ -659,11 +659,11 @@ async def required_default_removal_can_follow_an_explicit_typed_backfill() -> No
 
 
 @test(mark="fast")
-def combined_default_generation_keeps_unsupported_changes_unresolved() -> None:
-    """Default composition cannot authorize nullable relaxation."""
+def combined_nullable_default_generation_uses_frozen_relaxation() -> None:
+    """Nullable/default composition now needs the explicit format-four vocabulary."""
     required = m.compile(m.generate("001", [Original], backend="sqlite"))
     relaxed = m.generate("002", [NegativeDefault], backend="sqlite", previous=required)
-    assert relaxed.unresolved
-    assert_eq(relaxed.operations, ())
-    with assert_raises(m.PackageError):
-        m.compile(relaxed)
+    assert_eq(relaxed.unresolved, ())
+    package = m.compile(relaxed)
+    assert_eq(package.version, 4)
+    assert_eq(m.Package.load(package.dump()), package)

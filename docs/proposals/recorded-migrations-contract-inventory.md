@@ -185,6 +185,10 @@ form will be production-supported:
    Nullable defaulted additions have an explicit leave-NULL policy, tested with
    scalar/text/NULL/clocks, SQLite preservation/rollback and native partial progress.
    Native ADD/default steps are separate; writes in between can receive NULL.
+   Required-to-nullable relaxation now uses bounded AllowNull (format 4), preserving
+   values and composing with defaults. Coupled constraints/comments require adapters;
+   SQLite rollback and native partial-proof refusal are covered. Lost relaxation
+   receipts remain ambiguous; the require/drop projection cannot ignore that fact.
    Lost default receipts remain ambiguous: require/drop-only reconciliation cannot
    certify ignored defaults. Old completed receipts are not retrospectively certified.
 3. **Harden the implemented compiler-language CHECK proof.** Finite expressions,
@@ -257,3 +261,12 @@ implementation without relying on unstable line numbers.
 - `tests/experimental/test_migration_targets.py` and
   `tests/experimental/test_migration_contraction.py`: existing public-seam native
   and SQLite behaviors; not a claim that every source-audit row is fully tested.
+
+### Relaxation format boundary
+
+Format 4 adds `allow_null` and `relaxed` metadata. Formats 2/3 refuse both, including
+empty new metadata; older operation sets retain their existing formats and digests.
+An actual archived `5b2b891` reader refuses the new backend artifacts. A separate
+SQLite process deploys the frozen route without authoring models. This does not
+establish general compiler/codec compatibility, a ledger upgrade, or all interruption
+windows. Bounded index/CHECK changes and the broader audit queue remain open.

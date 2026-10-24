@@ -1,7 +1,8 @@
 """Experimental recorded-state migration authoring and frozen execution packages.
 
-Formats 2/3 are prototypes, not a supported long-term interchange contract.
-Format 3 adds default transitions; unchanged operations retain format 2.
+Formats 2/3/4 are prototypes, not a supported long-term interchange contract.
+Format 3 adds defaults and format 4 adds nullability relaxation; older routes
+retain their existing formats.
 Models are consulted only during generation; loading packages imports none.
 """
 
@@ -20,6 +21,7 @@ from snekql._schema_plan import build_schema_plan
 from snekql.errors import SchemaError, SnekqlError
 from snekql.experimental._migration_package import read_package
 from snekql.experimental._migration_sql import (
+    nullable_definition,
     references,
     required_definition,
     without_default,
@@ -107,6 +109,14 @@ class RequireNotNull(_Value):
     column_name: str
 
 
+class AllowNull(_Value):
+    """Relax an ordinary managed NOT NULL column without changing its values."""
+
+    kind: Literal["allow_null"] = "allow_null"
+    table_name: str
+    column_name: str
+
+
 class ChangeDefault(_Value):
     """Change only a column's default; existing values are preserved."""
 
@@ -143,6 +153,7 @@ class Contraction(_Value):
     required: tuple[str, ...] = ()
     dropped: tuple[str, ...] = ()
     defaults: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
+    relaxed: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
 
 
 class Checkpoint(_Value):
@@ -201,6 +212,7 @@ class Draft(_Value):
         | AdoptTable
         | AddColumn
         | RequireNotNull
+        | AllowNull
         | ChangeDefault
         | DropColumn
         | RelinquishTable
@@ -216,6 +228,7 @@ class Draft(_Value):
         | AdoptTable
         | AddColumn
         | RequireNotNull
+        | AllowNull
         | ChangeDefault
         | DropColumn
         | RelinquishTable
@@ -284,7 +297,7 @@ class Package(_Value):
     Digests detect changes, not malicious publishers. Load only trusted packages.
     """
 
-    version: Literal[2, 3] = 2
+    version: Literal[2, 3, 4] = 2
     draft: Draft
     statements: tuple[str | None, ...]
     contractions: tuple[Contraction | None, ...]
@@ -387,7 +400,9 @@ def generate(
     old = {table.name: table for table in before.tables}
     desired = {table.name: table for table in tables}
     unresolved = [_relinquish_decision(name) for name in old.keys() - desired.keys()]
-    operations: list[CreateTable | AddColumn | RequireNotNull | ChangeDefault] = []
+    operations: list[
+        CreateTable | AddColumn | RequireNotNull | AllowNull | ChangeDefault
+    ] = []
     for table in tables:
         if table.name not in old:
             operations.append(CreateTable(table=table))
@@ -418,8 +433,8 @@ def _changes(
     desired: TableState,
     backend: Backend,
     defaulted_additions: Literal["leave_null"] | None,
-) -> tuple[list[AddColumn | RequireNotNull | ChangeDefault], list[str]]:
-    candidates: list[AddColumn | RequireNotNull | ChangeDefault] = []
+) -> tuple[list[AddColumn | RequireNotNull | AllowNull | ChangeDefault], list[str]]:
+    candidates: list[AddColumn | RequireNotNull | AllowNull | ChangeDefault] = []
     removed = [
         column.name
         for column in current.columns
@@ -443,8 +458,12 @@ def _changes(
             try:
                 revised = _contract_table(current, default_change, backend)
             except PackageError:
-                change = RequireNotNull(
-                    table_name=desired.name, column_name=column.name
+                change = (
+                    AllowNull(table_name=desired.name, column_name=column.name)
+                    if not existing.nullable and column.nullable
+                    else RequireNotNull(
+                        table_name=desired.name, column_name=column.name
+                    )
                 )
                 current = _contract_table(current, change, backend)
                 candidates.append(change)
@@ -508,7 +527,7 @@ def _drop_decision(table: str, column: str) -> str:
 
 def _contract_table(
     table: TableState,
-    operation: RequireNotNull | DropColumn | ChangeDefault,
+    operation: RequireNotNull | AllowNull | DropColumn | ChangeDefault,
     backend: Backend,
 ) -> TableState:
     column = next(
@@ -526,6 +545,11 @@ def _contract_table(
     tail = table.sql[len(prefix) :]
     if isinstance(operation, ChangeDefault):
         replacement = _changed_default_column(column, operation.column, backend)
+        columns = tuple(
+            replacement if item == column else item for item in table.columns
+        )
+    elif isinstance(operation, AllowNull):
+        replacement = _relaxed_column(column, tail, backend)
         columns = tuple(
             replacement if item == column else item for item in table.columns
         )
@@ -573,6 +597,26 @@ def _contract_table(
         + tail
     )
     return table.model_copy(update={"columns": columns, "sql": sql})
+
+
+def _relaxed_column(column: ColumnState, tail: str, backend: Backend) -> ColumnState:
+    """Derive only nullability/type changes, refusing coupled table constraints."""
+    if column.nullable or references(tail, {column.name}, mysql=backend == "mariadb"):
+        msg = (
+            "AllowNull requires a required column without table-constraint dependencies"
+        )
+        raise PackageError(msg)
+    try:
+        definition = nullable_definition(column.definition, mysql=backend == "mariadb")
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    return column.model_copy(
+        update={
+            "nullable": True,
+            "definition": definition,
+            "query_type": column.query_type + " | None" if column.query_type else None,
+        }
+    )
 
 
 def _changed_default_column(
@@ -634,7 +678,9 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
             tables[operation.table_name] = _add_column(
                 _managed_table(tables, operation.table_name), operation.column
             )
-        elif isinstance(operation, RequireNotNull | DropColumn | ChangeDefault):
+        elif isinstance(
+            operation, RequireNotNull | AllowNull | DropColumn | ChangeDefault
+        ):
             tables[operation.table_name] = _contract_table(
                 _managed_table(tables, operation.table_name),
                 operation,
@@ -664,7 +710,9 @@ def contract_digest(draft: Draft, *, point: str) -> str:
             tables[operation.table_name] = _add_column(
                 _managed_table(tables, operation.table_name), operation.column
             )
-        elif isinstance(operation, RequireNotNull | DropColumn | ChangeDefault):
+        elif isinstance(
+            operation, RequireNotNull | AllowNull | DropColumn | ChangeDefault
+        ):
             tables[operation.table_name] = _contract_table(
                 _managed_table(tables, operation.table_name),
                 operation,
@@ -813,11 +861,20 @@ class _Emission:
         self,
         before: TableState,
         after: TableState,
-        operation: RequireNotNull | DropColumn | ChangeDefault,
+        operation: RequireNotNull | AllowNull | DropColumn | ChangeDefault,
     ) -> None:
         if self.pending is not None and self.pending.before.name != before.name:
             self.flush()
         pending = self.pending or Contraction(before=before, after=after)
+        if (
+            isinstance(operation, AllowNull)
+            and operation.column_name in pending.required
+        ) or (
+            isinstance(operation, RequireNotNull)
+            and operation.column_name in pending.relaxed
+        ):
+            msg = "opposing nullability transitions require a checkpoint"
+            raise PackageError(msg)
         self.pending = pending.model_copy(
             update={
                 "after": after,
@@ -827,6 +884,9 @@ class _Emission:
                 "dropped": (*pending.dropped, operation.column_name)
                 if isinstance(operation, DropColumn)
                 else pending.dropped,
+                "relaxed": (*pending.relaxed, operation.column_name)
+                if isinstance(operation, AllowNull)
+                else pending.relaxed,
                 "defaults": (*pending.defaults, operation.column_name)
                 if isinstance(operation, ChangeDefault)
                 else pending.defaults,
@@ -843,14 +903,15 @@ class _Emission:
         clauses = [
             "MODIFY COLUMN "
             + next(c.definition for c in pending.after.columns if c.name == name)
-            for name in pending.required
+            for name in dict.fromkeys((*pending.required, *pending.relaxed))
+            if name not in pending.dropped
         ]
         clauses.extend(
             "DROP COLUMN `" + name.replace("`", "``") + "`" for name in pending.dropped
         )
         if self.backend == "mariadb":
             for name in dict.fromkeys(pending.defaults):
-                if name in (*pending.required, *pending.dropped):
+                if name in (*pending.required, *pending.relaxed, *pending.dropped):
                     continue
                 column = next(c for c in pending.after.columns if c.name == name)
                 _, expression = mariadb_default_parts(column.definition)
@@ -957,7 +1018,9 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
             _relinquish(tables, operation.table_name)
             emission.relinquished.add(operation.table_name)
             continue
-        if isinstance(operation, RequireNotNull | DropColumn | ChangeDefault):
+        if isinstance(
+            operation, RequireNotNull | AllowNull | DropColumn | ChangeDefault
+        ):
             before = _managed_table(tables, operation.table_name)
             after = _contract_table(before, operation, draft.target.backend)
             tables[operation.table_name] = after
@@ -989,10 +1052,15 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
         msg = "operation endpoint does not match the recorded target state"
         raise PackageError(msg)
     emission.flush()
-    payload = {
-        "version": 3
+    version = (
+        4
+        if any(isinstance(op, AllowNull) for op in draft.operations)
+        else 3
         if any(isinstance(op, ChangeDefault) for op in draft.operations)
-        else 2,
+        else 2
+    )
+    payload = {
+        "version": version,
         "draft": draft.model_dump(mode="json"),
         "statements": emission.statements,
         "bindings": emission.bindings,
@@ -1003,9 +1071,7 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
         ],
     }
     return Package(
-        version=3
-        if any(isinstance(op, ChangeDefault) for op in draft.operations)
-        else 2,
+        version=version,
         draft=draft,
         statements=tuple(emission.statements),
         bindings=tuple(emission.bindings),
@@ -1020,6 +1086,7 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
 __all__ = [
     "AddColumn",
     "AdoptTable",
+    "AllowNull",
     "ChangeDefault",
     "Checkpoint",
     "ColumnState",

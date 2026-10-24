@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Add bounded required-to-nullable `AllowNull` generation/execution on SQLite and
+  MariaDB, preserving values and composing with default changes/removal. Coupled
+  constraints and lexer comments are refused; opposing nullability operations need
+  a checkpoint. Format 4 adds the operation/metadata while older routes retain
+  formats 2/3 and identities. Cover SQLite rollback and refuse native structural
+  reconciliation that would ignore relaxation; lost receipts remain ambiguous.
+
 - Add explicit `generate(..., defaulted_additions="leave_null")` for nullable
   defaulted additions on SQLite and MariaDB. Frozen ADD-without-default followed
   by ChangeDefault leaves existing rows NULL and sets defaults for future writes;

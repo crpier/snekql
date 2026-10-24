@@ -5,8 +5,9 @@ Status: **experimental, incomplete, not ready for production or merge**.
 This implements the first vertical slices of the design discussed in #475,
 replacing the function-only direction in draft #476. The prototype lives in
 `snekql.experimental.migrations`; existing migration interfaces are unchanged.
-Artifact formats 2 and 3 are provisional. Format 3 adds explicit default
-transitions on SQLite and MariaDB; unchanged operation sets still emit format 2. Format 1 remains
+Artifact formats 2, 3 and 4 are provisional. Format 3 adds explicit default
+transitions; format 4 adds required-to-nullable relaxation on both backends.
+Unchanged operation sets retain their existing format. Format 1 remains
 unsupported, and old experimental ledgers have no automatic upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
 
@@ -41,13 +42,15 @@ validation. Escaped quotes, backslashes and punctuation inside strings do not
 consume structural units. Duplicate decoded object keys are refused at every
 level, including differently escaped spellings of the same key.
 
-The version must be an explicit JSON integer `2` or `3`; omission, numeric
+The version must be an explicit JSON integer `2`, `3` or `4`; omission, numeric
 coercion, unknown versions and omitted operation kinds cannot select a reader/
-compiler through defaults or union ordering. Format 3 is required exactly when
-`ChangeDefault` is present. Format 2 refuses the new operation and even an empty
-new `defaults` contraction field; the compiler omits that field for old routes.
+compiler through defaults or union ordering. `AllowNull` selects format 4;
+otherwise `ChangeDefault` selects format 3, and old operation sets select format 2.
+Format 2 refuses default operations/metadata. Formats 2/3 refuse relaxation
+operations and even an empty `relaxed` contraction field. Empty new fields are
+omitted from older routes, preserving their shapes and identities.
 The format is a package capability, not a monotonically increasing history
-counter: an unchanged operation set can still emit format 2 after a format-3
+counter: an unchanged operation set can still emit format 2 after a format-4
 predecessor. The reader checks the compiler-selected format as part of integrity. The current reader still recompiles the
 recorded draft and requires the frozen execution and digest to agree. These
 checks do not authenticate publishers or make construction SQL a sandbox.
@@ -423,8 +426,8 @@ cannot authorize resume. A test explicitly restores the default-free acknowledge
 schema, then resumes only the default step without repeating ADD. That operator
 restoration is not automatic repair or a general recovery recipe.
 
-No fill-with-default policy, required-addition shortcut, nullable relaxation or
-new default-aware structural reconciliation is enabled here.
+This addition policy does not enable fill-with-default, a required-addition shortcut
+or new default-aware structural reconciliation. Relaxation has its own operation below.
 
 ## MariaDB default alterations
 
@@ -448,7 +451,7 @@ Generation can combine nullable-to-required enforcement with a default transitio
 That group uses the existing required-column MODIFY route with the final definition,
 not a second default clause for the same column. Existing NULLs refuse before new
 history/DDL; an explicit data correction allows retrying the original reviewed
-plan. This is not default-driven backfill or nullable relaxation.
+plan. This is not default-driven backfill; nullable relaxation is a separate operation.
 
 Frozen routes cover integer set/change/remove, NULL, encoded text with quotes,
 backslashes/NUL/Unicode, and parameterized DATETIME clocks. A separate process
@@ -507,10 +510,48 @@ after explicit application-data correction the original plan can be retried.
 Alternatively, an explicitly authored checkpoint and typed backfill can precede
 the generated operations in the same atomic package. Tests distinguish that
 chosen data-fill policy from preservation of existing non-NULL values and future
-insertion defaults. Required-to-nullable relaxation, defaulted column additions
-and combined MariaDB default alterations remain unresolved.
-No MariaDB ALTER DEFAULT, native recovery projection, ledger upgrade or
+insertion defaults. Separate routes above cover native defaults and explicit
+nullable defaulted additions; relaxation is described below. No ledger upgrade or
 retrospective recertification is introduced. User guides remain deferred.
+
+## Required-to-nullable relaxation
+
+`AllowNull(table_name=..., column_name=...)` removes an ordinary recorded NOT NULL
+constraint; generation derives it for supported required-to-nullable changes.
+It changes nullability and the historical query type, not storage, default, or
+existing values. A separate `ChangeDefault` can compose with it. SQL NULL inserts
+are exercised after application, independently of old rows and omitted defaults.
+Other constraints, triggers and application policies are not bypassed by relaxing
+the declared NOT NULL fact.
+
+This is bounded to an explicit, unnamed NOT NULL in an ordinary column declaration.
+Keys/auto-increment, generated clauses, inline UNIQUE/FK/CHECK or named constraints,
+recorded table-tail references to the column, and lexer comments require an adapter.
+Lexer comments are distinct from a SQL COMMENT attribute. The implementation is
+not a general constraint rewrite/equivalence engine. Opposing nullability operations
+on one column require a checkpoint rather than collapsing into an ambiguous group.
+A later explicit DropColumn does not emit MODIFY for the removed column.
+
+SQLite uses the observed-definition rebuild and existing copied-value/identity
+checks. A later conflicting UPDATE rolls back relaxation, default change and receipt;
+explicit row correction permits the original-plan retry. Native groups use MODIFY
+with the final definition, including a composed default removal, without a redundant
+ALTER DEFAULT clause for the same column. These tests preserve scalar values,
+retain/change/remove defaults and permit subsequent NULL writes in the tested routes.
+
+**Format 4** adds `allow_null` and the `relaxed` contraction metadata. Empty metadata
+is omitted for older routes. Formats 2/3 explicitly refuse the new vocabulary; an
+actual archived `5b2b891` reader refuses both new backend artifacts as unsupported
+version 4. A separate model-free SQLite process deploys format 2 then format 4.
+Existing frozen formats 2/3 retain their identities; no automatic conversion or
+ledger-layout change is introduced.
+
+Lost native relaxation receipts remain ambiguous. The older require/drop catalog
+projection cannot certify relaxation: a counterfactual removing its new guard
+incorrectly offered reconciliation after a column drop while the retained column
+was still NOT NULL. Even a correct changed endpoint is not a receipt or a newly
+supported structural reconciliation. This slice adds no native repair or total
+interruption/resource guarantee.
 
 ## MariaDB managed table and column checks
 
@@ -1027,10 +1068,11 @@ on MariaDB, including the period between preparation and application.
 | SQLite adoption / re-adoption | Explicit matching-table claim, rechecked under the writer lock; extensions/triggers and unknown renderings are rejected |
 | MariaDB adoption / cross-system transfer | Not implemented; SQLite adoption does not certify another backend or another manager's history |
 | SQLite preservation-sensitive rebuild | Bounded observed-definition rebuild; referencing rows, extras, generated columns, index/trigger/view behavior, storage and sequence state tested |
+| Required-to-nullable relaxation | Bounded AllowNull on both engines, default composition and SQLite rollback; coupled constraints refused and lost native receipts remain ambiguous |
 | Required-column enforcement and explicit column removal | Executed on both engines; populated full SQLite expand/backfill/contract route tested; rename and dependent-object changes remain unsupported |
 | Long resumable backfill | Unimplemented; only individual bounded UPDATE operations |
 | General custom SQL / Python | Unimplemented; typed UPDATE output only |
-| Historical codec/compiler evolution | Formats 2/3 checked against their operation vocabulary; fixed old-writer creation/addition/contraction fixtures retain identity; no general codec or long-term compatibility promise |
+| Historical codec/compiler evolution | Formats 2/3/4 checked against their operation vocabulary; fixed old-writer creation/addition/contraction fixtures retain identity; no general codec or long-term compatibility promise |
 | Source freshness / collaboration tooling | No file-management or automatic semantic rebase interface |
 
 The dedicated connection currently uses path/credentials/TLS and SQLite busy

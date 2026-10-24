@@ -109,6 +109,54 @@ def references(sql: str, names: set[str], *, mysql: bool = False) -> bool:
     )
 
 
+def _reject_sql_comments(sql: str, stream: tuple[Token, ...]) -> None:
+    end = 0
+    for token in stream:
+        if sql[end : token.start].strip():
+            msg = "SQL comments in nullability relaxation require an explicit adapter"
+            raise SchemaError(msg)
+        end = token.end
+    if sql[end:].strip():
+        msg = "SQL comments in nullability relaxation require an explicit adapter"
+        raise SchemaError(msg)
+
+
+def nullable_definition(sql: str, *, mysql: bool = False) -> str:
+    """Remove exactly one ordinary top-level NOT NULL, retaining other clauses."""
+    stream = tokens(sql, mysql=mysql)
+    _reject_sql_comments(sql, stream)
+    depth = 0
+    matches = []
+    for index, token in enumerate(stream[1:], start=1):
+        if token.kind == "punct" and token.value == "(":
+            depth += 1
+        elif token.kind == "punct" and token.value == ")":
+            depth -= 1
+        elif depth == 0 and token.kind == "word":
+            word = ascii_lower(token.value)
+            if word in {
+                "primary",
+                "auto_increment",
+                "constraint",
+                "generated",
+                "as",
+                "unique",
+                "references",
+                "check",
+            }:
+                msg = "nullability relaxation requires an ordinary unnamed column constraint"
+                raise SchemaError(msg)
+            if word == "not" and index + 1 < len(stream):
+                right = stream[index + 1]
+                if right.kind == "word" and ascii_lower(right.value) == "null":
+                    matches.append((token.start, right.end))
+    if len(matches) != 1:
+        msg = "nullability relaxation requires exactly one explicit NOT NULL"
+        raise SchemaError(msg)
+    start, end = matches[0]
+    return (sql[:start].rstrip() + " " + sql[end:].lstrip()).rstrip()
+
+
 def required_definition(sql: str, *, mysql: bool = False) -> str:
     """Add NOT NULL without removing defaults, collations or other column clauses."""
     stream = tokens(sql, mysql=mysql)
