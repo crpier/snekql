@@ -8,7 +8,8 @@ Models are consulted only during generation; loading packages imports none.
 import hashlib
 import json
 import keyword
-from collections.abc import Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from itertools import chain
 from typing import Any, Literal, Self, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -748,8 +749,9 @@ def _validate_data_change(
 
 
 class _Emission:
-    def __init__(self, backend: Backend) -> None:
+    def __init__(self, backend: Backend, sql_bytes: int) -> None:
         self.backend = backend
+        self.sql_bytes = sql_bytes
         self.statements: list[str | None] = []
         self.bindings: list[tuple[Parameter, ...]] = []
         self.transactional: list[bool] = []
@@ -765,6 +767,7 @@ class _Emission:
         transactional: bool = False,
     ) -> None:
         self.flush()
+        self.sql_bytes = _check_sql_budget((sql,), self.sql_bytes)
         self.statements.append(sql)
         self.bindings.append(params)
         self.transactional.append(transactional)
@@ -798,6 +801,9 @@ class _Emission:
         pending = self.pending
         if pending is None:
             return
+        self.sql_bytes = _check_sql_budget(
+            chain(_table_sql(pending.before), _table_sql(pending.after)), self.sql_bytes
+        )
         clauses = [
             "MODIFY COLUMN "
             + next(c.definition for c in pending.after.columns if c.name == name)
@@ -806,11 +812,14 @@ class _Emission:
         clauses.extend(
             "DROP COLUMN `" + name.replace("`", "``") + "`" for name in pending.dropped
         )
-        self.statements.append(
+        sql = (
             None
             if self.backend == "sqlite"
             else f"ALTER TABLE {pending.before.quoted_name} " + ", ".join(clauses)
         )
+        if sql is not None:
+            self.sql_bytes = _check_sql_budget((sql,), self.sql_bytes)
+        self.statements.append(sql)
         self.bindings.append(())
         self.transactional.append(False)
         self.contractions.append(pending)
@@ -850,11 +859,47 @@ def _emit_adoption(
     tables[table.name] = table
 
 
+def _table_sql(table: TableState) -> Iterator[str]:
+    yield table.sql
+    yield from table.indexes
+    yield from (column.definition for column in table.columns)
+
+
+def _draft_sql(draft: Draft) -> Iterator[str]:
+    """Visit SQL occurrences, not unique strings, without copying the whole draft."""
+    for state in (draft.before, draft.target):
+        for table in state.tables:
+            yield from _table_sql(table)
+    for operation in draft.operations:
+        if isinstance(operation, CreateTable | AdoptTable):
+            yield from _table_sql(operation.table)
+        elif isinstance(operation, AddColumn | ChangeDefault):
+            yield operation.column.definition
+        elif isinstance(operation, DataChange):
+            yield operation.sql
+
+
+def _check_sql_budget(sources: Iterable[str], used: int = 0) -> int:
+    """Bound individual sources and cumulative occurrences, including emitted SQL."""
+    limit = 1024 * 1024
+    for sql in sources:
+        size = len(sql.encode("utf-8")) if len(sql) <= limit else len(sql)
+        if size > limit:
+            msg = "migration SQL source exceeds UTF-8 byte limit (1 MiB)"
+            raise PackageError(msg)
+        used += size
+        if used > 4 * limit:
+            msg = "migration aggregate SQL exceeds UTF-8 byte limit (4 MiB)"
+            raise PackageError(msg)
+    return used
+
+
 def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
     """Validate the route and freeze SQL; never import current application models."""
+    sql_bytes = _check_sql_budget(_draft_sql(draft))
     _validate_draft(draft)
     tables = {table.name: table for table in draft.before.tables}
-    emission = _Emission(draft.target.backend)
+    emission = _Emission(draft.target.backend, sql_bytes)
     checkpoints: dict[str, str] = {}
     for operation in draft.operations:
         if isinstance(operation, RelinquishTable):

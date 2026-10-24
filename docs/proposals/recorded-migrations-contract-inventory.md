@@ -200,7 +200,13 @@ form will be production-supported:
    preservation and atomic rollback/retry now have public route coverage. A second
    fixed chain from writer `7932c4f` preserves an explicitly authored format-3
    required/default composition while current generation learns to derive it;
-   existing NULLs block it, and an explicit typed-backfill route is covered. This is input-decoding coverage, not whole-program resource bounds,
+   existing NULLs block it, and an explicit typed-backfill route is covered.
+   Compilation now separately limits SQL to 1 MiB per source and 4 MiB aggregate,
+   including repeated input, emitted SQL and frozen contraction SQL; output is
+   charged incrementally. An actual older oversized artifact is explicitly refused,
+   without changing normal artifact identities. Parameters, operation counts,
+   parser work, catalogs, prepared SQL, IO/deadlines and total memory remain outside
+   that byte envelope. This is input-decoding coverage, not whole-program resource bounds,
    general compiler compatibility or ledger evolution; no automatic conversion
    or retrospective recertification is available. Broader native
    adoption, arbitrary SQL equivalence, multiple heads, implicit stamping and

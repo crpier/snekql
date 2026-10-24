@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Bound experimental compilation to 1 MiB UTF-8 per SQL source and 4 MiB aggregate
+  SQL, counting repeated declarations, emitted statements and frozen contraction
+  SQL incrementally. Oversized older artifacts are explicitly refused; normal
+  format-2/3 identities remain unchanged. This is not a total-memory, parser-work
+  or database-IO bound, and introduces no automatic artifact/ledger conversion.
+
 - Generate combined SQLite nullable-to-required/default transitions using the
   existing structured operations and format 3. Refuse existing NULLs instead of
   backfilling implicitly; support an explicitly authored typed backfill before the

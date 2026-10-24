@@ -77,12 +77,46 @@ recertify completed history. Ledger-layout refusal and the no-automatic-upgrade
 policy remain unchanged; history must not be deleted or stamped as a workaround.
 
 These are **input-decoding limits**, not a whole-program resource guarantee.
-Reading the input string, generating/compiling/dumping in-memory objects, SQL
-parsing, native catalogs, ledger data, database IO/deadlines and total memory use
-remain outside this envelope. Authoring can still construct an oversized object;
-its serialized deployment input will be refused. Different JSON formatting can
-consume different wire budgets. This slice does not add streaming input, caller
-limit overrides or ledger conversion.
+Different JSON formatting can consume different wire budgets. The separate SQL
+compilation envelope below does not make every in-memory object fit this wire
+budget. There is no streaming input, caller limit override or ledger conversion.
+
+### SQL compilation envelope
+
+`compile` additionally admits at most **1 MiB UTF-8 per SQL source** and **4 MiB
+aggregate SQL bytes**. Comments, whitespace and repeated occurrences count; shared
+Python string objects do not get a discount. Counted input is:
+
+- table construction SQL, index SQL and column definitions in both recorded
+  before/target states;
+- the same fields in CREATE/adoption operations, replacement/addition column
+  definitions, and typed data-change SQL in operations.
+
+This input is checked before semantic route validation and compiler edits, without
+first copying the whole draft into a JSON-compatible dictionary. Each emitted
+statement is then charged before retention. Each frozen contraction's before/after
+table, index and column SQL is also charged before retention: deferred SQLite
+rebuilds cannot evade the budget with `None` statement slots. The cumulative total
+includes input and output occurrences. Native ALTER SQL is counted as well as its
+frozen structural metadata. Within-budget artifacts retain their formats/digests.
+
+Public tests cover exact boundaries, multibyte SQL, aggregate input and output,
+intermediate operation SQL, nonexecuted source claims and repeated deferred
+rebuilds. Oversized preparation refuses before application tables or history are
+created. Fixed format-2/3 artifacts remain unchanged. An isolated `99e9193` writer
+accepted a roughly 3 MiB wire artifact containing a SQL source one byte above the
+new per-source limit; current loading explicitly refuses it. This is a narrower
+admission policy, not an automatic artifact or ledger conversion. Do not rewrite
+historical identities or delete history to work around refusal.
+
+This bounds **SQL bytes**, not total compiler work or peak memory. Model generation,
+historical declaration generation, already-allocated input objects, operation
+counts, parameter values, other metadata (including identifier fields),
+tokenizer/parser work, transient intermediate structures, observed catalogs, target-specific prepared SQL, ledger
+IO, deadlines and total memory remain separate hardening work. Dumping can still
+exceed the JSON envelope through non-SQL data or escaping. Construction SQL remains
+trusted executable input, not a sandbox. No readiness or publisher-authenticity
+claim follows from either budget.
 
 ## Initial creation
 
