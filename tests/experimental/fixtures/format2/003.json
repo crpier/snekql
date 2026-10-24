@@ -1,0 +1,159 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    {
+      "after": {
+        "columns": [
+          {
+            "definition": "\"id\" INTEGER PRIMARY KEY",
+            "name": "id",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "\"count\" INTEGER NOT NULL DEFAULT 7",
+            "name": "count",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "\"note\" TEXT NOT NULL",
+            "name": "note",
+            "nullable": false,
+            "query_type": "str",
+            "storage": "TEXT"
+          }
+        ],
+        "indexes": [],
+        "name": "recorded",
+        "quoted_name": "\"recorded\"",
+        "sql": "CREATE TABLE \"recorded\" (\"id\" INTEGER PRIMARY KEY, \"count\" INTEGER NOT NULL DEFAULT 7, \"note\" TEXT NOT NULL) STRICT"
+      },
+      "before": {
+        "columns": [
+          {
+            "definition": "\"id\" INTEGER PRIMARY KEY",
+            "name": "id",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "\"count\" INTEGER NOT NULL DEFAULT 7",
+            "name": "count",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "\"note\" TEXT",
+            "name": "note",
+            "nullable": true,
+            "query_type": "str | None",
+            "storage": "TEXT"
+          }
+        ],
+        "indexes": [],
+        "name": "recorded",
+        "quoted_name": "\"recorded\"",
+        "sql": "CREATE TABLE \"recorded\" (\"id\" INTEGER PRIMARY KEY, \"count\" INTEGER NOT NULL DEFAULT 7, \"note\" TEXT) STRICT"
+      },
+      "dropped": [],
+      "required": [
+        "note"
+      ]
+    }
+  ],
+  "digest": "4d7ad269242d5e41585f5016becb0f8d3b78b6d12e9af2ef00c08e3f5ba00004",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"count\" INTEGER NOT NULL DEFAULT 7",
+              "name": "count",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"note\" TEXT",
+              "name": "note",
+              "nullable": true,
+              "query_type": "str | None",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "recorded",
+          "quoted_name": "\"recorded\"",
+          "sql": "CREATE TABLE \"recorded\" (\"id\" INTEGER PRIMARY KEY, \"count\" INTEGER NOT NULL DEFAULT 7, \"note\" TEXT) STRICT"
+        }
+      ]
+    },
+    "operations": [
+      {
+        "column_name": "note",
+        "kind": "require_not_null",
+        "table_name": "recorded"
+      }
+    ],
+    "predecessor": "2fa94d43755cd8bae4d4cb1dfc1c0fd315b69c0c512a71f8ae307f7d041d9d12",
+    "revision": "003",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"count\" INTEGER NOT NULL DEFAULT 7",
+              "name": "count",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"note\" TEXT NOT NULL",
+              "name": "note",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "recorded",
+          "quoted_name": "\"recorded\"",
+          "sql": "CREATE TABLE \"recorded\" (\"id\" INTEGER PRIMARY KEY, \"count\" INTEGER NOT NULL DEFAULT 7, \"note\" TEXT NOT NULL) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    null
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}
