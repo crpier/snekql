@@ -251,6 +251,13 @@ def _resolve_column_aggregate_decoder(
         # Bind the existing numeric provenance path, not its original codec.
         # Keep the numeric gate per value to preserve errors and source behavior.
         decode = source.__output_slot__().provenance.decode_sum
+    elif aggregate.func in ("MIN", "MAX") and type(source) is _CteOutput:
+        # Derived extrema adopt the definition's projection policy (including
+        # dialect hooks), unlike extrema directly over a physical column.
+        # Resolve through the reference to retain deferred backend failures.
+        decode = resolve_projection_decoder(
+            source, nullable_models=frozenset(), backend=backend, validate=validate
+        )
     elif not isinstance(source, Attr):
         return None
     elif aggregate.func in ("MIN", "MAX") and not is_policy_selectable(source):
