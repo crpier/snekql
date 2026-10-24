@@ -262,3 +262,7 @@ matched repeats, retained-output memory and reproducible scripts.
 [Built-in value-expression decoding](value-expressions-518.md) binds native-domain
 decoders per execution, with ordinary/extrema controls, adverse point-read results,
 NULL-context regressions, output memory and reproducible scripts.
+
+[Native integer literal decoding](literal-decoders-520.md) binds the retained
+per-value policy per execution, with UNION/recursive regressions, unchanged output
+retention, adverse repeated pinned controls and reproducible scripts.
