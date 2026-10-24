@@ -13,7 +13,7 @@ lazy from snekql._materialization_shape import (
     SourceDecoders,
     SourceRowShape,
 )
-lazy from snekql._model_materialization import decode_model_row
+lazy from snekql._model_materialization import decode_model_values
 lazy from snekql._named_projection import NamedProjection
 lazy from snekql._query_state import (
     InsertState,
@@ -188,14 +188,14 @@ def materialize_write_returning_rows_for_backend(
     if model_class is None:
         return []
     columns = require_model_columns(model_class)
-    names = tuple(columns)
     materialized: list[object] = []
     for row in rows:
-        assert len(row) == len(names), (  # noqa: S101
+        assert len(row) == len(columns), (  # noqa: S101
             "returning row shape did not match the written model"
         )
-        values = {name: row[index] for index, name in enumerate(names)}
         materialized.append(
-            decode_model_row(model_class, values, backend=backend, validate=validate),
+            decode_model_values(
+                model_class, columns, row, backend=backend, validate=validate
+            ),
         )
     return materialized
