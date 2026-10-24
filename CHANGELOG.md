@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Verify bounded MariaDB default absence in experimental migration endpoints:
+  reject hidden scalar/clock defaults, accepting native nullable NULL as effective
+  absence rather than proof of clause spelling. Mismatches leave uncertain native
+  progress and cannot authorize recovery finish. This does not enable native
+  default alteration or retrospectively certify old receipts.
+
 - Bound experimental compilation to 1 MiB UTF-8 per SQL source and 4 MiB aggregate
   SQL, counting repeated declarations, emitted statements and frozen contraction
   SQL incrementally. Oversized older artifacts are explicitly refused; normal

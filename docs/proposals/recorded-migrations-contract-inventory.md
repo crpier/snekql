@@ -50,7 +50,7 @@ changes have separate public-seam tests.
 | Single/composite primary key | Inline or table-level primary-key DDL | Declaration comparison | Ordered full ascending native primary key; ordinary unique indexes are not a substitute |
 | Automatic integer identity | AUTOINCREMENT / AUTO_INCREMENT | Declaration, preserved rebuild sequence high-water and identity checks | Attribute identity compared; changing counter values are intentionally not schema drift |
 | Text collation | SQLite non-BINARY override; native utf8mb4 charset plus collation | Recorded declaration comparison | Supported explicit utf8mb4 collation, plus implicit JSON collation; arbitrary charset-only claims unclaimed |
-| No SQL default marker | No DEFAULT clause; ordinary Python defaults/factories do not become schema defaults | Recorded declaration tokens | **General absence-of-default semantics unclaimed**; nullable implicit NULL is not the same problem as a required column with no default |
+| No SQL default marker | No DEFAULT clause; ordinary Python defaults/factories do not become schema defaults | Recorded declaration tokens | Bounded absence compared: nullable omission accepts effective NULL; required absence excludes a native DEFAULT clause. Not a guarantee of omitted-write behavior |
 | `LiteralDefault(None)` | `DEFAULT NULL` on a supported nullable non-key column | Recorded declaration tokens | Compared against NULL native metadata; implicit nullable NULL accepted; not proof of explicit clause spelling |
 | Integer / Boolean `LiteralDefault` | Decimal integer SQL; Boolean encoded as 0/1 | Recorded declaration tokens | Compared through bounded quoted native default definitions; Boolean wire values are 0/1 |
 | Text `LiteralDefault` | SQLite quoted text or hex CAST; native UTF-8 hex CONVERT expression | Recorded declaration tokens | Compared through supported UTF-8 hex CONVERT/literal forms; string identity preserved |
@@ -174,6 +174,11 @@ form will be production-supported:
    Use native negatives and positives through preparation/application/recovery;
    do not evaluate arbitrary default expressions or reuse model-dependent runtime
    verification wholesale. Unsupported forms must have an explicit policy.
+   Native absence now excludes hidden scalar/clock defaults; nullable omission
+   accepts native NULL without claiming explicit clause spelling. Required absence
+   does not promise omission failure under every session mode or identity policy.
+   Native default alteration remains pending; old completed receipts are not
+   retrospectively certified.
 3. **Harden the implemented compiler-language CHECK proof.** Finite expressions,
    names and multiplicity now receive endpoint checks; unsupported forms remain
    rejected before effects. Known NOT/association/singleton-IN renderings normalize,

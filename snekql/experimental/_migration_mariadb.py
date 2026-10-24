@@ -1299,11 +1299,13 @@ def mariadb_default_obstacle(
         }
         for column, name in zip(table.columns, names, strict=True):
             expected = mariadb_declared_default(column.definition)
-            if expected is None:
-                continue  # Absence-of-default semantics are not a new claim here.
             actual = mariadb_declared_default(
                 definitions[name], backslash_escapes=backslash_escapes
             )
+            # MariaDB normalizes nullable omission to DEFAULT NULL. This proves
+            # an effective NULL default, not whether a clause was explicitly written.
+            if expected is None and column.nullable and actual == ("literal", None):
+                continue
             if expected != actual:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} default differs from the recorded contract; committed MariaDB effects may remain"
     except (SchemaError, PackageError, KeyError) as error:

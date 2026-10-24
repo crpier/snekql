@@ -200,6 +200,29 @@ schema owner. Arrange any cross-system cutover separately. It also does not disa
 subsequent catalog-drift checks. Query models remain independent of migration
 ownership; applications can continue querying without adopting their tables.
 
+## Native default absence: removal prerequisite
+
+For a recorded MariaDB column without a DEFAULT clause, endpoint verification now
+rejects a native scalar/clock default instead of treating absence as unclaimed.
+For nullable columns, native declaration absence and native `DEFAULT NULL` are
+accepted: MariaDB normalizes nullable omission to NULL, so this is an **effective
+NULL-default claim**, not proof that a clause was explicitly absent in the user's
+DDL. For required columns, a native DEFAULT clause does not satisfy absence.
+Identity generation and automatic-update clauses remain separately checked facts.
+
+Public native tests show inconsistent CREATE SQL cannot certify either nullable or
+required absence: committed DDL remains, the receipt is uncertain, inspection is
+ambiguous and resume cannot authorize finish. Ordinary and explicit-NULL nullable
+construction still deploy and reapply; omitted nullable inserts produce NULL when
+required values are provided. Subsequent out-of-band default drift prevents the
+next reviewed revision's preparation without adding history.
+
+This does not promise that omitting a required value always fails: SQL modes,
+identity rules and application writes remain separate. It does not backfill data,
+add native default-alteration operations, prove construction/claim agreement before
+DDL, or retrospectively certify old completed receipts. It closes a prerequisite
+for native set/change/remove-default operations and their recovery proof.
+
 ## Draft first, then write the backfill
 
 After adding an unconstrained nullable `note` column to the desired model (shown
@@ -378,8 +401,8 @@ identities before dropping the source, verifies the complete recorded endpoint,
 and commits schema/data/history atomically. A default change is not a backfill:
 existing values, including SQL NULLs, are copied unchanged. Removing a default is
 an explicit **declaration-absence claim** in SQLite, not an inference from a
-nullable column's omitted-value behavior. Native MariaDB absence remains
-unclaimed and `ChangeDefault` is rejected for that backend during compilation.
+nullable column's omitted-value behavior. Native MariaDB absence now has the bounded effective-default policy below;
+`ChangeDefault` is still rejected for that backend during compilation.
 
 Public routes cover ordinary integer set/change/remove, explicit NULL versus
 absence, signed defaults and encoded text with quotes, punctuation, NUL and
@@ -552,7 +575,7 @@ literal spelling of a clock expression remain distinct; text comparisons do not
 borrow case-insensitive column collations. Known UTF-8 hex CONVERT renderings and
 parentheses normalize without evaluating SQL. Unsupported default expressions or
 storage combinations now fail preparation instead of remaining unclaimed.
-General absence-of-default proof and clock/timezone/value semantics remain outside
+Clock/timezone/value semantics remain outside
 this check. Adding a defaulted column or changing a default is still not a newly
 supported migration operation merely because initial creation verifies it.
 
@@ -631,7 +654,7 @@ listed-secondary-index, generation-kind, visibility, automatic-temporal-update,
 foreign-key-definition and supported-default checks**, not full native schema
 verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
-Application JSON shape/codec compatibility also remains separate. General absence-of-default semantics, charset-only declarations without a recorded
+Application JSON shape/codec compatibility also remains separate. General omitted-write behavior, charset-only declarations without a recorded
 collation, other unclaimed constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
 trusted executable input, not a sandbox.
 
