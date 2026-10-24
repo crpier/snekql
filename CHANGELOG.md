@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Require exactly one construction declaration for each experimental managed-column
+  claim during compilation/loading/preparation. Constraint/string/expression mentions,
+  pseudo-column aliases and ambiguous duplicate declarations cannot certify presence.
+  Close a SQLite false-completion gap without inferring claims from extra SQL columns
+  or equating full declarations. Valid artifacts retain identities; old mismatches
+  explicitly refuse without format/ledger conversion.
+
 - Bind experimental table-construction headers to the exact recorded owner during
   compilation/loading, including prior and intermediate CREATE/ADOPT states. Refuse
   views, temporary/virtual/guarded/qualified/indirect or commented construction headers

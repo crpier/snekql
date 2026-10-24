@@ -429,3 +429,37 @@ independent. No body/all-effects/column coverage/storage/nullability/default/ind
 constraint agreement, Unicode/native namespace, privilege, unexpected-object/drift or
 FK compatibility certificate. Trusted SQL is not sandboxed. Broader claim authority,
 workflow/interruption/resource/compiler/codec/ledger queue and points1–4 remain open.
+
+### Positive managed-column coverage checkpoint
+
+Compile/load now requires exactly one actual column declaration per recorded managed
+column, across before/target and intermediate CREATE/ADOPT even after relinquishment.
+Names in CHECKs/constraints/expressions/strings/comments and query pseudo-aliases do
+not supply physical declarations. Duplicate/ASCII-case-colliding managed declarations
+refuse. Order/ASCII case can differ; quoted keyword contents remain identifiers,
+SQLite distinct Unicode is not conflated. Single-quoted column spellings require an
+adapter. This is bounded positive presence, not arbitrary native namespace equivalence.
+
+**Genuine SQLite false completion:** actual archived86f6ab1 compiled/read/applied a
+package recording id/value while construction SQL created only id. Phase complete,
+PRAGMA table_info only id. Existing endpoint followed table SQL rather than contrary
+ColumnState. Fixed old artifact now explicitly refuses compile/load/preparation;
+in-memory typed packages cannot bypass revalidation. Native missing-column/_rowid
+cases move from late committed-effects refusal to preconstruction/no history. Legacy
+native setup independently preserves evidence that _rowid queryability is not a
+physical declaration. Runtime endpoint guards unchanged.
+
+Extra construction columns are not manufactured ColumnState claims: they do not grant
+DropColumn authority. Existing table-SQL/backend endpoint claims still apply, so extra
+SQL is not universally unclaimed/unowned. Reordered/case-variant positive routes on
+both engines preserve value/default7 and extra default9. No new format/vocabulary or
+ledger/receipt conversion; actual old valid format2 dump retained and deploys model-free
+id42/default7. Gate bypass in isolated copied source reproduces SQLite false completion
+without mutating working sources. Fixed2/3 and preceding backend2/7/8 identities remain.
+Already-completed historical receipts are not automatically repaired/revoked; status
+reports history rather than retrospectively certifying an old schema.
+
+Storage/nullability/default agreement and broader constraint/index/namespace/privilege/
+unexpected-object/negative-ownership/drift/FK compatibility, combined workflows/
+interruption/resource/compiler/codec/ledger queue remain open. Points1–4 incomplete;
+trusted SQL not sandboxed, draft/guides deferred, no production-readiness assertion.

@@ -9,6 +9,7 @@ Models are consulted only during generation; loading packages imports none.
 import hashlib
 import json
 import keyword
+from collections import Counter
 from collections.abc import Iterable, Iterator, Sequence
 from itertools import chain
 from typing import Any, Literal, Self, get_args
@@ -26,6 +27,7 @@ from snekql.experimental._migration_sql import (
     nullable_definition,
     references,
     required_definition,
+    split_table,
     tokens,
     without_default,
 )
@@ -972,6 +974,26 @@ def _unique_identifiers(names: Iterable[str]) -> None:
         seen.add(folded)
 
 
+def _validate_column_coverage(table: TableState, backend: Backend) -> None:
+    """Prove positive managed-column presence without claiming unmanaged extras."""
+    mysql = backend == "mariadb"
+    names: Counter[str] = Counter()
+    try:
+        for part in split_table(table.sql, mysql=mysql)[1]:
+            stream = tokens(part, mysql=mysql)
+            if stream and stream[0].kind in {"identifier", "word"}:
+                name = column_name(part, mysql=mysql)
+                if name is not None:
+                    names[ascii_lower(name)] += 1
+    except SchemaError as error:
+        msg = f"managed column construction cannot be verified: {error}"
+        raise PackageError(msg) from error
+    for column in table.columns:
+        if names[ascii_lower(column.name)] != 1:
+            msg = f"managed column construction requires exactly one declaration for {table.name!r}.{column.name!r}"
+            raise PackageError(msg)
+
+
 _CREATE_TABLE_HEADER_TOKENS = 4
 
 
@@ -1036,6 +1058,7 @@ def _validate_draft(draft: Draft) -> None:
     ):
         _validate_table_identifiers(table, draft.target.backend)
         _validate_construction_header(table, draft.target.backend)
+        _validate_column_coverage(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
             _validate_column_identifier(op.column, draft.target.backend)

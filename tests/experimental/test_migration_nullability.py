@@ -178,7 +178,7 @@ def relaxation_refuses_lexer_comments_in_column_sources() -> None:
     )
     relaxed = source.model_copy(
         update={
-            "definition": source.definition.replace(" NOT NULL", "").rstrip(),
+            "definition": source.definition.replace(" NOT NULL", ""),
             "nullable": True,
             "query_type": "int | None",
         }

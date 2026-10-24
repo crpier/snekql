@@ -1040,52 +1040,31 @@ async def mariadb_table_postcondition_uses_server_identifier_resolution() -> Non
 
 
 @test(mark="slow")
-async def mariadb_missing_declared_column_blocks_completion_and_finish() -> None:
-    """A real base table is insufficient if a recorded column cannot resolve."""
+async def mariadb_missing_declared_column_refuses_before_construction() -> None:
+    """A known missing physical claim must refuse before native DDL or history."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
     table = draft.target.tables[0].model_copy(
         update={"sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY) ENGINE=InnoDB"}
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "managed column postcondition" in str(error.exception)
-        assert "entry" in str(error.exception)
-        assert_eq(
-            [
-                (p.phase, p.acknowledged_steps, p.total_steps)
-                for p in await target.status()
-            ],
-            [("uncertain", 1, 1)],
-        )
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "managed column postcondition" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "managed column construction" in str(error.exception)
+        assert "title" in str(error.exception)
+        assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        assert_eq(
-            await tx.fetch_all(
-                mariadb.raw(
-                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry'"
-                )
-            ),
-            [{"COLUMN_NAME": "id"}],
-        )
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -1185,25 +1164,21 @@ async def mariadb_pseudo_column_cannot_satisfy_a_physical_column_claim() -> None
             "columns": (original.columns[0], alias),
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "managed column postcondition" in str(error.exception)
-        assert_eq(
-            (
-                await target.inspect_recovery(plan, schema_writers_excluded=True)
-            ).disposition,
-            "ambiguous",
-        )
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "managed column construction" in str(error.exception)
+        assert "_rowid" in str(error.exception)
+        assert_eq(await target.status(), ())
+    # Independent legacy setup proves that queryability does not imply declaration.
+    await server.run_sql("CREATE TABLE entry(id BIGINT PRIMARY KEY) ENGINE=InnoDB")
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,

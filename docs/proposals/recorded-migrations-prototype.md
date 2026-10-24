@@ -669,6 +669,48 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Positive managed-column coverage before execution
+
+Compilation/loading now requires exactly one actual column declaration for every
+recorded `ColumnState.name` in each frozen construction SQL body. Before/target
+snapshots and intermediate CREATE/ADOPT payloads remain checked even if later
+relinquished. CHECK/constraint names, expressions, string literals, comments and
+native pseudo-column query aliases cannot supply a missing physical declaration.
+Duplicate or ASCII-case-colliding declarations for a managed name refuse. The
+bounded identifier reader accepts bare/identifier-quoted declarations; single-quoted
+column spellings require an adapter even where an engine would accept them.
+
+Order and ASCII case differences do not erase presence. This does not claim full
+native Unicode/case equivalence: SQLite distinct Unicode names remain distinct.
+Extra construction declarations do not manufacture extra ColumnState authority;
+trying to DropColumn an extra unrecorded column still refuses. Existing table-SQL
+and backend-specific endpoint declarations remain independently applicable, so this
+is not a blanket statement that extra SQL has no claims/effects or is unowned.
+
+An actual archived `86f6ab1` SQLite deployment completed a package whose SQL created
+only id but whose ColumnState still claimed id/value. PRAGMA table_info confirmed
+only id. SQLite's existing table-SQL endpoint check agreed with construction SQL,
+not the contradictory column metadata. New load/compile/preparation refuse this
+fixed historical artifact before effects. The native missing-column and `_rowid`
+alias tests now assert pre-construction refusal/no history, replacing late native
+refusal; independent legacy setup still proves that `_rowid` queryability is not
+physical declaration. Runtime endpoint guards are unchanged.
+
+No format/vocabulary/ledger conversion. Valid old artifacts keep bytes/digests;
+unsupported historical claim mismatches explicitly refuse instead of rewriting
+receipts. Already-completed historical receipts are not automatically revoked or
+repaired; status remains history, not retrospective schema certification.
+Real archived valid/invalid format2 fixtures, model-free valid deployment
+with id42/default7, and an isolated copied-source gate-bypass counterfactual retain
+the evidence. Gate bypass again falsely completes the inconsistent old SQLite
+artifact; no working-source mutation during native suites.
+
+This is **positive managed-column presence**, not complete body/all-effects proof,
+reverse ownership inference or full declaration/physical-claim agreement. Storage,
+nullability/defaults, indexes/constraints, native namespaces/privilege visibility,
+unexpected objects/negative ownership/drift and FK compatibility need separate
+proof/refusal. SQL remains trusted executable input, not sandboxed.
+
 ## Construction header authority before execution
 
 Compilation/loading now binds each frozen construction header to its recorded exact
@@ -721,7 +763,7 @@ payloads even if later relinquished, and AddColumn/ChangeDefault definitions. An
 otherwise-unused bad executable name cannot be certified on initial creation for
 later use by an alteration. This is not a SQL sandbox: reviewed construction SQL
 remains trusted executable input, and these identifier bindings do **not** prove
-complete declaration/column coverage, physical
+complete declaration agreement, physical
 nullability/storage/default consistency, index/constraint binding, publisher
 authentication or general construction/claim agreement. Header binding is now checked
 as described above; remaining facts need separate proof

@@ -512,10 +512,10 @@ def ambiguous_default_declarations_fail_compilation() -> None:
     first = m.compile(m.generate("001", [Original], backend="sqlite"))
     draft = m.generate("002", [Changed], backend="sqlite", previous=first)
     table = draft.target.tables[0]
-    for declaration in (
-        '"value" INTEGER NOT NULL DEFAULT 8 DEFAULT 9',
-        '"value" INTEGER NOT NULL DEFAULT',
-        '"value" INTEGER NOT NULL DEFAULT (8',
+    for declaration, diagnostic in (
+        ('"value" INTEGER NOT NULL DEFAULT 8 DEFAULT 9', "DEFAULT"),
+        ('"value" INTEGER NOT NULL DEFAULT', "DEFAULT"),
+        ('"value" INTEGER NOT NULL DEFAULT (8', "managed column construction"),
     ):
         column = table.columns[1].model_copy(update={"definition": declaration})
         altered = table.model_copy(
@@ -537,7 +537,7 @@ def ambiguous_default_declarations_fail_compilation() -> None:
                     }
                 )
             )
-        assert "DEFAULT" in str(error.exception)
+        assert diagnostic in str(error.exception)
 
 
 @test(mark="medium")
