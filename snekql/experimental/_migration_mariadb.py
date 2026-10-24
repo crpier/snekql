@@ -1206,6 +1206,36 @@ def mariadb_declared_default(
     return _default_signature(expression, definition)
 
 
+def mariadb_default_parts(definition: str) -> tuple[str, str | None]:
+    """Separate a validated default term, retaining every other declaration byte."""
+    stream = tokens(definition, mysql=True)
+    end = 0
+    for token in stream:
+        if definition[end : token.start].strip():
+            msg = (
+                "SQL comments in native default transitions require an explicit adapter"
+            )
+            raise PackageError(msg)
+        end = token.end
+    if definition[end:].strip():
+        msg = "SQL comments in native default transitions require an explicit adapter"
+        raise PackageError(msg)
+    if mariadb_declared_default(definition) is None:
+        return definition, None
+    depth = 0
+    for index, token in enumerate(stream):
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "default"):
+            expression = _default_expression(definition, stream, index + 1).rstrip()
+            end = stream[index + 1].start + len(expression)
+            return definition[: token.start].rstrip() + definition[end:], expression
+    msg = "unsupported MariaDB default declaration"
+    raise PackageError(msg)
+
+
 def _default_expression(tail: str, stream: tuple[Token, ...], start: int) -> str:
     """Separate a default term from subsequent column attributes without execution."""
     end = len(stream)

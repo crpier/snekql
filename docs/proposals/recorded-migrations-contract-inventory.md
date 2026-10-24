@@ -138,8 +138,9 @@ suite or changed runtime behavior is committed by this audit.
   structured operation and strict endpoint declaration checks, including removal.
   SQLite generation also composes nullable-to-required enforcement with a default
   transition, refusing old NULLs unless an explicit earlier backfill fixes them.
-  Native default alteration, automatic defaulted additions, and index/CHECK
-  alteration are not enabled merely because initial CREATE can emit them.
+  Bounded native default alteration now uses targeted SET/DROP DEFAULT; combined
+  required/default changes use the existing MODIFY route and NULL preconditions.
+  Automatic defaulted additions and index/CHECK alteration remain unsupported.
 - SQLite adoption is intentionally stricter than normal endpoint checks: exact
   bounded declarations/indexes/storage and additional guards, rather than the
   managed-subset check used when preserving unmanaged additions. MariaDB adoption
@@ -177,8 +178,10 @@ form will be production-supported:
    Native absence now excludes hidden scalar/clock defaults; nullable omission
    accepts native NULL without claiming explicit clause spelling. Required absence
    does not promise omission failure under every session mode or identity policy.
-   Native default alteration remains pending; old completed receipts are not
-   retrospectively certified.
+   Native set/change/remove defaults now execute, including required composition,
+   preserved values, model-free deployment/relinquishment and acknowledged recovery.
+   Lost default receipts remain ambiguous: require/drop-only reconciliation cannot
+   certify ignored defaults. Old completed receipts are not retrospectively certified.
 3. **Harden the implemented compiler-language CHECK proof.** Finite expressions,
    names and multiplicity now receive endpoint checks; unsupported forms remain
    rejected before effects. Known NOT/association/singleton-IN renderings normalize,
@@ -199,13 +202,15 @@ form will be production-supported:
    The reader now bounds wire bytes, JSON nesting and structural units, rejects
    duplicate keys and requires explicit integer versions/operation kinds. Three
    fixed prior-writer packages (including contraction) deploy with stable
-   identities. Format 3 adds SQLite `ChangeDefault`; format 2 refuses that operation
+   identities. Format 3 carries `ChangeDefault`; format 2 refuses that operation
    and its new metadata. Unchanged old routes keep their format and digests; an
    isolated preceding reader refuses format 3. Model-free default changes,
    preservation and atomic rollback/retry now have public route coverage. A second
    fixed chain from writer `7932c4f` preserves an explicitly authored format-3
    required/default composition while current generation learns to derive it;
    existing NULLs block it, and an explicit typed-backfill route is covered.
+   Native transitions now use the same operation vocabulary; an actual `a650a3b`
+   reader explicitly refuses them rather than silently executing unsupported work.
    Compilation now separately limits SQL to 1 MiB per source and 4 MiB aggregate,
    including repeated input, emitted SQL and frozen contraction SQL; output is
    charged incrementally. An actual older oversized artifact is explicitly refused,

@@ -5,8 +5,8 @@ Status: **experimental, incomplete, not ready for production or merge**.
 This implements the first vertical slices of the design discussed in #475,
 replacing the function-only direction in draft #476. The prototype lives in
 `snekql.experimental.migrations`; existing migration interfaces are unchanged.
-Artifact formats 2 and 3 are provisional. Format 3 adds explicit SQLite default
-transitions; unchanged operation sets still emit format 2. Format 1 remains
+Artifact formats 2 and 3 are provisional. Format 3 adds explicit default
+transitions on SQLite and MariaDB; unchanged operation sets still emit format 2. Format 1 remains
 unsupported, and old experimental ledgers have no automatic upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
 
@@ -200,7 +200,7 @@ schema owner. Arrange any cross-system cutover separately. It also does not disa
 subsequent catalog-drift checks. Query models remain independent of migration
 ownership; applications can continue querying without adopting their tables.
 
-## Native default absence: removal prerequisite
+## Native default absence
 
 For a recorded MariaDB column without a DEFAULT clause, endpoint verification now
 rejects a native scalar/clock default instead of treating absence as unclaimed.
@@ -219,9 +219,8 @@ next reviewed revision's preparation without adding history.
 
 This does not promise that omitting a required value always fails: SQL modes,
 identity rules and application writes remain separate. It does not backfill data,
-add native default-alteration operations, prove construction/claim agreement before
-DDL, or retrospectively certify old completed receipts. It closes a prerequisite
-for native set/change/remove-default operations and their recovery proof.
+by itself prove construction/claim agreement before DDL or retrospectively certify
+old completed receipts. Native alteration uses this bounded endpoint policy.
 
 ## Draft first, then write the backfill
 
@@ -384,6 +383,49 @@ earlier structured steps without executing them. Separate expand/backfill/contra
 revisions remain useful for application rollout compatibility; completing a
 migration does not establish application readiness.
 
+## MariaDB default alterations
+
+`generate` and explicit `ChangeDefault` now support setting, changing and removing
+bounded native defaults. Compilation validates the existing finite literal/clock
+language and requires every non-default declaration byte and recorded column fact
+to remain unchanged. SQL lexer comments in column sources are refused: extracting
+a line-comment-bearing default into a comma-separated ALTER could swallow later
+clauses. This is distinct from a SQL `COMMENT 'text'` column attribute, which is
+not a lexer comment. Arbitrary expression equivalence remains unsupported.
+
+Default-only groups emit `ALTER TABLE ... ALTER COLUMN ... SET DEFAULT ...` or
+`DROP DEFAULT`, not a whole-column MODIFY. Existing rows and explicit NULLs are not
+backfilled. Future omitted-value inserts are tested separately. Nullable explicit
+NULL and removal have distinct recorded operations, while native endpoint proof
+accepts their effective NULL equivalence. Required absence does not promise omitted
+writes fail in every SQL mode; a strict-session test demonstrates removal under
+that explicit policy.
+
+Generation can combine nullable-to-required enforcement with a default transition.
+That group uses the existing required-column MODIFY route with the final definition,
+not a second default clause for the same column. Existing NULLs refuse before new
+history/DDL; an explicit data correction allows retrying the original reviewed
+plan. This is not default-driven backfill or nullable relaxation.
+
+Frozen routes cover integer set/change/remove, NULL, encoded text with quotes,
+backslashes/NUL/Unicode, and parameterized DATETIME clocks. A separate process
+loads only packages and connectivity, deploys the chain and relinquishes ownership
+without deleting the table or importing authoring models. Format 3 already carries
+the operation and contraction metadata; old operation sets retain format 2. An
+actual archived `a650a3b` reader refuses native format-3 default transitions with its
+SQLite-only capability error. Existing fixed SQLite artifacts retain identity.
+
+Acknowledged native ALTER work can precede a failed transactional UPDATE. Reconnected
+recovery refuses catalog drift, and after explicit data correction resumes only
+unacknowledged work; a prior non-idempotent increment is not replayed. **Lost default
+DDL receipts remain ambiguous.** The older full-catalog contraction projection
+proves require/drop only and now refuses any contraction carrying default changes.
+A regression demonstrates that matching only NOT NULL must not authorize acceptance
+of the wrong default. Even a correct changed endpoint is not automatically a receipt
+or a supported structural reconciliation. Default-aware structural reconciliation
+remains work; there is no implicit repair, replay authorization from partial evidence,
+ledger conversion or retrospective certification.
+
 ## SQLite default-only alterations
 
 `generate` now recognizes an existing column whose only change is its SQL DEFAULT
@@ -401,8 +443,8 @@ identities before dropping the source, verifies the complete recorded endpoint,
 and commits schema/data/history atomically. A default change is not a backfill:
 existing values, including SQL NULLs, are copied unchanged. Removing a default is
 an explicit **declaration-absence claim** in SQLite, not an inference from a
-nullable column's omitted-value behavior. Native MariaDB absence now has the bounded effective-default policy below;
-`ChangeDefault` is still rejected for that backend during compilation.
+nullable column's omitted-value behavior. MariaDB uses the bounded effective-default policy above and the targeted
+alteration route below.
 
 Public routes cover ordinary integer set/change/remove, explicit NULL versus
 absence, signed defaults and encoded text with quotes, punctuation, NUL and
@@ -930,7 +972,8 @@ on MariaDB, including the period between preparation and application.
 | --- | --- |
 | Greenfield creation | Executed on SQLite and MariaDB, including repeat application |
 | Consecutive unapplied revisions | Generated against recorded state without a database |
-| Nullable addition | Executes while preserving populated rows |
+| Nullable addition | Executes while preserving populated rows; automatic defaulted additions remain unsupported |
+| Default changes | SQLite rebuilds and bounded native SET/DROP DEFAULT; required composition and acknowledged native recovery tested; lost native default receipts remain ambiguous |
 | Typed intermediate backfill | Generated source type-checks; typed UPDATE and scalar bindings execute on both engines; is_admin-to-nullable-role expand/backfill tested |
 | Route edited after backfill authoring | Stale checkpoint digest rejected |
 | Historical application modules removed | JSON-only deployment works in a fresh process |

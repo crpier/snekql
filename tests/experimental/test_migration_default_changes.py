@@ -413,7 +413,7 @@ async def encoded_text_default_changes_preserve_literal_values() -> None:
 
 
 class NativeBefore[S = mariadb.Pending](mariadb.Model[S]):
-    """Native defaults are verified but alteration is not enabled by that proof."""
+    """Initial native default."""
 
     __tablename__ = "native_defaults"
     __row_type__: ClassVar[mariadb.ReadType[NativeBefore[mariadb.Row]]]
@@ -421,7 +421,7 @@ class NativeBefore[S = mariadb.Pending](mariadb.Model[S]):
 
 
 class NativeAfter[S = mariadb.Pending](mariadb.Model[S]):
-    """Unsupported desired native alteration."""
+    """Desired native default transition."""
 
     __tablename__ = "native_defaults"
     __row_type__: ClassVar[mariadb.ReadType[NativeAfter[mariadb.Row]]]
@@ -429,21 +429,18 @@ class NativeAfter[S = mariadb.Pending](mariadb.Model[S]):
 
 
 @test(mark="fast")
-def native_default_alteration_requires_an_explicit_supported_route() -> None:
-    """Neither generation nor a hand-authored operation silently enables native DDL."""
+def native_default_alteration_generates_a_frozen_reviewable_route() -> None:
+    """Explicit authoring and generation agree on the supported native operation."""
     first = m.compile(m.generate("001", [NativeBefore], backend="mariadb"))
     draft = m.generate("002", [NativeAfter], backend="mariadb", previous=first)
-    assert draft.unresolved
-    with assert_raises(m.PackageError):
-        m.compile(draft)
-    operation = m.ChangeDefault(
-        table_name="native_defaults", column=draft.target.tables[0].columns[0]
+    assert_eq(draft.unresolved, ())
+    package = m.compile(draft)
+    assert_eq(package.version, 3)
+    assert_eq(m.Package.load(package.dump()), package)
+    assert_eq(
+        package.statements,
+        ("ALTER TABLE `native_defaults` ALTER COLUMN `value` SET DEFAULT 8",),
     )
-    with assert_raises(m.PackageError) as error:
-        m.compile(
-            draft.model_copy(update={"unresolved": (), "operations": (operation,)})
-        )
-    assert "SQLite only" in str(error.exception)
 
 
 @test(mark="fast")
@@ -661,25 +658,9 @@ async def required_default_removal_can_follow_an_explicit_typed_backfill() -> No
                     )
 
 
-class NativeNullable[S = mariadb.Pending](mariadb.Model[S]):
-    """Native nullability support must not imply native default alteration."""
-
-    __tablename__ = "native_defaults"
-    __row_type__: ClassVar[mariadb.ReadType[NativeNullable[mariadb.Row]]]
-    value: mariadb.GenCol[int | None] = mariadb.Integer(
-        nullable=True, default=mariadb.LiteralDefault(7)
-    )
-
-
 @test(mark="fast")
 def combined_default_generation_keeps_unsupported_changes_unresolved() -> None:
-    """Composition cannot authorize native defaults or nullable relaxation."""
-    native = m.compile(m.generate("001", [NativeNullable], backend="mariadb"))
-    unsupported = m.generate("002", [NativeAfter], backend="mariadb", previous=native)
-    assert unsupported.unresolved
-    assert_eq(unsupported.operations, ())
-    with assert_raises(m.PackageError):
-        m.compile(unsupported)
+    """Default composition cannot authorize nullable relaxation."""
     required = m.compile(m.generate("001", [Original], backend="sqlite"))
     relaxed = m.generate("002", [NegativeDefault], backend="sqlite", previous=required)
     assert relaxed.unresolved

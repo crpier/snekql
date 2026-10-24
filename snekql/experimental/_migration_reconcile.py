@@ -76,7 +76,9 @@ def matches_contraction(
     change: Contraction | None, before: list[Any], after: list[Any]
 ) -> bool:
     """Compare the entire observed catalog to exactly one projected contraction."""
-    if change is None:
+    if change is None or change.defaults:
+        # The projection below proves require/drop only. A matching nullability
+        # change must not certify a default transition it has not compared.
         return False
     try:
         projected = []

@@ -1,7 +1,7 @@
 """Experimental recorded-state migration authoring and frozen execution packages.
 
 Formats 2/3 are prototypes, not a supported long-term interchange contract.
-Format 3 adds SQLite default transitions; unchanged operations retain format 2.
+Format 3 adds default transitions; unchanged operations retain format 2.
 Models are consulted only during generation; loading packages imports none.
 """
 
@@ -27,6 +27,7 @@ from snekql.experimental._migration_sql import (
 from snekql.model import Table
 from snekql.query import Write
 from snekql.storage import _extract_logical_type, _resolve_model_hint
+lazy from snekql.experimental._migration_mariadb import mariadb_default_parts
 lazy from snekql.experimental._migration_target import (
     Prepared,
     Progress,
@@ -107,7 +108,7 @@ class RequireNotNull(_Value):
 
 
 class ChangeDefault(_Value):
-    """Change only a SQLite column's default; existing values are preserved."""
+    """Change only a column's default; existing values are preserved."""
 
     kind: Literal["change_default"] = "change_default"
     table_name: str
@@ -546,13 +547,16 @@ def _changed_default_column(
     column: ColumnState, replacement: ColumnState, backend: Backend
 ) -> ColumnState:
     """Keep all non-default declaration text and recorded column facts unchanged."""
-    if backend != "sqlite":
-        msg = "default alteration currently supports SQLite only"
-        raise PackageError(msg)
     try:
-        unchanged = without_default(column.definition) == without_default(
-            replacement.definition
-        )
+        if backend == "mariadb":
+            unchanged = (
+                mariadb_default_parts(column.definition)[0]
+                == mariadb_default_parts(replacement.definition)[0]
+            )
+        else:
+            unchanged = without_default(column.definition) == without_default(
+                replacement.definition
+            )
     except SchemaError as error:
         raise PackageError(str(error)) from error
     if (
@@ -812,6 +816,20 @@ class _Emission:
         clauses.extend(
             "DROP COLUMN `" + name.replace("`", "``") + "`" for name in pending.dropped
         )
+        if self.backend == "mariadb":
+            for name in dict.fromkeys(pending.defaults):
+                if name in (*pending.required, *pending.dropped):
+                    continue
+                column = next(c for c in pending.after.columns if c.name == name)
+                _, expression = mariadb_default_parts(column.definition)
+                action = (
+                    "DROP DEFAULT"
+                    if expression is None
+                    else "SET DEFAULT " + expression
+                )
+                clauses.append(
+                    "ALTER COLUMN `" + name.replace("`", "``") + "` " + action
+                )
         sql = (
             None
             if self.backend == "sqlite"

@@ -4,6 +4,15 @@
 
 ### Experimental
 
+- Enable bounded MariaDB set/change/remove-default migrations through frozen
+  `ChangeDefault` operations. Default-only changes use targeted ALTER COLUMN;
+  required/default composition retains NULL preconditions and requires explicit
+  data correction. Existing values are not backfilled. Add model-free deployment,
+  relinquishment and acknowledged-recovery coverage. Refuse SQL lexer comments in
+  transition sources and lost-default-receipt reconciliation: the older require/drop
+  projection cannot certify defaults it does not compare. Existing artifact formats
+  remain 2/3; older SQLite-only readers explicitly refuse native transitions.
+
 - Verify bounded MariaDB default absence in experimental migration endpoints:
   reject hidden scalar/clock defaults, accepting native nullable NULL as effective
   absence rather than proof of clause spelling. Mismatches leave uncertain native
