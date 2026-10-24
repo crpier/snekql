@@ -278,3 +278,7 @@ unchanged retention, adverse one-row controls and reproduction scripts.
 [Single-field RETURNING materialization](single-returning-526.md) selects direct
 single-value decoding per batch, with SQLite UPDATE evidence, unchanged retention,
 adverse point/control results and reproduction scripts.
+
+[Inherited runtime column access](descriptor-access-528.md) removes typing-only
+getter delegation, separating loaded-value access gains from mixed database
+results, with static-contract tests and reproduction scripts.

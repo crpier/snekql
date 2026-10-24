@@ -134,64 +134,67 @@ class JsonAttr[
     operator scopes to exactly the columns that support it.
     """
 
-    @overload
-    def __get__[AccessOwner, NonNullT](
-        self: JsonAttr[
+    # The specialization is static; runtime access uses the base descriptor.
+    if TYPE_CHECKING:
+
+        @overload
+        def __get__[AccessOwner, NonNullT](
+            self: JsonAttr[
+                WriteOwnerT,
+                LoadedOwnerT,
+                OwnerT,
+                WriteT,
+                NonNullT | None,
+                SetValueT,
+                Any,
+            ],
+            instance: None,
+            owner: type[AccessOwner],
+        ) -> JsonAttr[
             WriteOwnerT,
             LoadedOwnerT,
-            OwnerT,
+            AccessOwner,
             WriteT,
             NonNullT | None,
             SetValueT,
-            Any,
-        ],
-        instance: None,
-        owner: type[AccessOwner],
-    ) -> JsonAttr[
-        WriteOwnerT,
-        LoadedOwnerT,
-        AccessOwner,
-        WriteT,
-        NonNullT | None,
-        SetValueT,
-        NonNullT,
-    ]: ...
+            NonNullT,
+        ]: ...
 
-    @overload
-    def __get__[AccessOwner](
-        self: JsonAttr[
+        @overload
+        def __get__[AccessOwner](
+            self: JsonAttr[
+                WriteOwnerT,
+                LoadedOwnerT,
+                OwnerT,
+                WriteT,
+                ReadValueT,
+                SetValueT,
+                Any,
+            ],
+            instance: None,
+            owner: type[AccessOwner],
+        ) -> JsonAttr[
             WriteOwnerT,
             LoadedOwnerT,
-            OwnerT,
+            AccessOwner,
             WriteT,
             ReadValueT,
             SetValueT,
-            Any,
-        ],
-        instance: None,
-        owner: type[AccessOwner],
-    ) -> JsonAttr[
-        WriteOwnerT,
-        LoadedOwnerT,
-        AccessOwner,
-        WriteT,
-        ReadValueT,
-        SetValueT,
-        ReadValueT,
-    ]: ...
+            ReadValueT,
+        ]: ...
 
-    @overload
-    def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
+        @overload
+        def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
 
-    @overload
-    def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
+        @overload
+        def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
 
-    def __get__(  # ty: ignore[invalid-method-override]
-        self,
-        instance: object | None,
-        owner: type[Any],
-    ) -> object:
-        return cast("object", super().__get__(cast("Any", instance), owner))
+        def __get__(  # ty: ignore[invalid-method-override]
+            self,
+            instance: object | None,
+            owner: type[Any],
+        ) -> object:
+            return cast("object", super().__get__(cast("Any", instance), owner))
 
     def json_extract_int(self, path: str) -> _JsonExtractInt[OwnerT]:
         """Extract an integer at ``path`` from this JSON column.
