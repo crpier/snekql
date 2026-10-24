@@ -1,0 +1,65 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "aaf90659f9b604bbf9ad6e81c05d02bc7aa6d1c13775b84af41fa3948b525c8c",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"unowned\" (\"id\" INTEGER PRIMARY KEY) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"unowned\" (\"id\" INTEGER PRIMARY KEY) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE \"unowned\" (\"id\" INTEGER PRIMARY KEY) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

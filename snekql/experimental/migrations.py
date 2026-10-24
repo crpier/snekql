@@ -972,6 +972,34 @@ def _unique_identifiers(names: Iterable[str]) -> None:
         seen.add(folded)
 
 
+_CREATE_TABLE_HEADER_TOKENS = 4
+
+
+def _validate_construction_header(table: TableState, backend: Backend) -> None:
+    """Admit only unqualified ordinary CREATE TABLE for the recorded exact owner."""
+    try:
+        stream = tokens(table.sql, mysql=backend == "mariadb")
+    except SchemaError as error:
+        msg = f"unsupported table construction header: {error}"
+        raise PackageError(msg) from error
+    if (
+        len(stream) < _CREATE_TABLE_HEADER_TOKENS
+        or tuple((t.kind, ascii_lower(t.value)) for t in stream[:2])
+        != (("word", "create"), ("word", "table"))
+        or stream[2].kind not in {"word", "identifier"}
+        or stream[2].value != table.name
+        or (stream[3].kind, stream[3].value) != ("punct", "(")
+    ):
+        msg = "table construction header must be an unqualified ordinary CREATE TABLE naming its recorded owner"
+        raise PackageError(msg)
+    end = 0
+    for token in stream[:_CREATE_TABLE_HEADER_TOKENS]:
+        if table.sql[end : token.start].strip():
+            msg = "table construction header comments require an explicit adapter"
+            raise PackageError(msg)
+        end = token.end
+
+
 def _validate_table_identifiers(table: TableState, backend: Backend) -> None:
     """Bind identifiers without claiming SQL equivalence or codec correctness."""
     try:
@@ -1007,6 +1035,7 @@ def _validate_draft(draft: Draft) -> None:
         ),
     ):
         _validate_table_identifiers(table, draft.target.backend)
+        _validate_construction_header(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
             _validate_column_identifier(op.column, draft.target.backend)

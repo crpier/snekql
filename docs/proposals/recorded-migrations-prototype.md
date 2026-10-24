@@ -669,6 +669,42 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Construction header authority before execution
+
+Compilation/loading now binds each frozen construction header to its recorded exact
+table name, before/target snapshots and intermediate CREATE/ADOPT included even if
+later relinquished. Only unqualified ordinary `CREATE TABLE <identifier> (` is
+admitted. Bare or quoted owner tokens are accepted; keyword case and ordinary
+whitespace do not matter. Quoted identifier contents (including keyword-like text,
+escaped quotes and punctuation) are not interpreted as grammar.
+
+Views, temporary/virtual tables, IF NOT EXISTS, schema-qualified names, CREATE AS /
+LIKE and commented headers require an explicit adapter. This does not infer ownership
+from an existing object, broaden adoption, or allow TEMP to shadow a persistent table.
+Owner spelling must exactly agree; native catalog resolution/normalization is still
+proved independently at execution, not assumed from Python folding. The existing
+native lower-case-table-names route remains a separate endpoint test.
+
+Earlier wrong-owner/view probes reached native DDL before endpoint refusal, leaving
+committed effects. They now assert compiler refusal with no objects/history; SQLite's
+wrong-owner route similarly refuses before execution rather than depending on rollback.
+The endpoint guards are unchanged. This moves a knowable construction-authority error
+earlier, not evidence that old endpoint checking falsely completed those examples.
+
+No new vocabulary/version: valid format2–8 artifacts retain identities. Actual archived
+`2b596f5` compiler/reader accepted a format2 package constructing `unowned` while
+recording/quoting `entries`; the fixed artifact now explicitly refuses at load. Its
+valid companion retains bytes/digest and deploys model-free with id42. An isolated
+copied-source counterfactual bypasses this gate and reproduces acceptance without
+mutating working sources during native suites. No digest/receipt rewriting or ledger
+conversion.
+
+**Not full construction/claim agreement or a SQL sandbox.** The header check does not
+prove body grammar, all SQL effects, column coverage/storage/nullability/default
+agreement, indexes/constraints, Unicode/native namespace behavior, privileges or
+unexpected-object/FK compatibility. Reviewed SQL remains trusted executable input;
+unsupported authority forms need explicit proof/refusal, not automatic repair.
+
 ## Identifier claim bindings before execution
 
 Compilation (also invoked by package loading) rejects a table `quoted_name` that
@@ -685,9 +721,10 @@ payloads even if later relinquished, and AddColumn/ChangeDefault definitions. An
 otherwise-unused bad executable name cannot be certified on initial creation for
 later use by an alteration. This is not a SQL sandbox: reviewed construction SQL
 remains trusted executable input, and these identifier bindings do **not** prove
-CREATE TABLE header agreement, complete declaration/column coverage, physical
+complete declaration/column coverage, physical
 nullability/storage/default consistency, index/constraint binding, publisher
-authentication or general construction/claim agreement. Those need separate proof
+authentication or general construction/claim agreement. Header binding is now checked
+as described above; remaining facts need separate proof
 or pre-effect refusal in subsequent work.
 
 No new wire vocabulary/version: valid packages retain format2–8 identities. Fixed

@@ -406,3 +406,26 @@ defaults, broader namespaces/Unicode/native-case policies, indexes/constraints,
 privilege visibility and unexpected-object/negative-ownership/FK compatibility still
 need independent proof/refusal. Trusted construction SQL is not sandboxed. The
 remaining workflow/interruption/resource/compiler/codec/ledger queue stays open.
+
+### Construction header authority checkpoint
+
+Compile/load now admits only unqualified ordinary CREATE TABLE naming the exact
+recorded owner, across before/target and intermediate CREATE/ADOPT even after later
+relinquishment. Keyword case/whitespace and properly quoted identifier contents are
+preserved, not substring-matched. Views, TEMP/VIRTUAL, IF NOT EXISTS, schema-qualified,
+AS/LIKE and commented headers require an explicit adapter. Does not broaden adoption
+or infer permission to claim an existing object.
+
+Earlier native wrong-owner/view routes left committed effects before endpoint refusal;
+now they refuse pre-execution with no objects/history. SQLite wrong-owner similarly
+refuses before execution. Endpoint guards unchanged; those old probes were **not**
+false-completion evidence. Actual archived2b596f5 compiler/reader accepted wrong-owner
+format2; fixed fixture now explicitly refuses, valid companion retains bytes/digest.
+Model-free deploy id42, no authoring imports. Isolated-copy gate bypass reproduces
+acceptance without mutating working sources. No new format/ledger/receipt conversion.
+
+Header spelling is exact; native catalog/lower-case-table-names resolution remains
+independent. No body/all-effects/column coverage/storage/nullability/default/index/
+constraint agreement, Unicode/native namespace, privilege, unexpected-object/drift or
+FK compatibility certificate. Trusted SQL is not sandboxed. Broader claim authority,
+workflow/interruption/resource/compiler/codec/ledger queue and points1–4 remain open.

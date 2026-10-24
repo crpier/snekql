@@ -947,83 +947,58 @@ async def sqlite_copy_metadata_does_not_change_native_plan_serialization() -> No
 
 
 @test(mark="slow")
-async def mariadb_missing_managed_table_cannot_complete_or_finish_recovery() -> None:
-    """Committed DDL is not completion when the declared managed table is absent."""
+async def mariadb_wrong_construction_owner_refuses_without_effects_or_history() -> None:
+    """Reject wrong-owner construction before native DDL can leave effects."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
     table = draft.target.tables[0]
     table = table.model_copy(
         update={"sql": table.sql.replace("`entry`", "`wrong_table`")}
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        prepared = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(prepared)
-        assert "managed table postcondition" in str(error.exception)
-        assert "entry" in str(error.exception)
-        progress = await target.status()
-        assert_eq(
-            [(p.phase, p.acknowledged_steps, p.total_steps) for p in progress],
-            [("uncertain", 1, 1)],
-        )
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(prepared, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "managed table postcondition" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction header" in str(error.exception)
+        assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        rows = await tx.fetch_all(
-            mariadb.raw(
-                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='wrong_table'"
-            )
-        )
-        assert_eq(rows, [{"TABLE_NAME": "wrong_table"}])
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
-async def mariadb_view_cannot_satisfy_a_managed_table_claim() -> None:
-    """A queryable object with the right name is not necessarily a base table."""
+async def mariadb_view_construction_refuses_without_effects_or_history() -> None:
+    """A view is not authorized construction for a managed base-table claim."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
     table = draft.target.tables[0].model_copy(
         update={"sql": "CREATE VIEW entry AS SELECT 1 AS id, 'visible' AS title"}
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        prepared = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(prepared)
-        assert "not an observed base table" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        recovery = await target.inspect_recovery(prepared, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction header" in str(error.exception)
+        assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        assert_eq(
-            await tx.fetch_all(mariadb.raw("SELECT title FROM entry")),
-            [{"title": "visible"}],
-        )
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")

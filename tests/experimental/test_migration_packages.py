@@ -1311,37 +1311,33 @@ async def sqlite_postcondition_accepts_a_materialized_conditional_index() -> Non
 
 
 @test(mark="medium")
-async def sqlite_completion_rejects_a_missing_declared_managed_table() -> None:
-    """A custom construction statement must actually produce its declared table."""
+async def sqlite_wrong_construction_owner_refuses_before_execution() -> None:
+    """Wrong-owner construction is refused before creating objects or recording history."""
     draft = migrations.generate("001", [Entry], backend="sqlite")
     table = draft.target.tables[0].model_copy(
         update={
             "sql": draft.target.tables[0].sql.replace('"entry"', '"wrong_table"'),
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="sqlite", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     with TemporaryDirectory() as directory:
         config = sqlite.Config(database=Path(directory) / "app.db")
         async with migrations.connect(config) as target:
             with assert_raises(migrations.PackageError) as error:
-                await target.apply(await target.prepare(package))
-            assert_true("postcondition" in str(error.exception))
-            assert_true("entry" in str(error.exception))
+                migrations.compile(
+                    draft.model_copy(
+                        update={
+                            "target": migrations.State(
+                                backend="sqlite", tables=(table,)
+                            ),
+                            "operations": (migrations.CreateTable(table=table),),
+                        }
+                    )
+                )
+            assert_true("construction header" in str(error.exception))
             assert_eq(await target.status(), ())
         async with aiosqlite.connect(str(config.database)) as app:
             assert_eq(
-                await (
-                    await app.execute(
-                        "SELECT name FROM sqlite_schema WHERE name='wrong_table'"
-                    )
-                ).fetchall(),
+                await (await app.execute("SELECT name FROM sqlite_schema")).fetchall(),
                 [],
             )
 

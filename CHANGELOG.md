@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Bind experimental table-construction headers to the exact recorded owner during
+  compilation/loading, including prior and intermediate CREATE/ADOPT states. Refuse
+  views, temporary/virtual/guarded/qualified/indirect or commented construction headers
+  before effects; preserve ordinary quoted names, keyword case and whitespace.
+  Valid identities remain unchanged; formerly accepted wrong-owner artifacts explicitly
+  refuse without conversion. Body/declaration agreement remains separate, not sandboxed.
+
 - Refuse inconsistent experimental identifier claims during compilation/loading:
   table quoted-name fragments and column definitions must bind to their recorded
   names, including before/intermediate states and alteration payloads. Reject empty,
