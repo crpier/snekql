@@ -282,3 +282,7 @@ adverse point/control results and reproduction scripts.
 [Inherited runtime column access](descriptor-access-528.md) removes typing-only
 getter delegation, separating loaded-value access gains from mixed database
 results, with static-contract tests and reproduction scripts.
+
+[Joined span endpoint investigation](joined-spans-530.md) records a **shelved**
+candidate: removed width calls, modest LEFT-join gains, mixed other throughput,
+point-read declines and added plan memory. No production change proposed.
