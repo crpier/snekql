@@ -270,3 +270,7 @@ retention, adverse repeated pinned controls and reproducible scripts.
 [Whole-model RETURNING decoding](model-returning-522.md) reuses ordered decoding
 with batch-local metadata, preserving descriptors/validation and publishing
 SQLite UPDATE results, memory, mixed read controls and reproduction scripts.
+
+[Single-field SELECT materialization](single-field-524.md) avoids projection
+iteration while retaining collection/scalar/named shapes, with SQLite throughput,
+unchanged retention, adverse one-row controls and reproduction scripts.
