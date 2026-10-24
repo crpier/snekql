@@ -140,12 +140,19 @@ class SelectMaterialization:
             return self.source.materialize(
                 row, backend=self.backend, validate=self.validate
             )
+        if len(self.decoders) == 1:
+            value = self.decoders[0](row[0])
+            return (
+                self.state.named_projection.materialize((value,))
+                if self.state.named_projection is not None
+                else value
+            )
         decoded_values = tuple(
             decode(value) for decode, value in zip(self.decoders, row, strict=True)
         )
         if self.state.named_projection is not None:
             return self.state.named_projection.materialize(decoded_values)
-        return decoded_values[0] if len(decoded_values) == 1 else decoded_values
+        return decoded_values
 
 
 def materialize_select_row_for_backend(
