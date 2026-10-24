@@ -47,6 +47,17 @@ def _materialize_insert_returning_fields(
         for field in fields
     )
     materialized: list[object] = []
+    if len(fields) == 1:
+        decode = decoders[0]
+        for row in rows:
+            assert len(row) == 1, (  # noqa: S101
+                "returning row shape did not match the projection"
+            )
+            value = decode(row[0])
+            materialized.append(
+                projection.materialize((value,)) if projection is not None else value
+            )
+        return materialized
     for row in rows:
         assert len(row) == len(fields), (  # noqa: S101
             "returning row shape did not match the projection"
@@ -55,11 +66,7 @@ def _materialize_insert_returning_fields(
             decode(value) for decode, value in zip(decoders, row, strict=True)
         )
         materialized.append(
-            projection.materialize(decoded)
-            if projection is not None
-            else decoded[0]
-            if len(decoded) == 1
-            else decoded
+            projection.materialize(decoded) if projection is not None else decoded
         )
     return materialized
 
