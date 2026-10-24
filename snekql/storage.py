@@ -11,6 +11,7 @@ lazy from json import JSONDecodeError, loads
 lazy from math import isfinite
 lazy from types import EllipsisType, UnionType
 lazy from typing import (
+    TYPE_CHECKING,
     Annotated,
     Any,
     ForwardRef,
@@ -2322,70 +2323,71 @@ class FKAttr[
     error while still resolving at runtime.
     """
 
-    # Class access must keep the FKAttr type (not widen to Attr) so `references`
-    # stays visible; the value overloads mirror the base descriptor protocol.
-    @overload
-    def __get__[AccessOwner, NonNullT](
-        self: FKAttr[
+    if TYPE_CHECKING:
+        # Class access must keep the FKAttr type (not widen to Attr) so `references`
+        # stays visible; the value overloads mirror the base descriptor protocol.
+        @overload
+        def __get__[AccessOwner, NonNullT](
+            self: FKAttr[
+                WriteOwnerT,
+                LoadedOwnerT,
+                OwnerT,
+                WriteT,
+                NonNullT | None,
+                TargetOwnerT,
+                SetValueT,
+                Any,
+                FamilyT,
+            ],
+            instance: None,
+            owner: type[AccessOwner],
+        ) -> FKAttr[
             WriteOwnerT,
             LoadedOwnerT,
-            OwnerT,
+            AccessOwner,
             WriteT,
             NonNullT | None,
             TargetOwnerT,
             SetValueT,
-            Any,
+            NonNullT,
             FamilyT,
-        ],
-        instance: None,
-        owner: type[AccessOwner],
-    ) -> FKAttr[
-        WriteOwnerT,
-        LoadedOwnerT,
-        AccessOwner,
-        WriteT,
-        NonNullT | None,
-        TargetOwnerT,
-        SetValueT,
-        NonNullT,
-        FamilyT,
-    ]: ...
-    @overload
-    def __get__[AccessOwner](
-        self: FKAttr[
+        ]: ...
+        @overload
+        def __get__[AccessOwner](
+            self: FKAttr[
+                WriteOwnerT,
+                LoadedOwnerT,
+                OwnerT,
+                WriteT,
+                ReadValueT,
+                TargetOwnerT,
+                SetValueT,
+                Any,
+                FamilyT,
+            ],
+            instance: None,
+            owner: type[AccessOwner],
+        ) -> FKAttr[
             WriteOwnerT,
             LoadedOwnerT,
-            OwnerT,
+            AccessOwner,
             WriteT,
             ReadValueT,
             TargetOwnerT,
             SetValueT,
-            Any,
+            ReadValueT,
             FamilyT,
-        ],
-        instance: None,
-        owner: type[AccessOwner],
-    ) -> FKAttr[
-        WriteOwnerT,
-        LoadedOwnerT,
-        AccessOwner,
-        WriteT,
-        ReadValueT,
-        TargetOwnerT,
-        SetValueT,
-        ReadValueT,
-        FamilyT,
-    ]: ...
-    @overload
-    def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
-    @overload
-    def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
-    def __get__(  # ty: ignore[invalid-method-override]
-        self,
-        instance: object | None,
-        owner: type[Any],
-    ) -> object:
-        return cast("object", super().__get__(cast("Any", instance), owner))
+        ]: ...
+        @overload
+        def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
+        @overload
+        def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
+        def __get__(  # ty: ignore[invalid-method-override]
+            self,
+            instance: object | None,
+            owner: type[Any],
+        ) -> object:
+            return cast("object", super().__get__(cast("Any", instance), owner))
 
     @overload
     def references[KeyT](
