@@ -1,8 +1,8 @@
 """Experimental recorded-state migration authoring and frozen execution packages.
 
-Formats 2/3/4/5/6 are prototypes, not a supported long-term interchange contract.
+Formats 2/3/4/5/6/7 are prototypes, not a supported long-term interchange contract.
 Formats 3/4 add defaults/relaxation; formats 5/6 add index creation/removal;
-older routes retain their existing formats.
+format 7 adds named CHECKs. Older routes retain their existing formats.
 Models are consulted only during generation; loading packages imports none.
 """
 
@@ -29,6 +29,7 @@ from snekql.experimental._migration_sql import (
 from snekql.model import Table
 from snekql.query import Write
 from snekql.storage import _extract_logical_type, _resolve_model_hint
+lazy from snekql.experimental._migration_checks import add_check, check_additions
 lazy from snekql.experimental._migration_indexes import (
     add_index,
     drop_index,
@@ -107,6 +108,14 @@ class DropIndex(_Value):
     index_name: str
 
 
+class AddCheck(_Value):
+    """Add a named bounded table CHECK; existing rows must satisfy it."""
+
+    kind: Literal["add_check"] = "add_check"
+    table_name: str
+    definition: str
+
+
 class AdoptTable(_Value):
     """Claim a matching existing SQLite table without creating or changing it."""
 
@@ -175,6 +184,9 @@ class Contraction(_Value):
     dropped: tuple[str, ...] = ()
     defaults: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
     relaxed: tuple[str, ...] = Field(default=(), exclude_if=lambda value: not value)
+    added_checks: tuple[str, ...] = Field(
+        default=(), exclude_if=lambda value: not value
+    )
 
 
 class Checkpoint(_Value):
@@ -231,6 +243,7 @@ class Draft(_Value):
     operations: tuple[
         CreateTable
         | AdoptTable
+        | AddCheck
         | CreateIndex
         | DropIndex
         | AddColumn
@@ -249,6 +262,7 @@ class Draft(_Value):
         self,
         *operations: CreateTable
         | AdoptTable
+        | AddCheck
         | CreateIndex
         | DropIndex
         | AddColumn
@@ -328,7 +342,7 @@ class Package(_Value):
     Digests detect changes, not malicious publishers. Load only trusted packages.
     """
 
-    version: Literal[2, 3, 4, 5, 6] = 2
+    version: Literal[2, 3, 4, 5, 6, 7] = 2
     draft: Draft
     statements: tuple[str | None, ...]
     contractions: tuple[Contraction | None, ...]
@@ -433,6 +447,7 @@ def generate(
     unresolved = [_relinquish_decision(name) for name in old.keys() - desired.keys()]
     operations: list[
         CreateTable
+        | AddCheck
         | CreateIndex
         | DropIndex
         | AddColumn
@@ -477,11 +492,13 @@ def _changes(
     backend: Backend,
     defaulted_additions: Literal["leave_null"] | None,
 ) -> tuple[
-    list[AddColumn | RequireNotNull | AllowNull | ChangeDefault | CreateIndex],
+    list[
+        AddColumn | RequireNotNull | AllowNull | ChangeDefault | CreateIndex | AddCheck
+    ],
     list[str],
 ]:
     candidates: list[
-        AddColumn | RequireNotNull | AllowNull | ChangeDefault | CreateIndex
+        AddColumn | RequireNotNull | AllowNull | ChangeDefault | CreateIndex | AddCheck
     ] = []
     removed = [
         column.name
@@ -530,6 +547,11 @@ def _changes(
         )
     current, indexes = _index_additions(current, desired, backend)
     candidates.extend(indexes)
+    current, checks = check_additions(current, desired, backend)
+    candidates.extend(
+        AddCheck(table_name=desired.name, definition=definition)
+        for definition in checks
+    )
     if current != desired:
         msg = "alteration is not representable by supported operations"
         raise PackageError(msg)
@@ -728,6 +750,17 @@ def _query_type(model: type[Table[Any]], name: str) -> str | None:
     return " | ".join(supported[value] for value in types)
 
 
+def _auxiliary_change(
+    table: TableState, operation: AddCheck | CreateIndex | DropIndex, backend: Backend
+) -> TableState:
+    """Project non-column structural operations at historical query checkpoints."""
+    if isinstance(operation, AddCheck):
+        return add_check(table, operation.definition, backend)
+    if isinstance(operation, DropIndex):
+        return drop_index(table, operation.index_name, backend)
+    return add_index(table, operation.sql, backend)
+
+
 def contract_source(draft: Draft, *, point: str, table: str) -> str:
     """Emit a standalone static query model at a named draft checkpoint.
 
@@ -740,16 +773,10 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
             _relinquish(tables, operation.table_name)
         elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
-        elif isinstance(operation, DropIndex):
-            tables[operation.table_name] = drop_index(
+        elif isinstance(operation, AddCheck | CreateIndex | DropIndex):
+            tables[operation.table_name] = _auxiliary_change(
                 _managed_table(tables, operation.table_name),
-                operation.index_name,
-                draft.target.backend,
-            )
-        elif isinstance(operation, CreateIndex):
-            tables[operation.table_name] = add_index(
-                _managed_table(tables, operation.table_name),
-                operation.sql,
+                operation,
                 draft.target.backend,
             )
         elif isinstance(operation, AddColumn):
@@ -784,16 +811,10 @@ def contract_digest(draft: Draft, *, point: str) -> str:
             _relinquish(tables, operation.table_name)
         elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
-        elif isinstance(operation, DropIndex):
-            tables[operation.table_name] = drop_index(
+        elif isinstance(operation, AddCheck | CreateIndex | DropIndex):
+            tables[operation.table_name] = _auxiliary_change(
                 _managed_table(tables, operation.table_name),
-                operation.index_name,
-                draft.target.backend,
-            )
-        elif isinstance(operation, CreateIndex):
-            tables[operation.table_name] = add_index(
-                _managed_table(tables, operation.table_name),
-                operation.sql,
+                operation,
                 draft.target.backend,
             )
         elif isinstance(operation, AddColumn):
@@ -988,7 +1009,12 @@ class _Emission:
         if pending is None:
             return
         self.sql_bytes = _check_sql_budget(
-            chain(_table_sql(pending.before), _table_sql(pending.after)), self.sql_bytes
+            chain(
+                _table_sql(pending.before),
+                _table_sql(pending.after),
+                pending.added_checks,
+            ),
+            self.sql_bytes,
         )
         clauses = [
             "MODIFY COLUMN "
@@ -1013,6 +1039,7 @@ class _Emission:
                 clauses.append(
                     "ALTER COLUMN `" + name.replace("`", "``") + "` " + action
                 )
+        clauses.extend("ADD " + definition for definition in pending.added_checks)
         sql = (
             None
             if self.backend == "sqlite"
@@ -1028,10 +1055,20 @@ class _Emission:
 
 
 def _emit_table(
-    operation: CreateTable | AdoptTable | CreateIndex | DropIndex,
+    operation: CreateTable | AdoptTable | CreateIndex | DropIndex | AddCheck,
     tables: dict[str, TableState],
     emission: _Emission,
 ) -> None:
+    if isinstance(operation, AddCheck):
+        emission.flush()
+        table = _managed_table(tables, operation.table_name)
+        after = add_check(table, operation.definition, emission.backend)
+        tables[operation.table_name] = after
+        emission.pending = Contraction(
+            before=table, after=after, added_checks=(operation.definition,)
+        )
+        emission.flush()
+        return
     if isinstance(operation, DropIndex):
         table = _managed_table(tables, operation.table_name)
         tables[operation.table_name] = drop_index(
@@ -1090,6 +1127,8 @@ def _draft_sql(draft: Draft) -> Iterator[str]:
             yield from _table_sql(operation.table)
         elif isinstance(operation, AddColumn | ChangeDefault):
             yield operation.column.definition
+        elif isinstance(operation, AddCheck):
+            yield operation.definition
         elif isinstance(operation, DataChange | CreateIndex):
             yield operation.sql
 
@@ -1157,7 +1196,9 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
         raise PackageError(msg)
     emission.flush()
     version = (
-        6
+        7
+        if any(isinstance(op, AddCheck) for op in draft.operations)
+        else 6
         if any(isinstance(op, DropIndex) for op in draft.operations)
         else 5
         if any(isinstance(op, CreateIndex) for op in draft.operations)
@@ -1192,6 +1233,7 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
 # Lazy re-export avoids importing optional drivers or creating a connection.
 
 __all__ = [
+    "AddCheck",
     "AddColumn",
     "AdoptTable",
     "AllowNull",

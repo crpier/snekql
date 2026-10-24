@@ -4,6 +4,14 @@
 
 ### Experimental
 
+- Add bounded named-table `AddCheck` generation/execution on SQLite and MariaDB
+  (format 7), reusing the finite CHECK grammar/work and SQL-byte envelopes. Require
+  enabled engine checking without changing session policy, and refuse SQLite
+  observed-name collisions. Cover old-data rejection, rollback/preservation,
+  corrected native retry, acknowledged-step recovery and ambiguous lost receipts.
+  CHECK removal/replacement and inline rewrites remain unresolved; no general
+  enforcement certificate, automatic repair or ledger conversion.
+
 - Add explicit bounded `DropIndex` authorization and DROP/CREATE replacement on
   SQLite and MariaDB (format 6). Prove removed-index absence before completion and
   native recovery finish; project SQLite deletion through later rebuilds. Refuse

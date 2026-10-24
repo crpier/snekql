@@ -52,6 +52,7 @@ from snekql.experimental._migration_sql import (
     without_auto_increment_counter,
 )
 from snekql.experimental.migrations import (
+    AddCheck,
     CreateTable,
     DropIndex,
     Package,
@@ -321,6 +322,7 @@ class Target:
                 self._check_catalog_history(rows, catalog)
             if not already_applied:
                 await self._index_removal_environment(package)
+                await self._check_addition_environment(package)
                 validate_adopted(package, objects)
                 names = {row[1] for row in objects}
                 conflicts = [
@@ -402,6 +404,7 @@ class Target:
             await self._start_package(prepared)
         marker = "?" if self._sqlite else "%s"
         for index, step in enumerate(prepared.steps[first:], start=first + 1):
+            await self._check_addition_environment(package)
             if step.transactional and not self._sqlite:
                 if await self._transactional_obstacles():
                     msg = "transactional data changes require InnoDB tables without triggers or stored routines"
@@ -434,6 +437,7 @@ class Target:
         ):
             msg_0 = "rebuild failed foreign-key validation; transaction rolled back"
             raise PackageError(msg_0)
+        await self._check_addition_environment(package)
         completed_catalog = await self._catalog()
         if self._sqlite:
             validate_completed(package, completed_catalog)
@@ -449,6 +453,20 @@ class Target:
             (_digest(completed_catalog), package.digest),
         )
         await self._connection.commit()
+
+    async def _check_addition_environment(self, package: Package) -> None:
+        """Require engine CHECK validation without changing the caller's session policy."""
+        if not any(isinstance(op, AddCheck) for op in package.draft.operations):
+            return
+        sql = (
+            "PRAGMA ignore_check_constraints"
+            if self._sqlite
+            else "SELECT @@SESSION.check_constraint_checks"
+        )
+        expected = [(0,)] if self._sqlite else [(1,)]
+        if await self._query(sql) != expected:
+            msg = "CHECK addition requires enabled engine constraint checking; no implicit session policy change"
+            raise PackageError(msg)
 
     async def _index_removal_environment(self, package: Package) -> None:
         """Keep engine FK protection and refuse opaque application programs for DROP."""
@@ -1046,6 +1064,7 @@ class Target:
             prepared.package, [item for item in rows if item[3] == "complete"]
         )
         await self._index_removal_environment(prepared.package)
+        await self._check_addition_environment(prepared.package)
         observation = await self._catalog()
         catalog = _digest(observation)
         recorded = json.loads(row[9])
@@ -1231,6 +1250,7 @@ class Target:
                     await self._connection.rollback()
                     return "already_applied"
                 await self._index_removal_environment(package)
+                await self._check_addition_environment(package)
                 validate_adopted(package, objects)
                 if prepared.catalog_digest != catalog:
                     msg = "prepared catalog is stale; prepare and review again"

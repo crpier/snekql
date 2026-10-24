@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import Field
 
 from snekql.errors import SchemaError
+from snekql.experimental._migration_checks import add_check
 from snekql.experimental._migration_indexes import (
     validate_index_dependencies,
     validate_removed_sqlite_indexes,
@@ -243,6 +244,9 @@ def _rebuild(
     if source is None:
         msg = f"missing table {table!r} for contraction"
         raise PackageError(msg)
+    observed = change.before.model_copy(update={"sql": source})
+    for definition in change.added_checks:
+        observed = add_check(observed, definition, "sqlite")
     _, parts, suffix = split_table(source)
     columns = {
         column_name(part): part for part in parts if column_name(part) is not None
@@ -304,6 +308,7 @@ def _rebuild(
         else part
         for part in revised
     ]
+    revised.extend(change.added_checks)
     copied = [
         column_name(part)
         for part in retained

@@ -144,7 +144,8 @@ suite or changed runtime behavior is committed by this audit.
   add without a default, then set the future-write default. Required additions and
   implicit fill-with-default policies remain unsupported. Named whole-column index
   additions use format 5; explicit bounded index removal/replacement now uses
-  format 6. CHECK alterations remain unsupported.
+  format 6. Named table CHECK additions use format 7; CHECK removal/replacement
+  and inline alterations remain unsupported.
 - SQLite adoption is intentionally stricter than normal endpoint checks: exact
   bounded declarations/indexes/storage and additional guards, rather than the
   managed-subset check used when preserving unmanaged additions. MariaDB adoption
@@ -271,7 +272,7 @@ empty new metadata; older operation sets retain their existing formats and diges
 An actual archived `5b2b891` reader refuses the new backend artifacts. A separate
 SQLite process deploys the frozen route without authoring models. This does not
 establish general compiler/codec compatibility, a ledger upgrade, or all interruption
-windows. Broader index variants, CHECK changes and the audit queue remain open.
+windows. Broader index variants, CHECK removal/replacement and the audit queue remain open.
 
 ### Named index creation checkpoint
 
@@ -291,7 +292,7 @@ format 5; current reader keeps prior format-4 artifacts and fixed format-2/3 fix
 identities. Model-free SQLite deployment enforces uniqueness. No ledger conversion.
 
 Explicit bounded index removal/replacement now has negative postconditions below;
-bounded CHECK changes remain next. Construction/claim authority, unexpected-object ownership boundaries,
+named CHECK additions are covered below; removal/replacement remains next. Construction/claim authority, unexpected-object ownership boundaries,
 FK referenced-column/index/type proof, broader workflow/recovery/resource/evolution
 coverage remain unfinished. Guides/release-scope/API reconciliation are deferred.
 
@@ -326,3 +327,30 @@ format2/3 identities remain unchanged. Model-free SQLite deployment preserves va
 and permits duplicates after explicit removal. No ledger conversion. CHECK changes,
 general construction/claim/negative-ownership/FK compatibility, combined workflows,
 resource limits and genuine compiler/codec/ledger evolution remain unfinished.
+
+### Named CHECK addition checkpoint
+
+Format 7 introduces AddCheck and added_checks metadata for appended named table
+constraints. Reuse the finite general CHECK expression/work envelope, managed-column
+binding and SQL-byte limits; repeated frozen CHECK metadata is charged independently.
+No arbitrary functions/SQL equivalence, removal/replacement/inline rewrite or JSON
+alias exemption expansion. SQLite observed constraint-name collisions refuse before
+effects, including preservation mode; recorded name collisions refuse compilation.
+
+Native checking-disabled RED exposed false completion over invalid existing rows.
+The new route now requires enabled engine checking at preparation/application,
+completion and recovery without silently setting session policy. This is not a
+future application-session guarantee, general row audit or retrospective certificate
+for legacy/initial CHECK declarations.
+
+SQLite invalid-data and later-DML failures roll back rebuild/receipt, preserve
+unmanaged objects/values without firing insert triggers, and allow corrected retry.
+Native failed ALTER can retry after explicit correction when evidence permits;
+acknowledged CHECK is not replayed after data failure. Lost receipts remain ambiguous,
+with no new structural reconciliation. Native effects are not rolled back as a package.
+
+Archived 10863c4 refuses format7; format4/5/6 artifacts and fixed format2/3 identities
+remain unchanged. Model-free SQLite deployment preserves rows/default and rejects an
+invalid insert. No ledger conversion. Next CHECK removal/replacement, followed by the
+remaining construction/claim/negative-ownership/FK compatibility, workflow/interruption,
+resource and genuine compiler/codec/ledger evolution work. Guides remain deferred.

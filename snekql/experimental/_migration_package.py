@@ -8,12 +8,14 @@ _OLD_FORMAT = 2
 _RELAXATION_FORMAT = 4
 _INDEX_FORMAT = 5
 _DROP_INDEX_FORMAT = 6
+_CHECK_FORMAT = 7
 _FORMAT_VERSIONS = {
     _OLD_FORMAT,
     3,
     _RELAXATION_FORMAT,
     _INDEX_FORMAT,
     _DROP_INDEX_FORMAT,
+    _CHECK_FORMAT,
 }
 _MAX_BYTES = 8 * 1024 * 1024
 _MAX_DEPTH = 64
@@ -107,6 +109,24 @@ def read_package(text: str) -> Any:
         msg = "index removal operations require execution package version 6"
         raise ValueError(msg)
     contractions = value.get("contractions")
+    if value["version"] < _CHECK_FORMAT and (
+        (
+            isinstance(operations, list)
+            and any(
+                isinstance(op, dict) and op.get("kind") == "add_check"
+                for op in operations
+            )
+        )
+        or (
+            isinstance(contractions, list)
+            and any(
+                isinstance(change, dict) and "added_checks" in change
+                for change in contractions
+            )
+        )
+    ):
+        msg = "CHECK addition operations/metadata require execution package version 7"
+        raise ValueError(msg)
     if value["version"] == _OLD_FORMAT and (
         (
             isinstance(operations, list)
