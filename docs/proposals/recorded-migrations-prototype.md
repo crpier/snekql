@@ -669,6 +669,39 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Explicit inline primary-key label agreement
+
+Compile/load also binds each managed inline key's optional explicit SQLite constraint
+label, separately from its direction/conflict/AUTOINCREMENT and effective nullability.
+Known identifier quoting normalizes, including escaped quotes/keyword-looking identifiers;
+label presence/spelling/case do not. Following NOT NULL/UNIQUE labels belong to those
+clauses, not the PK. Unsupported string-role names need adapters even with equal bytes.
+Native named inline PK forms require adapters rather than inference about syntax support,
+retained/ignored names or the physical PRIMARY index. This is not a claim that every
+native server rejects the syntax.
+
+Before/target/intermediate CREATE/ADOPT claims survive relinquishment. Standalone ADD/
+ChangeDefault label roles are admitted even with no final ownership. Extra SQL named keys
+do not create recorded columns/indexes. A PK symbol does not authorize DROP CHECK/INDEX.
+No table-level key relocation/index/constraint namespace equivalence is inferred.
+
+Actual archivede1d3ef0 writer/reader/runtime emitted/loaded a format2 package, reported
+complete with ColumnState label "recorded" but constructed/catalog label "other". This is
+an identity contradiction, **not evidence of lost uniqueness or changed write behavior**.
+Current load/typed prepare refuse that literal before effects/history; truthful old
+companion retains dump/digest/model-free default7 insertion and duplicate-key rejection.
+An isolated copied-source comparison omitting only label reproduces the contradiction,
+without working-source mutation during native suites. Live named SQLite keys retain
+ordinary/DESC enforcement, default7 and AUTOINCREMENT non-reuse after deletion. Existing
+key-nullability/direction/policy/catalog guards remain independent. No native runtime
+false-completion claim, new format/ledger/receipt conversion, retrospective repair/revocation
+or history recertification.
+
+Remaining NULL/CHECK/FK/other constraint policies/identity, collation/generated/other
+attributes, whole key/index/namespace/FK compatibility, unexpected objects/drift and combined
+workflow/interruption/resource/compiler/package/codec/ledger queue remain open. SQL stays
+trusted/unsandboxed, points1–4 incomplete, draft/guides deferred; not production/merge-ready.
+
 ## Explicit NOT NULL clause construction agreement
 
 Compile/load binds each managed explicit NOT NULL declaration to construction: presence,

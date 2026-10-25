@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Bind experimental inline primary-key constraint labels independently of direction,
+  conflict, identity and effective nullability. Close a reproduced SQLite recorded/
+  constructed label contradiction; retain valid old identities and key/default behavior.
+  Known label quotes normalize, not presence/spelling/case; named native inline forms
+  need adapters. No new CHECK/index removal authority, format conversion, retrospective
+  repair, native runtime false-completion or general readiness claim.
+
 - Bind experimental explicit NOT NULL presence, SQLite conflict policy and constraint
   labels to construction independently of effective key-nullability flags. Close a
   reproduced SQLite IGNORE/REPLACE false completion; retain valid old identities and

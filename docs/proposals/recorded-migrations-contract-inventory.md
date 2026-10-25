@@ -706,3 +706,22 @@ Declaration/key/catalog guards remain separate. Whole NULL/CHECK/FK/other constr
 namespace, collation/generated/other attributes, index/FK/data/session/codec/readiness and
 workflow/interruption/resource/compiler/package/codec/ledger queue remain open; trusted SQL
 unsandboxed, points1–4 incomplete, still draft/guides deferred.
+
+
+### Explicit inline primary-key label checkpoint
+
+Bind managed optional SQLite PK labels separately from direction/conflict/AUTOINCREMENT/
+effective nullability. Known quotes normalize, not presence/spelling/case; following NOT
+NULL/UNIQUE names are separate. Unsupported string-role names and named native inline
+forms need adapters, not syntax/retained-name/PRIMARY-index inference. Before/target/
+intermediate claims survive handoff; standalone terms admitted without final ownership.
+Extra SQL named keys do not create recorded columns/indexes or DROP CHECK/INDEX authority.
+
+Archivede1d3ef0 emitted/loaded/completed a real format2 package recording label "recorded"
+but constructing/cataloging "other". Identity contradiction, not lost uniqueness/changed
+write behavior; no native runtime false-completion claim. Current literal load/typed prepare
+refuse before effects/history; truthful companion retains dump/digest/default7/duplicate
+refusal. Isolated copied-source label-only comparison omission reproduces it. Named SQLite
+ordinary/DESC/AUTOINCREMENT positives retain key behavior. No conversion/repair/retrospective
+certification; whole key/index/constraint namespace, other attributes/policies and queue
+remain open. Trusted SQL unsandboxed; points1–4 incomplete, draft/guides deferred.

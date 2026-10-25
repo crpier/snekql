@@ -15,10 +15,13 @@ from snekql.experimental.migrations import (
     TableState,
 )
 
+_CONSTRAINT_PREFIX_TOKENS = 2
 _CONFLICT_TOKENS = 3
 
 
-def _inline_key(definition: str, backend: Backend) -> tuple[str, str, bool] | None:
+def _inline_key(
+    definition: str, backend: Backend
+) -> tuple[str, str, bool, str | None] | None:
     """Locate one top-level key, excluding identifier/literal/expression mentions."""
     stream = tokens(definition, mysql=backend == "mariadb")
     positions: list[int] = []
@@ -37,7 +40,23 @@ def _inline_key(definition: str, backend: Backend) -> tuple[str, str, bool] | No
     if len(positions) > 1:
         msg = "multiple inline primary key clauses require an explicit adapter"
         raise PackageError(msg)
-    return _key_policy(stream[positions[0] + 2 :], backend) if positions else None
+    if not positions:
+        return None
+    position = positions[0]
+    name = None
+    if position >= _CONSTRAINT_PREFIX_TOKENS and (
+        stream[position - 2].kind,
+        ascii_lower(stream[position - 2].value),
+    ) == ("word", "constraint"):
+        label = stream[position - 1]
+        if label.kind not in {"word", "identifier"}:
+            msg = "unsupported inline primary key constraint name; explicit adapter required"
+            raise PackageError(msg)
+        if backend != "sqlite":
+            msg = "named native inline primary key requires an explicit adapter"
+            raise PackageError(msg)
+        name = label.value
+    return (*_key_policy(stream[position + 2 :], backend), name)
 
 
 def _key_policy(stream: tuple[Token, ...], backend: Backend) -> tuple[str, str, bool]:
