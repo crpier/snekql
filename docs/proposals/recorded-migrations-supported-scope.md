@@ -1,0 +1,206 @@
+# Recorded migrations: proposed supported scope (#477)
+
+Status: **proposed engineering decision; not an accepted release contract**.
+Baseline: `fa45f57`, draft PR #482. No runtime change, new support promise, ADR
+supersession or release approval follows from this document. Consumer guides remain deferred.
+
+This consolidates the completed workflow evidence into a finite candidate contract. Earlier
+reviews are evidence for their own checkpoints, not an ever-growing release checklist.
+[ADR 0023](../adr/0023-recorded-migration-ownership-and-execution.md) records the architectural
+trade-off; the [glossary](../../GLOSSARY.md) distinguishes ownership, mapping and readiness.
+
+## Recommendation
+
+Retain the opt-in experimental interface until the five gates below are satisfied. The first
+promotion should support reviewed, linear schema-and-data changes during a caller-arranged
+maintenance window, not promise online schema change or general crash-proof execution.
+Do not replace released `Database.migrate`/`verify_migrations`, convert their histories, or
+change initialization as a side effect of this work. Choose any eventual replacement and
+release version explicitly; neither is decided here.
+
+- Query mapping does not acquire migration ownership. Selecting desired models for generation
+  is explicit authoring input, not permission inferred from ordinary application use.
+- Recorded ownership can cover selected tables while other mapped tables remain unowned.
+  Retaining extra facts during a supported rebuild does not adopt them.
+- Arrange exclusion of competing schema writers and incompatible writers of affected data
+  before preparation, and maintain it through application/recovery and readiness checks.
+  Migration locks coordinate participating operators; they do not provide this exclusion.
+  Unrelated compatible application work need not be globally paused.
+- Completion proves only the declared, supported migration obligations. Current structural
+  verification, codec/data checks and rollout readiness remain separate caller decisions.
+- Unsupported or uncertain work stops. There is no force-complete, automatic repair, history
+  stamping, inferred data replay, or retrospective upgrading of an old receipt's meaning.
+
+## Candidate environment matrix
+
+These are **qualification targets**, not newly demonstrated experimental support. Use the
+released [MariaDB policy](../mariadb-support.md) as a source of target families, not as evidence
+that the experimental connection has inherited its admission/session/runtime guarantees.
+
+| Dimension | Proposed first promotion | Evidence and remaining qualification |
+| --- | --- | --- |
+| Python/platform | GIL-enabled CPython 3.15 on Linux, default asyncio | Local workflow evidence uses this family. No experimental Windows/macOS, alternative event-loop or free-threaded promise. |
+| SQLite | Actual 3.45.1 and 3.53.1 builds; file-backed DELETE and WAL | Local selected journeys use 3.53.1. Real active-death evidence is DELETE only. Existing SQLite environment jobs do not run the experimental suite. |
+| MariaDB | Maintained Community LTS 10.11, 11.4, 11.8 and 12.3; InnoDB | Qualify the same selected workflow and refusal contract on each family, recording exact builds. Local native binaries are 13.0.2, not evidence for all LTS families. |
+| Regression-only native targets | 12.2 catalog regressions and rolling/newer binaries | Passing these does not promote a series to a maintained target. The known malformed escaped-FK catalog form remains refused. MySQL is excluded. |
+
+Record exact Python/driver/server/SQLite versions, OS and completed reports. An admitted
+version number, pending CI, or a released backend test is not an experimental qualification.
+No claim covers every intervening version or patch, in-place engine upgrades, data-directory
+downgrades, replication, host/volume loss or power-loss/storage-stack behavior. SQLite FULL
+versus NORMAL durability must not be inferred from the journal-mode experiment or from merely
+passing an application Config to the experimental connector.
+
+## Finite product surface
+
+This is a transition repertoire, **not** acceptance of arbitrary SQL or every model declaration.
+Construction/claim agreement, observation, negative postconditions and existing fail-closed
+checks stay in force. The [prototype](recorded-migrations-prototype.md) and
+[contract inventory](recorded-migrations-contract-inventory.md) describe the bounded grammars.
+
+| Candidate capability | Explicit limit |
+| --- | --- |
+| Model-derived CREATE and subsequent nullable ADD | Supported declarations only; ADD is unconstrained and nullable. Required additions need an explicit nullable stage/backfill. Defaulted additions require the explicit `leave_null` policy, not an inferred fill. |
+| Typed data work at named intermediate contracts | Frozen parameterized UPDATE and scalar bindings; no runtime Python, arbitrary extension callbacks, INSERT/DELETE migration interface or resumable long job. Author/build checks supplied current routes; deployment cannot discover unprovided source edits. |
+| Staged changes | `then`/`advance` retain one real revision and lineage; unresolved choices refuse. Explicit removals authorize drop-column, recorded secondary-index and named table-CHECK operations only. No implicit DROP TABLE or rename inference. |
+| Existing-column changes | Ordinary require/allow-NULL and bounded default changes; no general storage/type/collation conversion. A SQL default is not data backfill or codec migration. |
+| Index/CHECK evolution | Named whole-column index additions/removals and bounded named table-CHECK additions/removals. Construction declarations can have different admission limits; admitting a CREATE fact does not authorize altering it. |
+| Ownership lifecycle | Whole-table relinquishment on both backends, strict initial SQLite adoption and later strict re-adoption. No native adoption, column-level adoption/relinquishment, partial-table adoption or cross-tool ownership transfer protocol. |
+| SQLite preservation | Explicitly reviewed unmanaged preservation through supported rebuilds. Clean adoption remains strict: preserved extra columns/indexes/triggers still prevent re-adoption. Dependencies on removed members stop the transition. |
+| Historical deployment | Committed, trusted packages without current model/author/codec imports; supported receipts remain unchanged. No automatic conversion of incompatible experimental or released histories. |
+
+The strict-versus-partial adoption recommendation is therefore **strict for the first
+promotion**. The extended ownership journey's re-adoption refusal is a documented limit,
+not a bug to bypass with preservation flags. Partial adoption needs a separately chosen proof
+and ownership model; it is not a prerequisite for this bounded release.
+
+Opaque codec behavior cannot be recovered from physical storage or an erased annotation.
+Use an explicitly supplied historical codec-bearing query declaration or physical-wire adapter
+where automatic historical source refuses. A new representation needs new reviewed data work;
+unchanged schema digests do not prove codec identity or business correctness.
+
+## Keep the interface small
+
+1. **Author:** generate a draft from recorded intent, name historical checkpoints, use typed
+   queries, and compose complete stages. Do not require synthetic revisions or state copying.
+2. **Freeze/review:** compile, inspect and persist packages; build explicitly calls
+   `Package.check(current_route)`. Loading validates supplied artifacts, not absent source.
+3. **Prepare:** inspect target-bound lowering, observations and assumptions without recording
+   application. Review and durably retain the original prepared evidence before native apply.
+4. **Execute/observe:** explicit apply and status under coordination; status ordering is not a
+   portable chronology contract. Ordinary application queries and verification stay separate.
+5. **Recover:** inspect the original evidence, then explicitly resume or perform only a proved
+   structural reconciliation. Reassess after a competing operator completes; resume is not an
+   idempotent apply wrapper. Ambiguous data work remains stopped.
+
+No new CLI, directory discovery, model-registration ownership, general compatibility framework
+or parallel convenience facade is proposed. A versioned persistence contract for the existing
+prepared evidence is a missing capability, not a reason to expose private lowering helpers.
+
+## Recovery contract and actual evidence
+
+| Situation | Required outcome | Current evidence / limit |
+| --- | --- | --- |
+| SQLite package failure or DELETE active-process death | Schema/data/new receipt remain atomic; after confirmed rollback use fresh prepare/apply. Competing ordinary appliers recheck under the writer lock. | Actual role-process death and applied/already_applied race demonstrated. Not WAL proof. |
+| SQLite WAL active-process death | Same truthful atomic receipt contract, with the actual WAL mode observed. | Still a qualification gap; the final ordinary app switching to WAL does not exercise this window. |
+| Native acknowledged work followed by transactional failure | Retain acknowledged progress; inspect original evidence and resume only proven remaining work. | Selected operation tests and real blocked-backfill death demonstrate this; no blanket DDL atomicity. |
+| Native restart after client rollback | Durable uncertainty survives; ordinary prepare/apply refuses, explicit inspection/resume is required. | Actual private-server kill/restart and competing resumers demonstrated; loser reassesses status. |
+| Native DDL/COMMIT effect with a missing acknowledgement | Do not infer success or authorize data replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Selected lost-receipt/refusal tests exist. The role server kill was AFTER rollback, not during COMMIT/DDL; a real selected receipt-loss window remains a qualification gate. |
+| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Selected cancellation tests exist; the experimental path does not yet implement the ordinary runtime's complete per-operation deadline policy. |
+| Missing/incompatible original plan or ledger | Refuse without receipt rewriting, reconstruction from current models, or endpoint stamping. | Actual old nine-column ledger refusal demonstrated. Current Prepared JSON is not a stable versioned persistence interface. |
+
+[Workflow](recorded-migrations-workflow-review.md),
+[ownership](recorded-migrations-ownership-review.md),
+[codec evolution](recorded-migrations-evolution-review.md),
+[framework evolution](recorded-migrations-framework-evolution-review.md) and
+[real recovery](recorded-migrations-recovery-workflow-review.md) retain the visible programs,
+committed packages and evidence limits. Their passing examples do not certify every window.
+
+## Five promotion gates, in implementation priority order
+
+### G1 — Version the execution contract, not only operation capabilities
+
+**Recommendation:** start with one explicit execution-contract epoch; preserve its accepted
+historical execution identities or explicitly refuse it when compatibility cannot be retained.
+An old-epoch reader/validator may be retained deliberately, but automatic conversion is not
+required. Package capability versions 2–8 are not that policy.
+
+Today `Package.load` recompiles the recorded draft using the current compiler, and target
+preparation generates deferred rebuild SQL using the current lowerer. Frozen bindings alone
+do not remove either coupling. The epoch policy must cover compiler AND target-preparation
+semantics, without freezing catalog bugs as truth: stronger verification may safely refuse,
+but must not reinterpret old receipts as stronger certificates. An incompatible reader must
+stop before database mutation, not regenerate packages or rewrite accepted plan identities.
+
+Acceptance: unchanged committed valid references retain their identities; a deliberately
+incompatible execution interpretation is dispatched to its supported semantics or refused
+explicitly. Include a prepared/deferred-contraction case, not just new operation admission.
+Actual archived capability evolution already demonstrated is not this missing guarantee.
+
+### G2 — Make original prepared evidence a durable interface
+
+Define an explicit version, validation/integrity envelope and import/export contract for the
+original target-bound Prepared evidence, including its package, ordered steps, observations
+and preservation choices. Bind it to the execution epoch and ledger expectations. Caller-owned
+storage must be persisted before apply and treated as sensitive trusted executable input.
+
+Acceptance: a replacement worker reads the retained evidence unchanged and inspects/resumes
+supported work; corrupt, incompatible or wrong-target evidence refuses without history
+mutation. Do not rebuild the original plan with today's lowerer. Current public Pydantic JSON
+proves same-host process/restart usability only. No portable identity, host/volume-loss or
+cross-version persistence promise is inferred; choose any such extension separately.
+
+### G3 — Reconcile migration I/O with runtime policy
+
+The dedicated connector uses direct driver calls. A shared Config type does not mean it
+honors `operation_timeout`, application session admission, SQLite journal/durability policy
+or all connection-safety rules. Resolve these explicitly instead of adding a second generic
+runtime facade or documenting ignored settings as implemented behavior.
+
+Acceptance: acquisition versus per-I/O deadlines, cancellation, cursor/transaction cleanup
+and unsafe physical-connection disposal satisfy [ADR 0017](../adr/0017-per-operation-deadlines-fail-closed.md).
+Retain acknowledged commit evidence while reporting unknown unacknowledged outcomes honestly.
+Test actual blocked public operations and fresh-connection observations; an outer task timeout
+is not proof that queued SQLite driver work stopped. Establish required native/session/catalog
+prerequisites and refusal diagnostics. Full metadata visibility and writer exclusion remain
+operational prerequisites, not privilege audits or locks supplied by this library.
+
+### G4 — Qualify the finite environment/recovery matrix
+
+Run the selected role author/review/model-free deploy/current-app journey and relevant
+ownership/evolution/refusal checks across the candidate matrix. Add actual WAL active-death
+and one deliberately selected native DDL/receipt-loss observation, validating honest stopped
+outcomes rather than attempting every crash permutation or inventing automatic recovery.
+
+Keep isolated owned processes, real models/generated historical source and unchanged committed
+artifacts. Normal/lazy modes, exact environment records, completed reports and cleanup evidence
+are required. Neither pending CI nor the existing released SQLite environment jobs discharge
+this gate. Do not expand unrelated parsers unless a selected supported journey requires it.
+
+### G5 — Approve interface, ADR and release scope together
+
+Decide promotion, names and coexistence/cutover policy for released raw-SQL versus recorded
+histories; do not imply seamless mixing or conversion. Accept/amend ADR 0023 and the affected
+older decisions explicitly. Keep query mapping independent, initialization non-mutating and
+readiness separate. The separately approved explicit model-construction direction is not
+implemented or rescinded by this migration proposal; reconcile its construction policy
+separately without stamping a migration chain.
+
+Historical-source/import lifecycle, repeated declarations, explicit build freshness and
+object-specific preservation diagnostics remain measured ergonomics to review along the
+selected journey, not grounds for a new CLI. Consumer guides follow an approved contract,
+not speculative experimental examples. No merge, tag, publication or version is authorized.
+
+## Deliberately outside this candidate
+
+General SQL equivalence/dependency reconstruction; full parent-key/index/type/collation/FK
+readiness; arbitrary codecs or semantic data proofs; multiple heads; native/partial adoption;
+noncooperating writer fencing and zero-downtime old-writer safety; automatic repair or
+retrospective certification; arbitrary history conversion; portable host-loss recovery;
+whole-program memory/CPU/I/O budgets and general resumable jobs. Existing bounded package,
+SQL and expression limits stay enforced, but are not total-work guarantees.
+
+Security/dependency alerts are separate maintenance work. These exclusions do not weaken
+existing safety checks or justify claiming an unverified supported fact. The next engineering
+slice should address G1/G2 through the approved package/prepare/recovery seams, not resume
+attribute-by-attribute verifier expansion. The proposal remains draft and not merge-ready.

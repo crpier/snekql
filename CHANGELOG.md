@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Propose finite recorded-migration promotion scope and reconcile the architecture in a
+  proposed ADR: keep query mapping independent of ownership, recommend strict SQLite
+  adoption and explicit writer exclusion, and identify execution-epoch/preparation,
+  durable recovery-plan, runtime deadline/session and qualification gates. No new runtime
+  guarantee, accepted ADR supersession, consumer-interface replacement or release approval.
+
 - Exercise real role-migrator process death, native server restart, competing operators and
   an unrelated application writer. Distinguish SQLite DELETE-journal rollback/retry from
   durable native uncertainty requiring the original prepared plan and explicit resume;

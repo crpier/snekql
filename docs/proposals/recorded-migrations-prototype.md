@@ -14,6 +14,19 @@ Unchanged operation sets retain their existing format. Format 1 remains
 unsupported, and old experimental ledgers have no automatic upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
 
+## Proposed promotion scope
+
+The [supported-scope proposal](recorded-migrations-supported-scope.md) consolidates the completed
+workflow evidence into a finite candidate: selected Linux/CPython/SQLite/maintained MariaDB
+qualification, strict SQLite adoption, explicit writer exclusion and bounded recovery.
+It recommends execution-contract epochs covering compilation AND deferred preparation, durable
+versioned original-plan persistence, runtime deadline/session integration and targeted remaining
+qualification before promotion. These are recommendations/gates, not implemented guarantees.
+[Proposed ADR 0023](../adr/0023-recorded-migration-ownership-and-execution.md) reconciles existing
+decisions without silently superseding them. Consumer interfaces/guides and release remain deferred;
+query mapping stays independent of ownership. The next priority is execution/recovery contracts,
+not automatic parser expansion. Earlier checkpoint statements below retain their historical scope.
+
 ## Workflow-first checkpoint
 
 The [authoring-to-application review](recorded-migrations-workflow-review.md) exercises the

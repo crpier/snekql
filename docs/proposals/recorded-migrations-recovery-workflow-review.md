@@ -105,3 +105,10 @@ Prepared persistence ABI, compiler existing-operation emission/epoch policy, opa
 provenance and partial adoption. Do not expand the parser checklist by default. Trusted SQL;
 no blanket equivalence/readiness/resource/downgrade/fencing/retrospective certificate. Consumer
 guides deferred; whole prototype remains draft/incomplete/not production- or merge-ready.
+
+The subsequent [supported-scope proposal](recorded-migrations-supported-scope.md) turns these
+limits into explicit promotion gates rather than immediately adding another interruption test.
+It recommends strict adoption and caller-excluded incompatible writers, with execution-epoch/
+original-plan persistence and runtime deadline/session contracts preceding finite qualification.
+WAL and one selected real native receipt-loss window remain targeted qualification gaps; no
+new runtime behavior or broader recovery guarantee follows from that engineering proposal.

@@ -10,6 +10,13 @@ evidence for `1a69b5c`; it is not the current outcome of those cases.
 This document does not change runtime behavior, publish a supported-version promise,
 or supersede the existing migration ADRs. User-guide work remains deferred.
 
+The [supported-scope proposal](recorded-migrations-supported-scope.md) now consolidates the
+workflow milestones into a finite candidate contract and promotion gates. It recommends strict
+SQLite adoption, explicit writer exclusion, execution epochs including target preparation,
+versioned original-plan persistence and runtime deadline/session integration. This historical
+inventory is evidence, not a requirement to implement every listed parser/resource opportunity
+before a bounded release. The proposal is not approval or newly demonstrated support.
+
 ## Objective and evidence rules
 
 The first production proposal should cover a deliberately bounded set of physical
