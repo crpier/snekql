@@ -12,6 +12,8 @@ are changed.
 - `python -m soak.service`: **one long-lived Database** with concurrent mixed
   workloads, periodic saturation and cancellation, and drained recovery.
 
+Initial dated evidence: [2026-10-25 service findings](service-findings-2026-10-25.md).
+
 ## Reproduce a service run
 
 Run each target sequentially in a fresh process; do not share writable fixture
@@ -34,7 +36,7 @@ for backend in sqlite mariadb; do
     printf '%s\n' "$status" >"$root/$backend-$pool.status"
     [ "$status" -eq 0 ] || exit "$status"
   done
- done
+done
 printf 'Evidence: %s\n' "$root"
 ```
 

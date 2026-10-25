@@ -1,0 +1,77 @@
+FINISHED 0
+FINISHED 1
+FINISHED 2
+
+TASK Task-1742
+/home/crpier/Projects/fourth-snekql/soak/service.py 80 bursts
+/home/crpier/Projects/fourth-snekql/soak/_service_workload.py 156 cancel_waiter
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/contextlib.py 725 enter_async_context
+/home/crpier/Projects/fourth-snekql/snekql/runtime.py 735 __aenter__
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 629 acquire
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 344 acquire
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 95 admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 132 _admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 197 _wait_for_release
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/locks.py 272 wait
+
+TASK Task-1
+<stdin> 17 main
+
+TASK Task-1741
+/home/crpier/Projects/fourth-snekql/soak/service.py 71 monitor
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/tasks.py 721 sleep
+
+TASK Task-1740
+/home/crpier/Projects/fourth-snekql/soak/service.py 85 _phase
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/taskgroups.py 75 __aexit__
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/taskgroups.py 125 _aexit
+
+TASK Task-1744
+/home/crpier/Projects/fourth-snekql/soak/service.py 62 worker
+/home/crpier/Projects/fourth-snekql/soak/_service_workload.py 118 write
+/home/crpier/Projects/fourth-snekql/snekql/runtime.py 735 __aenter__
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 629 acquire
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 344 acquire
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 95 admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 132 _admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 197 _wait_for_release
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/locks.py 272 wait
+
+TASK Task-1743
+/home/crpier/Projects/fourth-snekql/soak/service.py 64 worker
+/home/crpier/Projects/fourth-snekql/soak/_service_workload.py 134 stream
+/home/crpier/Projects/fourth-snekql/snekql/runtime.py 735 __aenter__
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 629 acquire
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 344 acquire
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 95 admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 132 _admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 197 _wait_for_release
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/locks.py 272 wait
+
+TASK Task-1745
+/home/crpier/Projects/fourth-snekql/soak/service.py 64 worker
+/home/crpier/Projects/fourth-snekql/soak/_service_workload.py 134 stream
+/home/crpier/Projects/fourth-snekql/snekql/runtime.py 735 __aenter__
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 629 acquire
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 344 acquire
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 95 admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 132 _admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 197 _wait_for_release
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/locks.py 272 wait
+
+TASK Task-1631
+/home/crpier/Projects/fourth-snekql/soak/service.py 126 _exercise
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/tasks.py 441 wait
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/tasks.py 528 _wait
+
+TASK Task-1746
+/home/crpier/Projects/fourth-snekql/soak/service.py 64 worker
+/home/crpier/Projects/fourth-snekql/soak/_service_workload.py 134 stream
+/home/crpier/Projects/fourth-snekql/snekql/runtime.py 735 __aenter__
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 629 acquire
+/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py 344 acquire
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 95 admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 132 _admit
+/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py 197 _wait_for_release
+/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/locks.py 272 wait
+PoolStats(acquisition_cancellations=5, acquisition_failures=0, capacity=3, discarded_connections=0, observer_failures=0, occupied=2, state='open', waiters=5)

@@ -210,8 +210,6 @@ Process cleanup under cancellation and kill escalation remains covered by the
 separate deterministic process-helper tests in the inventory. Performance
 benchmarks and noise-aware comparisons are separate work, not correctness gates.
 
-[All guides](README.md)
-
 ## Long-lived service soak
 
 The separate [service soak](../soak/README.md) keeps one Database open through
@@ -227,3 +225,5 @@ Resources refer to the client process, and RSS trends are observations rather
 than a leak-freedom guarantee. Real network/storage/process faults and comparative
 performance remain separate evidence. See the service guide for report schema,
 run bounds and reproduction.
+
+[All guides](README.md)
