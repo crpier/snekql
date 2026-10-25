@@ -525,3 +525,38 @@ attribute/default/tail equivalence, key/index/constraint/namespace/privilege/neg
 ownership/drift/FK or all-effects/sandbox proof. Native family-to-codec guessing is not
 an adapter. Remaining claim/default/workflow/interruption/resource/compiler/codec/ledger
 queue stays open; points1–4 incomplete, draft/guides deferred.
+
+
+### Bounded default declaration/construction checkpoint
+
+Compile/load binds each managed frozen default to its construction declaration,
+including absence, before/target/intermediate CREATE/ADOPT despite relinquishment.
+Standalone ADD/ChangeDefault terms remain admitted independently of final ownership.
+Positive managed claims only; extra declarations do not manufacture claims and existing
+SQL/backend endpoint guards remain independent. Equal unknown expression bytes cannot
+certify a default.
+
+SQLite finite integer/Boolean/text/NULL literals (including generated UTF-8 hex CAST),
+cosmetic wrappers and compiler TEXT clock expression; whole terms, not scalar prefixes.
+Literal identity is preserved; keyword case is not blanket string/clock-format folding.
+Absence differs from explicit NULL. Arithmetic/arbitrary functions/floats/other unknown
+terms require an adapter even when both sides match. No SQL evaluation. Native existing
+bounded scalar/encoded-text/DATETIME/text-clock signatures remain; nullable absence/NULL
+keep effective-NULL semantics, not clause spelling. Required absence excludes an actual
+default. Already-unsupported declaration/default-NULL preparation refusals move earlier,
+including intermediate unsupported claims followed by relinquishment.
+
+Actual archived9cf8fd9 SQLite writer/reader/runtime completed DEFAULT7 definition with
+DEFAULT8 construction and stored8 on omission. Fixed real format2 artifact now refuses
+load/typed preparation; isolated copied-source gate bypass reproduces current false
+completion without worktree mutation during native suites. Native known mismatches now
+refuse pre-DDL/no history rather than after effects; not native false completion.
+Runtime catalog/recovery/drift guards unchanged. Valid old literal dump/digest/model-free
+id42/default7 and generated Unicode/NUL/NULL/cosmetic-clock positives retained. No format/
+ledger/receipt conversion or retrospective revocation/repair/authentication.
+
+Not full SQL/attribute/key equivalence, default-value domain/constraint-fit certification,
+Python constructor defaults, storage-hint/query/codec or clock/timezone/future-session/
+application-readiness proof. Trusted executable SQL remains unsandboxed. Remaining
+metadata/key/index/constraint/namespace/negative ownership/FK, workflow/interruption and
+resource/compiler/package/codec/ledger queue open; points1–4 incomplete, draft/guides deferred.

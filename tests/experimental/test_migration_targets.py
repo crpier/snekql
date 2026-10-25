@@ -2000,18 +2000,17 @@ async def mariadb_auto_increment_in_unparsed_attribute_text_requires_review() ->
         update={"definition": "`title` VARCHAR(255) NOT NULL DEFAULT auto_increment"}
     )
     table = original.model_copy(update={"columns": (original.columns[0], title)})
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
         with assert_raises(migrations.PackageError) as error:
-            await target.prepare(package, schema_writers_excluded=True)
-        assert "unsupported MariaDB AUTO_INCREMENT position" in str(error.exception)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "unsupported MariaDB DEFAULT" in str(error.exception)
         assert_eq(await target.status(), ())
 
 
@@ -3046,11 +3045,15 @@ async def mariadb_visible_column_cannot_silently_become_invisible() -> None:
     draft = migrations.generate("001", [Entry], backend="mariadb")
     original = draft.target.tables[0]
     title = original.columns[1]
+    declared = title.model_copy(
+        update={"definition": title.definition + " DEFAULT 'kept'"}
+    )
     table = original.model_copy(
         update={
+            "columns": (original.columns[0], declared),
             "sql": original.sql.replace(
-                title.definition, title.definition + " DEFAULT 'kept' INVISIBLE"
-            )
+                title.definition, declared.definition + " INVISIBLE"
+            ),
         }
     )
     package = migrations.compile(
@@ -3086,7 +3089,15 @@ async def mariadb_declared_invisible_column_cannot_become_visible() -> None:
             "definition": original.columns[1].definition + " DEFAULT 'kept' INVISIBLE"
         }
     )
-    table = original.model_copy(update={"columns": (original.columns[0], title)})
+    table = original.model_copy(
+        update={
+            "columns": (original.columns[0], title),
+            "sql": original.sql.replace(
+                original.columns[1].definition,
+                original.columns[1].definition + " DEFAULT 'kept'",
+            ),
+        }
+    )
     package = migrations.compile(
         draft.model_copy(
             update={
@@ -3184,18 +3195,19 @@ async def mariadb_ambiguous_visibility_attributes_fail_before_effects() -> None:
             + ") ENGINE=InnoDB",
         )
         draft = migrations.generate("001", [], backend="mariadb")
-        package = migrations.compile(
-            draft.model_copy(
-                update={
-                    "target": migrations.State(backend="mariadb", tables=(table,)),
-                    "operations": (migrations.CreateTable(table=table),),
-                }
-            )
+        edited = draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
         )
         async with migrations.connect(server.config()) as target:
             with assert_raises(migrations.PackageError) as error:
+                package = migrations.compile(edited)
                 await target.prepare(package, schema_writers_excluded=True)
-            assert "visibility attribute" in str(error.exception)
+            assert (
+                "DEFAULT" if "DEFAULT" in declaration else "visibility attribute"
+            ) in str(error.exception)
             assert_eq(await target.status(), ())
 
 
@@ -3388,18 +3400,19 @@ async def mariadb_unsupported_timestamp_updates_fail_before_effects() -> None:
             + ") ENGINE=InnoDB",
         )
         draft = migrations.generate("001", [], backend="mariadb")
-        package = migrations.compile(
-            draft.model_copy(
-                update={
-                    "target": migrations.State(backend="mariadb", tables=(table,)),
-                    "operations": (migrations.CreateTable(table=table),),
-                }
-            )
+        edited = draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
         )
         async with migrations.connect(server.config()) as target:
             with assert_raises(migrations.PackageError) as error:
+                package = migrations.compile(edited)
                 await target.prepare(package, schema_writers_excluded=True)
-            assert "ON UPDATE" in str(error.exception)
+            assert ("DEFAULT" if "DEFAULT" in declaration else "ON UPDATE") in str(
+                error.exception
+            )
             assert_eq(await target.status(), ())
 
 
@@ -4002,26 +4015,23 @@ async def mariadb_null_default_cannot_become_the_string_null() -> None:
         sql="CREATE TABLE null_default (`value` VARCHAR(32) NULL DEFAULT 'NULL') ENGINE=InnoDB",
     )
     draft = migrations.generate("001", [], backend="mariadb")
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "DEFAULT NULL" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "DEFAULT NULL" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction default" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -4041,26 +4051,23 @@ async def mariadb_null_default_cannot_become_a_numeric_value() -> None:
         sql="CREATE TABLE null_default (`value` BIGINT NULL DEFAULT 7) ENGINE=InnoDB",
     )
     draft = migrations.generate("001", [], backend="mariadb")
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "DEFAULT NULL" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        assert_eq(
-            (
-                await target.inspect_recovery(plan, schema_writers_excluded=True)
-            ).disposition,
-            "ambiguous",
-        )
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction default" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -4151,17 +4158,18 @@ async def mariadb_ambiguous_null_defaults_fail_before_effects() -> None:
             sql="CREATE TABLE null_default (`value` " + declaration + ") ENGINE=InnoDB",
         )
         draft = migrations.generate("001", [], backend="mariadb")
-        package = migrations.compile(
-            draft.model_copy(
-                update={
-                    "target": migrations.State(backend="mariadb", tables=(table,)),
-                    "operations": (migrations.CreateTable(table=table),),
-                }
-            )
-        )
         async with migrations.connect(server.config()) as target:
             with assert_raises(migrations.PackageError) as error:
-                await target.prepare(package, schema_writers_excluded=True)
+                migrations.compile(
+                    draft.model_copy(
+                        update={
+                            "target": migrations.State(
+                                backend="mariadb", tables=(table,)
+                            ),
+                            "operations": (migrations.CreateTable(table=table),),
+                        }
+                    )
+                )
             assert "DEFAULT" in str(error.exception)
             assert_eq(await target.status(), ())
 

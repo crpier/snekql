@@ -52,7 +52,7 @@ class Defaults[S = mariadb.Pending](mariadb.Model[S]):
     mark="slow",
 )
 async def recorded_default_mismatch_should_not_certify(name: str) -> None:
-    """Recorded generated defaults guard both completion and recovery finish."""
+    """Known construction/default contradictions refuse before DDL and history."""
     server = await load_fixture(provide_package_server())
     draft = m.generate("001", [Defaults], backend="mariadb")
     table = draft.target.tables[0]
@@ -73,26 +73,23 @@ async def recorded_default_mismatch_should_not_certify(name: str) -> None:
     table = table.model_copy(
         update={"sql": table.sql.replace(column.definition, replacement)}
     )
-    package = m.compile(
-        draft.model_copy(
-            update={
-                "target": draft.target.model_copy(update={"tables": (table,)}),
-                "operations": (m.CreateTable(table=table),),
-            }
-        )
-    )
     async with m.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(m.PackageError) as error:
-            await target.apply(plan)
-        assert "default" in str(error.exception).lower()
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with m.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "default" in recovery.explanation.lower()
-        with assert_raises(m.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            m.compile(
+                draft.model_copy(
+                    update={
+                        "target": draft.target.model_copy(update={"tables": (table,)}),
+                        "operations": (m.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction default" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -110,7 +107,7 @@ async def generated_defaults_round_trip_and_deploy_without_models() -> None:
 
 
 @test(mark="slow")
-async def unsupported_default_expressions_fail_preparation_without_history() -> None:
+async def unsupported_default_expressions_fail_compilation_without_history() -> None:
     """Unknown expressions are refused, not evaluated or treated as verified defaults."""
     server = await load_fixture(provide_package_server())
     for expression in (
@@ -131,17 +128,18 @@ async def unsupported_default_expressions_fail_preparation_without_history() -> 
             for c in table.columns
         )
         table = table.model_copy(update={"columns": columns})
-        package = m.compile(
-            draft.model_copy(
-                update={
-                    "target": draft.target.model_copy(update={"tables": (table,)}),
-                    "operations": (m.CreateTable(table=table),),
-                }
-            )
-        )
         async with m.connect(server.config()) as target:
             with assert_raises(m.PackageError) as error:
-                await target.prepare(package, schema_writers_excluded=True)
+                m.compile(
+                    draft.model_copy(
+                        update={
+                            "target": draft.target.model_copy(
+                                update={"tables": (table,)}
+                            ),
+                            "operations": (m.CreateTable(table=table),),
+                        }
+                    )
+                )
             assert "DEFAULT" in str(error.exception)
             assert_eq(await target.status(), ())
 
@@ -163,7 +161,7 @@ class NoDefaults[S = mariadb.Pending](mariadb.Model[S]):
     mark="slow",
 )
 async def absent_default_claim_refuses_a_hidden_native_default(name: str) -> None:
-    """A surviving scalar default cannot certify an absence claim or recovery finish."""
+    """A hidden scalar default refuses before effects instead of late uncertainty."""
     server = await load_fixture(provide_package_server())
     draft = m.generate("001", [NoDefaults], backend="mariadb")
     table = draft.target.tables[0]
@@ -175,27 +173,23 @@ async def absent_default_claim_refuses_a_hidden_native_default(name: str) -> Non
             )
         }
     )
-    package = m.Package.load(
-        m.compile(
-            draft.model_copy(
-                update={
-                    "target": draft.target.model_copy(update={"tables": (table,)}),
-                    "operations": (m.CreateTable(table=table),),
-                }
-            )
-        ).dump()
-    )
     async with m.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(m.PackageError) as error:
-            await target.apply(plan)
-        assert "default" in str(error.exception).lower()
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with m.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        with assert_raises(m.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            m.compile(
+                draft.model_copy(
+                    update={
+                        "target": draft.target.model_copy(update={"tables": (table,)}),
+                        "operations": (m.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction default" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(

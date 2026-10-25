@@ -4,6 +4,14 @@
 
 ### Experimental
 
+- Bind experimental managed defaults to construction declarations before effects,
+  including absence and intermediate/relinquished claims. Compare bounded literals
+  and compiler clocks; unknown expressions require an adapter even when byte-equal.
+  Preserve native nullable effective-NULL behavior and SQLite declaration distinctions.
+  Close a reproduced SQLite DEFAULT-7-definition/DEFAULT-8-constructor false completion.
+  Valid identities remain; contradictory old artifacts refuse without format/ledger
+  conversion, retrospective repair or codec/readiness certification.
+
 - Compare experimental physical storage definitions with construction declarations before
   effects, including intermediate/payload claims. Preserve bounded native aliases while
   checking meaningful parameters/signedness; keep SQLite INT/INTEGER distinct rather

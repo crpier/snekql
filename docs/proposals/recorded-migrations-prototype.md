@@ -669,6 +669,50 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Bounded default declaration agreement before execution
+
+Compile/load now compares each managed frozen column default with the corresponding
+construction declaration, including absence. Before/target and intermediate CREATE/
+ADOPT claims remain checked after relinquishment. Standalone ADD/ChangeDefault terms
+also need admission even when no final table remains. Extra construction columns do
+not manufacture ColumnState claims; existing table-SQL/backend endpoint checks still
+apply independently. A matching expression's bytes are not, by themselves, proof.
+
+SQLite compares bounded integer/Boolean/text/NULL literal terms, including generated
+UTF-8 hex CAST forms and cosmetic literal parentheses, plus the compiler's TEXT clock
+expression. Token keyword case can normalize; literal strings/clock format and modifier
+strings cannot be indiscriminately folded. Absence is distinct from explicit DEFAULT
+NULL. Arithmetic, arbitrary functions, floating-point or other unknown default terms
+require an adapter, even if definition and construction contain identical text. The
+whole term is checked, not just a leading scalar. No SQL evaluation is used for proof.
+
+Native comparison reuses existing bounded declaration-default signatures: supported
+scalar/encoded-text literals and compiler DATETIME/text clocks. Nullable omission and
+explicit NULL retain the existing effective-NULL contract in either representation;
+this does not prove clause spelling or omitted-write behavior. Required absence cannot
+hide an explicit default. Ambiguous/default-NULL/unsupported forms formerly refused at
+preparation now fail compilation too, including intermediate claims with empty targets.
+Known mismatches move from late endpoint refusal to pre-DDL/no-history refusal. Native
+catalog, drift, uncertain-progress and recovery guards remain necessary and unchanged;
+these native examples were not false completion.
+
+An actual archived `9cf8fd9` writer/reader/runtime completed SQLite DEFAULT 7 metadata
+with DEFAULT 8 construction; an omitted-value insert stored 8. Its fixed real format2
+artifact now refuses load/typed preparation. An isolated copied-source table-gate bypass
+reproduces current SQLite false completion without mutating working source during native
+suites. Valid companion digest/dump and model-free id42/default7 remain unchanged.
+Generated encoded Unicode/NUL, explicit NULL and cosmetic clock-case forms execute too.
+Prior package vocabularies/identities remain; no new format, ledger conversion or
+receipt rewriting. Historical completions are not retrospectively revoked or repaired.
+
+This is default declaration agreement, not arbitrary SQL/attribute/key equivalence,
+a complete default-value domain/constraint-fit proof, Python constructor defaults,
+ColumnState.storage-hint/query/codec certification, clock/timezone correctness,
+future-session enforcement or general application readiness. Construction SQL remains
+trusted executable input, not a sandbox. The remaining metadata/key/constraint/FK,
+ownership/workflow/interruption/resource/evolution queue stays open; points1–4 are
+incomplete and this PR remains draft. User guides remain deferred.
+
 ## Physical definition/construction storage agreement before execution
 
 Compile/load now compares each managed column's physical definition type against its

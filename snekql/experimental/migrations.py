@@ -40,6 +40,10 @@ lazy from snekql.experimental._migration_checks import (
     check_removals,
     drop_check,
 )
+lazy from snekql.experimental._migration_default_claims import (
+    validate_column_default,
+    validate_default_claims,
+)
 lazy from snekql.experimental._migration_indexes import (
     add_index,
     drop_index,
@@ -1069,11 +1073,13 @@ def _validate_draft(draft: Draft) -> None:
         _validate_column_coverage(table, draft.target.backend)
         validate_nullability_claims(table, draft.target.backend)
         validate_storage_claims(table, draft.target.backend)
+        validate_default_claims(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
             _validate_column_identifier(op.column, draft.target.backend)
             validate_column_nullability(op.column, draft.target.backend)
             validate_column_storage(op.column, draft.target.backend)
+            validate_column_default(op.column, draft.target.backend)
     if any(
         table.name.casefold() in _RESERVED
         for table in (
