@@ -141,3 +141,13 @@ New staged evidence: `.snektest/477-staged-authoring/`, including the SAME two-b
 consumer traces, committed-byte checks, real positive/negative static diagnostics and full
 normal/forced-lazy suites. Missing-method RED and unresolved-prefix diagnostic RED are kept;
 import sorting and input-test formatting corrections are not runtime defect evidence.
+
+
+## Combined ownership follow-through
+
+The [ownership lifecycle review](recorded-migrations-ownership-review.md) reuses the role
+journey for query-only external mappings, strict adoption, reviewed unmanaged preservation,
+non-destructive handoff and re-adoption. Clean roundtrip completes; preserved extras make
+strict re-adoption refuse, and dependencies on the removed flag block preparation. This is
+combined workflow evidence and a concrete partial-adoption scope decision, not new parser
+or adoption permission. Genuine evolution/recovery and finite release scope remain next.

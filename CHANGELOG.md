@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Exercise the combined SQLite query/adoption/role-migration/preservation/handoff lifecycle.
+  Prove retained unmanaged objects, values and enforcement; clean strict re-adoption succeeds,
+  while preserved additions and removed-column dependencies produce explicit safe refusals.
+  Record partial-adoption scope as an open product decision; no new adoption permission.
+
 - Add `Draft.advance(models, removals=...)` to compose a complete model-derived stage in
   the same migration revision without intermediate packages, synthetic revisions or manual
   state stitching. Preserve earlier contracts and stage-local explicit removal decisions;

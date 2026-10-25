@@ -22,6 +22,12 @@ route editing/freshness, model-free deployment and current typed application on 
 It records manual staged-draft composition as the next interface priority, not another parser
 slice. Existing safety gates remain; finite scope and the other product objectives are incomplete.
 
+The [combined ownership review](recorded-migrations-ownership-review.md) extends the SAME
+role journey with query-only external mappings, strict adoption, preserving rebuild and
+non-destructive handoff. Clean re-adoption works; preserved unmanaged additions still refuse
+strict re-adoption, and old-flag dependencies block preparation. Partial adoption remains an
+explicit scope/design choice, not permission implied by querying or preservation.
+
 ## The four interfaces
 
 1. `generate(revision, models, backend=..., previous=...)` produces an immutable,

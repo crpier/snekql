@@ -1,0 +1,19 @@
+"""Explicitly adopt an existing matching table, then author the role transition."""
+
+from pathlib import Path
+
+from models import Expanded, Initial
+
+from snekql.experimental import migrations as m
+
+first = m.compile(
+    m.generate("001_adopt", [Initial], backend="sqlite").adopt("accounts")
+)
+expansion = m.generate("002_roles", [Expanded], backend="sqlite", previous=first).then(
+    m.Checkpoint(name="fill_roles")
+)
+if __name__ == "__main__":
+    Path("001_adopt.json").write_text(first.dump())
+    Path("historical.py").write_text(
+        m.contract_source(expansion, point="fill_roles", table="accounts")
+    )

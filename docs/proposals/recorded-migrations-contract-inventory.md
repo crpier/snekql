@@ -976,3 +976,18 @@ constrained ADD language unchanged. Both-backend SAME journey produces literal c
 packages; no wire/format/identity/ledger change. No total-work/memory promise. Historical-source/
 model-repetition/freshness ergonomics and other workflow/evolution/recovery/release scope open;
 not another verifier slice, guides deferred, SQL trusted, draft/incomplete/not merge-ready.
+
+
+### Combined ownership lifecycle checkpoint
+
+[Ownership review](recorded-migrations-ownership-review.md): SAME actual SQLite role journey
+with typed query-only external mappings, zero-SQL strict adoption, external additions after
+adoption, explicit preservation review/rebuild and zero-SQL handoff. Notes/default/generated
+values/index/view/trigger/audit/child FK and live enforcement retained, mappings never imply
+ownership. Clean strict re-adoption completes; preserved additions refuse re-adoption with
+either preservation flag, history stops003 without repair/deletion/stamping. External old-flag
+view dependency refuses002 at preparation, original schema/rows/view usable. No production,
+parser/adoption/native/operation authority changes. Existing strict versus partial adoption
+limit is now concrete; finite scope/design decision, not a new execution defect. Genuine
+evolution/recovery/coordination/resources/release scope open; guides deferred, trusted SQL,
+no retrospective or blanket readiness certificate, draft/incomplete/not merge-ready.

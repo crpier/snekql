@@ -1,0 +1,28 @@
+"""Review the same generated-role route and an explicit ownership handoff/re-adoption."""
+
+from pathlib import Path
+
+from backfill import CHANGES
+from models import Account
+from stage import expansion
+
+from snekql.experimental import migrations as m
+
+roles = m.compile(
+    expansion.then(*CHANGES).advance(
+        [Account],
+        removals=(m.DropColumn(table_name="accounts", column_name="is_admin"),),
+    )
+)
+handoff = m.compile(
+    m.generate("003_handoff", [], backend="sqlite", previous=roles).resolve(
+        m.RelinquishTable(table_name="accounts")
+    )
+)
+readopt = m.compile(
+    m.generate("004_readopt", [Account], backend="sqlite", previous=handoff).adopt(
+        "accounts"
+    )
+)
+for package in (roles, handoff, readopt):
+    Path(package.draft.revision + ".json").write_text(package.dump())
