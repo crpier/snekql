@@ -21,7 +21,7 @@ aiosqlite = [
     "aiosqlite>=0.22.1",
 ]
 opentelemetry = [
-    "opentelemetry-api>=1.44,<2",
+    "opentelemetry-api>=1.45.1,<2",
 ]
 
 [project.scripts]
@@ -40,7 +40,7 @@ dev = [
     "aiosqlite>=0.22.1",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
-    "opentelemetry-sdk>=1.44,<2",
+    "opentelemetry-sdk>=1.45.1,<2",
     "ruff>=0.15.15",
     "snektest>=0.16.0",
     "sqlalchemy[asyncio]>=2.1.1,<2.2",
