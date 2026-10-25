@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncGenerator, Generator, Sequence
 from contextlib import contextmanager
@@ -30,6 +31,37 @@ if TYPE_CHECKING:
 # Bind test codecs directly rather than depending on import registration order.
 SQLITE_CODEC = DialectQueryCodec(backend="sqlite", dialect=SQLITE_QUERY_DIALECT)
 MARIADB_CODEC = DialectQueryCodec(backend="mariadb", dialect=MARIADB_QUERY_DIALECT)
+
+
+async def wait_for_task_event[T](
+    task: asyncio.Task[T],
+    event: asyncio.Event,
+    *,
+    timeout: float,  # noqa: ASYNC109 - preserve each caller's test watchdog budget
+) -> None:
+    """Observe readiness or task failure without cancelling the caller-owned task.
+
+    Normal completion before the event is an assertion failure. The supplied
+    timeout only bounds observation; callers still own task cancellation/reaping.
+    Only the event waiter allocated here is cancelled and collected on exit.
+    """
+
+    waiter = asyncio.create_task(event.wait())
+    try:
+        done, _ = await asyncio.wait(
+            (task, waiter), timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+        )
+        if task in done:
+            task.result()
+            if not event.is_set():
+                msg = "Task completed before the expected event was set"
+                raise AssertionError(msg)
+        if waiter not in done:
+            msg = "Timed out waiting for the expected task event"
+            raise TimeoutError(msg)
+    finally:
+        waiter.cancel()
+        await asyncio.gather(waiter, return_exceptions=True)
 
 
 def scaffold_migrations(

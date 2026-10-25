@@ -25,6 +25,7 @@ from snektest import (
 )
 
 from snekql.testing.mariadb import TemporaryMariaDBServerError, temporary_mariadb_server
+from tests.helpers import wait_for_task_event
 
 
 @test(mark="medium")
@@ -178,7 +179,7 @@ async def cancellation_reaps_owned_children(case: tuple[str, str]) -> None:
             # Installing and bootstrapping native servers precedes the cancellation
             # under test. Allow setup more than the server's 20-second readiness
             # budget; a busy host must not time out before reaching the fault gate.
-            await asyncio.wait_for(gate.reached.wait(), 60)
+            await wait_for_task_event(task, gate.reached, timeout=60)
             if mode == "native":
                 task.cancel("first cancellation")
                 await asyncio.sleep(0)
