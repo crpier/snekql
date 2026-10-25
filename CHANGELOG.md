@@ -4,6 +4,14 @@
 
 ### Experimental
 
+- Bind experimental managed native ON UPDATE presence/precision to construction before
+  DDL/history, including relinquished/intermediate claims and standalone admission.
+  Retain valid old identities, known CURRENT_TIMESTAMP precision forms, deterministic
+  NULL-default/update behavior and drift guards. Separate bounded FK ON UPDATE/SET NULL
+  actions from timestamp/nullability roles. Earlier mismatch was native uncertainty,
+  not false completion; no new temporal alteration API, clock/session/readiness,
+  format conversion or repair claim.
+
 - Bind experimental managed generated-column kind, bounded scalar expression and SQLite
   labels to construction. Close reproduced SQLite and native AS7/AS8 false completions;
   retain valid old identities, known mode aliases and derived-value behavior. Unknown

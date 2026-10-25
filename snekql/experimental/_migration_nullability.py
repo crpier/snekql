@@ -30,6 +30,10 @@ def _declared_nullable(
         if depth or token.kind != "word":
             continue
         word = ascii_lower(token.value)
+        if backend == "mariadb" and word == "references":
+            # Native bounded FK tails own SET NULL actions; their parser rejects
+            # later ordinary clauses instead of treating action NULL as nullability.
+            break
         following = stream[index + 1] if index + 1 < len(stream) else None
         if (
             not ignore_primary

@@ -3216,26 +3216,18 @@ async def mariadb_unrequested_timestamp_updates_cannot_complete_or_finish() -> N
         sql="CREATE TABLE timestamp_entry (`changed` DATETIME(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)) ENGINE=InnoDB",
     )
     draft = migrations.generate("001", [], backend="mariadb")
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "ON UPDATE" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "ON UPDATE" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction ON UPDATE differs" in str(error.exception)
+        assert_eq(await target.status(), ())
 
 
 @test(mark="slow")
@@ -3255,23 +3247,18 @@ async def mariadb_missing_timestamp_update_clause_cannot_complete() -> None:
         sql="CREATE TABLE timestamp_entry (`changed` DATETIME NULL DEFAULT NULL) ENGINE=InnoDB",
     )
     draft = migrations.generate("001", [], backend="mariadb")
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "ON UPDATE" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "ON UPDATE" in recovery.explanation
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction ON UPDATE differs" in str(error.exception)
+        assert_eq(await target.status(), ())
 
 
 @test(mark="slow")

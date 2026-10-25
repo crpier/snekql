@@ -813,3 +813,30 @@ arbitrary/live expression equivalence/dependency/cycle/type/DDL validity/generat
 writability/codec/all-session/data/readiness proof or recovery shortcut. ON UPDATE/other
 attributes/constraints/namespaces/FK/workflow/interruption/resource/evolution queue open;
 trusted SQL unsandboxed, points1–4 incomplete, draft/guides deferred.
+
+
+### Native ON UPDATE construction checkpoint
+
+Managed native ON UPDATE presence/precision binds corresponding executable column, before/
+target/intermediate CREATE after handoff and standalone ADD/ChangeDefault admission. Existing
+DATETIME/TIMESTAMP CURRENT_TIMESTAMP language/column-inherited omitted or empty precision/
+explicit matching0–6/keyword case retained. Unknown function/position/suffix/multiplicity/
+precision needs adapter even equal bytes. Extra SQL automatic fields unowned; no new temporal
+alteration/ADD permission/native adoption/destructive authority. SQLite unchanged.
+
+Bounded FK parser owns ON DELETE/UPDATE actions; native REFERENCES tail SET NULL is not
+ordinary column nullability. Actions must parse, later clauses/unknown roles fail closed,
+not blanket suppression. Known action compile positives/existing live default-action guard/
+separate-table SET NULL behavior retained, not full FK compatibility/session certificate.
+
+Archived692e316 actual format2 writer/reader/runtime committed missing-ON-UPDATE construction
+then refused completion, UNCERTAIN/AMBIGUOUS (NOT false completion). Literal load/typed prepare
+now pre-effects refusal, truthful companion retains dump/digest/model-free deployment; copied
+current-source gate-only bypass preserves late refusal/committed effects/uncertainty. Worktree
+unmutated during native suites. No conversion/repair/retrospective certification. Live session-
+clock cases distinguish NULL default/changed-write automatic timestamp/explicit unchanged-field
+suppression, accepted-catalog drift guard retained. Not exact/monotonic clock/timezone/all writes/
+privilege/future-session/data/codec/readiness or recovery proof; no server policy mutation.
+Remaining attributes/constraints/namespaces/FK/combined workflows/interruption/resources/compiler/
+package/codec/ledger/release queue open; points1–4 incomplete, trusted executable SQL unsandboxed,
+draft/guides deferred, not production/merge-ready.

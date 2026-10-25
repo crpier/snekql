@@ -1,0 +1,65 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "1141d4e610f1421b0174b40ed85878eac09651e79222852ad7511f5652f093de",
+  "draft": {
+    "before": {
+      "backend": "mariadb",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`changed` DATETIME(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)",
+              "name": "changed",
+              "nullable": true,
+              "query_type": null,
+              "storage": "DATETIME"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE entries (`base` BIGINT NOT NULL DEFAULT 7,`changed` DATETIME(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)) ENGINE=InnoDB"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`changed` DATETIME(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)",
+              "name": "changed",
+              "nullable": true,
+              "query_type": null,
+              "storage": "DATETIME"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE entries (`base` BIGINT NOT NULL DEFAULT 7,`changed` DATETIME(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE entries (`base` BIGINT NOT NULL DEFAULT 7,`changed` DATETIME(6) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(6)) ENGINE=InnoDB"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

@@ -80,6 +80,10 @@ lazy from snekql.experimental._migration_nullability import (
     validate_key_nullability_claims,
     validate_nullability_claims,
 )
+lazy from snekql.experimental._migration_on_update import (
+    validate_column_on_update,
+    validate_on_update_claims,
+)
 lazy from snekql.experimental._migration_storage import (
     validate_column_storage,
     validate_storage_claims,
@@ -1119,6 +1123,7 @@ def _validate_draft(draft: Draft) -> None:
         validate_not_null_claims(table, draft.target.backend)
         validate_identity_claims(table, draft.target.backend)
         validate_visibility_claims(table, draft.target.backend)
+        validate_on_update_claims(table, draft.target.backend)
         validate_generation_claims(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
@@ -1132,6 +1137,7 @@ def _validate_draft(draft: Draft) -> None:
             validate_column_not_null(op.column, draft.target.backend)
             validate_column_identity(op.column, draft.target.backend)
             validate_column_visibility(op.column, draft.target.backend)
+            validate_column_on_update(op.column, draft.target.backend)
             validate_column_generation(op.column, draft.target.backend)
     if any(
         table.name.casefold() in _RESERVED

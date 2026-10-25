@@ -669,6 +669,47 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Native automatic ON UPDATE construction agreement
+
+Compile/load binds managed native ON UPDATE presence/absence and existing temporal precision
+against corresponding executable columns. Reuse the bounded DATETIME/TIMESTAMP
+CURRENT_TIMESTAMP language: omitted/empty function precision inherits the column precision,
+explicit0–6 must match, known keyword case normalizes. Unknown functions/positions/suffixes/
+duplicate clauses/conflicting precision require adapters even with matching bytes. Default,
+storage/nullability/visibility/generation/clock semantics remain separate; SQLite unchanged.
+Before/target/intermediate CREATE claims survive relinquishment; standalone ADD/ChangeDefault
+language admission remains independent of final ownership/operation permission. No new
+ON UPDATE alteration/ADD permission, native adoption or destructive authority. Extra SQL
+automatic-update fields remain executable/unclaimed, not recorded ownership.
+
+FK ON DELETE/UPDATE actions are read by the bounded FK-reference parser, not promoted to
+column timestamp attributes. For native bounded REFERENCES tails, SET NULL belongs to the
+referential action, not another ordinary nullability clause. Tail actions must parse exactly;
+later ordinary clauses/unknown action roles fail closed, not blind REFERENCES suppression.
+Known CASCADE/RESTRICT/NO ACTION/SET NULL public compile identities retained, existing native
+inline default-action positive retained, separate parent/child ON UPDATE SET NULL behavior
+proven. Not complete FK column/index/type/collation/engine/session compatibility proof;
+SQLite reference ordering/language remains unchanged.
+
+Actual archived692e316 writer/reader/runtime emitted/loaded/prepared real format2 recording
+an automatic-update column but constructing an ordinary temporal column. It committed DDL,
+then refused completion and remained UNCERTAIN/AMBIGUOUS: NOT false completion. Current
+literal load/typed prepare refuse before schema/history; truthful companion retains literal
+dump/digest/model-free deployment. Isolated copied-source table-gate bypass preserves late
+refusal/committed effects/uncertainty with other guards active; no worktree mutation during
+native suites. No format/digest/ledger/receipt conversion or retrospective repair/certification.
+
+Live deterministic session-clock probes distinguish initial NULL default from changed-write
+clock assignment and explicit unchanged-column suppression; ordinary columns remain NULL.
+Independent accepted-catalog drift still blocks followup after removal of a completed column's
+physical ON UPDATE clause. These bounded probes do not certify exact wall clock/monotonicity/
+timezones/precision accuracy/all update forms/triggers/privileges/future-session/data/codec/
+query readiness. No clock/server policy mutation or native recovery shortcut. Temporal legacy
+implicit defaults remain subject to independent observation, not inferred from absence.
+Remaining attributes/constraints/namespaces/FK/workflows/interruption/resource/compiler/package/
+codec/ledger evolution/release-scope queue stays open. Points1–4 incomplete, trusted SQL
+unsandboxed, draft/guides deferred, not production/merge-ready.
+
 ## Generated-column kind and finite expression construction agreement
 
 Compile/load binds managed generated presence/absence, physical virtual/stored kind and a

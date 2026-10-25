@@ -835,8 +835,25 @@ def _on_update_prefix(stream: tuple[Token, ...]) -> bool:
     return not literal
 
 
+def _on_update_positions(stream: tuple[Token, ...]) -> tuple[int, ...]:
+    """Locate top-level ON roles without promoting nested expressions or literal text."""
+    positions: list[int] = []
+    depth = 0
+    for index, token in enumerate(stream):
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "on"):
+            positions.append(index)
+    return tuple(positions)
+
+
 def mariadb_declared_on_update(definition: str) -> int | None:
     """Read CURRENT_TIMESTAMP update precision; do not certify default values."""
+    # Inline REFERENCES owns its ON DELETE/UPDATE actions, not a timestamp attribute.
+    if _inline_foreign_keys("_on_update_role", definition):
+        return None
     column = _COLUMN.match(definition)
     source = str(column[1]) if column is not None else ""
     datatype = _TYPE.match(source)
@@ -847,15 +864,7 @@ def mariadb_declared_on_update(definition: str) -> int | None:
         stream = tokens(source[datatype.end() :], mysql=True)
     except SchemaError as error:
         raise PackageError(str(error)) from error
-    positions: list[int] = []
-    depth = 0
-    for index, token in enumerate(stream):
-        if (token.kind, token.value) == ("punct", "("):
-            depth += 1
-        elif (token.kind, token.value) == ("punct", ")"):
-            depth -= 1
-        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "on"):
-            positions.append(index)
+    positions = _on_update_positions(stream)
     if not positions:
         return None
     if (
