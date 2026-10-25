@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add an opt-in long-lived service soak with mixed validated workloads, admission
+  saturation/cancellation, bounded latency histograms and Linux resource evidence,
+  plus a manual both-backend/pool-size workflow. Addresses #538.
+
+### Fixed
+
+- Wake queued acquirers when FIFO admission advances with free slots remaining.
+  Multi-lease saturation could otherwise strand sleeping waiters despite free
+  capacity until acquisition timed out. Addresses #540.
+
 ## 0.9.0 - 2026-10-11
 
 ### Added

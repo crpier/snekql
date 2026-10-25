@@ -211,3 +211,19 @@ separate deterministic process-helper tests in the inventory. Performance
 benchmarks and noise-aware comparisons are separate work, not correctness gates.
 
 [All guides](README.md)
+
+## Long-lived service soak
+
+The separate [service soak](../soak/README.md) keeps one Database open through
+warm-up, mixed concurrent validated reads/writes/streams, periodic admission
+saturation and queued-waiter cancellation, drain and independent write-ledger
+reconciliation. It samples current RSS and native resources, uses bounded timing
+histograms, and fails rather than retrying unexpected errors. The manual
+**Service soak** workflow covers SQLite and an owned MariaDB 11.4 server at pool
+sizes one and four. Normal CI runs short CLI cases only.
+
+This complements, rather than replaces, the closed-cycle workload above.
+Resources refer to the client process, and RSS trends are observations rather
+than a leak-freedom guarantee. Real network/storage/process faults and comparative
+performance remain separate evidence. See the service guide for report schema,
+run bounds and reproduction.
