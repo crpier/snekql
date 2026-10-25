@@ -5,6 +5,8 @@ Tracking: #544. These bounded operational drills complement the long-lived
 and actual owned OS faults, not patched driver replies. They are not a benchmark,
 retry policy, or certification of every production topology.
 
+Dated clean-revision results: [2026-10-25 fault findings](fault-findings-2026-10-25.md).
+
 ## Run
 
 Use Linux, CPython 3.15+, the locked development environment and native MariaDB
