@@ -960,3 +960,19 @@ excluded. Largest measured friction: manual draft stitching via undeployed inter
 Next priority is a small staged-authoring interface, not additional verifier breadth. Genuine
 evolution, ownership/preservation, interruption/coordination, resources and finite release scope
 remain open. Guides deferred, trusted SQL, no retrospective certification, draft/not merge-ready.
+
+
+### Model-derived staged authoring
+
+Draft.advance(models, removals=..., defaulted_additions=...) appends a complete stage inside
+real revision/predecessor, retaining before-state/prefix/checkpoints/typed work. Shared state-
+based generation, no exposed/serialized intermediate package, fake revision or caller state
+stitching. Existing unresolved prefix refuses with resolve-current-stage guidance; new removal
+choices resolved ONLY inside new stage before composition, so index/CHECK drops cannot precede
+earlier creation/checkpoints. Incomplete/unknown/unsupported choice refuses, original draft
+unchanged. Compiler validates prefix/composition, stale/late typed work still refuses. Explicit
+handoff remains non-destructive, same-route recreation refused; defaults/adoption/destruction/
+constrained ADD language unchanged. Both-backend SAME journey produces literal committed61036d9
+packages; no wire/format/identity/ledger change. No total-work/memory promise. Historical-source/
+model-repetition/freshness ergonomics and other workflow/evolution/recovery/release scope open;
+not another verifier slice, guides deferred, SQL trusted, draft/incomplete/not merge-ready.

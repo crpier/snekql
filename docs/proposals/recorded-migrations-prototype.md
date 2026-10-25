@@ -43,6 +43,20 @@ ownership merely by being defined. Passing models to `generate` explicitly
 selects the desired managed scope. Missing previously managed tables produce an
 unresolved deletion-versus-relinquishment decision, not DROP statements.
 
+## Composing model-derived stages
+
+`draft.then(*typed_changes).advance(final_models, removals=(...))` appends one complete
+model-derived stage within the SAME revision/predecessor. No caller-constructed State/Draft,
+intermediate package or synthetic revision is needed. Resolve existing draft decisions before
+advancing; new explicit removals are stage-local via `removals`. Missing/unsupported choices
+refuse without mutating the prior draft. Earlier checkpoints/data stay intact and both prefix
+and composed route must compile. Defaulted nullable additions still require explicit
+`defaulted_additions="leave_null"`. It performs no target IO or implicit ownership/adoption.
+
+The [workflow review](recorded-migrations-workflow-review.md#staged-authoring-improvement)
+records the interface and remaining authoring/product work. The original committed packages
+remain byte-identical; no format or ledger change follows from this authoring method.
+
 ## Frozen input and compiler evolution
 
 `Package.load()` now has a fixed experimental wire-input envelope: at most

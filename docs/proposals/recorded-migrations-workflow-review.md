@@ -1,8 +1,9 @@
 # Recorded migrations: authoring-to-application review (#477)
 
 Status: experimental engineering assessment, not a consumer guide or release decision.
-This checkpoint returns to the product goal: author, review and deploy an understandable
-schema-and-data transition. It adds no production interface or catalog-parser capability.
+The initial63dbc86 checkpoint returned to the product goal: author, review and deploy an
+understandable schema-and-data transition. The staged-authoring improvement below addresses
+its largest measured interface friction without expanding catalog parsing or operation authority.
 
 ## The concrete journey
 
@@ -33,7 +34,7 @@ Normal and forced-lazy test modes also exercise isolated child programs in the c
 mode. Both backends take the same logical route, not a SQLite-only demonstration with assumed
 native equivalence. No consumer application repository is modified.
 
-## What this says about the interface
+## Initial interface assessment (63dbc86)
 
 The core architecture CAN express the journey, including genuinely generated historical query
 source, frozen model-free deployment, reviewed route freshness and ordinary typed application use.
@@ -60,19 +61,56 @@ It is not yet a comfortable authoring interface. The largest friction is visible
    different orders here; the exercise compares revision membership, not an undocumented
    chronological order. This was an expectation correction, not a new execution defect.
 
-## Next interface task, not another verifier slice
+## Staged-authoring improvement
 
-Remove authoring-only intermediate package/revision bookkeeping for composing one staged
-transition. The module should retain the real revision/predecessor, current projected shape,
-explicit removal decisions and checkpoint-bound data work while advancing toward model-derived
-final intent. Callers should not reconstruct Draft state or silently discard unresolved decisions.
-Choose a small interface at the existing authoring seam, then test the SAME journey through it;
-do not introduce a second hidden test route or a parallel convenience framework.
+The SAME journey now uses the authoring module instead of manual reconstruction:
 
-This is a candidate task specification, NOT an approved new method name or an implemented
-interface. Preserve explicit backfill/removal decisions, model/ownership independence, frozen
-packages and stale-work rejection. Existing safety gates stay; prioritize new verifier work only
-when required for this journey or the finite supported scope.
+```python
+route = (
+    expansion.then(*CHANGES)
+    .advance(
+        [Account],
+        removals=(m.DropColumn(table_name="accounts", column_name="is_admin"),),
+    )
+    .then(m.Checkpoint(name="final"))
+)
+```
+
+`Draft.advance(models, *, removals=(), defaulted_additions=None)` generates and appends one
+complete stage toward the supplied managed-model scope. It retains the real revision,
+predecessor, original before-state, earlier operations and checkpoint-bound typed work.
+No intermediate package/revision is exposed, serialized or needed as generation input;
+model-derived generation shares one internal state-based implementation with `generate`.
+The fixture imports its expansion draft from stage.py; no synthetic authoring revision,
+manual state/operation/lineage copying, or undeployed expansion.json remains.
+
+- The current route must compile and have no unresolved decisions. Refusal says to resolve
+  the current stage before advancing, rather than laundering earlier decisions into a new target.
+- New removal choices must be supplied in `removals` for THIS stage. It resolves them locally,
+  so DROP INDEX/CHECK cannot move ahead of earlier creation/checkpoints/data work. Missing,
+  unknown or unsupported choices raise; the original immutable draft remains usable. This is
+  an atomic complete-stage method, not a new unresolved-stage serialization mechanism.
+- Existing generate(...).resolve(...) remains available for initial authoring. In advance,
+  use removals= rather than trying to resolve a refused new stage afterward.
+- Source and composed route both pass existing compiler checks. Earlier checkpoint digests
+  stay unchanged; stale typed work/late reuse after contraction still refuses. New method is
+  not an exemption from construction, SQL-byte, endpoint, ownership or capability checks.
+- Desired models still select migration scope explicitly. Handoff requires RelinquishTable;
+  it emits no DROP and cannot authorize same-route recreation/adoption. No new backfill,
+  default, destruction, constrained ADD or adoption policy is inferred. Existing explicit
+  leave_null option is forwarded for defaulted additions, not automatically selected.
+- Compiler validation internally compiles the prefix/composed route; this is offline work,
+  not target observation. Repeated large stage chains have no new total-work/memory guarantee.
+
+Both backends produce literal committed61036d9-writer package bytes through this smaller
+interface. No new operation, format field/version, identity or ledger change. Existing
+experimental historical-package and negative-authority guards remain intact.
+
+This removes the measured stitching problem, not the entire authoring design queue.
+Historical-source lifecycle, repeated declarations and author/build freshness integration
+remain. Next product tasks stay workflow-first: ownership/preservation and genuine historical
+evolution, then realistic interruption/coordination, finite scope/release reconciliation.
+Do not resume attribute-by-attribute verifier expansion unless it blocks that scope.
 
 ## Evidence and limits
 
@@ -81,7 +119,8 @@ packages, actual plans/outcomes, positive/negative static diagnostics and curren
 The initial incomplete authoring program omitted backfill; required-column validation refused NULL
 rows, then adding the typed work made the journey pass. This is author-program TDD, NOT a newly
 discovered library defect. Early status-order/type-diagnostic expectation corrections are excluded
-from runtime-defect evidence. No production code changed.
+from runtime-defect evidence. The initial checkpoint changed no production code; the new
+advance interface is tested RED→GREEN at the existing authoring/compile seams.
 
 This does not establish genuine compiler/package/codec/ledger evolution, partial ownership,
 interruption/recovery/competing-writer guarantees, arbitrary SQL equivalence, custom codecs,
@@ -96,3 +135,9 @@ literal dumps with the author-generated route, then deploy the COMMITTED bytes, 
 silently regenerated replacement. Never regenerate these historical reference packages
 merely to accommodate a compiler change. This fixes one writer epoch; genuine evolution
 policy/testing remains separate. No history/receipt conversion or retrospective certification.
+
+
+New staged evidence: `.snektest/477-staged-authoring/`, including the SAME two-backend actual
+consumer traces, committed-byte checks, real positive/negative static diagnostics and full
+normal/forced-lazy suites. Missing-method RED and unresolved-prefix diagnostic RED are kept;
+import sorting and input-test formatting corrections are not runtime defect evidence.

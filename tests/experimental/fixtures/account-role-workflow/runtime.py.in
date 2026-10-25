@@ -30,7 +30,7 @@ async def main() -> None:
         outcome = await target.apply(plan)
         again = await target.apply(plan)
         progress = [(p.revision, p.phase, p.digest) for p in await target.status()]
-    assert not {"models", "backfill", "historical", "app"} & sys.modules.keys()
+    assert not {"models", "stage", "backfill", "historical", "app"} & sys.modules.keys()
     print(
         json.dumps(
             {

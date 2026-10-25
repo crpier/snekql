@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Add `Draft.advance(models, removals=...)` to compose a complete model-derived stage in
+  the same migration revision without intermediate packages, synthetic revisions or manual
+  state stitching. Preserve earlier contracts and stage-local explicit removal decisions;
+  refuse unresolved stages. The two-backend account-role journey retains committed package
+  bytes, with no format, ledger or operation-authority change.
+
 - Exercise the model-generated `is_admin` → `role` author/review/deploy/application journey
   on SQLite and MariaDB, including generated typed historical declarations, edited-route
   freshness and isolated model-free deployment. Record manual staged-draft composition as

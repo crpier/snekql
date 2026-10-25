@@ -1,4 +1,4 @@
-"""Review one logical revision; keep the current manual composition visible."""
+"""Review one staged revision without intermediate packages or lineage stitching."""
 
 import json
 from pathlib import Path
@@ -6,23 +6,12 @@ from models import Account
 from backfill import CHANGES
 from snekql.experimental import migrations as m
 
-first = m.Package.load(Path("001_accounts.json").read_text())
-expansion = m.Package.load(Path("expansion.json").read_text())
-contraction = m.generate(
-    "authoring_final_shape", [Account], backend="BACKEND", previous=expansion
-).resolve(m.DropColumn(table_name="accounts", column_name="is_admin"))
-route = m.Draft(
-    revision="002_roles",
-    predecessor=first.digest,
-    before=first.target,
-    target=contraction.target,
-    operations=(
-        *expansion.draft.operations,
-        *CHANGES,
-        *contraction.operations,
-        m.Checkpoint(name="final"),
-    ),
-)
+from stage import expansion
+
+route = expansion.then(*CHANGES).advance(
+    [Account],
+    removals=(m.DropColumn(table_name="accounts", column_name="is_admin"),),
+).then(m.Checkpoint(name="final"))
 output = Path("002_roles.json")
 stale = False
 diagnostic = ""

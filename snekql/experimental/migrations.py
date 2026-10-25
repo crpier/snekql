@@ -358,6 +358,42 @@ class Draft(_Value):
         """Append typed authoring steps while retaining the original immutable draft."""
         return self.model_copy(update={"operations": (*self.operations, *operations)})
 
+    def advance(
+        self,
+        models: Sequence[type[Table[Any]]],
+        *,
+        removals: Sequence[DropColumn | DropIndex | DropCheck | RelinquishTable] = (),
+        defaulted_additions: Literal["leave_null"] | None = None,
+    ) -> Self:
+        """Append a complete model-derived stage within this revision, without IO.
+
+        The existing route must compile before advancing. Resolve new removal
+        decisions with ``removals`` here, not retroactively against the prefix.
+        Missing/unsupported decisions refuse without changing this draft. Lineage,
+        earlier operations and checkpoint contracts remain intact; no intermediate
+        package or synthetic revision is exposed or stored.
+        """
+        if self.unresolved:
+            msg = f"resolve the current stage before advancing: {self.unresolved}"
+            raise PackageError(msg)
+        compile(self)
+        stage = _generate_from_state(
+            self.revision,
+            models,
+            before=self.target,
+            predecessor=self.predecessor,
+            defaulted_additions=defaulted_additions,
+        ).resolve(*removals)
+        result = self.model_copy(
+            update={
+                "target": stage.target,
+                "operations": (*self.operations, *stage.operations),
+                "unresolved": stage.unresolved,
+            }
+        )
+        compile(result)
+        return result
+
     def adopt(self, *table_names: str) -> Self:
         """Replace named proposed creations with explicit, target-verified adoption."""
         if len(set(table_names)) != len(table_names) or any(
@@ -494,21 +530,39 @@ def generate(
     nullable columns without defaults, then sets defaults for future writes. It
     never infers an existing-row backfill or permits required additions.
     """
-    if defaulted_additions not in (None, "leave_null"):
-        msg = "unsupported defaulted-addition policy"
-        raise PackageError(msg)
-    require_scaffold_models(backend, models)
     if previous is not None:
         Package.load(previous.dump())
         if revision == previous.draft.revision:
             msg = "successive revisions must have distinct identities"
             raise PackageError(msg)
-    dialect = SQLITE_DIALECT if backend == "sqlite" else MARIADB_DIALECT
-
     before = previous.target if previous else State(backend=backend)
     if before.backend != backend:
         msg = "previous package belongs to another backend"
         raise PackageError(msg)
+    return _generate_from_state(
+        revision,
+        models,
+        before=before,
+        predecessor=previous.digest if previous else None,
+        defaulted_additions=defaulted_additions,
+    )
+
+
+def _generate_from_state(
+    revision: str,
+    models: Sequence[type[Table[Any]]],
+    *,
+    before: State,
+    predecessor: str | None,
+    defaulted_additions: Literal["leave_null"] | None,
+) -> Draft:
+    """Share model-derived changes without inventing package lineage for a stage."""
+    if defaulted_additions not in (None, "leave_null"):
+        msg = "unsupported defaulted-addition policy"
+        raise PackageError(msg)
+    backend = before.backend
+    require_scaffold_models(backend, models)
+    dialect = SQLITE_DIALECT if backend == "sqlite" else MARIADB_DIALECT
     tables = tuple(
         TableState(
             name=table.table_name,
@@ -572,7 +626,7 @@ def generate(
                 unresolved.extend(_drop_decision(table.name, name) for name in removed)
     return Draft(
         revision=revision,
-        predecessor=previous.digest if previous else None,
+        predecessor=predecessor,
         before=before,
         target=State(backend=backend, tables=tables),
         operations=tuple(operations),
