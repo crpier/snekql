@@ -4,6 +4,15 @@ Research for [issue #473](https://github.com/crpier/snekql/issues/473), dated
 2026-10-25. This is **not an accepted interface proposal**, a production change,
 or authorization for a breaking change. Names below are experimental.
 
+## Follow-up
+
+The maintainer ranks the outer declaration lower for verbosity, without
+eliminating it. [The follow-up research](flat-declarations.md) finds flatter
+namespace, prefixed-constructor and ownership-selector forms. In particular,
+ordinary descriptor-valued defaults provide another omission route: the
+recognized-argument restriction below applies to registered field specifiers.
+The remaining sections record the first round, not the final shortlist.
+
 ## Scope and method
 
 Following maintainer direction, these experiments are **static-only**. They do
@@ -53,7 +62,8 @@ control caught that weakness; the viable prototypes now reject that mismatch.
 
 The split prototype gives its `default` parameter a Python signature default
 of `PENDING_GENERATION`. That **does not** make the constructor field omittable:
-ty needs the recognized argument at the declaration call in this experiment.
+ty needs the recognized argument at the registered field-specifier call in
+this experiment.
 This reproduces the constraint recorded in the earlier ADR.
 
 The two nonstandard-keyword-only forms also accept the deliberately mismatched
@@ -63,7 +73,7 @@ Those are recorded limitations of these blocked forms, not positive guarantees.
 The viable forms reject the corresponding mismatch with `invalid-assignment`.
 
 **Interpretation:** a separate server-default parameter is possible, but not
-currently sufficient by itself in this model-declaration mechanism. A dedicated
+currently sufficient by itself in the registered field-specifier mechanism. A dedicated
 outer declaration can give the recognized `default=` argument an unambiguous
 database meaning. We do not have to choose between the current marker semantics
 and an untyped constructor.

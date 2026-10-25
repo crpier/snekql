@@ -1,0 +1,36 @@
+"""A flat source selector must retain both value shapes and factory validation."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Application[S = database.Pending](FlatModel[S]):
+    __row_type__: ClassVar[database.ReadType[Application[database.Row]]]
+    attempts: database.Col[int] = LocatedInteger(default=7)
+    label: database.Col[str] = LocatedText(default_factory=lambda: "new")
+
+
+application = Application()
+assert_type(application.attempts, int)
+assert_type(application.label, str)
+Application(attempts=3, label="explicit")
+Application(attempts=None)  # error: invalid-argument-type
+
+
+class WrongShape[S = database.Pending](FlatModel[S]):
+    __row_type__: ClassVar[database.ReadType[WrongShape[database.Row]]]
+    attempts: database.Col[int] = LocatedInteger(default=7, default_on="database")  # error: invalid-assignment
+
+
+class BadDefault[S = database.Pending](FlatModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadDefault[database.Row]]]
+    attempts: database.Col[int] = LocatedInteger(default="wrong")  # error: invalid-assignment
+
+
+class BadFactory[S = database.Pending](FlatModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadFactory[database.Row]]]
+    label: database.Col[str] = LocatedText(default_factory=lambda: 42)  # error: invalid-assignment
+
+
+LocatedInteger(default=7, default_on="typo")  # error: no-matching-overload
+LocatedText(default_factory=lambda: "new", default_on="database")  # error: invalid-argument-type
