@@ -16,6 +16,9 @@ from snekql.experimental._migration_indexes import (
     validate_removed_sqlite_indexes,
 )
 from snekql.experimental._migration_mariadb import validate_mariadb_declarations
+from snekql.experimental._migration_reference_parents import (
+    validate_sqlite_reference_parents,
+)
 from snekql.experimental._migration_sql import (
     Token,
     ascii_lower,
@@ -98,6 +101,7 @@ def prepare_steps(
             )
             if package.target.backend == "sqlite":
                 objects = _project(sql, objects)
+    validate_sqlite_reference_parents(package, objects)
     return tuple(steps)
 
 
@@ -445,6 +449,7 @@ def validate_completed(package: Package, objects: list[tuple[Any, ...]]) -> None
     """Require the managed SQLite endpoint before committing completion evidence."""
     try:
         validate_managed(package.target, objects)
+        validate_sqlite_reference_parents(package, objects)
         validate_removed_sqlite_indexes(package, objects)
     except (PackageError, SchemaError) as error:
         msg = f"managed schema postcondition failed; transaction rolled back: {error}"

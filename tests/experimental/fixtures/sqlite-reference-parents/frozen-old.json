@@ -1,0 +1,65 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "d6a09e1a4489ca946611a82f4747a01a578c388c140e91ba75457ccc96b6e53e",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`parent_id` INTEGER REFERENCES parents(id)",
+              "name": "parent_id",
+              "nullable": true,
+              "query_type": null,
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "children",
+          "quoted_name": "`children`",
+          "sql": "CREATE TABLE `children` (`parent_id` INTEGER REFERENCES parents(id)) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`parent_id` INTEGER REFERENCES parents(id)",
+              "name": "parent_id",
+              "nullable": true,
+              "query_type": null,
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "children",
+          "quoted_name": "`children`",
+          "sql": "CREATE TABLE `children` (`parent_id` INTEGER REFERENCES parents(id)) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE `children` (`parent_id` INTEGER REFERENCES parents(id)) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

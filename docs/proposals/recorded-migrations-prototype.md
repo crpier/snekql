@@ -669,6 +669,51 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## SQLite referenced-parent ordinary-table observation
+
+Pending SQLite preparation now requires observed or explicitly planned ordinary parent
+base tables for claimed inline REFERENCES and table-level FOREIGN KEY declarations. Pure
+preparation projects the existing catalog through supported steps, then checks final
+projected parent presence; live endpoint validation repeats the parent check before phase
+completion. An isolated preparation-only bypass demonstrates the endpoint gate rolling
+back child DDL AND history; omitting only the new validator at both call sites reproduces
+the old completed-but-unusable context. No working-source mutation during native suites.
+
+Ordinary parent proof means a main catalog table entry with ordinary CREATE TABLE SQL,
+not a view or CREATE VIRTUAL TABLE entry (SQLite catalogs virtual tables as type table).
+Only relevant parent definitions are parsed; unrelated opaque objects are not adopted or
+certified. Name lookup uses SQLite ASCII identifier folding, not Unicode casefold. This is
+not exhaustive virtual-module/shadow-object/namespace/privilege/type/parent-key/index/
+collation/uniqueness or data proof. Missing/incompatible parent keys remain separate work.
+Native parent observation remains unchanged. No resource/total-memory/IO/deadline guarantee.
+
+Before/target/intermediate CREATE/SQLite ADOPT claimed tables retain their reference-parent
+requirements after relinquishment; strict adoption matching child DDL is not missing-parent
+certification. Declaring a reference does not adopt its parent. Extra SQL child fields'
+own opaque references remain outside this claimed-parent gate, trusted/unclaimed. Supported
+explicit same-package parent creation works with parent first OR child first, because proof
+is final projection, not every-step readiness: preceding DML can still fail/roll back before
+its parent exists. Constrained FK ADD remains unsupported; no operation/adoption/destruction
+permission is added. External ordinary parents may remain wholly unowned/non-STRICT.
+
+Actual archivedb106fd1 writer/reader/runtime emitted/loaded/completed real format2 with real
+matching FK DDL but a missing external parent, and rejected attempted child writes. This is
+a referenced-parent readiness gap, NOT a missing/mismatched-FK construction contradiction.
+The SAME fixed artifact retains literal dump/digest/model-free load and succeeds with an
+observed ordinary parent, valid/NULL children and orphan rejection. Missing/view/virtual
+parents now refuse pending prepare pre-schema/history. Compiler/package identity remains
+separate from target observations; no artifact/digest/ledger/receipt conversion, retrospective
+repair/revocation/certification. Existing complete status/already-applied receipts are prior
+execution evidence, not a new parent/readiness certificate.
+
+Parent replacement after prepare still invalidates apply under existing catalog revalidation;
+post-completion parent removal still blocks followup through accepted-catalog drift. Bounded
+presence proof does not certify all current/future foreign_keys/defer_foreign_keys sessions,
+application/trigger/data/codec/query readiness, parent member/key/index/type/collation/full FK
+compatibility or a recovery shortcut. Remaining attributes/constraints/namespaces/FK/combined
+workflows/interruption/resources/compiler/package/codec/ledger/release-scope queue open;
+points1–4 incomplete, trusted SQL unsandboxed, draft/guides deferred, not production/merge-ready.
+
 ## SQLite inline REFERENCES construction agreement
 
 Compile/load binds managed SQLite column REFERENCES presence/absence, one explicit

@@ -4,6 +4,14 @@
 
 ### Experimental
 
+- Require observed or explicitly projected ordinary SQLite parent tables for claimed inline
+  and table-level FKs during pending preparation and live endpoint validation. Reject
+  missing/view/virtual parents without adopting them; retain external unowned parents,
+  same-package creation in either order and frozen identities. An archived matching-FK
+  completion lacked usable parent context; this closes a bounded readiness gap, not a
+  missing-FK construction contradiction or full parent-key/index/type/collation/session
+  certificate. No new FK operation, format conversion or retrospective repair/revocation.
+
 - Bind experimental SQLite managed inline REFERENCES presence, explicit target/member,
   bounded immediate actions and own label to construction before effects. Close an
   archived orphan-accepting false completion with foreign_keys enabled; retain valid old

@@ -894,3 +894,29 @@ Query/model mapping/parent ownership separate; SET forms/other attribute-role in
 namespace/constraint/FK/combined workflow/interruption/resource/compiler/package/codec/ledger/
 release queue open; points1–4 incomplete, trusted SQL unsandboxed, draft/guides deferred,
 not production/merge-ready.
+
+
+### SQLite referenced-parent base-table checkpoint
+
+Pending preparation projects the catalog through supported steps and requires ordinary
+parent tables for claimed inline/table-level FKs; endpoint repeats proof before completion.
+Before/target/intermediate CREATE/SQLite ADOPT references survive handoff, parent not adopted,
+extra SQL child-field opaque references unclaimed. Ordinary catalog table+CREATE TABLE, not
+view/CREATE VIRTUAL TABLE; relevant parent definitions only, ASCII identifier folding. Explicit
+same-package parent creation either order works as final projection, not every-step DML
+readiness. External ordinary parents remain unowned, constrained FK ADD remains unsupported.
+Native path unchanged, not full syntax/virtual module/shadow/namespace/privilege/resource proof.
+
+Archivedb106fd1 real format2 writer/reader/runtime completed matching FK DDL with missing
+external parent and unusable child writes: readiness gap, NOT missing/mismatched-FK construction.
+SAME artifact retains dump/digest/load/model-free external-parent/NULL-child/valid-child/orphan
+rejection. Missing/view/virtual parent pending prepare now read-only pre-effects refusal.
+Copied preparation-only bypass proves endpoint child+ledger rollback; validator-only omission
+at both call sites reproduces old context; working sources untouched during native suites.
+No conversion/repair/revocation/retrospective certification; old complete/already-applied
+receipts remain earlier execution evidence, not new readiness certification. Parent replacement
+after prepare and post-completion removal still blocked by catalog revalidation/drift guards.
+Not parent-key/member/index/type/collation/uniqueness/data/current or future enforcement-session/
+codec/query readiness/full FK compatibility or recovery proof. Remaining constraint/namespace/
+FK/combined workflow/interruption/resource/compiler/package/codec/ledger/release queue open;
+points1–4 incomplete, trusted SQL unsandboxed, draft/guides deferred, not production/merge-ready.
