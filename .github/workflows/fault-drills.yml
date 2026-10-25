@@ -1,0 +1,64 @@
+name: Real fault drills
+
+on:
+  workflow_dispatch:
+    inputs:
+      trials:
+        description: Sequential trials per scenario (1 to 10)
+        type: number
+        default: 3
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  fault-drill:
+    name: Fault / ${{ matrix.scenario }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [stream-cut, commit-blackhole, restart-load, sqlite-full]
+    env:
+      PYTHON_CONTEXT_AWARE_WARNINGS: '1'
+      SCENARIO: ${{ matrix.scenario }}
+      TRIALS: ${{ inputs.trials }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: '0.13.0'
+      - name: Install native MariaDB LTS tools
+        if: matrix.scenario != 'sqlite-full'
+        run: |
+          curl -fsSL https://r.mariadb.com/downloads/mariadb_repo_setup \
+            | sudo bash -s -- --mariadb-server-version=mariadb-11.4
+          sudo apt-get update
+          sudo apt-get install --yes mariadb-client mariadb-server tzdata-legacy
+          sudo systemctl stop mariadb.service || true
+          mariadbd --version
+      - name: Sync environment
+        run: |
+          uv python install 3.15.0
+          uv sync --locked --all-extras --python 3.15.0
+      - name: Exercise real faults
+        run: |
+          uv run python -c 'import os; value=float(os.environ["TRIALS"]); assert value.is_integer() and 1 <= value <= 10'
+          count=$(uv run python -c 'import os; print(int(float(os.environ["TRIALS"])))')
+          mkdir -p evidence "$RUNNER_TEMP/fault-drills"
+          for trial in $(seq 1 "$count"); do
+            status=0
+            TMPDIR="$RUNNER_TEMP/fault-drills" uv run python -m soak.faults \
+              --scenario "$SCENARIO" > "evidence/$trial.jsonl" \
+              2> "evidence/$trial.stderr" || status=$?
+            printf '%s\n' "$status" > "evidence/$trial.status"
+            [ "$status" -eq 0 ] || exit "$status"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: real-fault-${{ matrix.scenario }}
+          path: evidence/
+          retention-days: 14

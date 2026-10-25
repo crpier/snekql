@@ -165,3 +165,8 @@ spot persistent trends, but allocator retention/page residency are not live-obje
 leak measurements. Peak RSS is a high-water mark, not a growth rate. Review raw
 samples across longer/repeated runs; neither a flat trace nor a short clean run
 proves universal leak freedom. Timing has no universal CI threshold.
+
+## Real fault drills
+
+See [owned transport, restart and bounded-filesystem drills](FAULTS.md) for the
+separate CLI, fault-placement proof, outcome/recovery checks and isolation limits.
