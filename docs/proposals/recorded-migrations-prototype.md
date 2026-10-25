@@ -27,6 +27,14 @@ decisions without silently superseding them. Consumer interfaces/guides and rele
 query mapping stays independent of ownership. The next priority is execution/recovery contracts,
 not automatic parser expansion. Earlier checkpoint statements below retain their historical scope.
 
+The [prepared-evidence follow-through](recorded-migrations-prepared-evidence-review.md) adds
+bounded `Prepared.dump/load` with wire version1 and explicit execution_epoch1 in new plans.
+The ORIGINAL plan can cross worker/process/server restart without re-preparation; incompatible
+or corrupt persistence refuses, and ledger correlation still distinguishes the applied plan
+from a different internally valid file. Historical packages/complete receipts are unchanged.
+Package compiler-epoch separation, runtime policies and qualification remain open; this is
+not general compiler independence or a portable database backup.
+
 ## Workflow-first checkpoint
 
 The [authoring-to-application review](recorded-migrations-workflow-review.md) exercises the

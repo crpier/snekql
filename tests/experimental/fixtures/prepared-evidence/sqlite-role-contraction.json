@@ -1,0 +1,201 @@
+{
+  "digest": "a7fb2bb11333d5772ee8ca19c272d7dc1452a467c4e61e9bb6ff95bc172be828",
+  "prepared": {
+    "catalog_digest": "b6cc5c78159825bc193137ab65b6c94ccf743731b4dd9438d9a1dab563e05409",
+    "execution_epoch": 1,
+    "package": {
+      "bindings": [
+        []
+      ],
+      "contractions": [
+        {
+          "after": {
+            "columns": [
+              {
+                "definition": "\"id\" INTEGER PRIMARY KEY",
+                "name": "id",
+                "nullable": false,
+                "query_type": "int",
+                "storage": "INTEGER"
+              },
+              {
+                "definition": "\"role\" TEXT NOT NULL",
+                "name": "role",
+                "nullable": false,
+                "query_type": "str",
+                "storage": "TEXT"
+              }
+            ],
+            "indexes": [],
+            "name": "accounts",
+            "quoted_name": "\"accounts\"",
+            "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"role\" TEXT NOT NULL) STRICT"
+          },
+          "before": {
+            "columns": [
+              {
+                "definition": "\"id\" INTEGER PRIMARY KEY",
+                "name": "id",
+                "nullable": false,
+                "query_type": "int",
+                "storage": "INTEGER"
+              },
+              {
+                "definition": "\"is_admin\" INTEGER NOT NULL",
+                "name": "is_admin",
+                "nullable": false,
+                "query_type": "bool",
+                "storage": "INTEGER"
+              },
+              {
+                "definition": "\"role\" TEXT",
+                "name": "role",
+                "nullable": true,
+                "query_type": "str | None",
+                "storage": "TEXT"
+              }
+            ],
+            "indexes": [],
+            "name": "accounts",
+            "quoted_name": "\"accounts\"",
+            "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL, \"role\" TEXT) STRICT"
+          },
+          "dropped": [
+            "is_admin"
+          ],
+          "required": [
+            "role"
+          ]
+        }
+      ],
+      "digest": "99d5bc77258623790522bcf4d17f51315506d650209805333de9332c2023af27",
+      "draft": {
+        "before": {
+          "backend": "sqlite",
+          "tables": [
+            {
+              "columns": [
+                {
+                  "definition": "\"id\" INTEGER PRIMARY KEY",
+                  "name": "id",
+                  "nullable": false,
+                  "query_type": "int",
+                  "storage": "INTEGER"
+                },
+                {
+                  "definition": "\"is_admin\" INTEGER NOT NULL",
+                  "name": "is_admin",
+                  "nullable": false,
+                  "query_type": "bool",
+                  "storage": "INTEGER"
+                },
+                {
+                  "definition": "\"role\" TEXT",
+                  "name": "role",
+                  "nullable": true,
+                  "query_type": "str | None",
+                  "storage": "TEXT"
+                }
+              ],
+              "indexes": [],
+              "name": "accounts",
+              "quoted_name": "\"accounts\"",
+              "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL, \"role\" TEXT) STRICT"
+            }
+          ]
+        },
+        "operations": [
+          {
+            "column_name": "role",
+            "kind": "require_not_null",
+            "table_name": "accounts"
+          },
+          {
+            "column_name": "is_admin",
+            "kind": "drop_column",
+            "table_name": "accounts"
+          }
+        ],
+        "predecessor": "3df9714ff4ba969a6eabce4aa292824b9e950ec22859e508e5e5979c942acd1f",
+        "revision": "003_contract",
+        "target": {
+          "backend": "sqlite",
+          "tables": [
+            {
+              "columns": [
+                {
+                  "definition": "\"id\" INTEGER PRIMARY KEY",
+                  "name": "id",
+                  "nullable": false,
+                  "query_type": "int",
+                  "storage": "INTEGER"
+                },
+                {
+                  "definition": "\"role\" TEXT NOT NULL",
+                  "name": "role",
+                  "nullable": false,
+                  "query_type": "str",
+                  "storage": "TEXT"
+                }
+              ],
+              "indexes": [],
+              "name": "accounts",
+              "quoted_name": "\"accounts\"",
+              "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"role\" TEXT NOT NULL) STRICT"
+            }
+          ]
+        },
+        "unresolved": []
+      },
+      "statements": [
+        null
+      ],
+      "transactional": [
+        false
+      ],
+      "version": 2
+    },
+    "preserve_unmanaged": true,
+    "steps": [
+      {
+        "bindings": [
+          [],
+          [],
+          [],
+          []
+        ],
+        "copy_at": 1,
+        "copy_columns": [
+          "id",
+          "role",
+          "note"
+        ],
+        "copy_tables": [
+          "accounts",
+          "_snekql_rebuild_99d5bc772586_0"
+        ],
+        "dropped_columns": [
+          "is_admin"
+        ],
+        "rebuild": true,
+        "required": [
+          [
+            "accounts",
+            "role"
+          ]
+        ],
+        "sequence_table": null,
+        "statements": [
+          "CREATE TABLE \"_snekql_rebuild_99d5bc772586_0\" (\"id\" INTEGER PRIMARY KEY, \"role\" TEXT NOT NULL, note TEXT DEFAULT 'kept') STRICT",
+          "INSERT INTO \"_snekql_rebuild_99d5bc772586_0\" (\"id\", \"role\", \"note\", \"_rowid_\") SELECT \"id\", \"role\", \"note\", \"_rowid_\" FROM \"accounts\"",
+          "DROP TABLE \"accounts\"",
+          "ALTER TABLE \"_snekql_rebuild_99d5bc772586_0\" RENAME TO \"accounts\""
+        ],
+        "transactional": false,
+        "validate_triggers": true
+      }
+    ],
+    "target_id": "b412911bbaed59070874e4187eeb91d8815eb9dceb8551a768b82a0310fe3a7d"
+  },
+  "version": 1
+}

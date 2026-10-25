@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 import aiomysql
 import aiosqlite
-from snektest import assert_eq, test
+from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb
 from snekql.experimental import migrations as m
@@ -362,6 +362,18 @@ async def native_role_restart_requires_recovery_and_competing_resumers_reassess(
         ) as restarted:
             config = restarted.config()
             payload = _payload(config)
+            saved = m.Prepared.load(original.decode())
+            assert_eq(saved.execution_epoch, 1)
+            assert_eq(saved.dump().encode(), original)
+            async with m.connect(config) as target:
+                before = await target.status()
+                changed = saved.model_copy(update={"preserve_unmanaged": True})
+                with assert_raises(m.PackageError) as error:
+                    await target.inspect_recovery(
+                        m.Prepared.load(changed.dump()), schema_writers_excluded=True
+                    )
+                assert "original reviewed prepared plan" in str(error.exception)
+                assert_eq(await target.status(), before)
             async with (
                 await mariadb.Database.initialize(config) as app,
                 app.transaction() as tx,

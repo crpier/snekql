@@ -17,6 +17,12 @@ versioned original-plan persistence and runtime deadline/session integration. Th
 inventory is evidence, not a requirement to implement every listed parser/resource opportunity
 before a bounded release. The proposal is not approval or newly demonstrated support.
 
+The [prepared-evidence follow-through](recorded-migrations-prepared-evidence-review.md) adds
+bounded versioned original-plan persistence and explicit execution-epoch admission on new
+plans, with actual replacement-worker/deferred-rebuild/native-restart use. Nested package
+validation/current lowering checks remain: this does not solve standalone compiler-epoch
+compatibility or change historical package identities, adoption authority or readiness scope.
+
 ## Objective and evidence rules
 
 The first production proposal should cover a deliberately bounded set of physical

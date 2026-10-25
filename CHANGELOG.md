@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Add bounded versioned `Prepared.dump()` / `Prepared.load()` for original migration execution
+  evidence, with explicit execution-epoch admission, integrity and nested-package validation.
+  Exercise real preserved SQLite contraction/replacement-worker application and native
+  interruption/restart recovery without reconstructing the plan. Keep historical package
+  identities and completed receipts unchanged; standalone compiler-epoch compatibility,
+  caller storage durability and broader runtime/release guarantees remain separate work.
+
 - Propose finite recorded-migration promotion scope and reconcile the architecture in a
   proposed ADR: keep query mapping independent of ownership, recommend strict SQLite
   adoption and explicit writer exclusion, and identify execution-epoch/preparation,

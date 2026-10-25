@@ -39,6 +39,7 @@ from snekql.experimental._migration_mariadb import (
     mariadb_table_engine,
     validate_mariadb_declarations,
 )
+from snekql.experimental._migration_package import read_document
 from snekql.experimental._migration_prepare import (
     ExecutionStep,
     prepare_steps,
@@ -70,6 +71,15 @@ from snekql.sqlite.config import Config as SQLiteConfig
 _HISTORY = "snekql_experimental_migrations"
 _MARIADB_NO_SUCH_TABLE = 1146
 _MARIADB_UNKNOWN_COLUMN = 1054
+_PREPARED_VERSION = 1
+_EXECUTION_EPOCH: Literal[1] = 1
+
+
+def _require_execution_epoch(value: object) -> None:
+    """Refuse incompatible interpretation before observation or execution."""
+    if type(value) is not int or value != _EXECUTION_EPOCH:
+        msg = "unsupported prepared execution epoch; retain original evidence; no automatic conversion"
+        raise PackageError(msg)
 
 
 class Reconciliation(_Value):
@@ -98,11 +108,81 @@ class Progress(_Value):
 class Prepared(_Value):
     """Inspectable execution package bound to a target catalog observation."""
 
+    execution_epoch: Literal[1]
     package: Package
     target_id: str
     catalog_digest: str
     steps: tuple[ExecutionStep, ...]
     preserve_unmanaged: bool = False
+
+    def dump(self) -> str:
+        """Export original sensitive execution evidence; the caller owns durable storage.
+
+        The envelope versions persistence separately from execution interpretation.
+        Digests detect changes, not malicious publishers. No target IO occurs.
+        """
+        _require_execution_epoch(self.execution_epoch)
+        body = {"version": _PREPARED_VERSION, "prepared": self.model_dump(mode="json")}
+        text = (
+            json.dumps(
+                body | {"digest": _digest(body)},
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+        try:
+            read_document(text, subject="prepared plan")
+        except ValueError as error:
+            raise PackageError(str(error)) from error
+        return text
+
+    @classmethod
+    def load(cls, text: str) -> Prepared:
+        """Validate retained evidence without connecting or re-lowering its steps.
+
+        Raw unversioned Pydantic JSON is not this persistence contract. Loading
+        still validates the nested package with its current supported reader.
+        """
+        try:
+            value = read_document(text, subject="prepared plan")
+            if not isinstance(value, dict) or set(value) != {
+                "version",
+                "prepared",
+                "digest",
+            }:
+                msg = "prepared plan requires an explicit versioned integrity envelope"
+                raise PackageError(msg)
+            if (
+                type(value["version"]) is not int
+                or value["version"] != _PREPARED_VERSION
+            ):
+                msg = "unsupported prepared plan version; no automatic conversion"
+                raise PackageError(msg)
+            payload = value["prepared"]
+            if not isinstance(payload, dict):
+                msg = "invalid prepared plan payload"
+                raise PackageError(msg)
+            _require_execution_epoch(payload.get("execution_epoch"))
+            body = {"version": value["version"], "prepared": payload}
+            if value["digest"] != _digest(body):
+                msg = "prepared plan integrity mismatch"
+                raise PackageError(msg)
+            Package.load(
+                json.dumps(
+                    payload.get("package"), ensure_ascii=False, separators=(",", ":")
+                )
+            )
+            prepared = cls.model_validate(payload)
+            if _digest(prepared.model_dump(mode="json")) != _digest(payload):
+                msg = "prepared plan fields require their original explicit representation"
+                raise PackageError(msg)
+        except ValueError as error:
+            msg = f"invalid or unsupported prepared plan: {error}"
+            raise PackageError(msg) from error
+        else:
+            return prepared
 
     @property
     def statements(self) -> tuple[str, ...]:
@@ -337,6 +417,7 @@ class Target:
                     msg = f"existing objects require explicit adoption: {conflicts}"
                     raise PackageError(msg)
             return Prepared(
+                execution_epoch=_EXECUTION_EPOCH,
                 package=package,
                 target_id=self._target_id,
                 catalog_digest=catalog,
@@ -1061,6 +1142,7 @@ class Target:
                 return await self._assess_recovery(prepared)
 
     def _require_recovery_access(self, prepared: Prepared, *, excluded: bool) -> None:
+        _require_execution_epoch(prepared.execution_epoch)
         if self._sqlite or not excluded:
             msg = "recovery requires MariaDB with external schema writers excluded"
             raise PackageError(msg)
@@ -1262,6 +1344,7 @@ class Target:
         """Recheck observations under coordination; never replay uncertain progress."""
         async with self._guard:
             self._require_open()
+            _require_execution_epoch(prepared.execution_epoch)
             package = Package.load(prepared.package.dump())
             if package.target.backend != self._config.backend_family:
                 msg = "package backend differs from target"

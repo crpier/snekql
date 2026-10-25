@@ -1,0 +1,25 @@
+"""Replacement operator: load original evidence without authoring or application models."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+from snekql import sqlite
+from snekql.experimental import migrations as m
+
+
+async def main() -> None:
+    """Import and execute the reviewed plan, never prepare a replacement."""
+    payload = json.loads(sys.stdin.read())
+    text = Path("original-plan.json").read_text()
+    plan = m.Prepared.load(text)
+    assert plan.dump() == text
+    assert not {"models", "historical", "backfill", "review", "app"} & sys.modules.keys()
+    async with m.connect(sqlite.Config(database=Path(payload["database"]))) as target:
+        outcome = await target.apply(plan)
+    print(json.dumps({"outcome": outcome, "execution_epoch": plan.execution_epoch,
+                      "lazy_imports": sys.get_lazy_imports()}))
+
+
+asyncio.run(main())

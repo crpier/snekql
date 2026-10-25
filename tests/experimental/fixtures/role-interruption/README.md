@@ -2,7 +2,9 @@
 
 Engineering fixture, not consumer guide/release promise. Actual standalone processes and
 observed engine locks; no injected exceptions, production-step callbacks, mocks, custom sleep
-functions, edited ledger rows or hand-built migration states. No production-code changes.
+functions, edited ledger rows or hand-built migration states. The initial interruption
+checkpoint changed no production code. The later prepared-evidence checkpoint updates this
+operator to use versioned dump/load; the role package bytes and interruption bounds stay fixed.
 
 ## Actual authored route
 
@@ -66,8 +68,11 @@ an initially timed-out runner are fixture/audit issues, not product defect evide
 Advisory coordination only protects participants; schema-writer exclusion is a truthful caller
 assertion here. An unrelated-table data writer is NOT proof that concurrent old-schema account
 writers are safe through backfill/contraction. Data/codec/domain readiness remains separately
-checked. Plan persistence uses current public Pydantic representation, no stable versioned
-Prepared wire ABI promised. WAL active death, other receipt-loss windows, noncooperating schema
+checked. The initial milestone used raw public Pydantic JSON; the operator now uses bounded
+Prepared.dump/load wire version1 and execution_epoch1. Original bytes survive restart; a
+re-exported different preservation choice still cannot satisfy the ledger's original-plan hash.
+This is not general compiler/upgrade compatibility, portable identity or host-loss backup.
+WAL active death, other receipt-loss windows, noncooperating schema
 writers/privilege/session changes/fencing/resource bounds and finite product/backend/version/
 recovery/release/ADR/partial-adoption/compiler-epoch scope remain open. Trusted SQL, guides
 deferred, draft/incomplete/not production- or merge-ready.

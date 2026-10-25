@@ -49,7 +49,7 @@ def _structural_characters(text: str) -> Iterator[str]:
             yield char
 
 
-def _check_structure(text: str) -> None:
+def _check_structure(text: str, subject: str) -> None:
     """Bound containers before allocation; JSON still owns syntax validation."""
     depth = 0
     units = 0
@@ -58,24 +58,29 @@ def _check_structure(text: str) -> None:
             units += 1
             depth += 1
             if depth > _MAX_DEPTH:
-                msg = "execution package exceeds nesting limit (64)"
+                msg = f"{subject} exceeds nesting limit (64)"
                 raise ValueError(msg)
         elif char in "]}":
             depth -= 1
         elif char == ",":
             units += 1
         if units > _MAX_STRUCTURE:
-            msg = "execution package exceeds structure limit (100000 containers/separators)"
+            msg = f"{subject} exceeds structure limit (100000 containers/separators)"
             raise ValueError(msg)
+
+
+def read_document(text: str, *, subject: str) -> Any:
+    """Bound frozen JSON evidence before allocation and reject duplicate members."""
+    if len(text) > _MAX_BYTES or len(text.encode("utf-8")) > _MAX_BYTES:
+        msg = f"{subject} exceeds UTF-8 byte limit (8 MiB)"
+        raise ValueError(msg)
+    _check_structure(text, subject)
+    return json.loads(text, object_pairs_hook=_unique_object)
 
 
 def read_package(text: str) -> Any:
     """Decode each object without silently selecting the last repeated member."""
-    if len(text) > _MAX_BYTES or len(text.encode("utf-8")) > _MAX_BYTES:
-        msg = "execution package exceeds UTF-8 byte limit (8 MiB)"
-        raise ValueError(msg)
-    _check_structure(text)
-    value = json.loads(text, object_pairs_hook=_unique_object)
+    value = read_document(text, subject="execution package")
     if (
         not isinstance(value, dict)
         or type(value.get("version")) is not int

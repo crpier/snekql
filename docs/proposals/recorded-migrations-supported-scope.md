@@ -9,6 +9,18 @@ reviews are evidence for their own checkpoints, not an ever-growing release chec
 [ADR 0023](../adr/0023-recorded-migration-ownership-and-execution.md) records the architectural
 trade-off; the [glossary](../../GLOSSARY.md) distinguishes ownership, mapping and readiness.
 
+## Versioned original-evidence follow-through
+
+The [prepared-evidence checkpoint](recorded-migrations-prepared-evidence-review.md) implements
+`Prepared.dump/load`: a bounded version1 integrity envelope, required execution_epoch1 in new
+ledger-bound plans, and explicit incompatible/raw-unversioned refusal. Real deferred SQLite
+preservation/replacement-worker application and native client-death/server-restart resume use
+retained original evidence. Historical package bytes and completed receipts are not converted.
+This is the G2 persistence foundation, not completion of G1: standalone Package.load still
+recompiles and ordinary apply still rechecks current target lowering. Durable storage and the
+ledger's observation evidence remain caller responsibilities; no host-loss or generic upgrade
+promise. Candidate support and the remaining gates below are still proposed/incomplete.
+
 ## Recommendation
 
 Retain the opt-in experimental interface until the five gates below are satisfied. The first
@@ -146,9 +158,11 @@ storage must be persisted before apply and treated as sensitive trusted executab
 
 Acceptance: a replacement worker reads the retained evidence unchanged and inspects/resumes
 supported work; corrupt, incompatible or wrong-target evidence refuses without history
-mutation. Do not rebuild the original plan with today's lowerer. Current public Pydantic JSON
-proves same-host process/restart usability only. No portable identity, host/volume-loss or
-cross-version persistence promise is inferred; choose any such extension separately.
+mutation. Do not rebuild the original plan with today's lowerer. The initial raw Pydantic JSON
+experiment proved same-host process/restart usability only; the versioned follow-through above
+now provides explicit envelope/epoch admission and unchanged original-plan loading. No portable
+identity, host/volume-loss or general cross-version promise is inferred. The ledger remains
+necessary; original evidence is not a backup or a compiler-compatibility registry.
 
 ### G3 — Reconcile migration I/O with runtime policy
 

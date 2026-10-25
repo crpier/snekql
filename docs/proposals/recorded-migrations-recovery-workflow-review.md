@@ -112,3 +112,10 @@ It recommends strict adoption and caller-excluded incompatible writers, with exe
 original-plan persistence and runtime deadline/session contracts preceding finite qualification.
 WAL and one selected real native receipt-loss window remain targeted qualification gaps; no
 new runtime behavior or broader recovery guarantee follows from that engineering proposal.
+
+The subsequent [prepared-evidence implementation](recorded-migrations-prepared-evidence-review.md)
+now runs this SAME real native interruption/restart journey with `Prepared.dump/load`, explicit
+wire version1/execution_epoch1 and ledger-bound original-plan identity, not raw Pydantic JSON.
+The earlier experiment's serialization limits above remain its historical evidence bounds.
+This follow-through does not add WAL death, a server-kill-in-COMMIT/DDL window, portable backup,
+generic compiler independence, deadline policy or broader replay/reconciliation permission.
