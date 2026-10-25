@@ -945,3 +945,18 @@ old complete/already-applied receipts not new readiness certificates. Not arity/
 index/affinity/type/collation/implicit-key/data/current or future session/codec/query-readiness/
 full FK/IO/deadline/total-memory/resource or recovery proof. Remaining queue open; points1–4
 incomplete, trusted SQL unsandboxed, guides deferred, draft/not production/merge-ready.
+
+
+### Workflow-first authoring checkpoint
+
+See the [workflow review](recorded-migrations-workflow-review.md): actual generated models and
+historical source, one logical expand/typed-backfill/require/drop revision, author-owned route
+edit makes the old artifact stale, real static rejection of a wrong role type, authoring source
+deleted before model-free deployment, current typed application verify/read/insert on SQLite
+and private MariaDB. No state/declaration patches, raw migration SQL or production changes.
+Both normal/forced-lazy child execution modes exercised. Initial incomplete author program
+was refused for NULL rows, not a library defect; status/type-diagnostic expectation corrections
+excluded. Largest measured friction: manual draft stitching via undeployed intermediate package.
+Next priority is a small staged-authoring interface, not additional verifier breadth. Genuine
+evolution, ownership/preservation, interruption/coordination, resources and finite release scope
+remain open. Guides deferred, trusted SQL, no retrospective certification, draft/not merge-ready.

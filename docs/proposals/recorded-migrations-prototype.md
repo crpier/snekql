@@ -14,6 +14,14 @@ Unchanged operation sets retain their existing format. Format 1 remains
 unsupported, and old experimental ledgers have no automatic upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
 
+## Workflow-first checkpoint
+
+The [authoring-to-application review](recorded-migrations-workflow-review.md) exercises the
+complete model-generated is_admin → role route, actual generated typed historical source,
+route editing/freshness, model-free deployment and current typed application on both backends.
+It records manual staged-draft composition as the next interface priority, not another parser
+slice. Existing safety gates remain; finite scope and the other product objectives are incomplete.
+
 ## The four interfaces
 
 1. `generate(revision, models, backend=..., previous=...)` produces an immutable,

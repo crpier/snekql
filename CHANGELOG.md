@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Exercise the model-generated `is_admin` → `role` author/review/deploy/application journey
+  on SQLite and MariaDB, including generated typed historical declarations, edited-route
+  freshness and isolated model-free deployment. Record manual staged-draft composition as
+  the next interface priority; no production interface change or new parser work in this slice.
+
 - Check explicit SQLite FK parent members against observed/projected declared columns at
   pending preparation and completion, rejecting missing columns and undeclared rowid aliases
   without adopting parents or changing frozen identities. Retain quoted/ASCII names and

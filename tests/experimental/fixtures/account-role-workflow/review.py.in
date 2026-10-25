@@ -1,0 +1,47 @@
+"""Review one logical revision; keep the current manual composition visible."""
+
+import json
+from pathlib import Path
+from models import Account
+from backfill import CHANGES
+from snekql.experimental import migrations as m
+
+first = m.Package.load(Path("001_accounts.json").read_text())
+expansion = m.Package.load(Path("expansion.json").read_text())
+contraction = m.generate(
+    "authoring_final_shape", [Account], backend="BACKEND", previous=expansion
+).resolve(m.DropColumn(table_name="accounts", column_name="is_admin"))
+route = m.Draft(
+    revision="002_roles",
+    predecessor=first.digest,
+    before=first.target,
+    target=contraction.target,
+    operations=(
+        *expansion.draft.operations,
+        *CHANGES,
+        *contraction.operations,
+        m.Checkpoint(name="final"),
+    ),
+)
+output = Path("002_roles.json")
+stale = False
+diagnostic = ""
+if output.exists():
+    previous = m.Package.load(output.read_text())
+    try:
+        previous.check(route)
+    except m.PackageError as error:
+        stale = True
+        diagnostic = str(error)
+package = m.compile(route)
+output.write_text(package.dump())
+print(
+    json.dumps(
+        {
+            "stale": stale,
+            "diagnostic": diagnostic,
+            "digest": package.digest,
+            "target": [t.name for t in package.target.tables],
+        }
+    )
+)

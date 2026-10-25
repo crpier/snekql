@@ -1,0 +1,16 @@
+"""Generate initial deployment and intermediate query source, without a database."""
+
+from pathlib import Path
+from models import Initial, Expanded
+from snekql.experimental import migrations as m
+
+first = m.compile(m.generate("001_accounts", [Initial], backend="BACKEND"))
+Path("001_accounts.json").write_text(first.dump())
+expansion = m.generate("002_roles", [Expanded], backend="BACKEND", previous=first).then(
+    m.Checkpoint(name="fill_roles")
+)
+# This package is an authoring bridge, NOT an additional deployed revision.
+Path("expansion.json").write_text(m.compile(expansion).dump())
+Path("historical.py").write_text(
+    m.contract_source(expansion, point="fill_roles", table="accounts")
+)
