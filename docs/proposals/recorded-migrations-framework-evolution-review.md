@@ -90,3 +90,12 @@ final historical query imports are static and real rendered programs are ty chec
 
 Trusted SQL, no arbitrary equivalence/whole-resource/blanket readiness or retrospective
 certification. Consumer guides deferred; proposal remains draft/incomplete/not production-ready.
+
+
+## Subsequent interruption/coordination exercise
+
+The [role-recovery workflow review](recorded-migrations-recovery-workflow-review.md) now
+interrupts actual consumer processes, retains durable native uncertainty across owned-server
+restart and races operators. It distinguishes SQLite DELETE rollback/retry from explicit native
+inspect/resume and proves unrelated native data writers are not paused. WAL active death and
+remaining receipt-loss windows stay open; this does not broaden the evolution claims above.

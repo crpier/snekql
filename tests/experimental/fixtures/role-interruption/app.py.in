@@ -1,0 +1,37 @@
+"""Current application only: no old flag or migration authoring imports."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+from typing import ClassVar
+from snekql import BACKEND as db
+
+
+class Account[S = db.Pending](db.Model[S]):
+    """The current application reads and writes the final representation."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Account[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    role: db.Col[str] = db.Text()
+
+
+async def main() -> None:
+    """Validate separately, read migrated data, then perform ordinary typed CRUD."""
+    payload = json.loads(sys.stdin.read())
+    config = CONFIG
+    async with await db.Database.initialize(config) as app:
+        await app.verify([Account])
+        async with app.transaction() as tx:
+            rows = await tx.fetch_all(db.select(Account).order_by(Account.id.asc()))
+        before = [(row.id, row.role) for row in rows]
+        async with app.transaction() as tx:
+            await tx.execute(db.insert(Account(id=3, role="user")))
+        async with app.transaction() as tx:
+            created = await tx.fetch_one(db.select(Account).where(Account.id.eq(3)))
+        assert created is not None
+    print(json.dumps({"before": before, "created": [created.id, created.role]}))
+
+
+asyncio.run(main())

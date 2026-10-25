@@ -1,0 +1,14 @@
+"""Typed work and generated contraction share one immutable role revision."""
+
+from pathlib import Path
+
+from backfill import CHANGES
+from models import Account
+from stage import work
+
+from snekql.experimental import migrations as m
+
+route = work.then(*CHANGES).advance(
+    [Account], removals=(m.DropColumn(table_name="accounts", column_name="is_admin"),)
+)
+Path("003_roles.json").write_text(m.compile(route).dump())

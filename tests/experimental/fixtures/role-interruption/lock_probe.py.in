@@ -1,0 +1,15 @@
+"""A separate OS process observes SQLite's pending writer lock without shared-lock reuse."""
+
+import json
+import sqlite3
+import sys
+
+payload = json.loads(sys.stdin.read())
+try:
+    with sqlite3.connect(payload["database"], timeout=0) as connection:
+        connection.execute("SELECT * FROM accounts").fetchall()
+except sqlite3.OperationalError as error:
+    assert error.sqlite_errorcode == sqlite3.SQLITE_BUSY
+    print(json.dumps({"busy": True}))
+else:
+    print(json.dumps({"busy": False}))

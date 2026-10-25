@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Exercise real role-migrator process death, native server restart, competing operators and
+  an unrelated application writer. Distinguish SQLite DELETE-journal rollback/retry from
+  durable native uncertainty requiring the original prepared plan and explicit resume;
+  retain WAL and other receipt-loss windows as bounded, unresolved scope.
+
 - Exercise actual archived framework writers/readers and SQLite/MariaDB durable ledgers:
   preserve supported old role-chain receipts through newly authored format-five index work,
   and refuse actual incompatible ledger layouts without history conversion or repair.

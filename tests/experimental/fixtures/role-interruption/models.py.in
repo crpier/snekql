@@ -1,0 +1,32 @@
+"""Authoring declarations: old, expanded and desired application schema."""
+
+from typing import ClassVar
+from snekql import BACKEND as db
+
+
+class Initial[S = db.Pending](db.Model[S]):
+    """Existing application contract."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Initial[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    is_admin: db.Col[bool] = db.Integer()
+
+
+class Expanded[S = db.Pending](db.Model[S]):
+    """Intermediate schema while both representations exist."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Expanded[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    is_admin: db.Col[bool] = db.Integer()
+    role: db.Col[str | None] = db.Text(nullable=True)
+
+
+class Account[S = db.Pending](db.Model[S]):
+    """Desired final contract, not the schema at every migration step."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Account[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    role: db.Col[str] = db.Text()

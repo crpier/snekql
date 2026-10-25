@@ -39,6 +39,11 @@ archived writers/readers/runtimes and nine/eleven-column ledgers, preserving sup
 receipts through new format5 index work and refusing unsupported layouts intact. It does not
 prove future existing-operation emission ABI, automatic conversion or general downgrade safety.
 
+The [role-recovery workflow review](recorded-migrations-recovery-workflow-review.md) uses real
+child-process death/engine lock observations, native server restart, competing operators and
+an unrelated application writer. SQLite DELETE rollback/retry differs from durable native
+uncertainty/original-plan resume; WAL active death and broader windows remain explicit limits.
+
 ## The four interfaces
 
 1. `generate(revision, models, backend=..., previous=...)` produces an immutable,

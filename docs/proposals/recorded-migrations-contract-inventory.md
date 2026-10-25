@@ -1023,3 +1023,22 @@ states/receipts; real generated historical module statically imported for typed 
 production code. Existing-operation emission remains compatible only for selected chain; load
 still recompiles, canonical compiler/epoch/refusal policy open. No broad compatibility, downgrade,
 uncertainty/resource/readiness guarantee. Recovery/coordination and finite scope next, guides deferred.
+
+
+### Real role-process interruption and operator workflow checkpoint
+
+[Recovery workflow review](recorded-migrations-recovery-workflow-review.md): three REAL releases,
+model generation/actual historical source/static typed backfill/advance; deploy committed bytes
+without author sources. SQLite DELETE reader/journal + external-process busy observation, actual
+migrator SIGKILL, rows/expanded schema rollback with no003 receipt; two prepared retries converge
+applied/already_applied. Not WAL active-death proof. Private native row2 lock observes firstUPDATE
+modified>=1; unrelated unowned audit typed write commits during migration lock. Kill child,
+disconnect rollback leaves durable uncertain003 ack0, kill/restart OWNED server, write/uncertainty
+survive. Blind apply refuses; ORIGINAL Prepared JSON inspect/resume, two assessed resumers yield
+applied/refused-completed-status requiring reassessment, terminal fresh apply already_applied.
+Current app verifies/typed reads/inserts on both. No injected/private helper faults, no ledger
+edits/automatic repair/replay/retrospective certificate. Operator-program REDs are safe refusals,
+not product runtime defects; fixture/cache/type/timeout issues excluded. Original plan immutable,
+no stable Prepared wire ABI promised. Finite supported scope, WAL/other receipt-loss windows,
+compiler/codec/partial adoption remain open. Advisory coordination != application pause/fencing
+or same-table writer safety; schema exclusion caller-owned. No production changes, guides deferred.

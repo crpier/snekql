@@ -170,3 +170,13 @@ real archived prototype epochs: retain actual supported old receipts and role pa
 author/apply new format5 index work, demonstrate old compiler/reader refusals, and refuse an
 actual incompatible ledger intact. Existing-operation emission ABI and finite support policy
 remain open; interruption/coordination is the next workflow exercise, not more parser coverage.
+
+
+## Real role-process interruption follow-through
+
+The [recovery workflow review](recorded-migrations-recovery-workflow-review.md) kills actual
+role migrators at engine-observed locks, restarts an owned native server, races operators and
+runs an unrelated ordinary writer. SQLite DELETE transaction rollback permits fresh retry;
+native durable uncertainty requires original-plan inspection/resume. Bounded modes/windows,
+caller exclusion and remaining Prepared/compiler/codec/partial-adoption/supported scope are
+explicit; no production or parser expansion, no blanket crash/readiness/fencing guarantee.
