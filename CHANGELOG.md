@@ -4,6 +4,14 @@
 
 ### Experimental
 
+- Bind experimental SQLite managed inline CHECK bodies, own labels, order and multiplicity
+  to construction before effects, including handoff/intermediate/standalone admission.
+  Close an archived missing-CHECK false completion; retain truthful old identities,
+  nullable CHECK behavior, explicit adoption/handoff/re-adoption and preserving rebuilds.
+  Existing finite CHECK grammar/resources admit terms, not algebraic equivalence; unknown
+  expressions require adapters even equal bytes. No native CHECK path change, new removal
+  authority, enforcement/readiness certificate, format conversion or retrospective repair.
+
 - Bind experimental managed native ON UPDATE presence/precision to construction before
   DDL/history, including relinquished/intermediate claims and standalone admission.
   Retain valid old identities, known CURRENT_TIMESTAMP precision forms, deterministic

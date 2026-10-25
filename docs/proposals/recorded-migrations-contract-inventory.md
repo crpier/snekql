@@ -840,3 +840,30 @@ privilege/future-session/data/codec/readiness or recovery proof; no server polic
 Remaining attributes/constraints/namespaces/FK/combined workflows/interruption/resources/compiler/
 package/codec/ledger/release queue open; points1–4 incomplete, trusted executable SQL unsandboxed,
 draft/guides deferred, not production/merge-ready.
+
+
+### SQLite inline CHECK construction checkpoint
+
+Bind managed column CHECK bodies bidirectionally, own labels/order/multiplicity. Significant
+token kinds/order/punctuation/string values bind; known label/reference quotes and ASCII
+keyword/member case normalize, label spelling/case/presence do not. Existing finite CHECK
+grammar/resources (4096/32/64/4096) admit expressions/members, not AST/algebraic equivalence.
+Unknown function/constant or bare-column body/nested COLLATE/suffix/inline ON CONFLICT/name
+roles need adapters even equal bytes; no bare/quoted/operator/parenthesis/reorder inference.
+Declared extra members can be referenced without ownership; extra SQL fields' own opaque and
+table-level CHECKs unclaimed/trusted. Standalone own-member scope only, not new operation
+permission. Before/target/intermediate CREATE/SQLite ADOPT claims survive handoff; inline
+labels not named table DropCheck authority. Native CHECK path unchanged/separately partial.
+
+Archived2efa8f4 actual format2 writer/reader/runtime falsely completed missing-CHECK SQL,
+accepted default7 AND forbidden-1. Literal load/typed prepare now pre-effects refusal;
+truthful companion retains body/digest/model-free default7/rejection. Copied current-source
+gate-only bypass reproduces false completion with other guards enabled; source unmutated
+during native suites. No conversion/repair/revocation/retrospective certification. Nullable
+SQL-NULL acceptance/negative rejection, explicit adoption→handoff→re-adoption, preserving
+default-change rebuild with opaque extra length CHECK and independent catalog drift guard
+retained. Not arbitrary/live equivalence/DDL-validity solving/total parser or IO/memory bound/
+current or future enforcement-session/data/privilege/codec/readiness or recovery certificate.
+Remaining native/attributes/constraints/namespaces/FK/combined interruption/resources/compiler/
+package/codec/ledger/release queue open; points1–4 incomplete, trusted SQL unsandboxed,
+draft/guides deferred, not production/merge-ready.

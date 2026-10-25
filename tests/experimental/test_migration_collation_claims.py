@@ -445,8 +445,8 @@ async def native_omission_is_not_assumed_to_match_an_explicit_name(
 async def collation_mentions_in_names_literals_and_expressions_are_not_column_clauses() -> (
     None
 ):
-    """Nested CHECK collations do not manufacture a column's comparison domain."""
-    definition = "`COLLATE` TEXT DEFAULT 'COLLATE NOCASE' CHECK (`COLLATE` COLLATE NOCASE <> 'blocked')"
+    """CHECK field/literal mentions do not manufacture a column's comparison domain."""
+    definition = "`COLLATE` TEXT DEFAULT 'COLLATE NOCASE' CHECK (`COLLATE` <> 'blocked COLLATE NOCASE')"
     column = m.ColumnState(
         name="COLLATE",
         definition=definition,

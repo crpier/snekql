@@ -1,0 +1,65 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "09a1e5a0a3be4142efd9e71061e43670f6e2eb3bf76ea1031e53c6c9791372d8",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`value` INTEGER NOT NULL DEFAULT 7 CHECK (`value` >= 0)",
+              "name": "value",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE entries (`value` INTEGER NOT NULL DEFAULT 7 CHECK (`value` >= 0)) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`value` INTEGER NOT NULL DEFAULT 7 CHECK (`value` >= 0)",
+              "name": "value",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE entries (`value` INTEGER NOT NULL DEFAULT 7 CHECK (`value` >= 0)) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE entries (`value` INTEGER NOT NULL DEFAULT 7 CHECK (`value` >= 0)) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

@@ -669,6 +669,53 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## SQLite inline CHECK construction agreement
+
+Compile/load binds managed SQLite column CHECK bodies bidirectionally to the corresponding
+executable column, including order/multiplicity and each own optional CONSTRAINT label.
+Labels bind presence/spelling/case; known label quote styles normalize. Body significant token
+kinds/order/punctuation/string values bind, with ASCII keyword/member case and known quoted
+identifier styles cosmetic. Bare vs quoted roles, additional parentheses, operator aliases,
+reordered/combined/algebraically equivalent predicates are not inferred equivalent. Known
+finite terms must still agree by token signature; the AST is admission/resource/reference
+validation, not the comparison/equivalence authority.
+
+Reuse existing finite CHECK grammar and4096-token/32-parenthesis/64-tree/4096-weighted-work
+admission envelope used for CHECK additions. Unsupported functions/constant or bare-column
+bodies/nested COLLATE/unknown suffix or inline CHECK ON CONFLICT/name roles require adapters
+even equal bytes. Following known constraint boundaries remain separate from this CHECK's
+identity/policy; this is not complete SQL syntax/DDL-validity solving. Referenced members
+must be declared table columns, avoiding SQLite double-quoted missing-name/string fallback;
+known extra SQL members may be referenced without creating ownership. Standalone ADD/
+ChangeDefault has only the payload's own member scope, so other references need adapters.
+No total IO/deadline/parser/memory bound, SQL sandbox or generated-query/codec certificate.
+
+Before/target/intermediate CREATE/SQLite ADOPT claims survive relinquishment. Extra SQL
+columns' own opaque CHECKs and opaque table-level CHECKs are outside this managed inline
+gate, executable/unclaimed rather than silently certified. Existing native CHECK handling
+remains unchanged and separate; this does not make native redundant-claim/namespace proof
+complete. Named inline CHECKs do not gain named table DropCheck authority. No new CHECK
+alteration/removal API, implicit adoption or authority from matching bytes.
+
+Actual archived2efa8f4 writer/reader/runtime emitted/loaded/completed real format2 with
+CHECK(value>=0) metadata but absent construction, then accepted default7 AND forbidden-1:
+genuine SQLite false completion. Literal load/typed prepare now refuse pre-schema/history;
+truthful companion retains dump/digest/model-free default7/negative-write rejection.
+Isolated copied current-source table-gate-only bypass reproduces false completion with all
+other guards active, no worktree mutation during native suites. No format/digest/ledger/
+receipt conversion, retrospective repair/revocation/certification or recovery shortcut.
+
+Live nullable CHECK(value>=0) accepts SQL NULL/zero/positive, rejects negative: not a hidden
+NOT NULL/general constraint solver. Explicit adoption→handoff→re-adoption preserves checked
+DDL/rows/enforcement; default-changing preserving rebuild retains the owned finite CHECK and
+an opaque unmanaged length CHECK, existing rows/defaults and both rejection domains. Later
+physical CHECK change still blocked by independent accepted-catalog drift. These bounded
+probes do not certify all current/future sessions (including ignore_check_constraints),
+application writes/data/privileges/codec/query readiness or arbitrary expression equivalence.
+Remaining native/other attributes/constraints/namespaces/FK/combined interruption/resources/
+compiler/package/codec/ledger/release-scope queue open; points1–4 incomplete, trusted SQL
+unsandboxed, draft/guides deferred, not production/merge-ready.
+
 ## Native automatic ON UPDATE construction agreement
 
 Compile/load binds managed native ON UPDATE presence/absence and existing temporal precision
