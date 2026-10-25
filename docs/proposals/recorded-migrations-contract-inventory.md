@@ -789,3 +789,27 @@ post-completion physical visibility drift guard retained. No conversion/repair/r
 certification/recovery shortcut/full data/session/codec/readiness proof. Other generated/
 ON UPDATE/attributes/constraints/namespaces/FK/workflow/interruption/resource/evolution queue
 open; trusted SQL unsandboxed, points1–4 incomplete, draft/guides deferred.
+
+
+### Generated kind/finite scalar expression checkpoint
+
+Bind managed generated presence/kind/expression and SQLite label independently of other
+column facts. Known VIRTUAL/default/GENERATED ALWAYS/native STORED/PERSISTENT normalize;
+label presence/spelling/case bind, quotes cosmetic. Finite signed64 decimal/string/NULL,
+quoted declared member, quoted member plus integer, native integer CAST AS SIGNED. Native
+backticks required, unquoted references/unknown functions/rewrites/roles/missing members need
+adapters even equal bytes.64 expression tokens pre-normalization/19-digit integers; not
+total-work/memory bound. Before/target/intermediate CREATE/SQLite ADOPT claims survive handoff;
+standalone admission without member scope, not new generated ADD/alter permission. Extra SQL
+generated expressions trusted/unclaimed, labels not DROP CHECK authority.
+
+Archived6af49f5 actual format2 writers/readers/runtimes falsely completed AS7/AS8 VIRTUAL on
+BOTH SQLite and MariaDB, returned value8 under base7 insert. Literal load/typed prepare now
+refuse pre-effects/history; truthful companions retain dump/digest/model-free base7/value7;
+isolated copied-source gate bypasses reproduce both current false completions, working sources
+untouched during native suites. Known derived-value mode positives and independent later
+physical expression drift guards retained. No conversion/repair/retrospective certification,
+arbitrary/live expression equivalence/dependency/cycle/type/DDL validity/generated query
+writability/codec/all-session/data/readiness proof or recovery shortcut. ON UPDATE/other
+attributes/constraints/namespaces/FK/workflow/interruption/resource/evolution queue open;
+trusted SQL unsandboxed, points1–4 incomplete, draft/guides deferred.

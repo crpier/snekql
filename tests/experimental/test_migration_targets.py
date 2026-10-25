@@ -2838,26 +2838,18 @@ async def mariadb_ordinary_column_cannot_silently_become_generated() -> None:
         sql="CREATE TABLE generated_entry (`value` BIGINT AS (7) VIRTUAL) ENGINE=InnoDB",
     )
     draft = migrations.generate("001", [], backend="mariadb")
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "generation kind" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "generation kind" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction generation" in str(error.exception)
+        assert_eq(await target.status(), ())
 
 
 @test(mark="slow")
@@ -2886,23 +2878,20 @@ async def mariadb_generated_column_storage_modes_cannot_silently_change() -> Non
             + ") ENGINE=InnoDB",
         )
         draft = migrations.generate("001", [], backend="mariadb")
-        package = migrations.compile(
-            draft.model_copy(
-                update={
-                    "target": migrations.State(backend="mariadb", tables=(table,)),
-                    "operations": (migrations.CreateTable(table=table),),
-                }
-            )
-        )
         async with migrations.connect(server.config()) as target:
-            plan = await target.prepare(package, schema_writers_excluded=True)
             with assert_raises(migrations.PackageError) as error:
-                await target.apply(plan)
-            assert "generation kind" in str(error.exception)
-            assert_eq((await target.status())[0].phase, "uncertain")
-            recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-            assert_eq(recovery.disposition, "ambiguous")
-            assert "generation kind" in recovery.explanation
+                migrations.compile(
+                    draft.model_copy(
+                        update={
+                            "target": migrations.State(
+                                backend="mariadb", tables=(table,)
+                            ),
+                            "operations": (migrations.CreateTable(table=table),),
+                        }
+                    )
+                )
+            assert "construction generation" in str(error.exception)
+            assert_eq(await target.status(), ())
 
 
 @test(mark="slow")
@@ -2990,17 +2979,18 @@ async def mariadb_ambiguous_generation_attributes_fail_before_effects() -> None:
             + ") ENGINE=InnoDB",
         )
         draft = migrations.generate("001", [], backend="mariadb")
-        package = migrations.compile(
-            draft.model_copy(
-                update={
-                    "target": migrations.State(backend="mariadb", tables=(table,)),
-                    "operations": (migrations.CreateTable(table=table),),
-                }
-            )
-        )
         async with migrations.connect(server.config()) as target:
             with assert_raises(migrations.PackageError) as error:
-                await target.prepare(package, schema_writers_excluded=True)
+                migrations.compile(
+                    draft.model_copy(
+                        update={
+                            "target": migrations.State(
+                                backend="mariadb", tables=(table,)
+                            ),
+                            "operations": (migrations.CreateTable(table=table),),
+                        }
+                    )
+                )
             assert "generation clause" in str(error.exception)
             assert_eq(await target.status(), ())
 

@@ -669,6 +669,51 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Generated-column kind and finite expression construction agreement
+
+Compile/load binds managed generated presence/absence, physical virtual/stored kind and a
+finite expression signature, separately from type/nullability/default/visibility/identity.
+SQLite default VIRTUAL/optional GENERATED ALWAYS normalize; native existing STORED/PERSISTENT
+aliases remain known. SQLite generated-constraint labels bind presence/spelling/case, with
+known identifier quotes cosmetic; labels do not grant DROP CHECK authority. Unknown/multiple
+prefix/mode/suffix/name-role forms require adapters even with equal bytes.
+
+Finite scalar language: signed64 decimal constants (at most19 digits), single-quoted strings,
+NULL, a quoted reference to a declared table member, that reference plus one signed integer,
+and native CAST(integer AS SIGNED). Whole-expression parentheses/known keyword case and
+known identifier quote/case normalize. Native references require backticks rather than
+assuming ANSI_QUOTES/MSSQL modes; unquoted references are adapter-only to avoid reserved/
+function/numeric role guesses. Unknown functions, arbitrary expressions, reversed/algebraic
+rewrites and missing members require adapters. Quoted references may target extra declared
+SQL columns without manufacturing ownership. Standalone admission has no table member scope,
+so member-dependent expressions require adapters there; no new ADD/alter-generated permission.
+Expression input is limited to64 tokens before wrapper normalization; no recursion/evaluation
+or unbounded integer conversion. This is not a total parser/IO/work/memory bound.
+
+Before/target/intermediate CREATE/SQLite ADOPT claims survive relinquishment. Extra executable
+generated fields remain trusted SQL without becoming recorded columns. Their expression
+language is not automatically claimed/certified by this managed gate. Quoted names/literals/
+nested AS/CAST mentions do not manufacture clauses. Native unsupported generation positions
+and modes now refuse compile rather than preparation; existing visibility/generation-kind/
+other attribute/live-catalog guards remain independent.
+
+Actual archived6af49f5 writers/readers/runtimes emitted/loaded/completed real format2 on BOTH
+SQLite and MariaDB recording AS7 VIRTUAL but constructing AS8 VIRTUAL, then returned value8
+under ordinary base7 insertion. These are genuine false completions, not just earlier late
+refusals. Literal load/typed prepare now refuse before effects/history; truthful AS7 companions
+retain literal dump/digest/model-free base7/value7. Isolated copied-source table-gate bypasses
+reproduce both current false completions without worktree mutation during native suites.
+No format/digest/ledger/receipt conversion, retrospective repair/revocation/certification.
+
+Live VIRTUAL/STORED/native PERSISTENT quoted-member-plus-integer cases retain default-derived
+and updated values. Independent accepted-catalog drift guards still block followup after
+physical expression changes. Finite construction agreement is not arbitrary equivalence,
+complete live expression/index/FK proof, dependency/cycle/type/DDL-validity solving, generated
+query-field writability/codec compatibility, all session/data/locale/overflow/readiness proof
+or native recovery shortcut. ON UPDATE/other attributes/constraints/namespaces/FK/combined
+workflows/interruption/resources/compiler/package/codec/ledger queue remain open. Trusted
+SQL unsandboxed; points1–4 incomplete, draft/guides deferred, not production/merge-ready.
+
 ## Native column visibility construction agreement
 
 Compile/load binds managed native column visibility independently of named queryability,

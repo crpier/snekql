@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Bind experimental managed generated-column kind, bounded scalar expression and SQLite
+  labels to construction. Close reproduced SQLite and native AS7/AS8 false completions;
+  retain valid old identities, known mode aliases and derived-value behavior. Unknown
+  expressions/roles require adapters, not SQL equivalence. No new generated-column
+  alteration API, format conversion, retrospective repair or readiness certificate.
+
 - Bind experimental managed native column visibility to construction before DDL/history,
   including intermediate/relinquished claims and standalone language admission. Retain
   valid old identities, invisible wildcard/positional/default behavior, named access and
