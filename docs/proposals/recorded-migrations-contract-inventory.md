@@ -560,3 +560,39 @@ Python constructor defaults, storage-hint/query/codec or clock/timezone/future-s
 application-readiness proof. Trusted executable SQL remains unsandboxed. Remaining
 metadata/key/index/constraint/namespace/negative ownership/FK, workflow/interruption and
 resource/compiler/package/codec/ledger queue open; points1–4 incomplete, draft/guides deferred.
+
+
+### Historical query-source admission checkpoint
+
+ColumnState.storage proposes a default historical constructor; it does not certify a
+codec. Source generation now checks that candidate against the recorded definition:
+SQLite INTEGER/TEXT/REAL/BLOB, native default BIGINT/VARCHAR(255)/DOUBLE/BLOB with known
+physical aliases. INT/ANY, conflicting hints, wider/parameterized native text or native
+Boolean/datetime/decimal/JSON/other policies need explicit adapters here, without losing
+physical package support. This is not inference of arbitrary codecs from native families.
+
+Actual archived6e6b0b1 source generation converted VARCHAR512/str/TEXT to defaultText255:
+original-model update300 compiled, generated historical update300 rejected. Fixed real
+format2 package retains exact load bytes/digest, native deployment completes and an
+explicit query adapter writes/reads300. Automatic historical generation now refuses.
+Copied-source primitive-gate bypass reproduces current lossy source; worktree unmutated
+during native suites. Query-generation defect, not migration false completion/recovery.
+Runtime target/catalog/drift/recovery guards unchanged; no format/ledger conversion.
+
+Fresh logical metadata extraction accepts genuine builtin scalar unions only; other
+generic origins/Annotated/native JSON payloads stay opaque instead of degrading their
+type arguments into scalars/unions. Unhashable opaque nullable metadata no longer
+blocks physical generation with a TypeError (also reproduced with the real old writer).
+Recorded source annotation emission uses finite
+builtin scalar names/unions, safely normalized, never evaluated. Known framework/type
+name shadows, dunders and non-ASCII fields require name adapters. Default-primitive
+scalar/nullable/union positives on both backends independently typecheck/import/compile
+updates without authoring models. This is partial admission, not full namespace proof.
+
+Old physical artifacts/receipts are not rewritten. Fresh opaque metadata changes to None
+are truthful new generation, not conversion or recovered provenance. Old erased logical
+origin/custom hooks cannot be inferred or retrospectively certified from scalar strings.
+No durable codec ABI/provenance, value/JSON-shape/hook preservation, universal native
+codec mapping or readiness certificate. General generation/metadata/resource/compiler/
+package/codec/ledger evolution and key/constraint/FK/ownership/workflow/interruption
+queue remains open; points1–4 incomplete, draft/guides deferred.

@@ -669,6 +669,57 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Historical query-source admission
+
+Historical query declarations are a separate generation seam, not a deployment or
+schema-readiness certificate. `contract_source` now checks the default primitive
+proposed by ColumnState.storage against the recorded physical definition. It does not
+infer a codec from the SQL family. SQLite's admitted default primitive declarations
+are INTEGER/TEXT/REAL/BLOB; INT/ANY or contradictory hints need an adapter here even
+when their physical packages remain supported. Native candidates are the default
+BIGINT/VARCHAR(255)/DOUBLE/BLOB primitives, using existing understood type-signature
+aliases. Parameterized/wider text, native Boolean/datetime/decimal/JSON and other
+non-default policies cannot be reconstructed merely because their coarse hint is
+INTEGER/TEXT/REAL/BLOB. This is intentionally narrower than physical deployment.
+
+An actual archived `6e6b0b1` generator took native VARCHAR(512)/logical str/TEXT hint
+and emitted default Text(): an original-model 300-character update compiled, but the
+historical declaration rejected it under the default 255-character codec policy.
+The fixed real format2 package still loads byte-identically and deploys; an explicit
+query adapter writes/reads 300 characters on the owned native server. Automatic
+historical generation now refuses with an explicit codec/name adapter diagnostic.
+An isolated copied-source primitive-gate bypass reproduces the current lossy output
+without worktree mutation during native suites. This was a query-generation defect,
+not a migration false-completion/recovery defect; target guards are unchanged.
+
+Fresh model generation now distinguishes genuine builtin scalar unions from other
+generic origins. Annotated metadata and native JSON payloads such as list[int] or
+dict[str,int] remain opaque (`query_type=None`), rather than becoming int or str|int.
+Opaque nullable union members also stay opaque without hashing their metadata; the
+archived generator blocked an otherwise legal physical model with an unhashable-dict
+TypeError. Physical generation/loading/deployment do not require an automatic query
+declaration. Historical source emits only finite builtin int/str/float/bytes/bool/None
+names/unions, normalizing safe whitespace/repeated atoms instead of replaying raw annotation text.
+It never evaluates a recorded annotation. Known generated framework/type-name shadows,
+dunder fields and non-ASCII field spellings need name adapters, avoiding Python name
+normalization/shadowing guesses. This is not full model-namespace/SQL validation.
+
+Default-primitive positives on both backends retain scalar, nullable and mixed-union
+declarations, independently typecheck/import without authoring-model imports, and
+compile typed updates. Valid old physical artifacts retain bytes/digests; no format,
+ledger, receipt or metadata conversion. Fresh drafts with formerly misrepresented
+opaque annotations intentionally record None; old erased provenance cannot be inferred
+or repaired retrospectively. An old recorded scalar claim is not evidence of the
+original model's validation hooks, custom codecs or logical-type provenance.
+
+This is bounded generation admission, not durable codec ABI/provenance, value/JSON-shape
+compatibility, original-hook reconstruction, full namespace validation, a native-family
+codec map or application-readiness proof. The source is a query-only declaration, not a
+reconstruction blueprint. Trusted SQL/model generation remains executable, unsandboxed
+input. Resource limits for generation and genuine compiler/package/codec/ledger
+evolution remain open, alongside key/constraint/FK, ownership/workflow/interruption
+proofs. Points1–4 remain incomplete; still draft and user guides deferred.
+
 ## Bounded default declaration agreement before execution
 
 Compile/load now compares each managed frozen column default with the corresponding

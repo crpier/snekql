@@ -8,11 +8,11 @@ Models are consulted only during generation; loading packages imports none.
 
 import hashlib
 import json
-import keyword
 from collections import Counter
 from collections.abc import Iterable, Iterator, Sequence
 from itertools import chain
-from typing import Any, Literal, Self, get_args
+from types import UnionType
+from typing import Any, Literal, Self, get_args, get_origin
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -39,6 +39,11 @@ lazy from snekql.experimental._migration_checks import (
     check_additions,
     check_removals,
     drop_check,
+)
+lazy from snekql.experimental._migration_contract import (
+    historical_annotation,
+    historical_field_name,
+    historical_primitive_matches,
 )
 lazy from snekql.experimental._migration_default_claims import (
     validate_column_default,
@@ -788,7 +793,10 @@ def _changed_default_column(
 
 def _query_type(model: type[Table[Any]], name: str) -> str | None:
     logical = _extract_logical_type(_resolve_model_hint(model, name), name)
-    types = get_args(logical) or (logical,)
+    arguments = get_args(logical)
+    if arguments and get_origin(logical) is not UnionType:
+        return None
+    types = arguments or (logical,)
     supported: dict[object, str] = {
         int: "int",
         str: "str",
@@ -797,7 +805,7 @@ def _query_type(model: type[Table[Any]], name: str) -> str | None:
         bool: "bool",
         type(None): "None",
     }
-    if any(value not in supported for value in types):
+    if any(not any(value is scalar for scalar in supported) for value in types):
         return None
     return " | ".join(supported[value] for value in types)
 
@@ -917,16 +925,17 @@ def _contract_source(table: TableState, backend: Backend) -> str:
         f"    __row_type__: ClassVar[{backend}.ReadType[Historical[{backend}.Row]]]",
     ]
     for column in table.columns:
+        annotation = historical_annotation(column.query_type)
         if (
-            column.query_type is None
+            annotation is None
             or column.storage not in constructors
-            or not column.name.isidentifier()
-            or keyword.iskeyword(column.name)
+            or not historical_primitive_matches(column, backend)
+            or not historical_field_name(column.name, backend)
         ):
             msg = f"{table.name}.{column.name}: query contract requires an explicit codec/name adapter"
             raise PackageError(msg)
         lines.append(
-            f"    {column.name}: {backend}.Col[{column.query_type}] = "
+            f"    {column.name}: {backend}.Col[{annotation}] = "
             f"{backend}.{constructors[column.storage]}(nullable={column.nullable!r})"
         )
     return "\n".join(lines) + "\n"

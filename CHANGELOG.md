@@ -4,6 +4,15 @@
 
 ### Experimental
 
+- Refuse lossy automatic historical query declarations: check the proposed default
+  primitive against its recorded physical definition instead of trusting a coarse
+  storage hint. Native wider text and unsupported native codec policies need explicit
+  adapters, without blocking physical package deployment. Keep generic/Annotated
+  logical annotations opaque rather than reinterpreting type arguments as scalars;
+  unhashable opaque metadata no longer blocks physical generation with a TypeError.
+  Emit only finite builtin scalar union syntax and reject known generated-name shadows.
+  Preserve old deployment identities; no codec provenance, format or ledger conversion.
+
 - Bind experimental managed defaults to construction declarations before effects,
   including absence and intermediate/relinquished claims. Compare bounded literals
   and compiler clocks; unknown expressions require an adapter even when byte-equal.
