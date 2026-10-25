@@ -1,0 +1,28 @@
+"""Application codec v1: logical admin boolean, legacy text on the wire."""
+
+from typing import Annotated
+
+from pydantic import BeforeValidator, PlainSerializer
+
+
+def decode(value: object) -> bool:
+    """Accept logical booleans or this epoch's persisted representation only."""
+    if isinstance(value, bool):
+        return value
+    if value == "admin":
+        return True
+    if value == "user":
+        return False
+    msg = "v1 role representation required"
+    raise ValueError(msg)
+
+
+def encode(value: bool) -> str:
+    """Freeze the legacy representation when authoring typed queries."""
+    return "admin" if value else "user"
+
+
+type Role = Annotated[
+    bool, BeforeValidator(decode), PlainSerializer(encode, return_type=str)
+]
+EPOCH = "v1"

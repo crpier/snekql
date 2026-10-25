@@ -1,0 +1,79 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "dec34da87e5e3c5c968731668c307b5993b3c3cdf9e00956d6b44bf3b77bc6c7",
+  "draft": {
+    "before": {
+      "backend": "mariadb",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`is_admin` BIGINT NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "`accounts`",
+          "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `is_admin` BIGINT NOT NULL) ENGINE=InnoDB"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001_accounts",
+    "target": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`is_admin` BIGINT NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "`accounts`",
+          "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `is_admin` BIGINT NOT NULL) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `is_admin` BIGINT NOT NULL) ENGINE=InnoDB"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

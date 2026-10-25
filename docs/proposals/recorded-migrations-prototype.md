@@ -28,6 +28,12 @@ non-destructive handoff. Clean re-adoption works; preserved unmanaged additions 
 strict re-adoption, and old-flag dependencies block preparation. Partial adoption remains an
 explicit scope/design choice, not permission implied by querying or preservation.
 
+The [codec-evolution review](recorded-migrations-evolution-review.md) changes real application
+serializer/validator behavior before historical deployment on both backends. Frozen old
+bindings stay old; structural verification is not codec/data readiness; an explicit new
+representation migration enables current typed reads. Opaque historical provenance remains
+unrecorded, and genuine framework compiler/package/ledger evolution remains separate work.
+
 ## The four interfaces
 
 1. `generate(revision, models, backend=..., previous=...)` produces an immutable,

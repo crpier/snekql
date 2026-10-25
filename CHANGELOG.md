@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Exercise genuine application-codec replacement before frozen historical deployment on
+  SQLite and MariaDB. Preserve old scalar bindings and receipts, distinguish structural
+  success from current-codec readability, and author an explicit new representation rewrite.
+  Record opaque provenance and framework compiler/package/ledger evolution as separate limits.
+
 - Exercise the combined SQLite query/adoption/role-migration/preservation/handoff lifecycle.
   Prove retained unmanaged objects, values and enforcement; clean strict re-adoption succeeds,
   while preserved additions and removed-column dependencies produce explicit safe refusals.

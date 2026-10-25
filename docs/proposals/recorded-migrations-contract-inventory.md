@@ -991,3 +991,19 @@ parser/adoption/native/operation authority changes. Existing strict versus parti
 limit is now concrete; finite scope/design decision, not a new execution defect. Genuine
 evolution/recovery/coordination/resources/release scope open; guides deferred, trusted SQL,
 no retrospective or blanket readiness certificate, draft/incomplete/not merge-ready.
+
+
+### Genuine application-codec evolution checkpoint
+
+[Evolution review](recorded-migrations-evolution-review.md): actual replaced Pydantic serializer/
+validator at same import path, same logical type/model/storage. Both-backend archived704fd44
+packages preserve literal body/digest/load/scalar bindings/old receipts with no model/codec
+imports at deploy. New-codec re-author changes bindings and Package.check refuses stale; schema
+checkpoint digest unchanged and generation no schema ops because opaque query_type is None,
+NOT codec ABI/provenance. Automatic historical source refuses; explicit v1 author model/wire
+adapter required. Current app structural verification passes but logical decode refuses until
+new003 explicit old-wire→new-wire data rewrite. No historical conversion/replay/receipt rewrite.
+Author-program RED matched no old rows with new predicates; corrected on fresh fixture, not
+library semantic-proof claim. Genuine FRAMEWORK compiler/package-format/ledger evolution,
+codec provenance policy, recovery/coordination/resource/release/partial-adoption scope remain.
+No production or parser changes, trusted SQL, readiness separate, guides deferred/draft.

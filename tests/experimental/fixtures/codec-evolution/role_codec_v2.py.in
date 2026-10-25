@@ -1,0 +1,28 @@
+"""Application codec v2: same logical type and physical storage, incompatible wire text."""
+
+from typing import Annotated
+
+from pydantic import BeforeValidator, PlainSerializer
+
+
+def decode(value: object) -> bool:
+    """Deliberately reject v1 text rather than guessing a historical interpretation."""
+    if isinstance(value, bool):
+        return value
+    if value == "administrator":
+        return True
+    if value == "member":
+        return False
+    msg = "v2 role representation required"
+    raise ValueError(msg)
+
+
+def encode(value: bool) -> str:
+    """New authoring encodes the SAME logical bool differently."""
+    return "administrator" if value else "member"
+
+
+type Role = Annotated[
+    bool, BeforeValidator(decode), PlainSerializer(encode, return_type=str)
+]
+EPOCH = "v2"

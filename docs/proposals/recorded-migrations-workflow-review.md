@@ -151,3 +151,13 @@ non-destructive handoff and re-adoption. Clean roundtrip completes; preserved ex
 strict re-adoption refuse, and dependencies on the removed flag block preparation. This is
 combined workflow evidence and a concrete partial-adoption scope decision, not new parser
 or adoption permission. Genuine evolution/recovery and finite release scope remain next.
+
+
+## Genuine application-codec evolution follow-through
+
+The [evolution review](recorded-migrations-evolution-review.md) replaces a real serializer/
+validator at the same module path before historical deployment on both backends. Frozen v1
+bindings/receipts remain intact, while current v2 structural verification passes and logical
+decode refuses until an explicit wire-representation migration. Opaque codec provenance is
+not recoverable from unchanged schema hints/digests. This is application-codec evolution;
+genuine framework compiler/package-format/ledger evolution still needs separate proof/policy.
