@@ -669,6 +669,46 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Explicit NOT NULL clause construction agreement
+
+Compile/load binds each managed explicit NOT NULL declaration to construction: presence,
+SQLite own ON CONFLICT policy and optional explicit constraint label. Before/target and
+intermediate CREATE/ADOPT remain claims after relinquishment. Standalone ADD/ChangeDefault
+terms need independent admission even with empty final ownership. Extra SQL declarations
+do not create ColumnState authority. A NOT NULL label is not a named table CHECK and does
+not grant DROP CHECK permission.
+
+Effective key-implied requiredness is separate: equal nullable flags do not prove explicit
+clause identity or policy. Extra/omitted NOT NULL clauses require adapters even when a PK
+already prevents stored NULL. Known omitted SQLite ABORT and label quote style normalize;
+label presence/spelling/case do not. Following UNIQUE/PK policy belongs to that constraint,
+not NOT NULL. Unknown/multiple forms need adapters even when matching bytes. Native plain
+NOT NULL is supported; named native forms/SQLite-style conflict policies require adapters,
+not cross-version syntax/name guesses. This does not assert all servers reject the syntax.
+
+Actual archived `86464d6` writer/reader/runtime completed NOT NULL IGNORE metadata with
+REPLACE construction, then a NULL write inserted id42/default7 where the recorded policy
+should skip the row. Its real format2 artifact now refuses load/typed preparation before
+effects/history. An isolated copied-source table-gate bypass reproduces current false
+completion without working-source mutation during native suites. The truthful old IGNORE
+companion retains literal dump/digest and model-free NULL-write skipping. No format/ledger/
+receipt conversion, retrospective repair/revocation or history recertification. This is a
+SQLite false-completion case; no new native false-completion claim.
+
+Live public-transaction cases distinguish IGNORE skipping, REPLACE default7 substitution,
+and rejection for implicit/explicit ABORT, FAIL and ROLLBACK. REPLACE without a non-NULL
+default (absent or explicit NULL) rejects instead of inventing values. These cases do not
+establish all multi-statement FAIL/ABORT/ROLLBACK semantics. Failed writes leave their
+transaction before later queries. A native canonical positive deploys; a separate strict
+consumer session rejects NULL, not a claim about every future session's coercion policy.
+
+Existing declaration/key-nullability/catalog/recovery guards remain independent; this is
+not full live NOT NULL/CHECK/constraint catalog proof. Explicit NULL labels, CHECK/FK/other
+constraint definitions/namespaces, collation/identity/generated/other attribute agreement,
+index/FK compatibility, session/data enforcement, logical codecs/readiness and combined
+workflow/interruption/resource/compiler/package/codec/ledger evolution remain open. SQL is
+trusted executable input, not sandboxed; points1–4 incomplete, still draft/guides deferred.
+
 ## Managed inline UNIQUE construction agreement
 
 Compile/load binds each managed column's inline UNIQUE declaration to its construction

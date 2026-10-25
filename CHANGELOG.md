@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Bind experimental explicit NOT NULL presence, SQLite conflict policy and constraint
+  labels to construction independently of effective key-nullability flags. Close a
+  reproduced SQLite IGNORE/REPLACE false completion; retain valid old identities and
+  default-dependent policy behavior. Intermediate/relinquished claims and standalone
+  payloads remain checked; no CHECK-removal authority, native named-policy inference,
+  format/ledger conversion, retrospective repair or general readiness proof.
+
 - Bind experimental managed inline UNIQUE presence/absence, SQLite conflict policy
   and explicit constraint labels to construction, including relinquished/intermediate
   claims and standalone payload admission. Close reproduced SQLite and native missing-

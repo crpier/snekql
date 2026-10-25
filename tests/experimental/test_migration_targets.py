@@ -1214,7 +1214,7 @@ async def mariadb_physical_invisible_rowid_column_remains_a_valid_claim() -> Non
     )
     table = original.model_copy(
         update={
-            "sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY, `_rowid` TEXT NOT NULL DEFAULT 'kept' INVISIBLE) ENGINE=InnoDB",
+            "sql": "CREATE TABLE entry(id BIGINT NOT NULL PRIMARY KEY, `_rowid` TEXT NOT NULL DEFAULT 'kept' INVISIBLE) ENGINE=InnoDB",
             "columns": (original.columns[0], column),
         }
     )
@@ -1325,7 +1325,7 @@ async def mariadb_nullability_matches_names_not_physical_column_order() -> None:
     )
     table = original.model_copy(
         update={
-            "sql": "CREATE TABLE entry(TITLE TEXT NULL, ID BIGINT PRIMARY KEY) ENGINE=InnoDB",
+            "sql": "CREATE TABLE entry(TITLE TEXT NULL, ID BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB",
             "columns": (original.columns[0], title),
         }
     )
@@ -1685,7 +1685,7 @@ async def mariadb_wrong_collation_blocks_completion_and_finish() -> None:
     table = original.model_copy(
         update={
             "columns": (original.columns[0], title),
-            "sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY, title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL) ENGINE=InnoDB",
+            "sql": "CREATE TABLE entry(id BIGINT NOT NULL PRIMARY KEY, title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL) ENGINE=InnoDB",
         }
     )
     package = migrations.compile(

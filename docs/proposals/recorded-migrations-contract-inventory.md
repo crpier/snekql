@@ -681,3 +681,28 @@ implicit index names, collation/NULL/index-family/version/FK compatibility, sess
 checks (unique_checks), logical codecs/readiness and workflow/interruption/resource/compiler/
 package/codec/ledger queue remain open. Trusted SQL unsandboxed; points1–4 incomplete,
 draft/guides deferred.
+
+
+### Explicit NOT NULL clause checkpoint
+
+Compile/load binds managed explicit NOT NULL presence, SQLite own ON CONFLICT and label
+independently of effective key-nullability flags. Before/target/intermediate CREATE/ADOPT
+remain claims after handoff; standalone ADD/default terms admitted independently. Known
+ABORT omission/label quoting normalize, not label presence/spelling/case. Following UNIQUE/
+PK policies are not NOT NULL's. Extra SQL columns do not manufacture ownership; a NOT NULL
+label is not DROP CHECK authority. Native plain requiredness supported; named native and
+SQLite-style policies require adapters, not cross-version syntax/coercion guesses.
+
+Actual archived86464d6 writer/reader/runtime completed IGNORE metadata/REPLACE construction,
+then inserted id42/default7 on a NULL write instead of skipping. Real format2 artifact now
+refuses load/typed preparation; copied-source gate bypass reproduces current false
+completion. Truthful old IGNORE companion retains literal dump/digest/NULL-write skipping.
+Live policies distinguish skip/substitution/rejection, including absent/NULL-default REPLACE
+fallback. Not a full multi-statement error ABI. Native strict-consumer positive is not future
+session policy proof. No native false-completion claim, format/ledger/receipt conversion,
+retrospective repair/revocation/history certification or new native recovery guarantee.
+
+Declaration/key/catalog guards remain separate. Whole NULL/CHECK/FK/other constraint identity/
+namespace, collation/generated/other attributes, index/FK/data/session/codec/readiness and
+workflow/interruption/resource/compiler/package/codec/ledger queue remain open; trusted SQL
+unsandboxed, points1–4 incomplete, still draft/guides deferred.
