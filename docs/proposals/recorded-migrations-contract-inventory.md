@@ -654,3 +654,30 @@ Declaration/key-implied nullability is not general CHECK/FK/trigger/default/sess
 codec or readiness proof. Full key/constraint identity, UNIQUE/conflict/namespace/index/FK
 compatibility and workflow/interruption/resource/compiler/package/codec/ledger queue remain
 open; trusted SQL unsandboxed, points1–4 incomplete, draft/guides deferred.
+
+
+### Inline UNIQUE construction checkpoint
+
+Compile/load binds managed inline UNIQUE presence/absence to construction, before/target/
+intermediate CREATE/ADOPT after relinquishment; standalone ADD/ChangeDefault terms admitted
+independently. SQLite owns-clause ON CONFLICT and explicit label preserved (omitted ABORT
+normalizes, label quoting only; no spelling/case fold). Following NOT NULL policy/label is
+not UNIQUE's. Equal unknown/multiple clauses need adapters. Native plain UNIQUE/UNIQUE KEY
+normalize; named native inline forms require adapters, not a cross-version/name claim.
+Extra SQL columns/indexes do not manufacture authority; table-level/separate-index apparent
+equivalence is not an automatic substitute, and named UNIQUE does not authorize DROP INDEX.
+
+Actual archivedfd5f36e writer/reader/runtime falsely completed missing-UNIQUE construction
+on **both SQLite and native**, then stored default7 duplicates under ids42/43. Real format2
+invalid artifacts now refuse load/typed preparation; copied-source table-gate bypasses
+reproduce current false completion. Valid old companions retain literal dumps/digests and
+model-free default7/duplicate-refusal deployment. No format/ledger/receipt conversion,
+retrospective repair/revocation or history recertification. Native guards unchanged, not a
+new complete live UNIQUE catalog proof. Public transaction policy positives do not certify
+all multi-statement error semantics. Nullable UNIQUE still permits multiple NULLs.
+
+Whole key/table/index/constraint equivalence/namespaces, other constraints/policies, native
+implicit index names, collation/NULL/index-family/version/FK compatibility, session/data
+checks (unique_checks), logical codecs/readiness and workflow/interruption/resource/compiler/
+package/codec/ledger queue remain open. Trusted SQL unsandboxed; points1–4 incomplete,
+draft/guides deferred.

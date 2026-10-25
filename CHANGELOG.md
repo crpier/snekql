@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Bind experimental managed inline UNIQUE presence/absence, SQLite conflict policy
+  and explicit constraint labels to construction, including relinquished/intermediate
+  claims and standalone payload admission. Close reproduced SQLite and native missing-
+  UNIQUE false completions; retain valid old identities. Known native UNIQUE KEY
+  spelling normalizes, named native inline forms need adapters. No index-drop authority,
+  format/ledger conversion, retrospective repair or general uniqueness/readiness proof.
+
 - Bind experimental primary-key-implied nullability to recorded column flags and
   construction: SQLite INTEGER rowid aliases versus INT/DESC/composite keys,
   STRICT/WITHOUT ROWID modes, explicit NOT NULL, and native required key members.

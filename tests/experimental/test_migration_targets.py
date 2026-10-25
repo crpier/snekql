@@ -3571,7 +3571,8 @@ async def mariadb_inline_foreign_keys_require_matching_native_members_and_action
             ),
             migrations.ColumnState(
                 name="other",
-                definition="`other` BIGINT NULL",
+                definition="`other` BIGINT NULL"
+                + (" UNIQUE" if other_clause == "UNIQUE" else ""),
                 nullable=True,
                 storage="INTEGER",
             ),

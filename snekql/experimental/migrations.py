@@ -76,6 +76,10 @@ lazy from snekql.experimental._migration_target import (
     Target,
     connect,
 )
+lazy from snekql.experimental._migration_unique import (
+    validate_column_unique,
+    validate_unique_claims,
+)
 lazy from snekql.mariadb.schema import _SCHEMA_DIALECT as MARIADB_DIALECT
 lazy from snekql.sqlite._schema_ddl import SCHEMA_DIALECT as SQLITE_DIALECT
 
@@ -1090,6 +1094,7 @@ def _validate_draft(draft: Draft) -> None:
         validate_default_claims(table, draft.target.backend)
         validate_inline_key_claims(table, draft.target.backend)
         validate_key_nullability_claims(table, draft.target.backend)
+        validate_unique_claims(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
             _validate_column_identifier(op.column, draft.target.backend)
@@ -1097,6 +1102,7 @@ def _validate_draft(draft: Draft) -> None:
             validate_column_storage(op.column, draft.target.backend)
             validate_column_default(op.column, draft.target.backend)
             validate_column_inline_key(op.column, draft.target.backend)
+            validate_column_unique(op.column, draft.target.backend)
     if any(
         table.name.casefold() in _RESERVED
         for table in (

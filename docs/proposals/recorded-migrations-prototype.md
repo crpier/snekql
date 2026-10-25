@@ -669,6 +669,50 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Managed inline UNIQUE construction agreement
+
+Compile/load binds each managed column's inline UNIQUE declaration to its construction
+including absence in either direction. Before/target/intermediate CREATE/ADOPT remain
+claims after relinquishment. Standalone ADD/ChangeDefault definitions need bounded UNIQUE
+admission independently of final ownership. Extra SQL declarations do not create ColumnState
+or separate-index ownership. A table-level UNIQUE or separate index is not automatically
+substituted for an inline claim, even when it looks logically equivalent.
+
+SQLite signatures preserve the UNIQUE clause's own ON CONFLICT policy and optional explicit
+constraint label. Only known omitted ABORT normalizes to explicit ABORT; label quote style
+can normalize, but label presence/spelling (including case) cannot disappear or fold.
+Following NOT NULL policies/labels are not attributed to UNIQUE. Multiple clauses, unknown
+suffixes/policies and unsupported identifier roles require adapters even with equal bytes.
+Native ordinary UNIQUE and optional UNIQUE KEY spelling are supported; named native inline
+forms need explicit adapters rather than cross-version syntax/name guessing. That refusal
+is not a claim that every server rejects the syntax. Native implicit index names are not a
+stable claimed ABI or separately recorded DROP INDEX authority.
+
+Actual archived `fd5f36e` writers/readers/runtimes completed INTEGER/BIGINT inline UNIQUE
+metadata with construction omitting UNIQUE on both SQLite and native, then stored duplicate
+default7 values under distinct ids42/43. These were genuine false completions on both
+backends, not native late-refusal examples. Real format2 artifacts now refuse load/typed
+preparation before DDL/history; isolated copied-source table-gate bypasses reproduce current
+behavior without working-source mutation during native suites. Valid old companions retain
+literal dumps/digests and model-free default7 deployment rejecting a second equal value.
+No wire/ledger/receipt conversion, retrospective revocation/repair or history recertification.
+
+Live SQLite rejecting policies (implicit/explicit ABORT, FAIL, ROLLBACK) preserve the
+previously committed row under the public transaction boundary; IGNORE skips the duplicate
+and REPLACE replaces the old row. This does not claim a complete FAIL-vs-ABORT/ROLLBACK
+multi-statement failure ABI. Nullable UNIQUE remains separate from NOT NULL and permits
+multiple NULL values. Native canonical/KEY positives reject duplicates. Failed writes leave
+their transaction before further queries. Existing native catalog/recovery guards remain
+unchanged: construction agreement is not a new complete live UNIQUE catalog proof.
+
+Full table-key/index/constraint equivalence, other column constraints and their policies,
+constraint namespace/identity beyond this declaration label, native implicit names, collation/
+NULL/index-family/version compatibility, FK/reference compatibility, data/session enforcement
+(including unique_checks), logical codecs and readiness remain separate. Constraint naming
+never grants unrecorded index-removal authority. SQL is trusted executable input, not a
+sandbox. Remaining claim/workflow/interruption/resource/compiler/package/codec/ledger queue
+open; points1–4 incomplete, still draft and guides deferred.
+
 ## Bounded declaration/key-implied nullability
 
 Compile/load now compares each managed primary-key member's recorded nullable flag
