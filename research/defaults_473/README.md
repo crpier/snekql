@@ -4,6 +4,14 @@ Research for [issue #473](https://github.com/crpier/snekql/issues/473), dated
 2026-10-25. This is **not an accepted interface proposal**, a production change,
 or authorization for a breaking change. Names below are experimental.
 
+## Latest direction
+
+[Python-left / SQL-right research](left-python-right-sql.md) now prototypes
+Python defaults and factories in annotation metadata, with SQL declarations on
+the RHS. Exact typing works through generated typing evidence; native ty does
+not infer the required constructor behavior from that metadata alone. The
+following sections and earlier follow-up are historical research, not decisions.
+
 ## Follow-up
 
 The maintainer ranks the outer declaration lower for verbosity, without

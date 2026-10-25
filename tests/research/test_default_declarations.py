@@ -79,13 +79,27 @@ async def default_declaration_typing_observations(
     await assert_paired_typing(source)
 
 
-async def assert_paired_typing(source: str) -> None:
+async def assert_paired_typing(
+    source: str,
+    *,
+    modules: dict[str, str] | None = None,
+    positive_source: str | None = None,
+) -> None:
     """Require clean controls and exactly the marked diagnostics in the challenge."""
     async with TemporaryDirectory(prefix="snekql-defaults-473-") as directory:
         positive = Path(directory) / "positive.py"
         negative = Path(directory) / "negative.py"
+        module_paths: list[str] = []
+        for name, module_source in (modules or {}).items():
+            path = Path(directory) / f"{name}.py"
+            await path.write_text(module_source)
+            module_paths.append(str(path))
         await positive.write_text(
-            "\n".join(line for line in source.splitlines() if "# error:" not in line)
+            positive_source
+            if positive_source is not None
+            else "\n".join(
+                line for line in source.splitlines() if "# error:" not in line
+            )
         )
         await negative.write_text(source)
         expected_errors = [
@@ -106,7 +120,10 @@ async def assert_paired_typing(source: str) -> None:
                         "gitlab",
                         "--extra-search-path",
                         ".",
+                        "--extra-search-path",
+                        directory,
                         str(path),
+                        *module_paths,
                     ],
                     check=False,
                 )
