@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Compare experimental physical storage definitions with construction declarations before
+  effects, including intermediate/payload claims. Preserve bounded native aliases while
+  checking meaningful parameters/signedness; keep SQLite INT/INTEGER distinct rather
+  than equating affinity. Refuse unsupported claimed prefixes even after relinquishment.
+  Close a reproduced SQLite INTEGER-definition/TEXT-constructor false completion while
+  preserving valid identities. No format/ledger conversion or codec-hint certification.
+
 - Bind ordinary experimental nullable flags to column definitions and construction
   declarations before execution, in both directions and through intermediate/payload
   claims. Exclude expression/default/literal NULL tokens; refuse multiple clauses.

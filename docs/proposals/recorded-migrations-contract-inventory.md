@@ -493,3 +493,35 @@ unexpected-object/negative-ownership/drift/FK and workflow/resource/compiler/cod
 queue remain open. No general SQL/all-effects/sandbox/production certificate; points1–4
 incomplete, draft/guides deferred. Existing default-edit restrictions and CHECK-removal
 scope tests remain, with consistent fixtures/precise earlier nullability diagnostics.
+
+### Physical definition/construction storage checkpoint
+
+Compile/load checks physical definition types against matched construction declarations,
+before/target/intermediate CREATE/ADOPT even after relinquishment. ADD/default prefixes
+admitted independently, so unsupported claimed intermediate types cannot hide behind
+empty final target. Positive managed claims only; extras do not manufacture ColumnState
+claims and existing SQL/backend endpoint comparisons still apply.
+
+SQLite finite INT/INTEGER/REAL/TEXT/BLOB/ANY, keyword-case normalization only; no affinity
+collapse. INT/INTEGER distinction protects type identity needed for rowid reasoning, not
+all key semantics. Parameters/multiword modifiers/unknown type names adapter. All six
+positive spellings execute/retain precise values. Native bounded aliases/implicit params/
+integer display widths normalize, significant size/precision/signedness remain. JSON→
+LONGTEXT is storage only, not validity/collation/codec proof. Unknown claimed/constructed
+types/modifiers now fail compilation, including intermediate ENUM/relinquishment; earlier
+unsupported declaration preparation refusals move earlier, not become supported.
+
+Actual archived5c4a655 SQLite completed INTEGER definition/TEXT constructor and accepted
+'not integer' as text. Fixed artifact now explicitly refuses load/typed preparation.
+Native family/size/precision/signedness/unknown-constructor cases now pre-DDL/no history
+instead of late committed-effects refusal; those native cases were not false completion.
+Runtime catalog/postcondition guards unchanged. Isolated copied-source bypass again
+false-completes SQLite; working source unmutated during native suites. Valid old literal
+dump/digest/model-free id42/default7 retained, backend2/7/8/fixed2/3 identities remain.
+No format/ledger/receipt conversion or retrospective revocation/repair/authentication.
+
+Not coarse ColumnState.storage-hint/Python codec/query annotation certification, complete
+attribute/default/tail equivalence, key/index/constraint/namespace/privilege/negative-
+ownership/drift/FK or all-effects/sandbox proof. Native family-to-codec guessing is not
+an adapter. Remaining claim/default/workflow/interruption/resource/compiler/codec/ledger
+queue stays open; points1–4 incomplete, draft/guides deferred.

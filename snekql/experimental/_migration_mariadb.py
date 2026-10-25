@@ -146,6 +146,13 @@ def _signature(source: str, *, declaration: bool) -> tuple[str, tuple[int, ...],
     return family, _parameters(family, parameters), unsigned
 
 
+def mariadb_construction_storage_matches(definition: str, constructed: str) -> bool:
+    """Compare only supported declaration domains, parameters, aliases and signedness."""
+    return _signature(definition, declaration=True) == _signature(
+        constructed, declaration=True
+    )
+
+
 def mariadb_storage_type_matches(definition: str, observed: str) -> bool:
     """Compare frozen declared storage with native type metadata, not codec semantics."""
     return _signature(definition, declaration=True) == _signature(

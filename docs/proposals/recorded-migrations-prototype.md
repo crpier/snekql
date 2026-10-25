@@ -669,6 +669,55 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Physical definition/construction storage agreement before execution
+
+Compile/load now compares each managed column's physical definition type against its
+construction declaration, bound by the already-checked column name. Before/target and
+intermediate CREATE/ADOPT payloads remain checked even after relinquishment. ADD/default
+payload type prefixes are admitted independently, so an empty final target cannot hide
+an unsupported claimed intermediate type. This is positive managed-column admission;
+extra SQL declarations do not manufacture ColumnState claims, and existing table-SQL/
+backend-specific endpoint claims still independently apply.
+
+SQLite admits finite STRICT type names INT/INTEGER/REAL/TEXT/BLOB/ANY, comparing keyword
+case but not collapsing affinity. INT remains distinct from INTEGER because affinity
+cannot establish INTEGER PRIMARY KEY rowid type identity. Type parameters/multiword
+modifiers and other type names require an adapter. This does not prove rowid/key mode
+semantics or stored-value/codec equivalence for every table. Both case variants of all
+six admitted names execute and retain integer/real/text/BLOB/ANY values.
+
+Native comparison reuses the existing bounded physical-type signature: understood
+family aliases, normalized implicit parameters and irrelevant integer display widths,
+while retaining meaningful lengths, decimal/temporal precision and signedness. JSON's
+LONGTEXT alias is storage only; validity/collation remain separate. Unknown declaration
+or construction types/modifiers refuse at compile/load, rather than waiting for target-
+only preparation admission; this also covers intermediate claimed ENUM plus relinquishment.
+Existing known alias/parameter positives still execute model-free. The signature is
+not full attribute/tail equivalence, global engine behavior or a codec proof; native
+catalog/postcondition checks remain necessary and unchanged.
+
+An actual archived `5c4a655` SQLite writer/reader/runtime completed an INTEGER column
+definition with TEXT construction and stored 'not integer' as text. Its fixed real
+format2 artifact now refuses load/prepare, including typed in-memory Package objects.
+Native known type/parameter/signedness mismatches and unsupported constructor probes
+now refuse before DDL/history instead of leaving effects before endpoint refusal.
+Already-unsupported declaration/type-conversion forms move their existing pre-effect
+refusal from preparation to compilation. These native examples were not false completion.
+An isolated copied-source gate bypass reproduces current SQLite false completion;
+working source is never mutated during native suites.
+
+No wire vocabulary/version/ledger conversion or receipt rewriting. Valid old companion
+literal digest/dump and model-free id42/default7 remain; prior backend2/7/8 and fixed2/3
+identities retain. Historical completions are not retrospectively revoked or repaired.
+
+**This binds physical definitions, not the coarse ColumnState.storage hint or Python
+query/codec annotations.** Native datetime/decimal/JSON representations cannot be mapped
+to a universal runtime codec by guessing from their type family. Those contracts,
+default/other attribute agreement, full key/constraint/index/namespace/privilege/negative-
+ownership/drift/FK compatibility and workflow/resource/compiler/codec/ledger proofs
+remain separate. Trusted construction SQL is executable input, not a sandbox; source
+admission does not prove every SQL effect or all unlisted declarations.
+
 ## Ordinary-column nullability agreement before execution
 
 Compilation/loading binds ordinary ColumnState.nullable flags to both their frozen

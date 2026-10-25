@@ -1370,53 +1370,32 @@ async def mariadb_nullability_matches_names_not_physical_column_order() -> None:
 
 
 @test(mark="slow")
-async def mariadb_wrong_physical_type_blocks_completion_and_finish() -> None:
-    """Generic text storage is not proof of the recorded bounded VARCHAR type."""
+async def mariadb_wrong_physical_type_refuses_before_construction() -> None:
+    """Generic text construction cannot satisfy a bounded VARCHAR claim."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
     original = draft.target.tables[0]
     table = original.model_copy(
         update={"sql": original.sql.replace("VARCHAR(255)", "LONGTEXT")}
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "type differs" in str(error.exception)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction storage differs" in str(error.exception)
         assert "title" in str(error.exception)
-        assert_eq(
-            [
-                (p.phase, p.acknowledged_steps, p.total_steps)
-                for p in await target.status()
-            ],
-            [("uncertain", 1, 1)],
-        )
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "type differs" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+        assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        assert_eq(
-            await tx.fetch_all(
-                mariadb.raw(
-                    "SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' AND COLUMN_NAME='title'"
-                )
-            ),
-            [{"DATA_TYPE": "longtext"}],
-        )
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 class NativeTypes[S = mariadb.Pending](mariadb.Model[S]):
@@ -1494,27 +1473,26 @@ async def mariadb_type_parameters_and_signedness_cannot_silently_change() -> Non
         original = draft.target.tables[0]
         assert old in original.sql
         table = original.model_copy(update={"sql": original.sql.replace(old, new, 1)})
-        package = migrations.compile(
-            draft.model_copy(
-                update={
-                    "target": migrations.State(backend="mariadb", tables=(table,)),
-                    "operations": (migrations.CreateTable(table=table),),
-                }
-            )
-        )
         async with migrations.connect(server.config()) as target:
-            plan = await target.prepare(package, schema_writers_excluded=True)
             with assert_raises(migrations.PackageError) as error:
-                await target.apply(plan)
-            assert "type differs" in str(error.exception)
+                migrations.compile(
+                    draft.model_copy(
+                        update={
+                            "target": migrations.State(
+                                backend="mariadb", tables=(table,)
+                            ),
+                            "operations": (migrations.CreateTable(table=table),),
+                        }
+                    )
+                )
+            assert "construction storage differs" in str(error.exception)
             assert repr(column) in str(error.exception)
-            assert_eq((await target.status())[0].phase, "uncertain")
-            assert_eq(
-                (
-                    await target.inspect_recovery(plan, schema_writers_excluded=True)
-                ).disposition,
-                "ambiguous",
-            )
+            assert_eq(await target.status(), ())
+        async with (
+            await mariadb.Database.initialize(server.config()) as db,
+            db.transaction() as tx,
+        ):
+            assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -1536,24 +1514,23 @@ async def mariadb_unsupported_recorded_type_is_rejected_before_execution() -> No
             "columns": (first, original.columns[1]),
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
         with assert_raises(migrations.PackageError) as error:
-            await target.prepare(package, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
         assert "unsupported MariaDB type modifier" in str(error.exception)
         assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        assert_eq(await tx.fetch_all(mariadb.raw("SHOW TABLES")), [])
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -1573,24 +1550,28 @@ async def mariadb_binary_charset_type_conversion_needs_explicit_support() -> Non
             "columns": (original.columns[0], title),
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
         with assert_raises(migrations.PackageError) as error:
-            await target.prepare(package, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
         assert "unsupported MariaDB type modifier" in str(error.exception)
         assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
-async def mariadb_observed_unsupported_type_cannot_finish_recovery() -> None:
-    """Unknown physical metadata is not permission to certify a known declaration."""
+async def mariadb_unsupported_construction_type_refuses_before_effects() -> None:
+    """An unknown construction type cannot certify a known storage declaration."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
     original = draft.target.tables[0]
@@ -1601,23 +1582,23 @@ async def mariadb_observed_unsupported_type_cannot_finish_recovery() -> None:
             )
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
         assert "unsupported MariaDB storage type" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "unsupported MariaDB storage type" in recovery.explanation
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
