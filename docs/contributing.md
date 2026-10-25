@@ -34,6 +34,10 @@ uv run ty check examples/typed_queries.py
 
 The fast group does not replace the full SQLite/MariaDB suite.
 
+For measured suite costs, timing limitations, and safe temporary-artifact ownership,
+see the [2026-10-25 test-suite baseline](test-suite-reviews/2026-10-25-baseline.md).
+Use equivalent environments and repeated measurements before claiming a speedup.
+
 ## Find the code
 
 | Area | Start here |
