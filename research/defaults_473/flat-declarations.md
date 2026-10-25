@@ -9,9 +9,10 @@ Maintainer feedback: retain the outer `DatabaseDefault(Integer(), default=...)`
 form, but rank it lower for verbosity. This round looks for flatter alternatives
 rather than trying to persuade the maintainer to like nesting.
 
-Subsequent maintainer direction explores an independent
-[Python-left / SQL-right split](left-python-right-sql.md). The shortlist below
-records this round; it is not an accepted interface decision.
+The subsequent [Python-left / SQL-right split](left-python-right-sql.md) was
+rejected by the maintainer. [Explicit default policies](explicit-policies.md)
+are now being compared with the flatter forms below. This round's shortlist
+is historical, not an accepted interface decision.
 
 ## Important correction to the design space
 

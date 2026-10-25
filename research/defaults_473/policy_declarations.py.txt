@@ -1,0 +1,96 @@
+"""Static-only default-policy signatures; never execute these declarations."""
+
+from collections.abc import Callable
+from typing import Any, Literal, dataclass_transform, overload
+
+from snekql import __BACKEND__ as database
+from __META_MODULE__ import ModelMeta as BaseMeta
+from snekql.model import Table
+from snekql.storage import Attr, _UnboundOwner
+
+
+type RequiredColumn[Write, Read] = Attr[
+    Table[database.Pending], Table[database.Row], _UnboundOwner,
+    Write, Read, Write, Any, Literal["__BACKEND__"]
+]
+
+
+class PythonPolicy[T]:
+    pass
+
+
+class ServerPolicy[T]:
+    pass
+
+
+@overload
+def PythonDefault[T](value: T) -> PythonPolicy[T]: ...
+
+
+@overload
+def PythonDefault[T](*, factory: Callable[[], T]) -> PythonPolicy[T]: ...
+
+
+def PythonDefault(value: object = ..., *, factory: object = ...) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def ServerDefault(value: type[database.CurrentTimestamp]) -> ServerPolicy[database.UtcDatetime]: ...
+
+
+@overload
+def ServerDefault[T](value: None) -> ServerPolicy[T | None]: ...
+
+
+@overload
+def ServerDefault[T](value: T) -> ServerPolicy[T]: ...
+
+
+def ServerDefault(value: object) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def PolicyInteger[Write, Read]() -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def PolicyInteger[T](*, default: PythonPolicy[T]) -> database.Col[T]: ...
+
+
+@overload
+def PolicyInteger[T](*, default: ServerPolicy[T]) -> database.GenCol[T]: ...
+
+
+def PolicyInteger(*, default: object = ...) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def PolicyText[Write, Read]() -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def PolicyText[T](*, default: PythonPolicy[T]) -> database.Col[T]: ...
+
+
+@overload
+def PolicyText[T](*, default: ServerPolicy[T]) -> database.GenCol[T]: ...
+
+
+def PolicyText(*, default: object = ...) -> Any:
+    raise NotImplementedError
+
+
+@dataclass_transform(
+    field_specifiers=(PolicyText, PolicyInteger, database.Integer, database.Text),
+    kw_only_default=True,
+    frozen_default=True,
+)
+class PolicyMeta(BaseMeta):
+    pass
+
+
+class PolicyModel[S](database.Model[S], metaclass=PolicyMeta):
+    pass

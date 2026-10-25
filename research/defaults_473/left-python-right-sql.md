@@ -5,6 +5,13 @@ Environment: CPython 3.15.0, ty 0.0.84, snekql 0.9.0.
 This is a **static-only feasibility prototype**, not an accepted interface or a
 production implementation. No dependency changes or database runtime tests.
 
+## Status: not pursued
+
+The maintainer rejected this direction after reviewing the typing cost and the
+independent combinations it allowed. Do not develop the typing generator or
+annotation split further. The results below are historical. Current research
+is [explicit default policies](explicit-policies.md), not generated signatures.
+
 ## Goal
 
 Separate the declaration by responsibility:
@@ -203,8 +210,8 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-**80 tests pass**: 70 static positive/challenge pairs (42 previous, 28 this round)
-and 10 in-memory parser rejection tests. The focused suite takes approximately
+At the end of this round, **80 tests passed**: 70 static positive/challenge pairs
+(42 previous, 28 this round) and 10 in-memory parser rejection tests. The focused suite takes approximately
 11 seconds locally. Some static pairs intentionally record failed native
 strategies; the count does not mean all investigated strategies work. No SQL
 runtime suite is run.

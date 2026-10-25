@@ -6,11 +6,15 @@ or authorization for a breaking change. Names below are experimental.
 
 ## Latest direction
 
-[Python-left / SQL-right research](left-python-right-sql.md) now prototypes
-Python defaults and factories in annotation metadata, with SQL declarations on
-the RHS. Exact typing works through generated typing evidence; native ty does
-not infer the required constructor behavior from that metadata alone. The
-following sections and earlier follow-up are historical research, not decisions.
+The maintainer has **rejected the left/right split**: native typing does not
+support the needed omission behavior, and its independently configurable
+settings did not make useful declarations clearer. Its generated-typing route
+is no longer pursued; [the record](left-python-right-sql.md) is historical.
+
+[Explicit default policies](explicit-policies.md) are the current experiment:
+name both Python and server defaults, keep their useful behaviors coherent,
+and use native ty with no generated signatures. This is not a selected design.
+Earlier prefixed constructors and ownership selectors remain comparison points.
 
 ## Follow-up
 

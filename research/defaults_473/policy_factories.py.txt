@@ -1,0 +1,34 @@
+from uuid import UUID, uuid4
+
+
+def needs_argument(value: str) -> str:
+    return value
+
+
+class Tokens[S = database.Pending](PolicyModel[S]):
+    __row_type__: ClassVar[database.ReadType[Tokens[database.Row]]]
+    name: database.Col[str] = database.Text()
+    required_nullable: database.Col[str | None] = database.Text()
+    token: database.Col[UUID] = PolicyText(default=PythonDefault(factory=uuid4))
+    fixed: database.Col[UUID] = PolicyText(default=PythonDefault(UUID("12345678-1234-5678-1234-567812345678")))
+    nullable: database.Col[str | None] = PolicyText(default=PythonDefault(None))
+
+
+pending_tokens = Tokens(name="Ada", required_nullable=None)
+assert_type(pending_tokens.token, UUID)
+assert_type(pending_tokens.fixed, UUID)
+assert_type(pending_tokens.nullable, str | None)
+Tokens(name="Ada", required_nullable="value", token=uuid4(), nullable="override")
+Tokens(name="Ada")  # error: missing-argument
+Tokens(name="Ada", required_nullable=None, token="wrong")  # error: invalid-argument-type
+Tokens(name="Ada", required_nullable=None, token=None)  # error: invalid-argument-type
+Tokens(name="Ada", required_nullable=None, nullable=3)  # error: invalid-argument-type
+
+
+class BadFactory[S = database.Pending](PolicyModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadFactory[database.Row]]]
+    wrong_result: database.Col[str] = PolicyText(default=PythonDefault(factory=uuid4))  # error: invalid-assignment
+    wrong_none: database.Col[str] = PolicyText(default=PythonDefault(None))  # error: invalid-assignment
+
+
+PythonDefault(factory=needs_argument)  # error: invalid-argument-type
