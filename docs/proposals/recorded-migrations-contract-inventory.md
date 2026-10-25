@@ -626,3 +626,31 @@ NOT NULL/UNIQUE conflict policy, all rowid modes, namespace/index/FK, codec or r
 certification. Trusted executable SQL remains unsandboxed; remaining claim/workflow/
 interruption/resource/compiler/package/codec/ledger queue open, points1–4 incomplete,
 draft/guides deferred.
+
+
+### Declaration/key-implied nullability checkpoint
+
+Recorded nullable flags bind independently to definition/construction key rules, including
+before/target/intermediate CREATE/ADOPT despite relinquishment. SQLite plain TEXT/INT and
+inline INTEGER PRIMARY KEY DESC remain nullable absent NOT NULL; exactly INTEGER with a
+single non-DESC inline key aliases rowid. Table-level single INTEGER aliases even with
+DESC; composite INTEGER does not. NULL input allocating a non-NULL rowid is not stored NULL.
+Known STRICT/WITHOUT ROWID combinations require all key members; native supported keys
+are required without an explicit NOT NULL clause. Full-column table membership is bounded:
+known identifiers/directions/SQLite conflict clause only; unsupported expressions/prefixes,
+duplicate/unknown/multiple keys and unknown modes need adapters. No new column authority
+from extra SQL members; no key-change operation or naming/index equivalence implied.
+
+Actual archived9eb468e SQLite writer/reader/runtime completed required TEXT-key metadata in
+a non-STRICT table then stored two NULL ids. Fixed real format2 artifact now refuses load/
+typed preparation; isolated copied-source gate bypass reproduces current false completion.
+Truthful nullable old companion retains literal dump/digest/NULL-bearing deployment. Actual
+archived native nullable table key left DDL/uncertainty/ambiguous recovery after late refusal,
+not false completion; now pre-DDL/no-history refusal. Truthful native required counterparts
+deploy. Native catalog/recovery guards unchanged. No format/ledger/receipt conversion,
+retrospective repair/revocation or history recertification. Resource bounds remain partial.
+
+Declaration/key-implied nullability is not general CHECK/FK/trigger/default/session/domain,
+codec or readiness proof. Full key/constraint identity, UNIQUE/conflict/namespace/index/FK
+compatibility and workflow/interruption/resource/compiler/package/codec/ledger queue remain
+open; trusted SQL unsandboxed, points1–4 incomplete, draft/guides deferred.

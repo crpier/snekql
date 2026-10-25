@@ -1,4 +1,4 @@
-"""Bounded inline key claim binding, not table-key or rowid semantics proof."""
+"""Bounded inline key binding and table-key membership, not full key semantics proof."""
 
 from snekql.errors import SchemaError
 from snekql.experimental._migration_sql import (
@@ -14,6 +14,8 @@ from snekql.experimental.migrations import (
     PackageError,
     TableState,
 )
+
+_CONFLICT_TOKENS = 3
 
 
 def _inline_key(definition: str, backend: Backend) -> tuple[str, str, bool] | None:
@@ -113,3 +115,88 @@ def validate_inline_key_claims(table: TableState, backend: Backend) -> None:
     except SchemaError as error:
         msg = f"cannot verify inline primary key: {error}"
         raise PackageError(msg) from error
+
+
+def table_primary_key_members(
+    parts: tuple[str, ...], backend: Backend
+) -> tuple[str, ...]:
+    """Read one bounded full-column table key for membership, not index equivalence."""
+    keys: list[tuple[str, ...]] = []
+    for part in parts:
+        stream = tokens(part, mysql=backend == "mariadb")
+        words = tuple((t.kind, ascii_lower(t.value)) for t in stream)
+        start = 0
+        if words[:1] == (("word", "constraint"),):
+            start = (
+                1
+                if backend == "mariadb" and words[1:2] == (("word", "primary"),)
+                else 2
+            )
+        if words[start : start + 1] != (("word", "primary"),):
+            continue
+        if words[start : start + 3] != (
+            ("word", "primary"),
+            ("word", "key"),
+            ("punct", "("),
+        ):
+            msg = "unsupported primary-key membership; explicit adapter required"
+            raise PackageError(msg)
+        keys.append(_full_key_members(stream[start + 3 :], backend))
+    if len(keys) > 1:
+        msg = "multiple primary-key declarations require an explicit adapter"
+        raise PackageError(msg)
+    return keys[0] if keys else ()
+
+
+def _full_key_members(stream: tuple[Token, ...], backend: Backend) -> tuple[str, ...]:
+    """Consume full member identifiers plus bounded direction/conflict decoration."""
+    members: list[str] = []
+    index = 0
+    while index < len(stream):
+        token = stream[index]
+        if token.kind not in {"word", "identifier"} or (
+            token.kind == "word"
+            and token.value[0].isascii()
+            and token.value[0].isdigit()
+        ):
+            msg = "unsupported primary-key member; explicit adapter required"
+            raise PackageError(msg)
+        members.append(ascii_lower(token.value))
+        index += 1
+        if (
+            index < len(stream)
+            and stream[index].kind == "word"
+            and ascii_lower(stream[index].value)
+            in ({"asc"} if backend == "mariadb" else {"asc", "desc"})
+        ):
+            index += 1
+        if index < len(stream) and (stream[index].kind, stream[index].value) == (
+            "punct",
+            ")",
+        ):
+            index += 1
+            break
+        if index >= len(stream) or (stream[index].kind, stream[index].value) != (
+            "punct",
+            ",",
+        ):
+            msg = "unsupported primary-key member suffix; explicit adapter required"
+            raise PackageError(msg)
+        index += 1
+    else:
+        msg = "unterminated primary-key membership; explicit adapter required"
+        raise PackageError(msg)
+    tail = tuple((t.kind, ascii_lower(t.value)) for t in stream[index:])
+    if tail and not (
+        backend == "sqlite"
+        and len(tail) == _CONFLICT_TOKENS
+        and tail[:2] == (("word", "on"), ("word", "conflict"))
+        and tail[2][0] == "word"
+        and tail[2][1] in {"rollback", "abort", "fail", "ignore", "replace"}
+    ):
+        msg = "unsupported primary-key membership policy; explicit adapter required"
+        raise PackageError(msg)
+    if len(set(members)) != len(members):
+        msg = "ambiguous primary-key members require an explicit adapter"
+        raise PackageError(msg)
+    return tuple(members)

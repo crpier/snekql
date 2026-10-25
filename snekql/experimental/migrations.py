@@ -61,6 +61,7 @@ lazy from snekql.experimental._migration_keys import (
 lazy from snekql.experimental._migration_mariadb import mariadb_default_parts
 lazy from snekql.experimental._migration_nullability import (
     validate_column_nullability,
+    validate_key_nullability_claims,
     validate_nullability_claims,
 )
 lazy from snekql.experimental._migration_storage import (
@@ -1088,6 +1089,7 @@ def _validate_draft(draft: Draft) -> None:
         validate_storage_claims(table, draft.target.backend)
         validate_default_claims(table, draft.target.backend)
         validate_inline_key_claims(table, draft.target.backend)
+        validate_key_nullability_claims(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
             _validate_column_identifier(op.column, draft.target.backend)

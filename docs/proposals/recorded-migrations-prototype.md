@@ -669,6 +669,53 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Bounded declaration/key-implied nullability
+
+Compile/load now compares each managed primary-key member's recorded nullable flag
+with the effective declaration/key rules, independently in its frozen definition and
+construction declaration. Before/target/intermediate CREATE/ADOPT remain claims after
+relinquishment. Extra SQL declarations/members do not manufacture ColumnState ownership.
+
+SQLite plain rowid tables preserve nullable non-INTEGER keys unless explicitly NOT NULL.
+INT is not INTEGER: only exactly INTEGER with a single inline non-DESC key aliases the
+rowid. The historical inline INTEGER PRIMARY KEY DESC exception remains nullable outside
+STRICT/explicit NOT NULL. A single table-level INTEGER key aliases rowid even with DESC;
+a composite INTEGER member does not. Accepting NULL input and allocating a non-NULL rowid
+is not nullable stored key data. Known STRICT, WITHOUT ROWID, and their comma-separated
+combinations require key members; both orders are covered. Native supported primary-key
+members are required even when the definition omits NOT NULL. Other constraints are not
+an alternative basis for inferring the flag.
+
+Bounded table-key membership accepts one ordered full-column list, quoted identifiers,
+optional known direction, and SQLite's finite key ON CONFLICT clause. Expressions,
+prefixes, duplicate/unknown members, multiple keys, unsupported policies/options require
+adapters. Membership admission is not complete table-key/constraint/index equivalence,
+constraint naming or authorization to alter/drop keys. Native PK/index/catalog checks
+remain independent and unchanged; earlier native prefix refusal is not a runtime defect.
+
+An actual archived `9eb468e` writer/reader/runtime completed a non-STRICT TEXT PRIMARY KEY
+with required metadata, then stored two NULL keys. Its real format2 artifact now refuses
+load/typed preparation; isolated copied-source table-gate bypass reproduces current false
+completion without mutating working sources during native suites. A truthful old nullable
+companion retains literal dump/digest and model-free NULL-bearing deployment. An actual
+archived native nullable table-key package prepared/executed DDL then refused, preserving
+uncertain effects/ambiguous recovery: not native false completion. It now refuses before
+DDL/history; a truthful required counterpart deploys without converting the old identity.
+
+Live SQLite cases distinguish nullable TEXT/INT/inline-DESC and non-STRICT composite keys,
+INTEGER rowid allocation (including table-level DESC), explicit requiredness, STRICT and
+WITHOUT ROWID modes. Rejected writes exit their transaction before subsequent queries.
+Native inline/table-level required positives deploy; invalid old typed packages leave no
+DDL/history. No format/ledger/receipt conversion, retrospective repair or schema-history
+recertification. Historical completion is not a readiness certificate.
+
+This binds declaration/key-implied nullability, not the full admissible-value domain:
+CHECK/FK/trigger/default/session behavior, logical annotations, codecs, data and application
+readiness remain separate. SQL is trusted executable input, not sandboxed. Whole key and
+constraint definitions/names, UNIQUE and other conflict policies, namespace/index/FK
+compatibility, combined workflows/interruption, remaining resources and genuine compiler/
+package/codec/ledger evolution remain open. Points1–4 incomplete; draft, guides deferred.
+
 ## Inline primary-key declaration agreement before execution
 
 Compile/load now binds managed inline PRIMARY KEY declarations to corresponding

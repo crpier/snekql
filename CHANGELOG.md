@@ -4,6 +4,14 @@
 
 ### Experimental
 
+- Bind experimental primary-key-implied nullability to recorded column flags and
+  construction: SQLite INTEGER rowid aliases versus INT/DESC/composite keys,
+  STRICT/WITHOUT ROWID modes, explicit NOT NULL, and native required key members.
+  Close a reproduced non-STRICT SQLite required-TEXT-key false completion without
+  treating NULL input/rowid allocation as nullable stored ids. Bounded table-key
+  membership is not complete key/constraint/namespace/index/FK or codec proof;
+  native known mismatches move to pre-DDL refusal, with no format/ledger conversion.
+
 - Bind experimental managed inline primary-key claims to construction declarations
   before effects, including intermediate/relinquished claims and standalone admission.
   Preserve SQLite ordering, key conflict policy and AUTOINCREMENT distinctions rather

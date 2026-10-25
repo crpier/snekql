@@ -2154,19 +2154,23 @@ async def mariadb_primary_key_prefix_lengths_require_explicit_support() -> None:
             "sql": "CREATE TABLE entry(id BIGINT NOT NULL, title VARCHAR(255) NOT NULL, PRIMARY KEY (title(12))) ENGINE=InnoDB",
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
         with assert_raises(migrations.PackageError) as error:
-            await target.prepare(package, schema_writers_excluded=True)
-        assert "unsupported MariaDB primary-key" in str(error.exception)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "unsupported primary-key member" in str(error.exception)
         assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
