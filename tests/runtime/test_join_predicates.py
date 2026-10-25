@@ -6,7 +6,7 @@ from typing import ClassVar, assert_type
 from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 class LocalParent[S = sqlite.Pending](sqlite.Model[S]):
@@ -34,10 +34,12 @@ async def provide_sqlite_join_rows() -> AsyncGenerator[sqlite.Database]:
     """Seed tenant mismatches and right-side rows excluded by ON."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
         await database.migrate(
-            {
-                "001_parent": sqlite.scaffold([LocalParent]),
-                "002_child": sqlite.scaffold([LocalChild]),
-            }
+            migration_functions(
+                {
+                    "001_parent": sqlite.scaffold([LocalParent]),
+                    "002_child": sqlite.scaffold([LocalChild]),
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(
@@ -146,10 +148,12 @@ async def provide_mariadb_join_rows() -> AsyncGenerator[mariadb.Database]:
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001_parent": mariadb.scaffold([MariaParent]),
-                "002_child": mariadb.scaffold([MariaChild]),
-            }
+            migration_functions(
+                {
+                    "001_parent": mariadb.scaffold([MariaParent]),
+                    "002_child": mariadb.scaffold([MariaChild]),
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(

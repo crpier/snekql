@@ -9,6 +9,7 @@ from pydantic import Json
 from snektest import Param, assert_eq, assert_in, assert_raises, test
 
 from snekql import mariadb, sqlite
+from tests.helpers import migration_functions
 
 
 @test(mark="fast")
@@ -61,9 +62,11 @@ async def matching_hand_created_predicate_verifies() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE account (email TEXT NOT NULL, active INTEGER NOT NULL) STRICT; CREATE UNIQUE INDEX ux_active_email ON account (email) WHERE ((active == +01));"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE account (email TEXT NOT NULL, active INTEGER NOT NULL) STRICT; CREATE UNIQUE INDEX ux_active_email ON account (email) WHERE ((active == +01));"
+                }
+            )
         )
         report = await database.verify([Account])
 
@@ -180,7 +183,7 @@ async def unique_partial_insert_collision() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Entry(label="same", active=True)))
 
@@ -207,7 +210,7 @@ async def excluded_rows_can_duplicate(active: bool | None) -> None:  # noqa: FBT
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Entry(label="same", active=True)))
         async with database.transaction() as transaction:
@@ -236,7 +239,7 @@ async def update_into_subset_enforces_uniqueness() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert(Entry(number=1, label="same", active=True))
@@ -285,11 +288,13 @@ async def catalog_predicate_classification(case: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry (label TEXT NOT NULL, active INTEGER NOT NULL) STRICT; CREATE INDEX ix_active ON entry(label) "
-                + clauses[case]
-                + "\n;"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry (label TEXT NOT NULL, active INTEGER NOT NULL) STRICT; CREATE INDEX ix_active ON entry(label) "
+                    + clauses[case]
+                    + "\n;"
+                }
+            )
         )
         report = await database.verify([Entry], policy="warn")
 
@@ -376,7 +381,7 @@ async def escaped_predicate_round_trips() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         report = await database.verify([Entry])
 
     assert_eq(
@@ -487,9 +492,11 @@ async def sqlite_identifier_case_normalizes() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": 'CREATE TABLE entry (label TEXT NOT NULL, active INTEGER NOT NULL) STRICT; CREATE INDEX ix_active ON entry(label) WHERE "ACTIVE" = 1;'
-            }
+            migration_functions(
+                {
+                    "001": 'CREATE TABLE entry (label TEXT NOT NULL, active INTEGER NOT NULL) STRICT; CREATE INDEX ix_active ON entry(label) WHERE "ACTIVE" = 1;'
+                }
+            )
         )
         report = await database.verify([Entry])
 
@@ -519,9 +526,11 @@ async def unknown_quoted_operand_is_unchecked() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": 'CREATE TABLE entry (label TEXT NOT NULL) STRICT; CREATE INDEX ix_selected ON entry(label) WHERE label = "missing";'
-            }
+            migration_functions(
+                {
+                    "001": 'CREATE TABLE entry (label TEXT NOT NULL) STRICT; CREATE INDEX ix_selected ON entry(label) WHERE label = "missing";'
+                }
+            )
         )
         report = await database.verify([Entry])
 
@@ -546,7 +555,7 @@ async def quoted_where_names_do_not_hide_predicate() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         report = await database.verify([Entry])
 
     assert_eq(
@@ -611,9 +620,11 @@ async def unsupported_predicate_does_not_fail_strict_verification() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry(number INTEGER NOT NULL) STRICT; CREATE INDEX ix_selected ON entry(number) WHERE abs(number) = 1;"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry(number INTEGER NOT NULL) STRICT; CREATE INDEX ix_selected ON entry(number) WHERE abs(number) = 1;"
+                }
+            )
         )
         report = await database.verify([Entry])
 
@@ -641,9 +652,11 @@ async def changed_predicate_fails_strict_verification() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry(number INTEGER NOT NULL) STRICT; CREATE INDEX ix_selected ON entry(number) WHERE number = 2;"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry(number INTEGER NOT NULL) STRICT; CREATE INDEX ix_selected ON entry(number) WHERE number = 2;"
+                }
+            )
         )
         with assert_raises(sqlite.SchemaVerificationError):
             await database.verify([Entry])
@@ -664,7 +677,7 @@ async def column_only_upsert_does_not_target_partial_uniqueness() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         with assert_raises(sqlite.ExecutionError):
             async with database.transaction() as transaction:
                 await transaction.execute(

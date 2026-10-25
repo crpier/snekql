@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from snektest import Param, assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 class Anchor[S = sqlite.Pending](sqlite.Model[S]):
@@ -44,7 +44,9 @@ class PeerRole:
 async def joined_rows() -> AsyncGenerator[sqlite.Database]:
     """Seed all-NULL and non-NULL payloads independently of read consumption."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001": sqlite.scaffold([Anchor, Payload])})
+        await database.migrate(
+            migration_functions({"001": sqlite.scaffold([Anchor, Payload])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(Anchor, [Anchor(id=1), Anchor(id=2)])
@@ -118,7 +120,11 @@ async def native_joined_rows() -> AsyncGenerator[mariadb.Database]:
     """Seed native all-NULL and non-NULL payloads before read consumption."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([NativeAnchor, NativePayload])})
+        await database.migrate(
+            migration_functions(
+                {"001": mariadb.scaffold([NativeAnchor, NativePayload])}
+            )
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert_many(
@@ -317,7 +323,9 @@ NativeCollisionPayload: Any = type(
 async def collision_rows() -> AsyncGenerator[sqlite.Database]:
     """Seed legal column names that collide with two private witness candidates."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001": sqlite.scaffold([Anchor, CollisionPayload])})
+        await database.migrate(
+            migration_functions({"001": sqlite.scaffold([Anchor, CollisionPayload])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(Anchor, [Anchor(id=1), Anchor(id=2)])
@@ -365,7 +373,9 @@ async def native_collision_rows() -> AsyncGenerator[mariadb.Database]:
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {"001": mariadb.scaffold([NativeAnchor, NativeCollisionPayload])}
+            migration_functions(
+                {"001": mariadb.scaffold([NativeAnchor, NativeCollisionPayload])}
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(

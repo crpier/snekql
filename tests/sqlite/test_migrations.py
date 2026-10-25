@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from sqlite3 import IntegrityError, OperationalError, connect
+from sqlite3 import OperationalError, connect
 from tempfile import TemporaryDirectory
 from threading import Event as ThreadEvent
 from typing import Any, ClassVar, cast
@@ -32,6 +32,7 @@ from snekql.sqlite import (
     Text,
 )
 from snekql.sqlite.runtime import SQLiteRuntime
+from tests.helpers import migration_functions
 
 _CREATE_USER_MIGRATION = (
     'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
@@ -60,16 +61,13 @@ def _fetch_applied_names(database_path: Path) -> list[str]:
         connection.close()
 
 
-def _fetch_history(database_path: Path) -> list[tuple[int, str, str]]:
+def _fetch_history(database_path: Path) -> list[tuple[int, str]]:
     connection = connect(database_path)
     try:
         cursor = connection.execute(
-            "SELECT position, name, checksum FROM snekql_migrations ORDER BY position"
+            "SELECT position, name FROM snekql_migrations ORDER BY position"
         )
-        return [
-            (int(position), str(name), str(checksum))
-            for position, name, checksum in cursor.fetchall()
-        ]
+        return [(int(position), str(name)) for position, name in cursor.fetchall()]
     finally:
         connection.close()
 
@@ -122,7 +120,9 @@ async def migrate_creates_table_and_records_history() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
-        result = await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
+        result = await database.migrate(
+            migration_functions({"001_create_user": _CREATE_USER_MIGRATION})
+        )
         await database.close()
 
         assert_eq(
@@ -130,7 +130,6 @@ async def migrate_creates_table_and_records_history() -> None:
             MigrationResult(
                 applied=("001_create_user",),
                 already_applied=(),
-                legacy_adopted=False,
             ),
         )
         assert_true(_table_exists(database_path, "user"))
@@ -140,7 +139,6 @@ async def migrate_creates_table_and_records_history() -> None:
                 (
                     1,
                     "001_create_user",
-                    "11d280da4ab2db04e6e351274977b836c517e13f5a3a363b468a1257eed8437a",
                 )
             ],
         )
@@ -152,8 +150,8 @@ async def bundled_sqlite_migrations_execute_and_verify() -> None:
 
     database = await Database.initialize(database=":memory:")
     try:
-        await database.migrate(EXAMPLE_MIGRATIONS)
-        await database.verify_migrations(EXAMPLE_MIGRATIONS)
+        await database.migrate(migration_functions(EXAMPLE_MIGRATIONS))
+        await database.verify_migrations(migration_functions(EXAMPLE_MIGRATIONS))
         await database.verify([ExampleUser])
     finally:
         await database.close()
@@ -169,15 +167,15 @@ async def fresh_replay_and_incremental_upgrade_converge_on_sqlite() -> None:
         incremental_path = directory / "incremental.db"
 
         fresh = await Database.initialize(database=fresh_path)
-        await fresh.migrate(EXAMPLE_MIGRATIONS)
+        await fresh.migrate(migration_functions(EXAMPLE_MIGRATIONS))
         await fresh.verify([ExampleUser])
         await fresh.close()
 
         incremental = await Database.initialize(database=incremental_path)
         first_name, first_body = next(iter(EXAMPLE_MIGRATIONS.items()))
-        await incremental.migrate({first_name: first_body})
-        await incremental.migrate(EXAMPLE_MIGRATIONS)
-        await incremental.verify_migrations(EXAMPLE_MIGRATIONS)
+        await incremental.migrate(migration_functions({first_name: first_body}))
+        await incremental.migrate(migration_functions(EXAMPLE_MIGRATIONS))
+        await incremental.verify_migrations(migration_functions(EXAMPLE_MIGRATIONS))
         await incremental.verify([ExampleUser])
         await incremental.close()
 
@@ -205,18 +203,19 @@ async def empty_declarations_still_inspect_history() -> None:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
 
-        result = await database.migrate({})
+        result = await database.migrate(migration_functions({}))
         assert_eq(
             result,
             MigrationResult(
                 applied=(),
                 already_applied=(),
-                legacy_adopted=False,
             ),
         )
-        await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
+        await database.migrate(
+            migration_functions({"001_create_user": _CREATE_USER_MIGRATION})
+        )
         with assert_raises(MigrationHistoryError):
-            await database.migrate({})
+            await database.migrate(migration_functions({}))
         await database.close()
 
 
@@ -228,7 +227,7 @@ async def empty_verification_does_not_create_history() -> None:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
 
-        await database.verify_migrations({})
+        await database.verify_migrations(migration_functions({}))
         await database.close()
 
         assert_true(not _table_exists(database_path, "snekql_migrations"))
@@ -242,25 +241,11 @@ async def re_migrating_does_not_reapply_recorded_migration() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
-        await database.migrate(migrations)
-        await database.migrate(migrations)
+        await database.migrate(migration_functions(migrations))
+        await database.migrate(migration_functions(migrations))
         await database.close()
 
         assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
-
-
-@test(mark="medium")
-async def edited_applied_body_is_rejected() -> None:
-    """An applied name cannot hide a changed exact SQL body."""
-
-    with TemporaryDirectory() as directory:
-        database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path)
-        await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
-
-        with assert_raises(MigrationHistoryError):
-            await database.migrate({"001_create_user": f"{_CREATE_USER_MIGRATION} "})
-        await database.close()
 
 
 @test(mark="medium")
@@ -276,7 +261,7 @@ async def migration_declaration_is_snapshotted_before_connection_wait() -> None:
 
         async def migrate() -> None:
             started.set()
-            results.append(await database.migrate(migrations))
+            results.append(await database.migrate(migration_functions(migrations)))
 
         async with anyio.create_task_group() as task_group, database.transaction():
             task_group.start_soon(migrate)
@@ -301,11 +286,10 @@ async def invalid_declaration_fails_before_connection_acquisition() -> None:
         try:
             async with database.transaction():
                 with assert_raises(MigrationDeclarationError):
-                    await database.migrate({"": "SELECT 1"})
+                    await database.migrate(migration_functions({"": "SELECT 1"}))
                 with assert_raises(MigrationDeclarationError):
                     await database.migrate(
-                        {},
-                        adopt_legacy=1,  # ty: ignore[invalid-argument-type]
+                        {"001": "SELECT 1"},  # ty: ignore[invalid-argument-type]
                     )
         finally:
             await database.close()
@@ -319,9 +303,9 @@ async def verify_migrations_accepts_the_exact_applied_head() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
-        await database.migrate(migrations)
+        await database.migrate(migration_functions(migrations))
 
-        result = await database.verify_migrations(migrations)
+        result = await database.verify_migrations(migration_functions(migrations))
         await database.close()
 
         assert_eq(result, None)
@@ -338,7 +322,9 @@ async def non_empty_legacy_history_requires_explicit_adoption() -> None:
         database = await Database.initialize(database=database_path)
 
         with assert_raises(MigrationHistoryError):
-            await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
+            await database.migrate(
+                migration_functions({"001_create_user": _CREATE_USER_MIGRATION})
+            )
         await database.close()
 
         connection = connect(database_path)
@@ -355,92 +341,6 @@ async def non_empty_legacy_history_requires_explicit_adoption() -> None:
 
 
 @test(mark="medium")
-async def legacy_staging_object_collisions_fail_as_history_errors() -> None:
-    """Case variants and views cannot collide with SQLite's adoption staging name."""
-
-    with TemporaryDirectory() as directory:
-        for index, staging_sql in enumerate(
-            (
-                'CREATE VIEW "_snekql_migrations_v1" AS SELECT 1 AS value',
-                'CREATE TABLE "_SNEKQL_MIGRATIONS_V1" ("value" INTEGER)',
-            )
-        ):
-            database_path = Path(directory) / f"collision_{index}.db"
-            _create_v1_history(database_path, ("001_create_user",))
-            connection = connect(database_path)
-            connection.execute(staging_sql)
-            connection.commit()
-            connection.close()
-            database = await Database.initialize(database=database_path)
-
-            with assert_raises(MigrationHistoryError):
-                await database.migrate(
-                    {"001_create_user": _CREATE_USER_MIGRATION},
-                    adopt_legacy=True,
-                )
-            await database.close()
-
-
-@test(mark="medium")
-async def empty_legacy_history_upgrades_without_adoption() -> None:
-    """An empty v1 table carries no unprovable historical claims."""
-
-    with TemporaryDirectory() as directory:
-        database_path = Path(directory) / "app.db"
-        _create_v1_history(database_path, ())
-        database = await Database.initialize(database=database_path)
-
-        result = await database.migrate({})
-        await database.close()
-
-        assert_eq(
-            result,
-            MigrationResult(
-                applied=(),
-                already_applied=(),
-                legacy_adopted=False,
-            ),
-        )
-        assert_eq(_fetch_history(database_path), [])
-
-
-@test(mark="medium")
-async def explicit_legacy_adoption_baselines_the_declared_prefix() -> None:
-    """Consent assigns v2 positions and checksums from the current declaration."""
-
-    migrations = {
-        "001_create_user": _CREATE_USER_MIGRATION,
-        "002_add_age": 'ALTER TABLE "user" ADD COLUMN "age" INTEGER',
-    }
-    with TemporaryDirectory() as directory:
-        database_path = Path(directory) / "app.db"
-        _create_v1_history(database_path, ("001_create_user",))
-        connection = connect(database_path)
-        try:
-            connection.execute(_CREATE_USER_MIGRATION)
-            connection.commit()
-        finally:
-            connection.close()
-        database = await Database.initialize(database=database_path)
-
-        result = await database.migrate(migrations, adopt_legacy=True)
-        await database.close()
-
-        assert_eq(
-            result,
-            MigrationResult(
-                applied=("002_add_age",),
-                already_applied=("001_create_user",),
-                legacy_adopted=True,
-            ),
-        )
-        assert_eq(
-            [name for _, name, _ in _fetch_history(database_path)],
-            ["001_create_user", "002_add_age"],
-        )
-
-
-@test(mark="medium")
 async def migration_verification_rejects_legacy_history_without_mutation() -> None:
     """Read-only verification never upgrades or adopts a v1 table."""
 
@@ -451,7 +351,7 @@ async def migration_verification_rejects_legacy_history_without_mutation() -> No
 
         with assert_raises(MigrationHistoryError):
             await database.verify_migrations(
-                {"001_create_user": _CREATE_USER_MIGRATION}
+                migration_functions({"001_create_user": _CREATE_USER_MIGRATION})
             )
         await database.close()
 
@@ -465,12 +365,16 @@ async def new_pending_migration_applies_only_itself() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
-        await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
         await database.migrate(
-            {
-                "001_create_user": _CREATE_USER_MIGRATION,
-                "002_add_age": 'ALTER TABLE "user" ADD COLUMN "age" INTEGER',
-            },
+            migration_functions({"001_create_user": _CREATE_USER_MIGRATION})
+        )
+        await database.migrate(
+            migration_functions(
+                {
+                    "001_create_user": _CREATE_USER_MIGRATION,
+                    "002_add_age": 'ALTER TABLE "user" ADD COLUMN "age" INTEGER',
+                }
+            ),
         )
         await database.close()
 
@@ -492,7 +396,9 @@ async def concurrent_runners_apply_a_non_idempotent_migration_once() -> None:
 
         async def migrate(database: Database) -> None:
             results.append(
-                await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
+                await database.migrate(
+                    migration_functions({"001_create_user": _CREATE_USER_MIGRATION})
+                )
             )
 
         try:
@@ -530,7 +436,9 @@ async def verify_passes_against_migration_created_schema() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
-        await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
+        await database.migrate(
+            migration_functions({"001_create_user": _CREATE_USER_MIGRATION})
+        )
         await database.verify([User])
         await database.close()
 
@@ -555,7 +463,7 @@ async def verify_fails_when_a_model_has_no_migration() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
-        await database.migrate({"001_other": create_other})
+        await database.migrate(migration_functions({"001_other": create_other}))
         try:
             with assert_raises(SchemaVerificationError):
                 await database.verify([User])
@@ -582,7 +490,7 @@ async def failing_migration_leaves_partial_chain_state() -> None:
         database = await Database.initialize(database=database_path)
         try:
             with assert_raises(MigrationError):
-                await database.migrate(migrations)
+                await database.migrate(migration_functions(migrations))
         finally:
             await database.close()
 
@@ -610,8 +518,8 @@ async def fixed_retry_resumes_from_the_failure_point() -> None:
         database = await Database.initialize(database=database_path)
         try:
             with assert_raises(MigrationError):
-                await database.migrate(failing)
-            await database.migrate(fixed)
+                await database.migrate(migration_functions(failing))
+            await database.migrate(migration_functions(fixed))
         finally:
             await database.close()
 
@@ -634,7 +542,9 @@ async def failed_multi_statement_body_leaves_no_partial_object() -> None:
         database = await Database.initialize(database=database_path)
         try:
             with assert_raises(MigrationError):
-                await database.migrate({"001_multi": multi_statement})
+                await database.migrate(
+                    migration_functions({"001_multi": multi_statement})
+                )
         finally:
             await database.close()
 
@@ -656,10 +566,12 @@ async def trigger_body_with_internal_semicolons_is_one_statement() -> None:
         database = await Database.initialize(database=database_path)
 
         result = await database.migrate(
-            {
-                "001_create_user": _CREATE_USER_MIGRATION,
-                "002_normalize_email": trigger_sql,
-            }
+            migration_functions(
+                {
+                    "001_create_user": _CREATE_USER_MIGRATION,
+                    "002_normalize_email": trigger_sql,
+                }
+            )
         )
         await database.close()
 
@@ -705,8 +617,10 @@ async def connection_scoped_sqlite_bodies_are_rejected() -> None:
         database = await Database.initialize(database=Path(directory) / "app.db")
         try:
             for index, body in enumerate(invalid_bodies):
-                with assert_raises(MigrationDeclarationError):
-                    await database.migrate({f"{index:03}_invalid": body})
+                with assert_raises(MigrationError):
+                    await database.migrate(
+                        migration_functions({f"{index:03}_invalid": body})
+                    )
         finally:
             await database.close()
 
@@ -730,7 +644,7 @@ async def temp_aliases_and_history_named_columns_remain_valid() -> None:
     with TemporaryDirectory() as directory:
         database = await Database.initialize(database=Path(directory) / "app.db")
 
-        result = await database.migrate(migrations)
+        result = await database.migrate(migration_functions(migrations))
         await database.close()
 
         assert_eq(result.applied, tuple(migrations))
@@ -744,7 +658,7 @@ async def migration_body_cannot_mutate_owned_history() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
-        await database.migrate(migrations)
+        await database.migrate(migration_functions(migrations))
 
         corrupting_bodies = (
             'DELETE FROM "snekql_migrations"',
@@ -756,12 +670,16 @@ async def migration_body_cannot_mutate_owned_history() -> None:
         )
         for body in corrupting_bodies:
             with assert_raises(MigrationError):
-                await database.migrate({**migrations, "002_corrupt_history": body})
+                await database.migrate(
+                    migration_functions({**migrations, "002_corrupt_history": body})
+                )
         result = await database.migrate(
-            {
-                **migrations,
-                "002_corrupt_history": _CREATE_LATER_MIGRATION,
-            }
+            migration_functions(
+                {
+                    **migrations,
+                    "002_corrupt_history": _CREATE_LATER_MIGRATION,
+                }
+            )
         )
         await database.close()
 
@@ -781,7 +699,7 @@ async def sqlite_body_rolls_back_when_history_insert_fails() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path, pool_size=1)
-        await database.migrate(migrations)
+        await database.migrate(migration_functions(migrations))
         runtime = cast("SQLiteRuntime", database.runtime)
         pooled_connection = await runtime.connection_pool.acquire(
             runtime.acquire_timeout
@@ -799,10 +717,12 @@ async def sqlite_body_rolls_back_when_history_insert_fails() -> None:
 
         with assert_raises(MigrationHistoryError):
             await database.migrate(
-                {
-                    **migrations,
-                    "002_insert_item": 'INSERT INTO "item" ("id") VALUES (1)',
-                }
+                migration_functions(
+                    {
+                        **migrations,
+                        "002_insert_item": 'INSERT INTO "item" ("id") VALUES (1)',
+                    }
+                )
             )
         pooled_connection = await runtime.connection_pool.acquire(
             runtime.acquire_timeout
@@ -845,7 +765,9 @@ async def cancellation_rolls_back_and_restores_the_sqlite_connection() -> None:
 
         async def run_cancelled_migration() -> None:
             with cancel_scope:
-                await database.migrate({"001_cancelled": "SELECT block_migration()"})
+                await database.migrate(
+                    migration_functions({"001_cancelled": "SELECT block_migration()"})
+                )
             migration_finished.set()
 
         async with anyio.create_task_group() as task_group:
@@ -857,7 +779,9 @@ async def cancellation_rolls_back_and_restores_the_sqlite_connection() -> None:
             allow_statement_to_finish.set()
             await migration_finished.wait()
 
-        result = await database.migrate({"001_cancelled": _CREATE_LATER_MIGRATION})
+        result = await database.migrate(
+            migration_functions({"001_cancelled": _CREATE_LATER_MIGRATION})
+        )
         await database.close()
 
         assert_eq(result.applied, ("001_cancelled",))
@@ -883,14 +807,18 @@ async def commit_failure_rolls_back_before_sqlite_connection_reuse() -> None:
         await runtime.connection_pool.release(connection)
 
         with assert_raises(MigrationError):
-            await database.migrate({"001_commit": _CREATE_LATER_MIGRATION})
+            await database.migrate(
+                migration_functions({"001_commit": _CREATE_LATER_MIGRATION})
+            )
         assert_true(not _table_exists(database_path, "later"))
         assert_eq(_fetch_applied_names(database_path), [])
 
         connection = await runtime.connection_pool.acquire(runtime.acquire_timeout)
         cast("Any", connection).commit = original_commit
         await runtime.connection_pool.release(connection)
-        result = await database.migrate({"001_commit": _CREATE_LATER_MIGRATION})
+        result = await database.migrate(
+            migration_functions({"001_commit": _CREATE_LATER_MIGRATION})
+        )
         await database.close()
 
         assert_eq(result.applied, ("001_commit",))
@@ -914,7 +842,11 @@ async def cancellation_during_sqlite_writer_lock_acquisition_discards_connection
         async def run_cancelled_migration() -> None:
             with cancel_scope:
                 migration_started.set()
-                await database.migrate({"001_cancelled_begin": _CREATE_LATER_MIGRATION})
+                await database.migrate(
+                    migration_functions(
+                        {"001_cancelled_begin": _CREATE_LATER_MIGRATION}
+                    )
+                )
             migration_finished.set()
 
         try:
@@ -927,7 +859,7 @@ async def cancellation_during_sqlite_writer_lock_acquisition_discards_connection
                 await migration_finished.wait()
 
             result = await database.migrate(
-                {"001_cancelled_begin": _CREATE_LATER_MIGRATION}
+                migration_functions({"001_cancelled_begin": _CREATE_LATER_MIGRATION})
             )
         finally:
             holder.close()
@@ -955,7 +887,9 @@ async def exhausted_sqlite_writer_lock_budget_uses_migration_lock_error() -> Non
 
         try:
             with assert_raises(MigrationLockTimeoutError):
-                await database.migrate({"001_blocked": _CREATE_LATER_MIGRATION})
+                await database.migrate(
+                    migration_functions({"001_blocked": _CREATE_LATER_MIGRATION})
+                )
         finally:
             holder.rollback()
             holder.close()
@@ -979,14 +913,14 @@ async def unknown_sqlite_history_objects_fail_closed() -> None:
         connection.close()
         database = await Database.initialize(database=view_path)
         with assert_raises(MigrationHistoryError):
-            await database.verify_migrations({})
+            await database.verify_migrations(migration_functions({}))
         with assert_raises(MigrationHistoryError):
-            await database.migrate({})
+            await database.migrate(migration_functions({}))
         await database.close()
 
         trigger_path = Path(directory) / "trigger.db"
         database = await Database.initialize(database=trigger_path)
-        await database.migrate({})
+        await database.migrate(migration_functions({}))
         await database.close()
         connection = connect(trigger_path)
         connection.execute(
@@ -997,31 +931,11 @@ async def unknown_sqlite_history_objects_fail_closed() -> None:
         connection.close()
         database = await Database.initialize(database=trigger_path)
         with assert_raises(MigrationHistoryError):
-            await database.migrate({"001_later": _CREATE_LATER_MIGRATION})
+            await database.migrate(
+                migration_functions({"001_later": _CREATE_LATER_MIGRATION})
+            )
         await database.close()
         assert_true(not _table_exists(trigger_path, "later"))
-
-
-@test(mark="medium")
-async def sqlite_history_ddl_rejects_nul_extended_checksums() -> None:
-    """The database enforces exactly 64 lowercase checksum bytes."""
-
-    with TemporaryDirectory() as directory:
-        database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path)
-        await database.migrate({})
-        await database.close()
-
-        connection = connect(database_path)
-        try:
-            with assert_raises(IntegrityError):
-                connection.execute(
-                    "INSERT INTO snekql_migrations "
-                    "(position, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
-                    (1, "001", f"{'a' * 64}\x00BAD", "2026-08-31T00:00:00.000Z"),
-                )
-        finally:
-            connection.close()
 
 
 @test(mark="medium")

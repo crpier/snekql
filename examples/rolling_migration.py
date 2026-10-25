@@ -10,21 +10,75 @@ contract guarantee or a general migration framework.
 from dataclasses import dataclass
 
 from snekql import mariadb, sqlite
+from snekql.sqlite import MigrationContext
 
 _MAX_BATCH_SIZE = 1000
 """Bound lock duration and transaction size independently of total row count."""
 
+
+async def sqlite_customers(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "CREATE TABLE rollout_customer (id INTEGER PRIMARY KEY CHECK (id > 0), name TEXT NOT NULL) STRICT"
+    )
+
+
+async def sqlite_expand(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute("ALTER TABLE rollout_customer ADD COLUMN display_name TEXT")
+
+
+async def sqlite_checkpoint(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "CREATE TABLE rollout_backfill (id INTEGER PRIMARY KEY CHECK (id = 1), last_id INTEGER NOT NULL CHECK (last_id >= 0)) STRICT"
+    )
+
+
+async def sqlite_seed_checkpoint(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute("INSERT INTO rollout_backfill VALUES (1, 0)")
+
+
 SQLITE_EXPANDED = {
-    "001_customers": "CREATE TABLE rollout_customer (id INTEGER PRIMARY KEY CHECK (id > 0), name TEXT NOT NULL) STRICT",
-    "002_expand": "ALTER TABLE rollout_customer ADD COLUMN display_name TEXT",
-    "003_checkpoint": "CREATE TABLE rollout_backfill (id INTEGER PRIMARY KEY CHECK (id = 1), last_id INTEGER NOT NULL CHECK (last_id >= 0)) STRICT",
-    "004_seed_checkpoint": "INSERT INTO rollout_backfill VALUES (1, 0)",
+    "001_customers": sqlite_customers,
+    "002_expand": sqlite_expand,
+    "003_checkpoint": sqlite_checkpoint,
+    "004_seed_checkpoint": sqlite_seed_checkpoint,
 }
+
+
+async def mariadb_customers(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "CREATE TABLE rollout_customer (id BIGINT NOT NULL PRIMARY KEY CHECK (id > 0), name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+    )
+
+
+async def mariadb_expand(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "ALTER TABLE rollout_customer ADD COLUMN IF NOT EXISTS display_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL"
+    )
+
+
+async def mariadb_checkpoint(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "CREATE TABLE IF NOT EXISTS rollout_backfill (id BIGINT NOT NULL PRIMARY KEY CHECK (id = 1), last_id BIGINT NOT NULL CHECK (last_id >= 0)) ENGINE=InnoDB"
+    )
+
+
+async def mariadb_seed_checkpoint(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute("INSERT INTO rollout_backfill VALUES (1, 0)")
+
+
 MARIADB_EXPANDED = {
-    "001_customers": "CREATE TABLE rollout_customer (id BIGINT NOT NULL PRIMARY KEY CHECK (id > 0), name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB",
-    "002_expand": "ALTER TABLE rollout_customer ADD COLUMN IF NOT EXISTS display_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL",
-    "003_checkpoint": "CREATE TABLE IF NOT EXISTS rollout_backfill (id BIGINT NOT NULL PRIMARY KEY CHECK (id = 1), last_id BIGINT NOT NULL CHECK (last_id >= 0)) ENGINE=InnoDB",
-    "004_seed_checkpoint": "INSERT INTO rollout_backfill VALUES (1, 0)",
+    "001_customers": mariadb_customers,
+    "002_expand": mariadb_expand,
+    "003_checkpoint": mariadb_checkpoint,
+    "004_seed_checkpoint": mariadb_seed_checkpoint,
 }
 
 
@@ -123,26 +177,48 @@ async def backfill_mariadb_batch(
     )
 
 
+async def sqlite_contract(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute("""
+              CREATE TABLE rollout_customer_new (
+              id INTEGER PRIMARY KEY CHECK (id > 0), display_name TEXT NOT NULL
+              ) STRICT;
+          """)
+    await migration.execute("""
+              INSERT INTO rollout_customer_new SELECT id, display_name FROM rollout_customer;
+          """)
+    await migration.execute("""
+              DROP TABLE rollout_customer;
+          """)
+    await migration.execute("""
+              ALTER TABLE rollout_customer_new RENAME TO rollout_customer;
+          """)
+    await migration.execute("""
+              DROP TABLE rollout_backfill;
+          """)
+
+
 SQLITE_CONTRACTED = {
     **SQLITE_EXPANDED,
-    "005_contract": """
-        CREATE TABLE rollout_customer_new (
-            id INTEGER PRIMARY KEY CHECK (id > 0), display_name TEXT NOT NULL
-        ) STRICT;
-        INSERT INTO rollout_customer_new SELECT id, display_name FROM rollout_customer;
-        DROP TABLE rollout_customer;
-        ALTER TABLE rollout_customer_new RENAME TO rollout_customer;
-        DROP TABLE rollout_backfill;
-    """,
+    "005_contract": sqlite_contract,
 }
+
+
+async def mariadb_contract(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute("""
+              ALTER TABLE rollout_customer
+              MODIFY display_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+              DROP COLUMN name;
+          """)
+    await migration.execute("""
+              DROP TABLE rollout_backfill;
+          """)
+
+
 MARIADB_CONTRACTED = {
     **MARIADB_EXPANDED,
-    "005_contract": """
-        ALTER TABLE rollout_customer
-            MODIFY display_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-            DROP COLUMN name;
-        DROP TABLE rollout_backfill;
-    """,
+    "005_contract": mariadb_contract,
 }
 
 

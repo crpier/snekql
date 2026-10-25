@@ -21,7 +21,7 @@ schema-equivalence checker.
 | Fresh database | Replay the complete canonical declaration with `migrate()`. |
 | Existing schema, no snekql history, no already-deployed snekql chain | Review and execute a new initial baseline. |
 | Valid snekql history | Keep the existing chain and apply its pending suffix. |
-| Legacy snekql history | Use the separately reviewed `adopt_legacy=True` workflow. |
+| Older snekql history | Unsupported; no conversion or adoption path is provided. |
 | Malformed history or partially committed MariaDB DDL | Stop and reconcile actual effects. Do not stamp or delete history. |
 
 Even an empty snekql history table excludes this one-time adoption workflow.
@@ -42,7 +42,7 @@ needs an explicit reviewed inventory policy, not a wildcard exclusion.
    initialized Database exclusively for adoption, not an active application's
    pool. Keep the maintenance window open until all post-checks finish.
 3. Confirm that snekql history is absent. Do not create an empty history table
-   as preparation and do not use `adopt_legacy=True` for an untracked schema.
+   as preparation and do not stamp an untracked schema as already migrated.
 4. Inventory owned tables, indexes, constraints, views, triggers, generated
    expressions, defaults, collations, engine options, and other relevant catalog
    facts. Include routines and scheduled events where supported. Use credentials

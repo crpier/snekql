@@ -11,7 +11,7 @@ from snektest import Param, assert_eq, assert_raises, load_fixture, test
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
 from snekql.runtime import IsolationLevel
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.runtime.test_nested_transactions import provide_nested_case
 from tests.runtime.test_raw_lifecycle import provide_contended_case
 
@@ -397,9 +397,11 @@ async def mariadb_isolation_override_does_not_leak(level: IsolationLevel) -> Non
         await mariadb.Database.initialize(server.config(pool_size=1)) as concurrent,
     ):
         await database.migrate(
-            {
-                "001_entries": "CREATE TABLE isolation_entries (value INTEGER PRIMARY KEY)"
-            }
+            migration_functions(
+                {
+                    "001_entries": "CREATE TABLE isolation_entries (value INTEGER PRIMARY KEY)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(

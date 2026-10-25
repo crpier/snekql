@@ -13,6 +13,7 @@ from snektest import Param, assert_eq, assert_not_in, assert_raises, load_fixtur
 
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
+from tests.helpers import migration_functions
 from tests.runtime.test_raw_execution import provide_raw_case
 
 
@@ -44,7 +45,9 @@ async def json_validation_traceback_omits_input(backend: BackendFamily) -> None:
     case = await load_fixture(provide_raw_case(backend))
     model = SQLiteDocument if backend == "sqlite" else MariaDocument
     private_input = "stored_json_secret"
-    await case.database.migrate({"001": case.namespace.scaffold([model])})
+    await case.database.migrate(
+        migration_functions({"001": case.namespace.scaffold([model])})
+    )
     placeholder = "?" if backend == "sqlite" else "%s"
     async with case.database.transaction() as setup:
         await setup.execute(
@@ -79,7 +82,9 @@ async def builder_error_traceback_honors_visibility(
         token: mariadb.Col[str] = mariadb.Text(unique=True)
 
     private_input = "duplicate_value_secret"
-    await case.database.migrate({"001": mariadb.scaffold([Account])})
+    await case.database.migrate(
+        migration_functions({"001": mariadb.scaffold([Account])})
+    )
     async with case.database.transaction() as setup:
         await setup.execute(mariadb.insert(Account(token=private_input)))
 
@@ -104,7 +109,9 @@ async def primitive_validation_traceback_omits_input() -> None:
         token: sqlite.Col[UUID] = sqlite.Text()
 
     private_input = "invalid_identifier_secret"
-    await case.database.migrate({"001": sqlite.scaffold([Identifier])})
+    await case.database.migrate(
+        migration_functions({"001": sqlite.scaffold([Identifier])})
+    )
     async with case.database.transaction() as setup:
         await setup.execute(
             sqlite.raw("INSERT INTO identifier VALUES (?)", params=(private_input,))
@@ -128,7 +135,9 @@ async def json_extraction_traceback_omits_values() -> None:
 
     private_key = "path_secret"
     private_value = "extracted_value_secret"
-    await case.database.migrate({"001": mariadb.scaffold([Document])})
+    await case.database.migrate(
+        migration_functions({"001": mariadb.scaffold([Document])})
+    )
     async with case.database.transaction() as setup:
         await setup.execute(
             mariadb.insert(Document(payload={private_key: private_value}))
@@ -161,7 +170,9 @@ async def quoted_projection_name_retains_parameter_binding(
     # Dynamically supplied Pydantic field names cannot be expressed as keywords.
     fields: dict[str, Any] = {output_name: (list[int], ...)}
     result_type = create_model("QuotedResult", **fields)
-    await case.database.migrate({"001": case.namespace.scaffold([model])})
+    await case.database.migrate(
+        migration_functions({"001": case.namespace.scaffold([model])})
+    )
     async with case.database.transaction() as setup:
         await setup.execute(case.namespace.insert(model(payload=[7])))
         await setup.execute(case.namespace.insert(model(payload=[8])))
@@ -184,7 +195,9 @@ async def quoted_projection_name_retains_parameter_binding(
 async def builder_server_warnings_are_not_forwarded(consumption: str) -> None:
     """Server warning text is private; unrelated Python warnings remain visible."""
     case = await load_fixture(provide_raw_case("mariadb"))
-    await case.database.migrate({"001": mariadb.scaffold([MariaDocument])})
+    await case.database.migrate(
+        migration_functions({"001": mariadb.scaffold([MariaDocument])})
+    )
     async with case.database.transaction() as setup:
         await setup.execute(mariadb.insert(MariaDocument(payload=[7])))
 
@@ -220,7 +233,7 @@ async def builder_timeout_traceback_honors_visibility(
         token: sqlite.Col[str] = sqlite.Text()
 
     private_input = "driver_timeout_secret"
-    await case.database.migrate({"001": sqlite.scaffold([Entry])})
+    await case.database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
     native_execute = Connection.execute
 
     async def timeout_execute(

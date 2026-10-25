@@ -5,7 +5,7 @@ from typing import Any, ClassVar
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(mark="fast")
@@ -119,9 +119,11 @@ async def verify_hand_created_varchar(length: int) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE length_entry (label VARCHAR({length}) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE length_entry (label VARCHAR({length}) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         if length == 80:
             assert_eq((await database.verify([Entry])).issues, ())
@@ -142,9 +144,11 @@ async def capacity_counts_characters_without_truncation() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE length_entry (label VARCHAR(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE length_entry (label VARCHAR(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(label="🐍é")))
@@ -173,10 +177,12 @@ async def foreign_key_capacity_verifies_against_existing_tables() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001_parent": "CREATE TABLE length_parent (code VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL PRIMARY KEY) ENGINE=InnoDB",
-                "002_child": "CREATE TABLE length_child (code VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, FOREIGN KEY (code) REFERENCES length_parent(code)) ENGINE=InnoDB",
-            }
+            migration_functions(
+                {
+                    "001_parent": "CREATE TABLE length_parent (code VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL PRIMARY KEY) ENGINE=InnoDB",
+                    "002_child": "CREATE TABLE length_child (code VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, FOREIGN KEY (code) REFERENCES length_parent(code)) ENGINE=InnoDB",
+                }
+            )
         )
 
         assert_eq((await database.verify([Parent, Child])).issues, ())
@@ -216,9 +222,11 @@ async def composite_keys_and_indexes_keep_declared_lengths() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE length_entry (tenant VARCHAR(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, code VARCHAR(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, label VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, PRIMARY KEY (tenant, code), INDEX ix_length_lookup (tenant, label)) ENGINE=InnoDB",
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE length_entry (tenant VARCHAR(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, code VARCHAR(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, label VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, PRIMARY KEY (tenant, code), INDEX ix_length_lookup (tenant, label)) ENGINE=InnoDB",
+                }
+            )
         )
 
         assert_eq((await database.verify([Entry])).issues, ())
@@ -236,9 +244,11 @@ async def larger_capacity_round_trips_beyond_legacy_codec_limit() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE length_entry (label VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE length_entry (label VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(label="x" * 300)))

@@ -18,11 +18,15 @@ class Entry[S = sqlite.Pending](sqlite.Model[S]):
     label: sqlite.Col[str] = sqlite.Text()
 
 
+async def service_entry(migration: sqlite.MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        'CREATE TABLE "entry" ("entry_id" INTEGER PRIMARY KEY, "label" TEXT NOT NULL) STRICT'
+    )
+
+
 MIGRATIONS = {
-    "0001_service_entry": (
-        'CREATE TABLE "entry" ('
-        '"entry_id" INTEGER PRIMARY KEY, "label" TEXT NOT NULL) STRICT'
-    ),
+    "0001_service_entry": service_entry,
 }
 """Reviewed, literal SQL; never regenerate deployed bodies from current models."""
 

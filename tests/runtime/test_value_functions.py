@@ -6,7 +6,7 @@ from typing import ClassVar, assert_type
 from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.query.test_arithmetic import NumericValues
 from tests.query.test_value_functions import Profile
 from tests.runtime.test_arithmetic import (
@@ -29,7 +29,9 @@ class MariaProfile[S = mariadb.Pending](mariadb.Model[S]):
 async def provide_sqlite_profiles() -> AsyncGenerator[sqlite.Database]:
     """Seed missing, ASCII, and multibyte text values."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_profiles": sqlite.scaffold([Profile])})
+        await database.migrate(
+            migration_functions({"001_profiles": sqlite.scaffold([Profile])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(
@@ -97,7 +99,9 @@ async def provide_mariadb_profiles() -> AsyncGenerator[mariadb.Database]:
     """Seed missing, ASCII, and multibyte text values."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_profiles": mariadb.scaffold([MariaProfile])})
+        await database.migrate(
+            migration_functions({"001_profiles": mariadb.scaffold([MariaProfile])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert_many(

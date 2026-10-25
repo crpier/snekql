@@ -8,6 +8,7 @@ from pydantic import BaseModel, field_validator
 from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
+from tests.helpers import migration_functions
 from tests.query.test_ctes import ActiveRole, FilteredRole, Identifier, Person
 from tests.runtime.test_arithmetic import MariaInventory, provide_mariadb_inventory
 from tests.runtime.test_named_codecs import (
@@ -23,7 +24,9 @@ from tests.runtime.test_named_codecs import (
 async def provide_cte_people() -> AsyncGenerator[sqlite.Database]:
     """Seed one physical source for query-only definitions."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_people": sqlite.scaffold([Person])})
+        await database.migrate(
+            migration_functions({"001_people": sqlite.scaffold([Person])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Person(id=1)))
         yield database

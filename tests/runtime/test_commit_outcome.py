@@ -13,6 +13,7 @@ from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
+from tests.helpers import migration_functions
 from tests.runtime.test_nested_transactions import provide_nested_case
 from tests.runtime.test_raw_lifecycle import provide_contended_case
 
@@ -63,10 +64,12 @@ async def deferred_foreign_key_rejects_commit() -> None:
     """SQLite's constraint rejection while still in the transaction proves no commit."""
     case = await load_fixture(provide_nested_case("sqlite"))
     await case.database.migrate(
-        {
-            "001_entries": "CREATE TABLE nested_entries (value INTEGER PRIMARY KEY)",
-            "002_children": "CREATE TABLE children (parent INTEGER REFERENCES nested_entries(value) DEFERRABLE INITIALLY DEFERRED)",
-        }
+        migration_functions(
+            {
+                "001_entries": "CREATE TABLE nested_entries (value INTEGER PRIMARY KEY)",
+                "002_children": "CREATE TABLE children (parent INTEGER REFERENCES nested_entries(value) DEFERRABLE INITIALLY DEFERRED)",
+            }
+        )
     )
     transaction = case.database.transaction()
 

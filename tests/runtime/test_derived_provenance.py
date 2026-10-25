@@ -7,7 +7,7 @@ from pydantic import AfterValidator, BaseModel, field_validator
 from snektest import Param, assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.query.test_ctes import ActiveRole, FilteredRole
 
 
@@ -56,7 +56,9 @@ class FinalNumber(BaseModel):
 async def provide_local_number() -> AsyncGenerator[sqlite.Database]:
     """Pending validation changes 1 to 11 before it is stored."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_numbers": sqlite.scaffold([LocalNumber])})
+        await database.migrate(
+            migration_functions({"001_numbers": sqlite.scaffold([LocalNumber])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(LocalNumber(value=1)))
         yield database
@@ -67,7 +69,9 @@ async def provide_native_number() -> AsyncGenerator[mariadb.Database]:
     """Use the same source-validator contract through the native driver."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_numbers": mariadb.scaffold([NativeNumber])})
+        await database.migrate(
+            migration_functions({"001_numbers": mariadb.scaffold([NativeNumber])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(NativeNumber(value=1)))
         yield database

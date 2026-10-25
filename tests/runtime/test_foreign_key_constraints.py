@@ -7,7 +7,7 @@ from typing import Any, ClassVar
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(mark="fast")
@@ -224,9 +224,11 @@ async def sqlite_verification_compares_constraint_grouping(composite: bool) -> N
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE parent (first INTEGER NOT NULL UNIQUE, second INTEGER NOT NULL UNIQUE, PRIMARY KEY(first, second)) STRICT; CREATE TABLE child (first INTEGER NOT NULL, second INTEGER NOT NULL, {constraint}) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE parent (first INTEGER NOT NULL UNIQUE, second INTEGER NOT NULL UNIQUE, PRIMARY KEY(first, second)) STRICT; CREATE TABLE child (first INTEGER NOT NULL, second INTEGER NOT NULL, {constraint}) STRICT"
+                }
+            )
         )
         report = await database.verify([Child], policy="warn")
 
@@ -267,9 +269,11 @@ async def mariadb_verification_compares_constraint_grouping(composite: bool) -> 
     )
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE parent (first BIGINT NOT NULL UNIQUE, second BIGINT NOT NULL UNIQUE, PRIMARY KEY(first, second)) ENGINE=InnoDB; CREATE TABLE child (first BIGINT NOT NULL, second BIGINT NOT NULL, {constraint}) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE parent (first BIGINT NOT NULL UNIQUE, second BIGINT NOT NULL UNIQUE, PRIMARY KEY(first, second)) ENGINE=InnoDB; CREATE TABLE child (first BIGINT NOT NULL, second BIGINT NOT NULL, {constraint}) ENGINE=InnoDB"
+                }
+            )
         )
         report = await database.verify([Child], policy="warn")
 
@@ -313,10 +317,12 @@ async def sqlite_rejects_mixed_parent_rows(key: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": sqlite.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20)"
-            }
+            migration_functions(
+                {
+                    "001": sqlite.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20)"
+                }
+            )
         )
         with assert_raises(sqlite.ExecutionError):
             async with database.transaction() as transaction:
@@ -356,10 +362,12 @@ async def sqlite_allows_nullable_partial_keys(key: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": sqlite.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20)"
-            }
+            migration_functions(
+                {
+                    "001": sqlite.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Child(first=None, second=999)))
@@ -402,10 +410,12 @@ async def sqlite_cascades_parent_deletion(key: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": sqlite.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
-            }
+            migration_functions(
+                {
+                    "001": sqlite.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.delete(Parent).where(Parent.first.eq(1)))
@@ -448,10 +458,12 @@ async def sqlite_nulls_every_local_member(key: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": sqlite.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
-            }
+            migration_functions(
+                {
+                    "001": sqlite.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.delete(Parent).where(Parent.first.eq(1)))
@@ -494,10 +506,12 @@ async def sqlite_cascades_parent_key_update(key: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": sqlite.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
-            }
+            migration_functions(
+                {
+                    "001": sqlite.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(
@@ -543,10 +557,12 @@ async def mariadb_rejects_mixed_parent_rows(key: str) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": mariadb.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20)"
-            }
+            migration_functions(
+                {
+                    "001": mariadb.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20)"
+                }
+            )
         )
         with assert_raises(mariadb.ExecutionError):
             async with database.transaction() as transaction:
@@ -585,10 +601,12 @@ async def mariadb_allows_nullable_partial_keys(key: str) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": mariadb.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20)"
-            }
+            migration_functions(
+                {
+                    "001": mariadb.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Child(first=None, second=999)))
@@ -632,10 +650,12 @@ async def mariadb_cascades_parent_deletion(key: str) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": mariadb.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
-            }
+            migration_functions(
+                {
+                    "001": mariadb.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.delete(Parent).where(Parent.first.eq(1)))
@@ -679,10 +699,12 @@ async def mariadb_nulls_every_local_member(key: str) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": mariadb.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
-            }
+            migration_functions(
+                {
+                    "001": mariadb.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.delete(Parent).where(Parent.first.eq(1)))
@@ -726,10 +748,12 @@ async def mariadb_cascades_parent_key_update(key: str) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": mariadb.scaffold([Parent, Child])
-                + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
-            }
+            migration_functions(
+                {
+                    "001": mariadb.scaffold([Parent, Child])
+                    + "INSERT INTO parent VALUES (1, 10), (2, 20); INSERT INTO child VALUES (1, 10)"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(
@@ -767,10 +791,12 @@ async def composite_second_member_index_is_not_hidden_as_support() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": mariadb.scaffold([Parent, Child])
-                + "CREATE INDEX unexpected ON child(second)"
-            }
+            migration_functions(
+                {
+                    "001": mariadb.scaffold([Parent, Child])
+                    + "CREATE INDEX unexpected ON child(second)"
+                }
+            )
         )
         report = await database.verify([Child], policy="warn")
 
@@ -892,9 +918,11 @@ async def sqlite_grouped_catalog_drift(change: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE parent (first INTEGER NOT NULL, second INTEGER NOT NULL, PRIMARY KEY(first, second), UNIQUE(second, first)) STRICT; CREATE TABLE child (first INTEGER NOT NULL, second INTEGER NOT NULL{constraints[change]}) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE parent (first INTEGER NOT NULL, second INTEGER NOT NULL, PRIMARY KEY(first, second), UNIQUE(second, first)) STRICT; CREATE TABLE child (first INTEGER NOT NULL, second INTEGER NOT NULL{constraints[change]}) STRICT"
+                }
+            )
         )
         with assert_raises(sqlite.SchemaVerificationError) as error:
             await database.verify([Child])
@@ -935,7 +963,9 @@ async def sqlite_overlapping_constraints_remain_distinct() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Parent, Child])})
+        await database.migrate(
+            migration_functions({"001": sqlite.scaffold([Parent, Child])})
+        )
         report = await database.verify([Parent, Child])
 
     assert_eq(
@@ -980,9 +1010,11 @@ async def mariadb_grouped_catalog_drift(change: str) -> None:
     }
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE parent (first BIGINT NOT NULL, second BIGINT NOT NULL, PRIMARY KEY(first, second), UNIQUE(second, first)) ENGINE=InnoDB; CREATE TABLE child (first BIGINT NOT NULL, second BIGINT NOT NULL{constraints[change]}) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE parent (first BIGINT NOT NULL, second BIGINT NOT NULL, PRIMARY KEY(first, second), UNIQUE(second, first)) ENGINE=InnoDB; CREATE TABLE child (first BIGINT NOT NULL, second BIGINT NOT NULL{constraints[change]}) ENGINE=InnoDB"
+                }
+            )
         )
         with assert_raises(mariadb.SchemaVerificationError) as error:
             await database.verify([Child])
@@ -1022,7 +1054,9 @@ async def mariadb_overlapping_constraints_remain_distinct() -> None:
         ]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Parent, Child])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([Parent, Child])})
+        )
         report = await database.verify([Parent, Child])
 
     assert_eq(
@@ -1050,7 +1084,7 @@ async def sqlite_self_references_bind_after_column_ownership() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Node])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Node])}))
         report = await database.verify([Node])
 
     assert_eq(
@@ -1077,7 +1111,7 @@ async def mariadb_self_references_bind_after_column_ownership() -> None:
         ]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Node])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Node])}))
         report = await database.verify([Node])
 
     assert_eq(

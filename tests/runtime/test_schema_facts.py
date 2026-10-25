@@ -7,7 +7,7 @@ from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
 from snekql.sqlite import UtcDatetime
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(mark="fast")
@@ -23,7 +23,9 @@ async def matching_column_exposes_a_matched_fact() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": "CREATE TABLE fact_entry (value TEXT NOT NULL) STRICT"}
+            migration_functions(
+                {"001": "CREATE TABLE fact_entry (value TEXT NOT NULL) STRICT"}
+            )
         )
         result = await database.verify([Entry])
 
@@ -50,7 +52,9 @@ async def column_properties_report_independent_statuses() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": "CREATE TABLE fact_entry (value TEXT NULL) STRICT"}
+            migration_functions(
+                {"001": "CREATE TABLE fact_entry (value TEXT NULL) STRICT"}
+            )
         )
         result = await database.verify([Entry], policy="warn")
 
@@ -87,9 +91,11 @@ async def index_properties_report_independent_statuses() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_entry (value TEXT NOT NULL) STRICT; CREATE INDEX fact_index ON fact_entry(value)"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_entry (value TEXT NOT NULL) STRICT; CREATE INDEX fact_index ON fact_entry(value)"
+                }
+            )
         )
         result = await database.verify([Entry], policy="warn")
 
@@ -139,7 +145,11 @@ async def storage_options_are_compared_facts() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": "CREATE TABLE fact_entry (value TEXT NOT NULL)"})
+        await database.migrate(
+            migration_functions(
+                {"001": "CREATE TABLE fact_entry (value TEXT NOT NULL)"}
+            )
+        )
         result = await database.verify([Entry], policy="warn")
 
     assert_eq(
@@ -182,9 +192,11 @@ async def scalar_foreign_key_relationships_have_facts(action: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE fact_parent (id INTEGER PRIMARY KEY) STRICT; CREATE TABLE fact_child (parent_id INTEGER NOT NULL{constraint}) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE fact_parent (id INTEGER PRIMARY KEY) STRICT; CREATE TABLE fact_child (parent_id INTEGER NOT NULL{constraint}) STRICT"
+                }
+            )
         )
         result = await database.verify([Child], policy="warn")
 
@@ -217,7 +229,9 @@ async def unchecked_limits_do_not_claim_catalog_presence(check: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": f"CREATE TABLE fact_entry (value TEXT NOT NULL{check}) STRICT"}
+            migration_functions(
+                {"001": f"CREATE TABLE fact_entry (value TEXT NOT NULL{check}) STRICT"}
+            )
         )
         result = await database.verify([Entry])
 
@@ -250,9 +264,11 @@ async def mariadb_json_backing_collation_is_unchecked() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_entry (payload LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_entry (payload LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         result = await database.verify([Entry])
 
@@ -287,9 +303,11 @@ async def mariadb_index_facts_do_not_certify_uninspected_partial_flags() -> None
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_entry (value VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, INDEX fact_index (value)) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_entry (value VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, INDEX fact_index (value)) ENGINE=InnoDB"
+                }
+            )
         )
         result = await database.verify([Entry])
 
@@ -322,7 +340,9 @@ async def strict_errors_preserve_the_same_facts_as_warn_results() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": "CREATE TABLE fact_entry (value TEXT NULL) STRICT"}
+            migration_functions(
+                {"001": "CREATE TABLE fact_entry (value TEXT NULL) STRICT"}
+            )
         )
         warned = await database.verify([Entry, Missing], policy="warn")
         with assert_raises(sqlite.SchemaVerificationError) as error:
@@ -345,7 +365,9 @@ async def missing_columns_have_no_matched_property_facts() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": "CREATE TABLE fact_entry (unexpected TEXT NOT NULL) STRICT"}
+            migration_functions(
+                {"001": "CREATE TABLE fact_entry (unexpected TEXT NOT NULL) STRICT"}
+            )
         )
         result = await database.verify([Entry], policy="warn")
 
@@ -376,9 +398,11 @@ async def missing_indexes_have_no_matched_property_facts() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_entry (value TEXT NOT NULL) STRICT; CREATE INDEX extra_index ON fact_entry(value)"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_entry (value TEXT NOT NULL) STRICT; CREATE INDEX extra_index ON fact_entry(value)"
+                }
+            )
         )
         result = await database.verify([Entry], policy="warn")
 
@@ -409,9 +433,11 @@ async def primary_key_membership_does_not_certify_order() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_entry (first INTEGER NOT NULL, second INTEGER NOT NULL, PRIMARY KEY(second, first)) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_entry (first INTEGER NOT NULL, second INTEGER NOT NULL, PRIMARY KEY(second, first)) STRICT"
+                }
+            )
         )
         result = await database.verify([Entry])
 
@@ -449,9 +475,11 @@ async def scalar_relationship_matches_do_not_certify_composite_grouping() -> Non
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_parent (first INTEGER PRIMARY KEY, second INTEGER NOT NULL UNIQUE, UNIQUE(first, second)) STRICT; CREATE TABLE fact_child (first INTEGER NOT NULL, second INTEGER NOT NULL, FOREIGN KEY(first, second) REFERENCES fact_parent(first, second)) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_parent (first INTEGER PRIMARY KEY, second INTEGER NOT NULL UNIQUE, UNIQUE(first, second)) STRICT; CREATE TABLE fact_child (first INTEGER NOT NULL, second INTEGER NOT NULL, FOREIGN KEY(first, second) REFERENCES fact_parent(first, second)) STRICT"
+                }
+            )
         )
         with assert_raises(sqlite.SchemaVerificationError) as error:
             await database.verify([Child])
@@ -483,9 +511,11 @@ async def maria_json_type_drift_is_not_overwritten_by_a_limitation() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_entry (payload VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_entry (payload VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         result = await database.verify([Entry], policy="warn")
 
@@ -512,9 +542,11 @@ async def mariadb_facts_include_native_metadata() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_entry (amount BIGINT UNSIGNED NOT NULL, at DATETIME(3) NOT NULL, name VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_entry (amount BIGINT UNSIGNED NOT NULL, at DATETIME(3) NOT NULL, name VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         result = await database.verify([Entry], policy="warn")
 
@@ -576,7 +608,9 @@ async def empty_foreign_key_comparison_reports_only_scalar_absence() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": "CREATE TABLE fact_entry (value TEXT NOT NULL) STRICT"}
+            migration_functions(
+                {"001": "CREATE TABLE fact_entry (value TEXT NOT NULL) STRICT"}
+            )
         )
         result = await database.verify([Entry])
 
@@ -602,9 +636,11 @@ async def mariadb_strict_errors_preserve_the_same_facts_as_warn_results() -> Non
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_entry (value VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_entry (value VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL) ENGINE=InnoDB"
+                }
+            )
         )
         warned = await database.verify([Entry], policy="warn")
         with assert_raises(mariadb.SchemaVerificationError) as error:
@@ -630,9 +666,11 @@ async def ignored_supporting_indexes_are_a_reported_limit() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE fact_parent (id BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB; CREATE TABLE fact_child (parent_id BIGINT NOT NULL, INDEX support(parent_id), FOREIGN KEY(parent_id) REFERENCES fact_parent(id)) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE fact_parent (id BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB; CREATE TABLE fact_child (parent_id BIGINT NOT NULL, INDEX support(parent_id), FOREIGN KEY(parent_id) REFERENCES fact_parent(id)) ENGINE=InnoDB"
+                }
+            )
         )
         result = await database.verify([Child])
 

@@ -6,6 +6,7 @@ from typing import assert_type
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 from tests.test_defaulted_fk_typing import Account, Defaults
 
 
@@ -17,7 +18,9 @@ class ManagerRole:
 async def provide_accounts() -> AsyncGenerator[sqlite.Database]:
     """A root, its child and a soft reference with constructor defaults."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_accounts": sqlite.scaffold([Account, Defaults])})
+        await database.migrate(
+            migration_functions({"001_accounts": sqlite.scaffold([Account, Defaults])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Account()))
             await transaction.execute(sqlite.insert(Account(manager_id=1)))

@@ -9,7 +9,7 @@ from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb
 from snekql.errors import SchemaVerificationError
-from tests.helpers import migrate_models, provide_mariadb_server
+from tests.helpers import migrate_models, migration_functions, provide_mariadb_server
 
 type OptionalInteger = int | None
 type Maybe[T] = T | None
@@ -98,7 +98,9 @@ async def legacy_not_null_schema_is_not_rewritten() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {"legacy": "CREATE TABLE entry (value BIGINT NOT NULL) ENGINE=InnoDB"}
+            migration_functions(
+                {"legacy": "CREATE TABLE entry (value BIGINT NOT NULL) ENGINE=InnoDB"}
+            )
         )
         with assert_raises(SchemaVerificationError):
             await database.verify([Entry])

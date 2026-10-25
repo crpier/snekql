@@ -75,12 +75,12 @@ Schema errors:
 
 Migration errors:
 
-- `MigrationDeclarationError`: the declaration is not an exact ordered
-  `dict[str, str]`, contains invalid names or bodies, or uses a backend-invalid
-  body. Validation happens before connection acquisition.
+- `MigrationDeclarationError`: invalid revision IDs, non-async functions or
+  incompatible function signatures. These declarations fail before acquisition.
+  SQL is checked when a pending function submits it through its context; errors
+  during the body are chained under `MigrationError`.
 - `MigrationHistoryError`: recorded history is missing, malformed, divergent,
-  behind the declaration during read-only verification, or still uses legacy
-  history without explicit adoption.
+  behind the required head, or uses an unsupported older layout.
 - `MigrationError`: a hand-authored migration body failed to apply. The message
   names the failing migration; previously-applied migrations stay recorded so a
   fixed retry resumes from the failure point (see [migrations.md](migrations.md)).

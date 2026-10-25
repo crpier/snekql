@@ -198,7 +198,7 @@ unsupported-feature diagnostics and maintenance limits.
 | `sql_mode` | includes `STRICT_ALL_TABLES`, `NO_ENGINE_SUBSTITUTION` | `STRICT_ALL_TABLES` is the runtime analogue of SQLite `STRICT` tables: invalid or out-of-range values are rejected, not silently coerced. `NO_ENGINE_SUBSTITUTION` turns a missing storage engine into an error instead of a silent swap. |
 | `time_zone` | `+00:00` | Server-side `CURRENT_TIMESTAMP` defaults are generated in UTC to match snekql's UTC datetime codec. |
 | `foreign_key_checks` | `1` | Keeps the emitted `FOREIGN KEY` constraints enforced. |
-| `check_constraint_checks` | `1` | Keeps Migration History's position, name, and checksum checks enforced. |
+| `check_constraint_checks` | `1` | Keeps Migration History's position and revision-name checks enforced. |
 | `unique_checks` | `1` | Keeps Migration History's byte-exact name uniqueness enforced. |
 
 ### InnoDB page size

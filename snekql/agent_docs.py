@@ -37,13 +37,18 @@ class User[State = sqlite.Pending](sqlite.Model[State]):
     email: sqlite.Col[str] = sqlite.Text()
 
 
-MIGRATIONS = {
-    "001_create_user": '''
+async def create_user(migration: sqlite.MigrationContext) -> None:
+    \"\"\"Apply one reviewed revision.\"\"\"
+    await migration.execute('''
         CREATE TABLE "user" (
             "id" INTEGER PRIMARY KEY AUTOINCREMENT,
             "email" TEXT NOT NULL
         ) STRICT
-    ''',
+    ''')
+
+
+MIGRATIONS = {
+    "001_create_user": create_user,
 }
 
 
@@ -90,10 +95,10 @@ asyncio.run(main())
 - Only ty is supported for this interface. Keep runtime checks for erased types,
   snapshot keyword schemas, declaration consistency, and SQL scope.
 - Declare generated columns as `GenCol[T]` and use `PENDING_GENERATION` for values the database fills.
-- Own migrations as committed raw SQL. Use `scaffold([Model])` during development,
-  then review and paste each statement into the migration declaration. Never call
+- Own migrations as committed async functions with stable revision IDs. Use `scaffold([Model])` during development,
+  then review and paste each statement into migration.execute(...) calls. Never call
   `scaffold` at application startup because current model metadata must not rewrite
-  historical migration checksums.
+  historical migration behavior.
 - Runtime drivers are optional extras: install `snekql[aiosqlite]` or `snekql[aiomysql]`.
 
 ## Copyable examples

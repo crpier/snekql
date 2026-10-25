@@ -32,7 +32,6 @@ lazy from snekql.mariadb.migrations import (
     MariaDBMigrationBackend,
     apply_mariadb_migrations,
     build_migration_lock_name,
-    validate_mariadb_migrations,
     verify_mariadb_migrations,
 )
 lazy from snekql.mariadb.schema import verify_mariadb_schema
@@ -632,8 +631,6 @@ class MariaDBRuntime:
     async def apply_migrations(
         self,
         migrations: MigrationPlan,
-        *,
-        adopt_legacy: bool = False,
     ) -> MigrationResult:
         """Apply pending migrations on a pooled connection under the lock (ADR 0007)."""
 
@@ -647,7 +644,6 @@ class MariaDBRuntime:
             return await apply_mariadb_migrations(
                 backend,
                 migrations,
-                adopt_legacy=adopt_legacy,
             )
         finally:
             if backend.connection_reusable:
@@ -707,11 +703,6 @@ class MariaDBRuntime:
 
     def check_accepting_work(self) -> None:
         self.connection_pool.check_accepting_work()
-
-    def validate_migrations(self, migrations: MigrationPlan) -> None:
-        """Reject bodies that can escape the owned transaction or lock."""
-
-        validate_mariadb_migrations(migrations)
 
 
 async def _close_partial_pool(

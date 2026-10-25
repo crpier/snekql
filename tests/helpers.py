@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import AsyncGenerator, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
+from sqlite3 import complete_statement
 from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from snektest import fixture, load_fixture
@@ -16,6 +18,7 @@ from snekql.mariadb._dialect_sql import MARIADB_QUERY_DIALECT
 from snekql.mariadb.schema import scaffold_mariadb_statements
 from snekql.model import BackendFamily
 from snekql.runtime import Database
+from snekql.sqlite import MigrationContext, MigrationFunction
 from snekql.sqlite._dialect_sql import SQLITE_QUERY_DIALECT
 from snekql.sqlite._schema_ddl import scaffold_sqlite_statements
 from snekql.storage import SchemaPolicy
@@ -35,7 +38,7 @@ MARIADB_CODEC = DialectQueryCodec(backend="mariadb", dialect=MARIADB_QUERY_DIALE
 def scaffold_migrations(
     backend_family: str,
     models: Sequence[type[Table[Any]]],
-) -> dict[str, str]:
+) -> dict[str, MigrationFunction]:
     """Build a Migration mapping that creates ``models`` via the scaffold DDL.
 
     This is the documented test pattern (ADR 0007): tests build their schema by
@@ -50,9 +53,9 @@ def scaffold_migrations(
     else:
         msg = f"unknown backend family {backend_family!r}"
         raise ValueError(msg)
-    return {
-        f"{index:03d}_{label}": sql for index, (label, sql) in enumerate(statements)
-    }
+    return migration_functions(
+        {f"{index:03d}_{label}": sql for index, (label, sql) in enumerate(statements)}
+    )
 
 
 async def migrate_models(db: Database[Any], models: Sequence[type[Table[Any]]]) -> None:
@@ -180,3 +183,38 @@ async def provide_mariadb_server() -> AsyncGenerator[TemporaryMariaDBServer]:
     server = await load_fixture(_provide_mariadb_server_session())
     await server.reset_database()
     yield server
+
+
+def migration_functions(declaration: object) -> dict[str, MigrationFunction]:
+    """Adapt SQL test fixtures into functions; production has no string adapter."""
+    if type(declaration) is not dict:
+        return cast("dict[str, MigrationFunction]", declaration)
+
+    def body(sql: str) -> MigrationFunction:
+        async def apply(context: MigrationContext) -> None:
+            start = 0
+            for index, character in enumerate(sql):
+                if character == ";" and complete_statement(sql[start : index + 1]):
+                    statement = sql[start : index + 1]
+                    if not re.fullmatch(
+                        r"(?:\s|;|--[^\n]*(?:\n|$)|/\*(?:(?!\*/).)*\*/)*",
+                        statement,
+                        re.DOTALL,
+                    ):
+                        await context.execute(statement)
+                    start = index + 1
+            if not re.fullmatch(
+                r"(?:\s|;|--[^\n]*(?:\n|$)|/\*(?:(?!\*/).)*\*/)*",
+                sql[start:],
+                re.DOTALL,
+            ):
+                await context.execute(sql[start:])
+
+        return apply
+
+    return {
+        name: body(value) if isinstance(value, str) else value
+        for name, value in cast(
+            "dict[str, str | MigrationFunction]", declaration
+        ).items()
+    }

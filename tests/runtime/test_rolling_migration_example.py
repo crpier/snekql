@@ -30,7 +30,7 @@ from examples.rolling_migration import (
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
 from snekql.runtime import Database
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.runtime.test_raw_execution import RawCase, provide_raw_case
 
 
@@ -52,14 +52,16 @@ async def provide_expanded(backend: BackendFamily) -> AsyncGenerator[ExpandedCas
         async with await Database.initialize(config) as database:
             case = ExpandedCase(database, namespace, config)
             migrations = SQLITE_EXPANDED if backend == "sqlite" else MARIADB_EXPANDED
-            await database.migrate({"001_customers": migrations["001_customers"]})
+            await database.migrate(
+                migration_functions({"001_customers": migrations["001_customers"]})
+            )
             async with database.transaction() as transaction:
                 await transaction.execute(
                     namespace.raw(
                         "INSERT INTO rollout_customer VALUES (1, 'Ada'), (3, 'Grace'), (9, 'Linus')"
                     )
                 )
-            await database.migrate(migrations)
+            await database.migrate(migration_functions(migrations))
             yield case
 
 
@@ -216,7 +218,9 @@ async def contract_refuses_incomplete_backfill(backend: BackendFamily) -> None:
             else contract_mariadb(case.database)
         )
     await case.database.verify_migrations(
-        SQLITE_EXPANDED if backend == "sqlite" else MARIADB_EXPANDED
+        migration_functions(
+            SQLITE_EXPANDED if backend == "sqlite" else MARIADB_EXPANDED
+        )
     )
 
 
@@ -374,7 +378,7 @@ async def fresh_replay_reaches_the_contracted_schema(backend: BackendFamily) -> 
     case = await load_fixture(provide_raw_case(backend))
     declaration = SQLITE_CONTRACTED if backend == "sqlite" else MARIADB_CONTRACTED
 
-    await case.database.migrate(declaration)
+    await case.database.migrate(migration_functions(declaration))
     async with case.database.transaction() as transaction:
         await transaction.execute(
             case.namespace.raw(
@@ -385,7 +389,7 @@ async def fresh_replay_reaches_the_contracted_schema(backend: BackendFamily) -> 
         rows = await transaction.fetch_all(
             case.namespace.raw("SELECT * FROM rollout_customer")
         )
-    await case.database.verify_migrations(declaration)
+    await case.database.verify_migrations(migration_functions(declaration))
 
     assert_eq(rows, [{"id": 1, "display_name": "New"}])
 

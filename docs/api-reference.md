@@ -105,7 +105,9 @@ CTEs and named set operators from future builder syntax.
 | `Canonical`, `OrderPreserving` | Annotations for declared wire-form guarantees; see restrictions in the typing guide |
 | `Index`, `CheckConstraint` | Explicit schema facts, not automatic database alteration |
 | `scaffold([Model, ...])` | Dev-time initial DDL text for review; never regenerate deployed migration bodies at startup |
-| `await database.migrate(chain)` | Apply an explicitly supplied canonical ordered migration chain |
+| `await database.migrate(chain)` | Execute pending async functions by ordered revision ID |
+| `MigrationContext.execute(sql, params=...)` | Execute one statement on the managed migration connection |
+| `MigrationContext.fetch_all(sql, params=...)` | Fetch native tuple rows for migration checks/backfills |
 | `await database.migration_status(chain)` | Read current prefix/application status |
 | `await database.verify_migrations(chain, approved_later=...)` | Check history; a reviewed later suffix is explicit, not an unknown-history bypass |
 | `await database.verify(models, policy=...)` | Partial structural verification with matched/drift/unchecked evidence; never a schema equality proof |
@@ -191,6 +193,8 @@ against both namespaces' `__all__` lists.
 | `LexicalDurationWarning` | yes | yes |
 | `LiteralDefault` | yes | yes |
 | `LongText` | no | yes |
+| `MigrationContext` | yes | yes |
+| `MigrationFunction` | yes | yes |
 | `MigrationDeclarationError` | yes | yes |
 | `MigrationError` | yes | yes |
 | `MigrationHistoryError` | yes | yes |

@@ -7,12 +7,13 @@ from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql import sqlite
 from snekql.examples.basic import MIGRATIONS, User
+from tests.helpers import migration_functions
 
 
 @fixture
 async def provide_legacy_clock_database() -> AsyncGenerator[sqlite.Database]:
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate(dict(list(MIGRATIONS.items())[:2]))
+        await database.migrate(migration_functions(dict(list(MIGRATIONS.items())[:2])))
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.raw(
@@ -29,7 +30,7 @@ async def migration_restores_sub_millisecond_range_semantics() -> None:
     """A bound between old millisecond rows excludes the earlier instant."""
     database = await load_fixture(provide_legacy_clock_database())
 
-    await database.migrate(MIGRATIONS)
+    await database.migrate(migration_functions(MIGRATIONS))
     await database.verify([User])
     async with database.transaction() as transaction:
         identifiers = await transaction.fetch_all(

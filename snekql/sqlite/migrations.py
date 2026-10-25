@@ -1,4 +1,4 @@
-"""SQLite Migration History v2 and per-migration transaction execution."""
+"""SQLite revision history and per-function transaction execution."""
 
 lazy import logging
 lazy from dataclasses import dataclass
@@ -33,7 +33,6 @@ lazy from sqlite3 import (
     SQLITE_SAVEPOINT,
     SQLITE_TRANSACTION,
     SQLITE_UPDATE,
-    complete_statement,
 )
 lazy from typing import Literal
 
@@ -43,12 +42,14 @@ lazy from anyio.lowlevel import checkpoint
 
 lazy from snekql._migrations import (
     Migration,
+    MigrationParameters,
     MigrationPlan,
     MigrationRecord,
     MigrationResult,
     MigrationStatus,
+    _MigrationQueryResult,
+    run_migration,
     validate_history_prefix,
-    validate_legacy_history,
 )
 lazy from snekql.errors import (
     MigrationDeclarationError,
@@ -74,29 +75,22 @@ _CREATE_HISTORY_SQL = (
     '"position" INTEGER NOT NULL PRIMARY KEY CHECK ("position" > 0), '
     '"name" TEXT COLLATE BINARY NOT NULL UNIQUE '
     'CHECK (length("name") BETWEEN 1 AND 255 AND instr("name", char(0)) = 0), '
-    '"checksum" TEXT COLLATE BINARY NOT NULL '
-    'CHECK (length("checksum") = 64 AND instr("checksum", char(0)) = 0 '
-    "AND \"checksum\" NOT GLOB '*[^0-9a-f]*'), "
     '"applied_at" TEXT NOT NULL) STRICT'
 )
-"""DDL enforcing correctness-bearing Migration History v2 fields."""
+"""DDL enforcing correctness-bearing revision history fields."""
 
-_V1_HISTORY_SQL = (
-    f"CREATE TABLE {quote_identifier(_HISTORY_TABLE)} "
-    '("name" TEXT PRIMARY KEY NOT NULL, "applied_at" TEXT NOT NULL) STRICT'
-)
-_V2_HISTORY_SQL = _CREATE_HISTORY_SQL.replace(" IF NOT EXISTS", "", 1)
+_REVISION_HISTORY_SQL = _CREATE_HISTORY_SQL.replace(" IF NOT EXISTS", "", 1)
 
 _SELECT_HISTORY_SQL = (
-    f"SELECT position, name, checksum FROM {quote_identifier(_HISTORY_TABLE)} "  # noqa: S608
+    f"SELECT position, name FROM {quote_identifier(_HISTORY_TABLE)} "  # noqa: S608
     "ORDER BY position"
 )
 
 _INSERT_HISTORY_SQL = (
     f"INSERT INTO {quote_identifier(_HISTORY_TABLE)} "  # noqa: S608
-    f"(position, name, checksum, applied_at) "
-    f"VALUES (?, ?, ?, {CURRENT_TIMESTAMP_SQL}) "
-    "RETURNING position, name, checksum"
+    f"(position, name, applied_at) "
+    f"VALUES (?, ?, {CURRENT_TIMESTAMP_SQL}) "
+    "RETURNING position, name"
 )
 
 _HISTORY_OBJECT_SQL = (
@@ -108,27 +102,13 @@ _HISTORY_DEPENDENCIES_SQL = (
     "WHERE tbl_name = ? COLLATE NOCASE AND type = 'trigger'"
 )
 
-_SELECT_LEGACY_SQL = f"SELECT name, applied_at FROM {quote_identifier(_HISTORY_TABLE)}"  # noqa: S608
-
-_INSERT_ADOPTED_SQL = (
-    f"INSERT INTO {quote_identifier(_HISTORY_TABLE)} "  # noqa: S608
-    "(position, name, checksum, applied_at) VALUES (?, ?, ?, ?)"
-)
-
-_LEGACY_HISTORY_TABLE = "_snekql_migrations_v1"
-
-_V1_COLUMNS = (
-    (0, "name", "TEXT", 1, None, 1),
-    (1, "applied_at", "TEXT", 1, None, 0),
-)
-_V2_COLUMNS = (
+_REVISION_COLUMNS = (
     (0, "position", "INTEGER", 1, None, 1),
     (1, "name", "TEXT", 1, None, 0),
-    (2, "checksum", "TEXT", 1, None, 0),
-    (3, "applied_at", "TEXT", 1, None, 0),
+    (2, "applied_at", "TEXT", 1, None, 0),
 )
 
-type _HistoryShape = Literal["absent", "unknown", "v1", "v2"]
+type _HistoryShape = Literal["absent", "unknown", "revision"]
 
 
 @dataclass(slots=True)
@@ -381,44 +361,6 @@ def _validate_sqlite_statement(migration: Migration, sql: str) -> None:
         raise MigrationDeclarationError(msg)
 
 
-def _sqlite_statements(migration: Migration) -> tuple[str, ...]:
-    """Use SQLite's completeness scanner so trigger bodies remain one statement.
-
-    Preserve the original SQL slices for execution. History always hashes the
-    entire original body, including comments and whitespace, not these slices.
-    """
-
-    segments: list[str] = []
-    start = 0
-    for index, character in enumerate(migration.sql):
-        if character != ";" or not complete_statement(migration.sql[start : index + 1]):
-            continue
-        segments.append(migration.sql[start : index + 1])
-        start = index + 1
-    remainder = migration.sql[start:]
-    if not complete_statement(f"{remainder}\n;"):
-        msg = f"SQLite migration {migration.name!r} is not a complete statement"
-        raise MigrationDeclarationError(msg)
-    segments.append(remainder)
-    statements: list[str] = []
-    for statement in segments:
-        if not any(part != ";" for part in _sql_tokens(statement)):
-            continue
-        _validate_sqlite_statement(migration, statement)
-        statements.append(statement)
-    if not statements:
-        msg = f"SQLite migration {migration.name!r} must contain SQL"
-        raise MigrationDeclarationError(msg)
-    return tuple(statements)
-
-
-def validate_sqlite_migrations(migrations: MigrationPlan) -> None:
-    """Validate every SQLite body synchronously before connection acquisition."""
-
-    for migration in migrations:
-        _sqlite_statements(migration)
-
-
 def _migration_authorizer(  # noqa: PLR0913 - driver callback arguments plus rename policy
     action: int,
     first_argument: str | None,
@@ -479,9 +421,8 @@ async def _fetch_history(connection: Connection) -> tuple[MigrationRecord, ...]:
         MigrationRecord(
             position=int(position),
             name=str(name),
-            checksum=str(checksum),
         )
-        for position, name, checksum in rows
+        for position, name in rows
     )
 
 
@@ -503,7 +444,7 @@ async def _fetch_history_object(
 async def _fetch_history_shape(  # noqa: PLR0911
     connection: Connection,
 ) -> _HistoryShape:
-    """Classify only the legacy and final history layouts snekql owns."""
+    """Recognize only the exact revision history layout."""
 
     history_object = await _fetch_history_object(connection)
     if history_object is None:
@@ -526,10 +467,7 @@ async def _fetch_history_shape(  # noqa: PLR0911
         table_rows = list(await table_cursor.fetchall())
     finally:
         await table_cursor.close()
-    if len(table_rows) != 1 or tuple(table_rows[0][2:]) not in {
-        ("table", 2, 0, 1),
-        ("table", 4, 0, 1),
-    }:
+    if len(table_rows) != 1 or tuple(table_rows[0][2:]) != ("table", 3, 0, 1):
         return "unknown"
     sql_cursor = await connection.execute(
         "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -558,101 +496,22 @@ async def _fetch_history_shape(  # noqa: PLR0911
     if len(indexes) != 1 or int(indexes[0][2]) != 1 or int(indexes[0][4]) != 0:
         return "unknown"
     if (
-        columns == _V1_COLUMNS
-        and indexes[0][3] == "pk"
-        and stored_sql == _V1_HISTORY_SQL
-    ):
-        return "v1"
-    if (
-        columns == _V2_COLUMNS
+        columns == _REVISION_COLUMNS
         and indexes[0][3] == "u"
-        and stored_sql == _V2_HISTORY_SQL
+        and stored_sql == _REVISION_HISTORY_SQL
     ):
-        return "v2"
+        return "revision"
     return "unknown"
 
 
-async def _fetch_legacy_history(connection: Connection) -> dict[str, str]:
-    cursor = await connection.execute(_SELECT_LEGACY_SQL, ())
-    try:
-        rows = await cursor.fetchall()
-    finally:
-        await cursor.close()
-    return {str(name): str(applied_at) for name, applied_at in rows}
-
-
-async def _upgrade_legacy_history(
-    connection: Connection,
-    migrations: MigrationPlan,
-    *,
-    adopt_legacy: bool,
-) -> bool:
-    """Atomically rebuild exact v1 history after validating explicit consent."""
-
-    legacy_history = await _fetch_legacy_history(connection)
-    if legacy_history and not adopt_legacy:
-        msg = (
-            "non-empty legacy Migration History requires "
-            "migrate(..., adopt_legacy=True)"
-        )
-        raise MigrationHistoryError(msg)
-    prefix_length = validate_legacy_history(set(legacy_history), migrations)
-    if await _table_named_exists(connection, _LEGACY_HISTORY_TABLE):
-        msg = f"unexpected legacy staging object {_LEGACY_HISTORY_TABLE!r}"
-        raise MigrationHistoryError(msg)
-    await _execute(
-        connection,
-        f"ALTER TABLE {quote_identifier(_HISTORY_TABLE)} "
-        f"RENAME TO {quote_identifier(_LEGACY_HISTORY_TABLE)}",
-    )
-    await _execute(connection, _CREATE_HISTORY_SQL)
-    for migration in migrations[:prefix_length]:
-        await _execute(
-            connection,
-            _INSERT_ADOPTED_SQL,
-            (
-                migration.position,
-                migration.name,
-                migration.checksum,
-                legacy_history[migration.name],
-            ),
-        )
-    await _execute(
-        connection,
-        f"DROP TABLE {quote_identifier(_LEGACY_HISTORY_TABLE)}",
-    )
-    return bool(legacy_history)
-
-
-async def _table_named_exists(connection: Connection, table_name: str) -> bool:
-    cursor = await connection.execute(_HISTORY_OBJECT_SQL, (table_name,))
-    try:
-        return await cursor.fetchone() is not None
-    finally:
-        await cursor.close()
-
-
-async def _ensure_v2_history(
-    connection: Connection,
-    migrations: MigrationPlan,
-    *,
-    adopt_legacy: bool,
-) -> bool:
+async def _ensure_history(connection: Connection) -> None:
     shape = await _fetch_history_shape(connection)
     if shape == "absent":
         await _execute(connection, _CREATE_HISTORY_SQL)
-        if await _fetch_history_shape(connection) != "v2":
-            msg = "could not create exact SQLite Migration History v2"
-            raise MigrationHistoryError(msg)
-        return False
-    if shape == "v2":
-        return False
-    if shape == "v1":
-        return await _upgrade_legacy_history(
-            connection, migrations, adopt_legacy=adopt_legacy
-        )
-    msg = "Migration History has an unknown SQLite schema"
-    raise MigrationHistoryError(msg)
+        shape = await _fetch_history_shape(connection)
+    if shape != "revision":
+        msg = "Migration History has an unsupported SQLite schema"
+        raise MigrationHistoryError(msg)
 
 
 async def _rollback_if_open(connection: Connection) -> None:
@@ -699,7 +558,7 @@ async def _record_history(
     try:
         cursor = await connection.execute(
             _INSERT_HISTORY_SQL,
-            (migration.position, migration.name, migration.checksum),
+            (migration.position, migration.name),
         )
         try:
             inserted_row = await cursor.fetchone()
@@ -708,7 +567,7 @@ async def _record_history(
     except Exception as error:
         msg = f"could not record migration {migration.name!r}"
         raise MigrationHistoryError(msg) from error
-    expected_row = (migration.position, migration.name, migration.checksum)
+    expected_row = (migration.position, migration.name)
     if inserted_row != expected_row:
         msg = f"could not confirm history row for migration {migration.name!r}"
         raise MigrationHistoryError(msg)
@@ -719,25 +578,33 @@ async def _apply_body(
     migration: Migration,
     connection_state: SQLiteMigrationConnectionState,
 ) -> None:
-    connection_state.authorizer_uncertain = True
-    try:
-        for statement in _sqlite_statements(migration):
-            await connection.set_authorizer(
-                partial(
-                    _migration_authorizer,
-                    allow_temp_catalog_update=_operation_keyword(_sql_tokens(statement))
-                    == "ALTER",
-                )
+    async def execute(sql: str, params: MigrationParameters) -> _MigrationQueryResult:
+        _validate_sqlite_statement(migration, sql)
+        connection_state.authorizer_uncertain = True
+        await connection.set_authorizer(
+            partial(
+                _migration_authorizer,
+                allow_temp_catalog_update=_operation_keyword(_sql_tokens(sql))
+                == "ALTER",
             )
-            await _execute(connection, statement)
+        )
+        try:
+            cursor = await connection.execute(sql, () if params is None else params)
+            try:
+                rows = [tuple(row) for row in await cursor.fetchall()]
+                return _MigrationQueryResult(rows=rows, rowcount=cursor.rowcount)
+            finally:
+                await cursor.close()
+        finally:
+            with anyio.CancelScope(shield=True):
+                await connection.set_authorizer(None)
+            connection_state.authorizer_uncertain = False
+
+    try:
+        await run_migration(migration, execute)
     except Exception as error:
-        logger.exception("migration %r failed", migration.name)
         msg = f"migration {migration.name!r} failed"
         raise MigrationError(msg) from error
-    finally:
-        with anyio.CancelScope(shield=True):
-            await connection.set_authorizer(None)
-        connection_state.authorizer_uncertain = False
     if not connection.in_transaction:
         msg = f"migration {migration.name!r} ended the transaction owned by snekql"
         raise MigrationError(msg)
@@ -748,7 +615,6 @@ async def apply_sqlite_migrations(
     connection_state: SQLiteMigrationConnectionState,
     migrations: MigrationPlan,
     *,
-    adopt_legacy: bool = False,
     busy_retry_policy: BusyRetryPolicy = DEFAULT_BUSY_RETRY_POLICY,
 ) -> MigrationResult:
     """Apply a declaration with one locked atomic transaction per pending body."""
@@ -757,20 +623,12 @@ async def apply_sqlite_migrations(
     applied_names: set[str] = set()
     already_applied: list[str] = []
     already_applied_names: set[str] = set()
-    legacy_adopted = False
     while True:
         transaction_started = False
         try:
             await _begin_immediate(connection, busy_retry_policy)
             transaction_started = True
-            legacy_adopted = (
-                await _ensure_v2_history(
-                    connection,
-                    migrations,
-                    adopt_legacy=adopt_legacy,
-                )
-                or legacy_adopted
-            )
+            await _ensure_history(connection)
             history = await _fetch_history(connection)
             validate_history_prefix(history, migrations)
             for record in history:
@@ -787,7 +645,6 @@ async def apply_sqlite_migrations(
                 return MigrationResult(
                     applied=tuple(applied),
                     already_applied=tuple(already_applied),
-                    legacy_adopted=legacy_adopted,
                 )
 
             migration = migrations[len(history)]
@@ -819,7 +676,7 @@ async def verify_sqlite_migrations(
     *,
     minimum_applied: int | None = None,
 ) -> MigrationStatus:
-    """Verify v2 history within the approved range without locks or mutation."""
+    """Verify revision history within the approved range without locks or mutation."""
 
     transaction_started = False
     if minimum_applied is None:
@@ -837,7 +694,7 @@ async def verify_sqlite_migrations(
                 history_present=False,
                 pending=tuple(migration.name for migration in migrations),
             )
-        if shape != "v2":
+        if shape != "revision":
             msg = f"Migration History uses unsupported SQLite shape {shape!r}"
             raise MigrationHistoryError(msg)
         history = await _fetch_history(connection)

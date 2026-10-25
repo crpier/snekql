@@ -1,105 +1,82 @@
-"""Backend-neutral immutable Migration declaration and history tests."""
+"""Revision identity and declaration checks through the public database interface."""
 
 from __future__ import annotations
 
+from typing import Any
+
 from snektest import assert_eq, assert_raises, test
 
-from snekql._migrations import (
-    MigrationRecord,
-    prepare_migrations,
-    validate_history_prefix,
-    validate_legacy_history,
-)
-from snekql.errors import MigrationDeclarationError, MigrationHistoryError
+from snekql import sqlite
 
 
 @test(mark="fast")
-def declaration_snapshot_preserves_order_sql_and_checksum() -> None:
-    """Planning copies insertion order and hashes the exact UTF-8 body."""
+async def applied_revision_identity_does_not_depend_on_function_code() -> None:
+    """An edited function is not executed or rejected under an applied ID."""
 
-    migrations = {"001_select": "SELECT 1"}
-    plan = prepare_migrations(migrations)
-    migrations["002_late"] = "SELECT 2"
+    async def original(migration: sqlite.MigrationContext) -> None:
+        await migration.execute("CREATE TABLE entry (id INTEGER) STRICT")
 
-    assert_eq(len(plan), 1)
-    assert_eq(plan[0].position, 1)
-    assert_eq(plan[0].name, "001_select")
-    assert_eq(plan[0].sql, "SELECT 1")
-    assert_eq(
-        plan[0].checksum,
-        "e004ebd5b5532a4b85984a62f8ad48a81aa3460c1ca07701f386135d72cdecf5",
-    )
+    async def changed(migration: sqlite.MigrationContext) -> None:
+        _ = migration
+        msg = "an applied revision must not run again"
+        raise AssertionError(msg)
+
+    async with await sqlite.Database.initialize(database=":memory:") as db:
+        await db.migrate({"001": original})
+        result = await db.migrate({"001": changed})
+        assert_eq(result.already_applied, ("001",))
+        await db.verify_migrations({"001": changed})
 
 
 @test(mark="fast")
-def declaration_rejects_invalid_names_and_bodies() -> None:
-    """Migration identity and exact SQL must be stable UTF-8 built-in strings."""
+async def divergent_revision_chains_are_rejected() -> None:
+    """Applied order, IDs, and the complete prefix remain authoritative."""
 
-    invalid_declarations: tuple[object, ...] = (
+    async def noop(migration: sqlite.MigrationContext) -> None:
+        pass
+
+    async with await sqlite.Database.initialize(database=":memory:") as db:
+        await db.migrate({"001": noop, "002": noop})
+        for declaration in (
+            {},
+            {"001": noop},
+            {"002": noop, "001": noop},
+            {"001": noop, "unknown": noop},
+        ):
+            with assert_raises(sqlite.MigrationHistoryError):
+                await db.migrate(declaration)
+            with assert_raises(sqlite.MigrationHistoryError):
+                await db.migration_status(declaration)
+
+
+@test(mark="fast")
+async def invalid_declarations_are_rejected_before_waiting_for_a_connection() -> None:
+    """Names and async-function signatures are validated before database I/O."""
+
+    async def noop(migration: sqlite.MigrationContext) -> None:
+        pass
+
+    async def missing_context() -> None:
+        pass
+
+    async def extra_argument(context: sqlite.MigrationContext, required: int) -> None:
+        pass
+
+    invalid: tuple[Any, ...] = (
         [],
-        {"": "SELECT 1"},
-        {"x" * 256: "SELECT 1"},
-        {"001": ""},
-        {"001": "   "},
-        {"001\x00": "SELECT 1"},
-        {"001": "SELECT\x00 1"},
-        {"001": "\ud800"},
+        {"": noop},
+        {"x" * 256: noop},
+        {"nul\x00": noop},
+        {"\ud800": noop},
+        {"001": "SELECT 1"},
+        {"001": missing_context},
+        {"001": extra_argument},
+        {"001": lambda _context: None},
     )
-    for declaration in invalid_declarations:
-        with assert_raises(MigrationDeclarationError):
-            prepare_migrations(declaration)
-
-
-@test(mark="fast")
-def every_ordered_history_prefix_is_valid() -> None:
-    """Migration accepts exactly each prefix of the complete declaration."""
-
-    plan = prepare_migrations({"001": "SELECT 1", "002": "SELECT 2", "003": "SELECT 3"})
-    records = tuple(migration.history_record() for migration in plan)
-
-    for prefix_length in range(len(records) + 1):
-        validate_history_prefix(records[:prefix_length], plan)
-
-
-@test(mark="fast")
-def divergent_ordered_history_is_rejected() -> None:
-    """Holes, unknown names, body edits, and overlong history fail closed."""
-
-    plan = prepare_migrations({"001": "SELECT 1", "002": "SELECT 2"})
-    first, second = (migration.history_record() for migration in plan)
-    divergent_histories = (
-        (MigrationRecord(2, first.name, first.checksum),),
-        (MigrationRecord(1, "unknown", first.checksum),),
-        (MigrationRecord(1, first.name, "0" * 64),),
-        (first, second, MigrationRecord(3, "003", "0" * 64)),
-    )
-
-    for history in divergent_histories:
-        with assert_raises(MigrationHistoryError):
-            validate_history_prefix(history, plan)
-
-
-@test(mark="fast")
-def full_head_verification_rejects_pending_history() -> None:
-    """Read-only verification requires the declaration's complete head."""
-
-    plan = prepare_migrations({"001": "SELECT 1", "002": "SELECT 2"})
-
-    with assert_raises(MigrationHistoryError):
-        validate_history_prefix(
-            (plan[0].history_record(),),
-            plan,
-            require_head=True,
-        )
-
-
-@test(mark="fast")
-def legacy_names_must_equal_one_declared_prefix_set() -> None:
-    """Adoption rejects holes, unknown rows, and overlong legacy history."""
-
-    plan = prepare_migrations({"001": "SELECT 1", "002": "SELECT 2"})
-    assert_eq(validate_legacy_history({"001"}, plan), 1)
-
-    for legacy_names in ({"002"}, {"unknown"}, {"001", "002", "003"}):
-        with assert_raises(MigrationHistoryError):
-            validate_legacy_history(legacy_names, plan)
+    async with (
+        await sqlite.Database.initialize(database=":memory:", pool_size=1) as db,
+        db.transaction(),
+    ):
+        for declaration in invalid:
+            with assert_raises(sqlite.MigrationDeclarationError):
+                await db.migrate(declaration)

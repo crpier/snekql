@@ -10,6 +10,7 @@ from anyio import Event, fail_after, sleep_forever
 from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 from tests.runtime.test_security_lifecycle import single_connection_file
 
 
@@ -38,9 +39,7 @@ async def cancelled_migration_recovers_pool_capacity(
     ) -> Cursor:
         if (
             operation == "migrate" and sql.strip() == "INSERT INTO entries VALUES (2)"
-        ) or (
-            operation != "migrate" and sql.startswith("SELECT position, name, checksum")
-        ):
+        ) or (operation != "migrate" and sql.startswith("SELECT position, name")):
             body_entered.set()
             await sleep_forever()
         return await original_execute(connection, sql, parameters)
@@ -58,11 +57,11 @@ async def cancelled_migration_recovers_pool_capacity(
             migrations["002"] = (
                 "INSERT INTO entries VALUES (1); INSERT INTO entries VALUES (2)"
             )
-            await database.migrate(migrations)
+            await database.migrate(migration_functions(migrations))
         elif operation == "verify":
-            await database.verify_migrations(migrations)
+            await database.verify_migrations(migration_functions(migrations))
         else:
-            await database.migration_status(migrations)
+            await database.migration_status(migration_functions(migrations))
 
     # Pause only at the external driver boundary; assert recovery through Database.
     with (

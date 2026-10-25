@@ -13,7 +13,7 @@ from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, tes
 
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.runtime.test_raw_execution import RawCase
 
 
@@ -37,7 +37,11 @@ async def provide_contended_case(backend: BackendFamily) -> AsyncGenerator[RawCa
             )
         async with case.database:
             await case.database.migrate(
-                {"001_table": "CREATE TABLE raw_entries (value INTEGER PRIMARY KEY)"}
+                migration_functions(
+                    {
+                        "001_table": "CREATE TABLE raw_entries (value INTEGER PRIMARY KEY)"
+                    }
+                )
             )
             async with case.database.transaction() as transaction:
                 await transaction.execute(

@@ -1,4 +1,4 @@
-"""MariaDB Migration History v2, legacy adoption, and advisory locking."""
+"""MariaDB revision history, function execution, and advisory locking."""
 
 lazy import hashlib
 lazy from contextlib import asynccontextmanager
@@ -9,12 +9,14 @@ lazy from anyio.lowlevel import checkpoint
 
 lazy from snekql._migrations import (
     Migration,
+    MigrationParameters,
     MigrationPlan,
     MigrationRecord,
     MigrationResult,
     MigrationStatus,
+    _MigrationQueryResult,
+    run_migration,
     validate_history_prefix,
-    validate_legacy_history,
 )
 lazy from snekql.errors import (
     MigrationDeclarationError,
@@ -24,7 +26,6 @@ lazy from snekql.errors import (
     MigrationLockTimeoutError,
 )
 lazy from snekql.mariadb.identifiers import quote_identifier
-lazy from snekql.mariadb.schema import TEXT_COLLATION
 lazy from snekql.validation import NonNegativeFloat
 
 if TYPE_CHECKING:
@@ -41,26 +42,21 @@ _RELEASE_LOCK_SQL = "SELECT RELEASE_LOCK(%s)"
 _NAME_UNIQUE_KEY = "uq_snekql_migrations_name"
 _POSITION_CHECK = "chk_snekql_migrations_position"
 _NAME_CHECK = "chk_snekql_migrations_name"
-_CHECKSUM_CHECK = "chk_snekql_migrations_checksum"
 
 _CREATE_HISTORY_SQL = (
     f"CREATE TABLE {quote_identifier(_HISTORY_TABLE)} ("
     "position BIGINT UNSIGNED NOT NULL, "
     "name VARBINARY(1020) NOT NULL, "
-    "checksum VARBINARY(64) NOT NULL, "
     "applied_at DATETIME(3) NOT NULL, "
     "PRIMARY KEY (position), "
     f"UNIQUE KEY {quote_identifier(_NAME_UNIQUE_KEY)} (name), "
     f"CONSTRAINT {quote_identifier(_POSITION_CHECK)} CHECK (position > 0), "
     f"CONSTRAINT {quote_identifier(_NAME_CHECK)} "
     "CHECK (OCTET_LENGTH(name) BETWEEN 1 AND 1020 "
-    "AND CHAR_LENGTH(CONVERT(name USING utf8mb4)) BETWEEN 1 AND 255), "
-    f"CONSTRAINT {quote_identifier(_CHECKSUM_CHECK)} "
-    "CHECK (OCTET_LENGTH(checksum) = 64 "
-    "AND checksum NOT REGEXP BINARY '[^0-9a-f]')"
+    "AND CHAR_LENGTH(CONVERT(name USING utf8mb4)) BETWEEN 1 AND 255)"
     ") ENGINE=InnoDB"
 )
-"""Final v2 history with unpadded byte-exact identity and SQL constraints."""
+"""Revision history with unpadded byte-exact identity and SQL constraints."""
 
 _HISTORY_OBJECT_SQL = (
     "SELECT TABLE_NAME, TABLE_TYPE, ENGINE FROM INFORMATION_SCHEMA.TABLES "
@@ -102,61 +98,19 @@ _HISTORY_TRIGGERS_SQL = (
 )
 
 _SELECT_HISTORY_SQL = (
-    f"SELECT position, CAST(name AS BINARY), CAST(checksum AS BINARY) "  # noqa: S608
+    f"SELECT position, CAST(name AS BINARY) "  # noqa: S608
     f"FROM {quote_identifier(_HISTORY_TABLE)} "
     "ORDER BY position"
 )
 
-_SELECT_LEGACY_SQL = (
-    f"SELECT CAST(name AS BINARY), applied_at FROM {quote_identifier(_HISTORY_TABLE)}"  # noqa: S608
-)
-
-_SELECT_STAGING_SQL = (
-    f"SELECT CAST(name AS BINARY), applied_at, position, checksum "  # noqa: S608
-    f"FROM {quote_identifier(_HISTORY_TABLE)}"
-)
-
 _INSERT_HISTORY_SQL = (
     f"INSERT INTO {quote_identifier(_HISTORY_TABLE)} "  # noqa: S608
-    "(position, name, checksum, applied_at) VALUES (%s, %s, %s, UTC_TIMESTAMP(3))"
+    "(position, name, applied_at) VALUES (%s, %s, UTC_TIMESTAMP(3))"
 )
 
-_ADD_STAGING_COLUMNS_SQL = (
-    f"ALTER TABLE {quote_identifier(_HISTORY_TABLE)} "
-    "ADD COLUMN position BIGINT UNSIGNED NULL, "
-    "ADD COLUMN checksum VARBINARY(64) NULL"
-)
-
-_UPDATE_STAGING_SQL = (
-    f"UPDATE {quote_identifier(_HISTORY_TABLE)} "  # noqa: S608
-    "SET position = %s, checksum = %s WHERE BINARY name = %s "
-    "AND position IS NULL AND checksum IS NULL"
-)
-
-_FINALIZE_STAGING_SQL = (
-    f"ALTER TABLE {quote_identifier(_HISTORY_TABLE)} "
-    "MODIFY COLUMN position BIGINT UNSIGNED NOT NULL FIRST, "
-    "MODIFY COLUMN name VARBINARY(1020) NOT NULL AFTER position, "
-    "MODIFY COLUMN checksum VARBINARY(64) NOT NULL AFTER name, "
-    "MODIFY COLUMN applied_at DATETIME(3) NOT NULL AFTER checksum, "
-    "DROP PRIMARY KEY, ADD PRIMARY KEY (position), "
-    f"ADD UNIQUE KEY {quote_identifier(_NAME_UNIQUE_KEY)} (name), "
-    f"ADD CONSTRAINT {quote_identifier(_POSITION_CHECK)} CHECK (position > 0), "
-    f"ADD CONSTRAINT {quote_identifier(_NAME_CHECK)} "
-    "CHECK (OCTET_LENGTH(name) BETWEEN 1 AND 1020 "
-    "AND CHAR_LENGTH(CONVERT(name USING utf8mb4)) BETWEEN 1 AND 255), "
-    f"ADD CONSTRAINT {quote_identifier(_CHECKSUM_CHECK)} "
-    "CHECK (OCTET_LENGTH(checksum) = 64 "
-    "AND checksum NOT REGEXP BINARY '[^0-9a-f]')"
-)
-
-type _HistoryShape = Literal["absent", "staging", "unknown", "v1", "v2"]
+type _HistoryShape = Literal["absent", "unknown", "revision"]
 
 _EXPECTED_CHECKS = {
-    _CHECKSUM_CHECK: (
-        "octet_length(`checksum`) = 64 and "
-        "!(`checksum` regexp cast('[^0-9a-f]' as char charset binary))"
-    ),
     _NAME_CHECK: (
         "octet_length(`name`) between 1 and 1020 and "
         "char_length(convert(`name` using utf8mb4)) between 1 and 255"
@@ -190,8 +144,6 @@ _RESTRICTED_BODY_TOKENS = frozenset(
         "USE",
     }
 )
-
-_V1_COLUMN_COUNT = 2
 
 
 def _executable_comment_tokens(
@@ -300,25 +252,26 @@ def _statement_starts(tokens: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
     return tuple(statements)
 
 
-def validate_mariadb_migrations(migrations: MigrationPlan) -> None:
-    """Reject bodies that can escape migration transaction or lock ownership."""
-
-    for migration in migrations:
-        tokens = _sql_tokens(migration.sql)
-        restricted = _RESTRICTED_BODY_TOKENS.intersection(tokens)
-        invalid_start = any(
-            statement[0] in {"BEGIN", "XA"}
-            or statement[:2] in {("LOCK", "TABLES"), ("START", "TRANSACTION")}
-            or statement[:2] == ("UNLOCK", "TABLES")
-            for statement in _statement_starts(tokens)
-            if statement
-        )
-        if restricted or invalid_start:
-            msg = (
-                f"MariaDB migration {migration.name!r} cannot change transaction "
-                "or advisory-lock state"
-            )
-            raise MigrationDeclarationError(msg)
+def _validate_statement(migration: Migration, sql: str) -> None:
+    """Keep each command inside the runner's transaction and lock contract."""
+    tokens = _sql_tokens(sql)
+    statements = _statement_starts(tokens)
+    restricted = _RESTRICTED_BODY_TOKENS.intersection(tokens)
+    invalid_start = any(
+        statement[0] in {"BEGIN", "XA", "SET"}
+        or statement[:2] in {("LOCK", "TABLES"), ("START", "TRANSACTION")}
+        or statement[:2] == ("UNLOCK", "TABLES")
+        for statement in statements
+    )
+    if (
+        len(statements) != 1
+        or restricted
+        or invalid_start
+        or _HISTORY_TABLE.upper() in tokens
+        or "TEMPORARY" in tokens
+    ):
+        msg = f"MariaDB migration {migration.name!r} requires one managed SQL statement"
+        raise MigrationDeclarationError(msg)
 
 
 def build_migration_lock_name(database: str) -> str:
@@ -408,28 +361,14 @@ def _decode_name(value: object) -> str:
     raise MigrationHistoryError(msg)
 
 
-def _decode_checksum(value: object) -> str:
-    if isinstance(value, bytes):
-        try:
-            return value.decode("ascii")
-        except UnicodeDecodeError as error:
-            msg = "Migration History contains a non-ASCII checksum"
-            raise MigrationHistoryError(msg) from error
-    if type(value) is str:
-        return value
-    msg = "Migration History contains an invalid checksum"
-    raise MigrationHistoryError(msg)
-
-
 async def _fetch_history(connection: object) -> tuple[MigrationRecord, ...]:
     rows = await _fetch_all(connection, _SELECT_HISTORY_SQL)
     return tuple(
         MigrationRecord(
             position=int(cast("int | str | bytes", position)),
             name=_decode_name(name),
-            checksum=_decode_checksum(checksum),
         )
-        for position, name, checksum in rows
+        for position, name in rows
     )
 
 
@@ -437,34 +376,7 @@ def _normalize_check_clause(value: object) -> str:
     return " ".join(str(value).lower().split())
 
 
-def _has_v1_columns(column_rows: list[tuple[object, ...]]) -> bool:
-    if len(column_rows) < _V1_COLUMN_COUNT:
-        return False
-    name, applied_at = column_rows[:_V1_COLUMN_COUNT]
-    return tuple(name) == (
-        "name",
-        "varchar(255)",
-        "NO",
-        "PRI",
-        "utf8mb4",
-        TEXT_COLLATION,
-        None,
-        None,
-        "",
-    ) and tuple(applied_at) == (
-        "applied_at",
-        "datetime(3)",
-        "NO",
-        "",
-        None,
-        None,
-        3,
-        None,
-        "",
-    )
-
-
-async def _fetch_history_shape(connection: object) -> _HistoryShape:  # noqa: PLR0911
+async def _fetch_history_shape(connection: object) -> _HistoryShape:
     table_rows = await _fetch_all(connection, _HISTORY_OBJECT_SQL, (_HISTORY_TABLE,))
     if not table_rows:
         return "absent"
@@ -496,54 +408,8 @@ async def _fetch_history_shape(connection: object) -> _HistoryShape:  # noqa: PL
     if trigger_rows:
         return "unknown"
 
-    if column_names == ("name", "applied_at"):
-        if (
-            _has_v1_columns(column_rows)
-            and indexes == {("PRIMARY", 0, 1, "name", None)}
-            and constraints == {("PRIMARY", "PRIMARY KEY")}
-            and not checks
-        ):
-            return "v1"
-        return "unknown"
-
-    if column_names == ("name", "applied_at", "position", "checksum"):
-        position = column_rows[2]
-        checksum = column_rows[3]
-        if (
-            _has_v1_columns(column_rows)
-            and tuple(position)
-            == (
-                "position",
-                "bigint(20) unsigned",
-                "YES",
-                "",
-                None,
-                None,
-                None,
-                "NULL",
-                "",
-            )
-            and tuple(checksum)
-            == (
-                "checksum",
-                "varbinary(64)",
-                "YES",
-                "",
-                None,
-                None,
-                None,
-                "NULL",
-                "",
-            )
-            and indexes == {("PRIMARY", 0, 1, "name", None)}
-            and constraints == {("PRIMARY", "PRIMARY KEY")}
-            and not checks
-        ):
-            return "staging"
-        return "unknown"
-
-    if column_names == ("position", "name", "checksum", "applied_at"):
-        position, name, checksum, applied_at = column_rows
+    if column_names == ("position", "name", "applied_at"):
+        position, name, applied_at = column_rows
         expected_indexes = {
             ("PRIMARY", 0, 1, "position", None),
             (_NAME_UNIQUE_KEY, 0, 1, "name", None),
@@ -551,7 +417,6 @@ async def _fetch_history_shape(connection: object) -> _HistoryShape:  # noqa: PL
         expected_constraints = {
             ("PRIMARY", "PRIMARY KEY"),
             (_NAME_UNIQUE_KEY, "UNIQUE"),
-            (_CHECKSUM_CHECK, "CHECK"),
             (_NAME_CHECK, "CHECK"),
             (_POSITION_CHECK, "CHECK"),
         }
@@ -580,18 +445,6 @@ async def _fetch_history_shape(connection: object) -> _HistoryShape:  # noqa: PL
                 None,
                 "",
             )
-            and tuple(checksum)
-            == (
-                "checksum",
-                "varbinary(64)",
-                "NO",
-                "",
-                None,
-                None,
-                None,
-                None,
-                "",
-            )
             and tuple(applied_at)
             == (
                 "applied_at",
@@ -608,81 +461,18 @@ async def _fetch_history_shape(connection: object) -> _HistoryShape:  # noqa: PL
             and constraints == expected_constraints
             and checks == _EXPECTED_CHECKS
         ):
-            return "v2"
+            return "revision"
     return "unknown"
 
 
-async def _fill_staging_history(
-    connection: object,
-    migrations: MigrationPlan,
-) -> bool:
-    rows = await _fetch_all(connection, _SELECT_STAGING_SQL)
-    legacy_names = {_decode_name(row[0]) for row in rows}
-    prefix_length = validate_legacy_history(legacy_names, migrations)
-    expected_by_name = {
-        migration.name: migration for migration in migrations[:prefix_length]
-    }
-    for name_value, _, position, checksum in rows:
-        name = _decode_name(name_value)
-        migration = expected_by_name[name]
-        if position is None and checksum is None:
-            await _execute(
-                connection,
-                _UPDATE_STAGING_SQL,
-                (
-                    migration.position,
-                    migration.checksum.encode("ascii"),
-                    name.encode("utf-8"),
-                ),
-            )
-            continue
-        if position is None or checksum is None:
-            msg = f"legacy staging row {name!r} is only partially populated"
-            raise MigrationHistoryError(msg)
-        if (
-            int(cast("int | str | bytes", position)) != migration.position
-            or _decode_checksum(checksum) != migration.checksum
-        ):
-            msg = f"legacy staging row {name!r} differs from the declaration"
-            raise MigrationHistoryError(msg)
-    await _commit(connection)
-    await _execute(connection, _FINALIZE_STAGING_SQL)
-    if await _fetch_history_shape(connection) != "v2":
-        msg = "could not finalize exact MariaDB Migration History v2"
-        raise MigrationHistoryError(msg)
-    return bool(rows)
-
-
-async def _ensure_v2_history(
-    connection: object,
-    migrations: MigrationPlan,
-    *,
-    adopt_legacy: bool,
-) -> bool:
+async def _ensure_history(connection: object) -> None:
     shape = await _fetch_history_shape(connection)
     if shape == "absent":
         await _execute(connection, _CREATE_HISTORY_SQL)
-        if await _fetch_history_shape(connection) != "v2":
-            msg = "could not create exact MariaDB Migration History v2"
-            raise MigrationHistoryError(msg)
-        return False
-    if shape == "v2":
-        return False
-    if shape == "unknown":
-        msg = "Migration History has an unknown MariaDB schema"
+        shape = await _fetch_history_shape(connection)
+    if shape != "revision":
+        msg = "Migration History has an unsupported MariaDB schema"
         raise MigrationHistoryError(msg)
-    if shape == "v1":
-        legacy_rows = await _fetch_all(connection, _SELECT_LEGACY_SQL)
-        legacy_names = {_decode_name(row[0]) for row in legacy_rows}
-        if legacy_names and not adopt_legacy:
-            msg = (
-                "non-empty legacy Migration History requires "
-                "migrate(..., adopt_legacy=True)"
-            )
-            raise MigrationHistoryError(msg)
-        validate_legacy_history(legacy_names, migrations)
-        await _execute(connection, _ADD_STAGING_COLUMNS_SQL)
-    return await _fill_staging_history(connection, migrations)
 
 
 class MariaDBMigrationBackend:
@@ -768,9 +558,24 @@ async def _apply_body_and_history(
     expected_history: MigrationPlan,
 ) -> None:
     """Commit only after the body has preserved the canonical history contract."""
+
+    async def execute(sql: str, params: MigrationParameters) -> _MigrationQueryResult:
+        _validate_statement(migration, sql)
+        cursor = await cast("Any", connection).cursor()
+        try:
+            await cursor.execute(sql, params)
+            rows = (
+                [tuple(row) for row in await cursor.fetchall()]
+                if cursor.description is not None
+                else []
+            )
+            return _MigrationQueryResult(rows=rows, rowcount=cursor.rowcount)
+        finally:
+            await _close_cursor(cursor)
+
     await cast("Any", connection).begin()
     try:
-        await _execute(connection, migration.sql)
+        await run_migration(migration, execute)
     except BaseException as error:
         await _rollback(connection)
         if isinstance(error, anyio.get_cancelled_exc_class()):
@@ -784,10 +589,9 @@ async def _apply_body_and_history(
             (
                 migration.position,
                 migration.name.encode("utf-8"),
-                migration.checksum.encode("ascii"),
             ),
         )
-        if await _fetch_history_shape(connection) != "v2":
+        if await _fetch_history_shape(connection) != "revision":
             msg = "migration changed the owned Migration History schema"
             raise MigrationHistoryError(msg)  # noqa: TRY301 - rollback belongs to this unit
         validate_history_prefix(
@@ -805,18 +609,12 @@ async def _apply_body_and_history(
 async def apply_mariadb_migrations(
     backend: MariaDBMigrationBackend,
     migrations: MigrationPlan,
-    *,
-    adopt_legacy: bool = False,
 ) -> MigrationResult:
     """Apply a complete declaration under one connection-scoped advisory lock."""
 
     async with backend.migration_lock():
         try:
-            legacy_adopted = await _ensure_v2_history(
-                backend.connection,
-                migrations,
-                adopt_legacy=adopt_legacy,
-            )
+            await _ensure_history(backend.connection)
             history = await _fetch_history(backend.connection)
             validate_history_prefix(history, migrations)
             already_applied = tuple(record.name for record in history)
@@ -830,7 +628,6 @@ async def apply_mariadb_migrations(
             return MigrationResult(
                 applied=tuple(applied),
                 already_applied=already_applied,
-                legacy_adopted=legacy_adopted,
             )
         except BaseException:
             await _rollback(backend.connection)
@@ -843,7 +640,7 @@ async def verify_mariadb_migrations(
     *,
     minimum_applied: int | None = None,
 ) -> MigrationStatus:
-    """Verify final v2 history within the approved range without mutation."""
+    """Verify revision history within the approved range without mutation."""
 
     if minimum_applied is None:
         minimum_applied = len(migrations)
@@ -858,7 +655,7 @@ async def verify_mariadb_migrations(
                 history_present=False,
                 pending=tuple(migration.name for migration in migrations),
             )
-        if shape != "v2":
+        if shape != "revision":
             msg = f"Migration History uses unsupported MariaDB shape {shape!r}"
             raise MigrationHistoryError(msg)
         history = await _fetch_history(connection)
@@ -876,6 +673,5 @@ __all__ = [
     "MariaDBMigrationBackend",
     "apply_mariadb_migrations",
     "build_migration_lock_name",
-    "validate_mariadb_migrations",
     "verify_mariadb_migrations",
 ]

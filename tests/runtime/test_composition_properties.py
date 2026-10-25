@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from snektest import assert_eq, fixture, test_hypothesis
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 
 
 class Sample[S = sqlite.Pending](sqlite.Model[S]):
@@ -30,7 +31,7 @@ class ComputedRole:
 async def samples(values: list[int | None]) -> AsyncGenerator[sqlite.Database]:
     """Load each generated dataset through ordinary inserts and migrations."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001": sqlite.scaffold([Sample])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Sample])}))
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(
