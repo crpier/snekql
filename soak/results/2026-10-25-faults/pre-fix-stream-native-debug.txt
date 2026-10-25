@@ -1,0 +1,28 @@
+DEBUG raw execution failed sql='' params=<redacted:0> AttributeError("'NoneType' object has no attribute 'readexactly'")
+Traceback (most recent call last):
+  File "<frozen runpy>", line 201, in _run_module_as_main
+  File "<frozen runpy>", line 87, in _run_code
+  File "/home/crpier/Projects/fourth-snekql/soak/faults.py", line 112, in <module>
+    main()
+    ~~~~^^
+  File "/home/crpier/Projects/fourth-snekql/soak/faults.py", line 105, in main
+    asyncio.run(run(args.scenario))
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/base_events.py", line 724, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/crpier/Projects/fourth-snekql/soak/faults.py", line 80, in run
+    report = await stream_cut(database, proxy)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/crpier/Projects/fourth-snekql/soak/faults.py", line 55, in stream_cut
+    require(failure.failure is not None, "missing native failure classification")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/crpier/Projects/fourth-snekql/soak/_service_workload.py", line 39, in require
+    raise SoakError(message)
+soak._service_workload.SoakError: missing native failure classification

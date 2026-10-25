@@ -109,6 +109,9 @@ class MariaDBCursorAdapter:
         """
 
         cursor = cast("Any", self.cursor)
+        if cursor._connection is not None and cursor._connection.closed:  # noqa: SLF001
+            await self.close()
+            return False
         result = cursor._result  # noqa: SLF001
         if result is not None:
             if result.unbuffered_active:
@@ -121,7 +124,13 @@ class MariaDBCursorAdapter:
         return False
 
     async def close(self) -> None:
-        close_result = cast("Any", self.cursor).close()
+        cursor = cast("Any", self.cursor)
+        # An interrupted native read closes its connection. SSCursor.close would
+        # drain that dead result and can mask the original error with AttributeError.
+        if cursor._connection is not None and cursor._connection.closed:  # noqa: SLF001
+            cursor._connection = None  # noqa: SLF001
+            return
+        close_result = cursor.close()
         if close_result is not None:
             _ = await close_result
 

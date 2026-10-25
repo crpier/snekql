@@ -1,0 +1,83 @@
+tests/test_fault_drills.py::sqlite_full_private_filesystem_reports_real_enospc_and_recovers ... FAIL (0.33s)
+
+=================================== FAILURES ===================================
+
+tests/test_fault_drills.py::sqlite_full_private_filesystem_reports_real_enospc_and_recovers ... FAIL (0.33s)
+Traceback (most recent call last):
+  File "/home/crpier/Projects/fourth-snekql/tests/test_fault_drills.py", line 
+106, in sqlite_full_private_filesystem_reports_real_enospc_and_recovers
+            assert_eq(failure["error_type"], "NamespaceUnavailable", msg=result.
+E       Traceback (most recent call last):
+  File "<frozen runpy>", line 201, in _run_module_as_main
+  File "<frozen runpy>", line 87, in _run_code
+  File "/home/crpier/Projects/fourth-snekql/soak/_fault_storage.py", line 129, 
+in <module>
+    asyncio.run(_child())
+    ~~~~~~~~~~~^^^^^^^^^^
+  File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/base_events.py", line 724, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/crpier/Projects/fourth-snekql/soak/_fault_storage.py", line 121, 
+in _child
+    report = await _exercise(path)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/crpier/Projects/fourth-snekql/soak/_fault_storage.py", line 93, in
+_exercise
+    require(drained.occupied == 0, "full-filesystem transaction did not drain")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/crpier/Projects/fourth-snekql/soak/_service_workload.py", line 39,
+in require
+    raise SoakError(message)
+soak._service_workload.SoakError: full-filesystem transaction did not drain
+Traceback (most recent call last):
+  File "<frozen runpy>", line 201, in _run_module_as_main
+  File "<frozen runpy>", line 87, in _run_code
+  File "/home/crpier/Projects/fourth-snekql/soak/faults.py", line 158, in 
+<module>
+    main()
+    ~~~~^^
+  File "/home/crpier/Projects/fourth-snekql/soak/faults.py", line 151, in main
+    asyncio.run(run(args.scenario))
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/base_events.py", line 724, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/crpier/Projects/fourth-snekql/soak/faults.py", line 113, in run
+    report = await (restart_load() if scenario == "restart-load" else 
+storage_full())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^
+  File "/home/crpier/Projects/fourth-snekql/soak/_fault_storage.py", line 51, in
+storage_full
+    raise RuntimeError(message)
+RuntimeError: isolated storage child failed
+
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/test_fault_drills.py::sqlite_full_private_filesystem_reports_real_enospc_and_recovers - …
+
+───────────────────────── 1 failed, 0 passed in 0.34s ──────────────────────────

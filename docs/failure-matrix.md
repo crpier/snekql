@@ -226,4 +226,17 @@ than a leak-freedom guarantee. Real network/storage/process faults and comparati
 performance remain separate evidence. See the service guide for report schema,
 run bounds and reproduction.
 
+## Real owned fault drills
+
+[The source-checkout fault CLI](../soak/FAULTS.md) adds actual TCP interruption
+following a delivered stream batch, a real COMMIT response blackhole with unknown
+outcome and durable-key reconciliation, a native server restart with four queries
+in flight/four callers queued, and SQLite ENOSPC on a private bounded tmpfs.
+These complement—not relabel—the simulated faults in the inventory above.
+Native smoke cases run in normal CI; storage isolation rejection is an explicit
+CLI failure whose reporting contract is tested, not a passing storage drill.
+The manual **Real fault drills** workflow requires actual success per scenario.
+Migration-process kills remain deferred; read the guide for topology, protocol,
+namespace, filesystem and restart limitations.
+
 [All guides](README.md)

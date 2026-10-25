@@ -1,0 +1,57 @@
+{
+  "conclusion": "success",
+  "headSha": "97224032ff4360ecef0f4a1105945cdc1d7144fc",
+  "url": "https://github.com/crpier/snekql/actions/runs/40239794416",
+  "jobs": [
+    {
+      "name": "SQLite / windows-2025 / managed",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308941798"
+    },
+    {
+      "name": "SQLite / ubuntu-24.04 / system-library",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308941973"
+    },
+    {
+      "name": "MariaDB 11.8",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308941978"
+    },
+    {
+      "name": "MariaDB 12.2",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308941993"
+    },
+    {
+      "name": "SQLite / macos-15 / managed",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308942006"
+    },
+    {
+      "name": "MariaDB 10.11",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308942009"
+    },
+    {
+      "name": "SQLite / ubuntu-24.04 / managed",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308942015"
+    },
+    {
+      "name": "MariaDB 11.4",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308942032"
+    },
+    {
+      "name": "MariaDB 12.3",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308942047"
+    },
+    {
+      "name": "Validate",
+      "conclusion": "success",
+      "url": "https://github.com/crpier/snekql/actions/runs/40239794416/job/121308942057"
+    }
+  ]
+}

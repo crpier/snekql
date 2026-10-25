@@ -4,11 +4,19 @@
 
 ### Added
 
+- Add reproducible owned TCP stream cuts, withheld real COMMIT replies, concurrent
+  MariaDB restart and private bounded-tmpfs SQLite ENOSPC drills with explicit
+  outcome/reconciliation evidence. Addresses #544.
+
 - Add an opt-in long-lived service soak with mixed validated workloads, admission
   saturation/cancellation, bounded latency histograms and Linux resource evidence,
   plus a manual both-backend/pool-size workflow. Addresses #538.
 
 ### Fixed
+
+- Preserve MariaDB stream connection-loss classification when native cursor
+  cleanup encounters an already-closed reader; detach without draining the dead
+  connection instead of masking the original failure. Addresses #545.
 
 - Wake queued acquirers when FIFO admission advances with free slots remaining.
   Multi-lease saturation could otherwise strand sleeping waiters despite free
