@@ -83,10 +83,10 @@ OS diagnostics. Sensitive-client cleanup notes also suppress diagnostic text.
 
 This protects the bootstrap argument/diagnostic path, not every local observation
 channel. Authenticated client calls still use `MYSQL_PWD`; privileged observers,
-process memory and retained server logs are outside this protection. The CLI's
-explicit password display below remains intentional. Public `run_sql` results and
-raw SQL transport remain unchanged, so caller-supplied SQL is not automatically
-confidential.
+process memory and retained server logs are outside this protection. The CLI
+reports whether credentials were supplied or generated without printing the
+password. Public `run_sql` results and raw SQL transport remain unchanged, so
+caller-supplied SQL is not automatically confidential.
 
 The short-lived bootstrap client session sets `NO_BACKSLASH_ESCAPES` before
 parsing quote-doubled password literals. Provided passwords containing quotes,
@@ -158,7 +158,12 @@ For retained CLI data directories, use `--reset-database` to remove base tables 
 snekql-mariadb-server --data-directory .snektest/mariadb-data --reset-database
 ```
 
-For password auth, stdout commands use `-p` and the generated or provided password is printed to stderr. The CLI does not accept a direct password argument; use an environment variable when deterministic credentials are needed:
+For password auth, stdout commands use `-p` to prompt for a password. Startup
+output never prints the password. Instead, stderr reports
+`password: [provided via environment variable]` for supplied credentials or
+`password: [generated; hidden]` for generated credentials. There is no password
+reveal option. To connect interactively, supply a known password through an
+environment variable; the CLI does not accept a direct password argument:
 
 ```sh
 SNEKQL_MARIADB_PASSWORD=test \

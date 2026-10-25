@@ -186,7 +186,10 @@ async def _run(argv: list[str] | None) -> int:
         print("Temporary MariaDB test server ready.", file=sys.stderr)
         print(f"data_directory: {server.data_directory}", file=sys.stderr)
         if server.auth == "password":
-            print(f"password: {server.password}", file=sys.stderr)
+            if options.password:
+                print("password: [provided via environment variable]", file=sys.stderr)
+            else:
+                print("password: [generated; hidden]", file=sys.stderr)
         print("Press Ctrl-C to stop.", file=sys.stderr)
         stop_event = anyio.Event()
         _ = await stop_event.wait()
