@@ -1007,3 +1007,19 @@ Author-program RED matched no old rows with new predicates; corrected on fresh f
 library semantic-proof claim. Genuine FRAMEWORK compiler/package-format/ledger evolution,
 codec provenance policy, recovery/coordination/resource/release/partial-adoption scope remain.
 No production or parser changes, trusted SQL, readiness separate, guides deferred/draft.
+
+
+### Actual framework capability/package/ledger evolution checkpoint
+
+[Framework review](recorded-migrations-framework-evolution-review.md): archived2ab4e55 and033ba56
+actual format2 writers/SQLite+private MariaDB runtimes, actual old001 complete receipts. Current
+retains eleven-column receipt unchanged, deploys committed old002/003, compiles new model-derived
+format5 index004, current typed app verifies/reads/inserts. Old compiler refuses index transition;
+old reader refuses actual new bytes. Nine-column old ledger: current status/prepare refuse with
+all receipt/schema/values unchanged, no conversion/replay/history deletion/retrospective upgrade.
+In-suite SQLite regressions restore actual old SQL dumps; separate native archived-process traces.
+Target-specific plan hashes compare against OWN original, not cross-target equality. No handbuilt
+states/receipts; real generated historical module statically imported for typed backfill. No new
+production code. Existing-operation emission remains compatible only for selected chain; load
+still recompiles, canonical compiler/epoch/refusal policy open. No broad compatibility, downgrade,
+uncertainty/resource/readiness guarantee. Recovery/coordination and finite scope next, guides deferred.

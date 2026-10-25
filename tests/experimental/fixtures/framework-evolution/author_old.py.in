@@ -1,0 +1,45 @@
+"""Real pre-advance authoring: three actual deployable revisions, no state stitching."""
+
+import json
+from pathlib import Path
+
+from models import Account
+from historical import Historical as Accounts
+from stage_old import first, expansion
+
+from snekql import BACKEND as db
+from snekql.experimental import migrations as m
+
+digest = m.contract_digest(expansion, point="fill_roles")
+second = m.compile(
+    expansion.then(
+        m.DataChange.from_query(
+            db.update(Accounts).set(Accounts.role.to("user")).all(),
+            checkpoint="fill_roles",
+            contract_digest=digest,
+        ),
+        m.DataChange.from_query(
+            db.update(Accounts)
+            .set(Accounts.role.to("admin"))
+            .where(Accounts.is_admin.eq(True)),
+            checkpoint="fill_roles",
+            contract_digest=digest,
+        ),
+    )
+)
+third = m.compile(
+    m.generate("003_contract", [Account], backend="BACKEND", previous=second).resolve(
+        m.DropColumn(table_name="accounts", column_name="is_admin")
+    )
+)
+for package in (first, second, third):
+    Path(f"{package.draft.revision}.json").write_text(package.dump())
+print(
+    json.dumps(
+        {
+            "module": m.__file__,
+            "digests": [p.digest for p in (first, second, third)],
+            "versions": [p.version for p in (first, second, third)],
+        }
+    )
+)

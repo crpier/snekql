@@ -161,3 +161,12 @@ bindings/receipts remain intact, while current v2 structural verification passes
 decode refuses until an explicit wire-representation migration. Opaque codec provenance is
 not recoverable from unchanged schema hints/digests. This is application-codec evolution;
 genuine framework compiler/package-format/ledger evolution still needs separate proof/policy.
+
+
+## Actual framework capability and durable-layout follow-through
+
+The [framework evolution review](recorded-migrations-framework-evolution-review.md) crosses
+real archived prototype epochs: retain actual supported old receipts and role packages,
+author/apply new format5 index work, demonstrate old compiler/reader refusals, and refuse an
+actual incompatible ledger intact. Existing-operation emission ABI and finite support policy
+remain open; interruption/coordination is the next workflow exercise, not more parser coverage.

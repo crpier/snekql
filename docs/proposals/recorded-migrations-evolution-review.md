@@ -74,3 +74,12 @@ freshness refusal, structural-success/decode-refusal and explicit003 receipts. N
 lazy consumers and real ty checks apply. No working-source mutation during native suites.
 No generic SQL-equivalence, custom-codec ABI, whole-resource or blanket readiness guarantee;
 SQL trusted, guides deferred, draft/incomplete/not production- or merge-ready.
+
+
+## Subsequent framework capability/layout exercise
+
+The [framework evolution review](recorded-migrations-framework-evolution-review.md) now uses
+actual archived format2 writers/readers/runtimes, a new format5 capability and actual nine/
+eleven-column ledgers. It records narrow retention versus refusal on both backends, not a
+general guarantee when future emission for existing operations changes. The outstanding-work
+list above describes this codec checkpoint; consult the follow-through for newer evidence.

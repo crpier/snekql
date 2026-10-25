@@ -1,0 +1,35 @@
+"""New framework compiler capability, not a cosmetic SQL mutation."""
+
+import json
+from pathlib import Path
+from typing import ClassVar
+
+from snekql import BACKEND as db
+from snekql.experimental import migrations as m
+
+
+class Indexed[S = db.Pending](db.Model[S]):
+    """Current application shape adds a real named index after the old role chain."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Indexed[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    role: db.Col[str] = db.Text()
+    __indexes__: ClassVar = [db.Index(role, name="accounts_by_role")]
+
+
+old = m.Package.load(Path("003_contract.json").read_text())
+package = m.compile(m.generate("004_index", [Indexed], backend="BACKEND", previous=old))
+assert package.version == 5
+assert len(package.statements) == 1
+Path("004_index.json").write_text(package.dump())
+print(
+    json.dumps(
+        {
+            "module": m.__file__,
+            "version": package.version,
+            "digest": package.digest,
+            "statements": package.statements,
+        }
+    )
+)

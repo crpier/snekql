@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Exercise actual archived framework writers/readers and SQLite/MariaDB durable ledgers:
+  preserve supported old role-chain receipts through newly authored format-five index work,
+  and refuse actual incompatible ledger layouts without history conversion or repair.
+  Record existing-operation compiler-epoch policy as a separate unresolved limit.
+
 - Exercise genuine application-codec replacement before frozen historical deployment on
   SQLite and MariaDB. Preserve old scalar bindings and receipts, distinguish structural
   success from current-codec readability, and author an explicit new representation rewrite.

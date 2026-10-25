@@ -34,6 +34,11 @@ bindings stay old; structural verification is not codec/data readiness; an expli
 representation migration enables current typed reads. Opaque historical provenance remains
 unrecorded, and genuine framework compiler/package/ledger evolution remains separate work.
 
+The [framework evolution review](recorded-migrations-framework-evolution-review.md) uses actual
+archived writers/readers/runtimes and nine/eleven-column ledgers, preserving supported old
+receipts through new format5 index work and refusing unsupported layouts intact. It does not
+prove future existing-operation emission ABI, automatic conversion or general downgrade safety.
+
 ## The four interfaces
 
 1. `generate(revision, models, backend=..., previous=...)` produces an immutable,

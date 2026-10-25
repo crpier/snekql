@@ -1,0 +1,27 @@
+"""An actual archived runtime writes its own durable receipt on the supplied database."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+from snekql import BACKEND as db
+from snekql.experimental import migrations as m
+
+
+async def main() -> None:
+    """Initial deployment only; later upgrade must not synthesize its evidence."""
+    payload = json.loads(sys.stdin.read())
+    config = CONFIG
+    package = m.Package.load(Path("001_accounts.json").read_text())
+    async with m.connect(config) as target:
+        outcome = await target.apply(
+            await target.prepare(package, schema_writers_excluded=NATIVE)
+        )
+        progress = [(p.revision, p.phase, p.digest) for p in await target.status()]
+    async with await db.Database.initialize(config) as app, app.transaction() as tx:
+        await tx.execute(db.raw("INSERT INTO accounts(id,is_admin) VALUES(1,1),(2,0)"))
+    print(json.dumps({"module": m.__file__, "outcome": outcome, "progress": progress}))
+
+
+asyncio.run(main())
