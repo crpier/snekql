@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Bind experimental managed inline primary-key claims to construction declarations
+  before effects, including intermediate/relinquished claims and standalone admission.
+  Preserve SQLite ordering, key conflict policy and AUTOINCREMENT distinctions rather
+  than comparing only key markers. Close a reproduced missing-key SQLite false
+  completion while retaining valid identities. Full table-key/nullability/rowid,
+  namespace and index/FK proofs remain separate; no format/ledger conversion or repair.
+
 - Refuse lossy automatic historical query declarations: check the proposed default
   primitive against its recorded physical definition instead of trusting a coarse
   storage hint. Native wider text and unsupported native codec policies need explicit

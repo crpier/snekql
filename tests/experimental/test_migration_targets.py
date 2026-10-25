@@ -2027,26 +2027,23 @@ async def mariadb_unique_index_cannot_satisfy_a_primary_key_contract() -> None:
             )
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "primary key differs" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "primary key differs" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "inline primary key" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -2123,23 +2120,23 @@ async def mariadb_unrequested_primary_key_cannot_complete() -> None:
         update={"definition": "`id` BIGINT NOT NULL"}
     )
     table = original.model_copy(update={"columns": (identifier, original.columns[1])})
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "primary key differs" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "primary key differs" in recovery.explanation
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "inline primary key" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -2184,23 +2181,23 @@ async def mariadb_primary_key_on_another_column_cannot_complete() -> None:
         original.columns[1].definition, original.columns[1].definition + " PRIMARY KEY"
     )
     table = original.model_copy(update={"sql": sql})
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "primary key differs" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "primary key differs" in recovery.explanation
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "inline primary key" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")

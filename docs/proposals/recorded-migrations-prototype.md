@@ -669,6 +669,48 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Inline primary-key declaration agreement before execution
+
+Compile/load now binds managed inline PRIMARY KEY declarations to corresponding
+construction declarations, including absence in either direction. Before/target and
+intermediate CREATE/ADOPT claims remain checked after relinquishment. Standalone
+ADD/ChangeDefault definitions also need bounded key-clause admission. Extra SQL columns
+do not manufacture ColumnState claims. This is not complete table-level key inference.
+
+SQLite key signatures retain ASC/DESC direction, the key's own ON CONFLICT policy and
+AUTOINCREMENT. Omitted direction/conflict normalize only to known ASC/ABORT defaults;
+explicit DESC or another policy cannot be erased behind a matching PRIMARY KEY marker.
+Following NOT NULL/UNIQUE conflict policies are not mistaken for the key's own policy.
+Known matching explicit ASC/ABORT, DESC, IGNORE and AUTOINCREMENT cases actually execute:
+DESC keeps a distinct hidden rowid, IGNORE preserves the original duplicate row, and
+AUTOINCREMENT retains never-reuse behavior after deleting the greatest id. This does
+not certify every rowid/nullability mode or all conflict/constraint interactions.
+
+Native ordinary inline keys bind presence. Direction clauses or unknown key suffixes
+require adapters rather than relying on server/version behavior. Native AUTO_INCREMENT,
+nullability, key order/index metadata and other attributes retain their existing separate
+catalog checks; this gate does not replace them. Known missing/hidden/moved inline-key
+construction examples now refuse before DDL/history instead of leaving effects before
+endpoint refusal. Those native examples were not false completion. Independent physical
+key drift still blocks a valid follow-up under the existing accepted-catalog guard.
+
+An actual archived `6806ca6` SQLite writer/reader/runtime completed an INTEGER PRIMARY
+KEY definition with no constructed key, then accepted duplicate42 and NULL ids. Its
+fixed real format2 artifact now refuses load/typed preparation. An isolated copied-source
+table-gate bypass reproduces current false completion without worktree mutation during
+native suites. The valid companion's literal dump/digest and id42/default7 deployment
+remain. No wire vocabulary/format/ledger conversion, receipt rewriting, retrospective
+revocation or automatic repair. Historical completion is not schema recertification.
+
+Quoted/default/string/expression mentions are not inline declarations. Multiple clauses
+or unsupported key-policy forms require adapters even when matching bytes. Inline/table
+key relocation is not silently treated as equivalent; rowid and naming differences need
+separate proof. Table-level member/order/expression/prefix policy, effective key
+nullability, key/constraint names, NOT NULL/UNIQUE conflict policy, namespace, index/FK
+compatibility, codecs and readiness remain separate. SQL is trusted executable input,
+not a sandbox. The remaining claim/workflow/interruption/resource/evolution queue is
+open; points1–4 incomplete, still draft and guides deferred.
+
 ## Historical query-source admission
 
 Historical query declarations are a separate generation seam, not a deployment or

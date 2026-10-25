@@ -596,3 +596,33 @@ No durable codec ABI/provenance, value/JSON-shape/hook preservation, universal n
 codec mapping or readiness certificate. General generation/metadata/resource/compiler/
 package/codec/ledger evolution and key/constraint/FK/ownership/workflow/interruption
 queue remains open; points1–4 incomplete, draft/guides deferred.
+
+
+### Inline-primary-key declaration checkpoint
+
+Compile/load binds managed inline key declarations/absence to construction, before/
+target/intermediate CREATE/ADOPT despite relinquishment. Standalone ADD/ChangeDefault
+key terms admitted independently. Extra SQL declarations do not manufacture claims.
+SQLite signatures preserve direction, key ON CONFLICT policy and AUTOINCREMENT;
+only known omitted ASC/ABORT defaults normalize. Following NOT NULL/UNIQUE policies
+are not attributed to the key. Matching ASC/ABORT, DESC (distinct hidden rowid), IGNORE
+(original duplicate retained) and AUTOINCREMENT (no greatest-id reuse) execute.
+Native ordinary inline presence binds; explicit directions/unknown suffixes adapter.
+Native identity/nullability/index/catalog guards remain independent and unchanged.
+
+Actual archived6806ca6 SQLite writer/reader/runtime completed INTEGER PRIMARY KEY
+metadata/no constructed key, accepting duplicate42 and NULL ids. Fixed real format2
+artifact now refuses load/typed preparation; copied-source table-gate bypass reproduces
+current false completion without working-source mutation during native suites. Valid
+companion literal dump/digest/model-free id42/default7 retained. Native known missing/
+hidden/moved inline-key examples move late refusal to pre-DDL/no history, not native
+false completion. Accepted-catalog proof still refuses independently changed physical
+keys for valid follow-ups. No format/ledger/receipt conversion or retrospective repair.
+
+Literal/quoted/nested mentions are not declarations. Multiple/unsupported forms need
+adapters; inline/table relocation is not automatically equivalent. Not full table-key
+member/order/expression/prefix proof, effective key nullability, constraint naming,
+NOT NULL/UNIQUE conflict policy, all rowid modes, namespace/index/FK, codec or readiness
+certification. Trusted executable SQL remains unsandboxed; remaining claim/workflow/
+interruption/resource/compiler/package/codec/ledger queue open, points1–4 incomplete,
+draft/guides deferred.
