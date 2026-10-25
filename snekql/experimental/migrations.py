@@ -40,6 +40,10 @@ lazy from snekql.experimental._migration_checks import (
     check_removals,
     drop_check,
 )
+lazy from snekql.experimental._migration_collation import (
+    validate_collation_claims,
+    validate_column_collation,
+)
 lazy from snekql.experimental._migration_contract import (
     historical_annotation,
     historical_field_name,
@@ -1095,6 +1099,7 @@ def _validate_draft(draft: Draft) -> None:
         _validate_column_coverage(table, draft.target.backend)
         validate_nullability_claims(table, draft.target.backend)
         validate_storage_claims(table, draft.target.backend)
+        validate_collation_claims(table, draft.target.backend)
         validate_default_claims(table, draft.target.backend)
         validate_inline_key_claims(table, draft.target.backend)
         validate_key_nullability_claims(table, draft.target.backend)
@@ -1105,6 +1110,7 @@ def _validate_draft(draft: Draft) -> None:
             _validate_column_identifier(op.column, draft.target.backend)
             validate_column_nullability(op.column, draft.target.backend)
             validate_column_storage(op.column, draft.target.backend)
+            validate_column_collation(op.column, draft.target.backend)
             validate_column_default(op.column, draft.target.backend)
             validate_column_inline_key(op.column, draft.target.backend)
             validate_column_unique(op.column, draft.target.backend)

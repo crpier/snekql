@@ -1672,8 +1672,8 @@ async def mariadb_storage_aliases_and_implicit_parameters_preserve_identity() ->
 
 
 @test(mark="slow")
-async def mariadb_wrong_collation_blocks_completion_and_finish() -> None:
-    """Matching VARCHAR storage cannot certify different comparison semantics."""
+async def mariadb_wrong_collation_refuses_before_construction() -> None:
+    """Known constructor/claim comparison mismatch refuses before native effects."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
     original = draft.target.tables[0]
@@ -1688,38 +1688,23 @@ async def mariadb_wrong_collation_blocks_completion_and_finish() -> None:
             "sql": "CREATE TABLE entry(id BIGINT NOT NULL PRIMARY KEY, title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL) ENGINE=InnoDB",
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "collation differs" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "collation differs" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction collation" in str(error.exception)
+        assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        assert_eq(
-            await tx.fetch_all(
-                mariadb.raw(
-                    "SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' AND COLUMN_NAME='title'"
-                )
-            ),
-            [{"COLLATION_NAME": "utf8mb4_general_ci"}],
-        )
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -1737,24 +1722,19 @@ async def mariadb_json_storage_alone_cannot_certify_implicit_collation() -> None
             )
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "collation differs" in str(error.exception)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction collation" in str(error.exception)
         assert "metadata" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "collation differs" in recovery.explanation
+        assert_eq(await target.status(), ())
 
 
 @test(mark="slow")
@@ -1767,17 +1747,16 @@ async def mariadb_unimplemented_collation_position_is_not_silently_ignored() -> 
         update={"definition": "`title` VARCHAR(255) NOT NULL COLLATE utf8mb4_bin"}
     )
     table = original.model_copy(update={"columns": (original.columns[0], title)})
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
         with assert_raises(migrations.PackageError) as error:
-            await target.prepare(package, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
         assert "unsupported MariaDB collation position" in str(error.exception)
         assert_eq(await target.status(), ())
 
@@ -1997,7 +1976,9 @@ async def mariadb_auto_increment_in_unparsed_attribute_text_requires_review() ->
     draft = migrations.generate("001", [Entry], backend="mariadb")
     original = draft.target.tables[0]
     title = original.columns[1].model_copy(
-        update={"definition": "`title` VARCHAR(255) NOT NULL DEFAULT auto_increment"}
+        update={
+            "definition": original.columns[1].definition + " DEFAULT auto_increment"
+        }
     )
     table = original.model_copy(update={"columns": (original.columns[0], title)})
     async with migrations.connect(server.config()) as target:
@@ -2151,7 +2132,7 @@ async def mariadb_primary_key_prefix_lengths_require_explicit_support() -> None:
     table = original.model_copy(
         update={
             "columns": (identifier, original.columns[1]),
-            "sql": "CREATE TABLE entry(id BIGINT NOT NULL, title VARCHAR(255) NOT NULL, PRIMARY KEY (title(12))) ENGINE=InnoDB",
+            "sql": f"CREATE TABLE entry(id BIGINT NOT NULL, {original.columns[1].definition}, PRIMARY KEY (title(12))) ENGINE=InnoDB",
         }
     )
     async with migrations.connect(server.config()) as target:

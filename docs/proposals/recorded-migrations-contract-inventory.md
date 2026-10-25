@@ -725,3 +725,25 @@ refusal. Isolated copied-source label-only comparison omission reproduces it. Na
 ordinary/DESC/AUTOINCREMENT positives retain key behavior. No conversion/repair/retrospective
 certification; whole key/index/constraint namespace, other attributes/policies and queue
 remain open. Trusted SQL unsandboxed; points1–4 incomplete, draft/guides deferred.
+
+
+### Column collation construction checkpoint
+
+Bind managed SQLite BINARY/NOCASE/RTRIM, implicit BINARY and optional COLLATE labels;
+known quotes/name keyword case normalize, not label presence/spelling/case. Custom/duplicate/
+unknown suffix/string-role forms require adapters. Native existing type-prefix utf8mb4/
+JSON-bin name contract reused; omission is not assumed equivalent to an explicit name.
+Not charset inheritance, locale/Unicode/version/custom registry/override/equivalence proof.
+Before/target/intermediate claims survive handoff; standalone terms need admission without
+final ownership/operation permission; extra SQL fields don't create ownership/authority.
+
+Archived8e7c243 real format2 NOCASE/BINARY falsely completed then accepted default 'Case'
+and 'case' under UNIQUE; literal load/typed prepare now refuse before effects/history.
+Truthful old NOCASE companion retains dump/digest/default/case-only duplicate rejection;
+isolated copied-source table-gate bypass reproduces. Archived native bin/general_ci committed
+DDL then refused UNCERTAIN/AMBIGUOUS, not native false completion; now pre-DDL refusal.
+Live built-in SQLite/native named comparison positives and independent post-completion
+catalog drift guard retained. No conversion/repair/retrospective certification, no full
+collation/index/FK/data/session/codec/readiness proof. Other attributes/constraints/charset/
+generated/namespaces/FK/workflow/interruption/resource/evolution queue open; trusted SQL
+unsandboxed, points1–4 incomplete, draft/guides deferred.

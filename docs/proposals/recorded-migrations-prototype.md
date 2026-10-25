@@ -669,6 +669,48 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Column collation construction agreement
+
+Compile/load binds each managed ColumnState collation to construction. SQLite's bounded
+language is BINARY/NOCASE/RTRIM, ASCII-case-insensitive names/known identifier quotes and
+implicit BINARY. Optional explicit COLLATE constraint labels bind presence/spelling/case;
+only quote style normalizes. Following labels are separate. Unknown custom/duplicate/
+string-role/suffix forms require adapters even with equal bytes. Quoted names/literals and
+nested expression COLLATE mentions do not manufacture a column collation claim. Expression
+semantics remain separate, not automatically certified by column agreement.
+
+Native binding reuses the existing bounded type-prefix utf8mb4/JSON-implied-bin declaration
+contract. Named collation equality is not server availability/equivalence proof; supported
+backend catalogs still matter. Unknown omitted native collation does not normalize to an
+explicit name using assumed table/server defaults. JSON/known LONGTEXT binary-collation
+storage alias behavior remains separately guarded. Charset inheritance/equivalence and
+arbitrary syntax/custom collations are not added here. Existing native unsupported-position
+refusal moves to compile rather than waiting for preparation. Native collation expression
+admission remains conservative; this does not broaden that language.
+
+Before/target/intermediate CREATE/ADOPT claims survive relinquishment; standalone ADD/
+ChangeDefault admission is independent of final ownership/operation permission. Extra SQL
+collated fields do not create recorded ownership. No new destructive/namespace authority.
+
+Actual archived8e7c243 writer/reader/runtime completed NOCASE metadata/BINARY construction,
+then accepted default 'Case' plus 'case' under UNIQUE. Real format2 literal now refuses load/
+typed prepare before effects/history. Truthful old NOCASE companion retains dump/digest/
+model-free default/case-only duplicate rejection. Isolated copied-source table-gate bypass
+reproduces current false completion, leaving working sources unmutated during native suites.
+Archived native bin/general_ci contradiction prepared and committed DDL, then refused with
+uncertain effects/ambiguous recovery: **not native false completion**, now pre-DDL refusal.
+No conversion/digest/ledger/receipt rewriting, retrospective repair/revocation/certification.
+
+Live SQLite built-ins distinguish case/trailing-space duplicate behavior. Known native bin/
+general_ci positives retain case behavior; post-completion physical collation drift still
+blocks a valid followup via the independent accepted-catalog guard. Constructor admission
+is not full live collation/index/FK/data/session/codec/readiness proof. SQLite built-in names
+are not a certificate against externally registered overrides; native names are not locale/
+Unicode/version/registry guarantees. Failed transactions exit before subsequent queries.
+Remaining attribute/constraint policies/identity, charset/generated/other facts, namespaces/
+indexes/FK compatibility, combined workflows/interruption/resources/compiler/package/codec/
+ledger queue stay open. Trusted SQL unsandboxed, points1–4 incomplete, draft/guides deferred.
+
 ## Explicit inline primary-key label agreement
 
 Compile/load also binds each managed inline key's optional explicit SQLite constraint

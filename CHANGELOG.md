@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Bind experimental managed column collations to construction: SQLite built-in
+  BINARY/NOCASE/RTRIM plus explicit labels, and the existing native type-prefix/JSON-bin
+  declaration contract. Close a reproduced SQLite NOCASE/BINARY UNIQUE false completion;
+  move known native mismatches before effects. Retain valid old identities, no conversion/
+  repair or native false-completion claim. Charset inheritance, custom collations,
+  registries/overrides, locale/version equivalence and readiness remain separate.
+
 - Bind experimental inline primary-key constraint labels independently of direction,
   conflict, identity and effective nullability. Close a reproduced SQLite recorded/
   constructed label contradiction; retain valid old identities and key/default behavior.

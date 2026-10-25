@@ -1,0 +1,79 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "08791084aef62cf8dd4b015ccad4b3dce732c495278a74782582ef2c76a66c3f",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"label\" TEXT COLLATE NOCASE NOT NULL DEFAULT 'Case' UNIQUE",
+              "name": "label",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"label\" TEXT COLLATE NOCASE NOT NULL DEFAULT 'Case' UNIQUE) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"label\" TEXT COLLATE NOCASE NOT NULL DEFAULT 'Case' UNIQUE",
+              "name": "label",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"label\" TEXT COLLATE NOCASE NOT NULL DEFAULT 'Case' UNIQUE) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"label\" TEXT COLLATE NOCASE NOT NULL DEFAULT 'Case' UNIQUE) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}
