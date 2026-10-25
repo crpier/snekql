@@ -1,0 +1,6 @@
+Validate	Test	2026-10-25T21:24:06.4879285Z ──────────────────────────── 4114 passed in 525.39s ────────────────────────────
+Validate	Forced lazy imports	2026-10-25T21:33:05.3945208Z ──────────────────────────── 4114 passed in 538.49s ────────────────────────────
+Validate	Type check	2026-10-25T21:33:08.8984868Z All checks passed!
+Validate	Lint	2026-10-25T21:33:12.5514515Z All checks passed!
+Validate	Isolated artifact smoke test	2026-10-25T21:33:15.1408944Z All checks passed!
+Validate	Isolated artifact smoke test	2026-10-25T21:33:18.5219259Z ────────────────────────────── 2 passed in 2.45s ───────────────────────────────

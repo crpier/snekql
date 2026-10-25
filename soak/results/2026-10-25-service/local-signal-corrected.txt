@@ -1,0 +1,5 @@
+tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, root] ... OK (6.13s)
+tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, worker] ... OK (6.15s)
+tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, root] ... OK (6.79s)
+tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, worker] ... OK (6.09s)
+────────────────────────────── 4 passed in 25.19s ──────────────────────────────

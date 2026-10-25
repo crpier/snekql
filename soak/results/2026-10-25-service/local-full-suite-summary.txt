@@ -1,0 +1,11 @@
+INVALID LAUNCH: background shell inherited ignored SIGINT. Not a green local full-suite result.
+See report and local-signal-corrected.txt.
+
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+ERROR tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, root]
+ERROR tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, worker]
+ERROR tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, root]
+ERROR tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, worker]
+
+─────────────────────── 4 error, 4110 passed in 1267.32s ───────────────────────

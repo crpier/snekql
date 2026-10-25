@@ -127,6 +127,12 @@ class FairAdmissionGate:
                             _ = self._waiters.popleft()
                             ticket = None
                         self.admitted += 1
+                        # Other notified tickets may already have re-parked before
+                        # this head ticket ran. Advancing the queue must wake its
+                        # new head if capacity remains; another release may never
+                        # occur when an acquirer retains several leases (#540).
+                        if self.admitted < self.capacity:
+                            self.condition.notify_all()
                         return
                     ticket = self._enqueue_waiter(ticket)
                     await self._wait_for_release(ticket, deadline, acquisition_timeout)
