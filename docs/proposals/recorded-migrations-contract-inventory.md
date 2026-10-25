@@ -920,3 +920,28 @@ Not parent-key/member/index/type/collation/uniqueness/data/current or future enf
 codec/query readiness/full FK compatibility or recovery proof. Remaining constraint/namespace/
 FK/combined workflow/interruption/resource/compiler/package/codec/ledger/release queue open;
 points1–4 incomplete, trusted SQL unsandboxed, draft/guides deferred, not production/merge-ready.
+
+
+### SQLite explicit referenced-member checkpoint
+
+Pending projected/live endpoint parent proof now includes declared physical column presence
+for explicit inline and single/composite table-FK member lists. ASCII folding/decoded quotes,
+not undeclared rowid aliases/labels/literals/Unicode folding/query aliases. Actual rowid-named
+columns work; unknown table-FK member string/expression/option/malformed roles require adapters.
+Before/target/intermediate CREATE/SQLite ADOPT claims survive handoff, extra SQL child-field
+opaque inline references unclaimed, no parent adoption/constrained ADD permission. Implicit
+table-FK lists retain base-table observation ONLY, implicit-key resolution separate; no inline
+language expansion. Native unchanged. Independent stale-plan/accepted-catalog guards retained.
+
+Actual archived7b20272 format2 writer/reader/runtime completed matching FK DDL with ordinary
+parent but missing explicit member, then child writes failed under foreign_keys1: bounded
+member-readiness gap, NOT missing/mismatched-FK construction or orphan acceptance. SAME frozen
+body/digest/load works old/current with declared member, valid/NULL children and orphan
+rejection. Pending prepare refuses pre-effects; copied member-gate-only omission reproduces,
+preparation-only bypass retains old base-table proof and new endpoint member proof, rolls
+back child+ledger, leaves external parent. Working sources untouched during native suites.
+No artifact/digest/ledger/receipt conversion, repair/revocation/retrospective certification;
+old complete/already-applied receipts not new readiness certificates. Not arity/key/unique/
+index/affinity/type/collation/implicit-key/data/current or future session/codec/query-readiness/
+full FK/IO/deadline/total-memory/resource or recovery proof. Remaining queue open; points1–4
+incomplete, trusted SQL unsandboxed, guides deferred, draft/not production/merge-ready.

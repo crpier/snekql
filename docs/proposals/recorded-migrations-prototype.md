@@ -669,6 +669,44 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## SQLite explicit referenced-member observation
+
+Pending preparation and live completion now extend ordinary parent-table observation with
+explicit referenced-member presence. Read physical declarations from the relevant parent
+CREATE TABLE SQL in the projected/live catalog, not from imported models or query aliases.
+Inline claimed references and explicit single/composite table-FK full-column lists use
+SQLite ASCII identifier folding and decoded identifier quotes. A declared rowid-named column
+is retained; undeclared rowid/_rowid_/oid aliases, constraint labels, default literals and
+Unicode casefold guesses are not physical columns. Unknown table-FK member expressions,
+string roles/options/malformed lists require adapters even with equal construction bytes.
+
+Before/target/intermediate CREATE/SQLite ADOPT requirements survive handoff; matching existing
+child DDL is not member-readiness proof. Parent ownership is not inferred, opaque inline
+references on extra SQL child fields remain unclaimed, constrained ADD remains unsupported.
+Projected same-package parent creation must actually declare explicit referenced members;
+old both-order positives remain. Implicit table-FK member lists retain base-table observation
+ONLY: this gate does not resolve implicit parent keys or widen inline-reference admission.
+No local/parent arity, uniqueness/key/index eligibility, affinity/type/collation, data/current
+or future enforcement-session/codec/query-readiness/full FK/resource/recovery guarantee.
+Native path unchanged. Existing stale-plan/accepted-catalog drift guards remain independent.
+
+Actual archived `7b20272` format2 writer/reader/runtime completed real MATCHING FK DDL with an
+ordinary parent but absent explicit member; child writes failed with foreign_keys=1. This is
+a member-readiness gap, NOT missing/mismatched-FK construction or orphan acceptance. SAME
+frozen artifact retains literal body/digest/load on old/current runtimes and valid/NULL child
+writes plus orphan rejection when the parent declares the member. Pending prepare refuses
+missing members read-only pre-effects. Isolated copied member-validator-only omission at
+both call sites reproduces old context with ordinary-parent/construction/catalog guards
+retained. Copied preparation-only bypass retains archived ordinary-parent proof and current
+endpoint member proof: child+ledger roll back, external parent remains. Working sources are
+not mutated during native suites. No format/digest/ledger/receipt conversion, repair/revocation/
+retrospective certification; old complete/already-applied receipts remain earlier execution
+evidence, not new parent/readiness certificates.
+
+Remaining key/index/type/collation/implicit-key/constraint/namespace/FK/combined workflow/
+interruption/resource/compiler/package/codec/ledger/release-scope queue open; points1–4
+incomplete, trusted SQL unsandboxed, guides deferred, draft/not production/merge-ready.
+
 ## SQLite referenced-parent ordinary-table observation
 
 Pending SQLite preparation now requires observed or explicitly planned ordinary parent

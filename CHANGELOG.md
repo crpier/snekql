@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Check explicit SQLite FK parent members against observed/projected declared columns at
+  pending preparation and completion, rejecting missing columns and undeclared rowid aliases
+  without adopting parents or changing frozen identities. Retain quoted/ASCII names and
+  explicit composite table-FK lists. This closes a bounded member-readiness gap, not key/
+  index/type/collation/implicit-key resolution or full FK compatibility certification.
+
 - Require observed or explicitly projected ordinary SQLite parent tables for claimed inline
   and table-level FKs during pending preparation and live endpoint validation. Reject
   missing/view/virtual parents without adopting them; retain external unowned parents,
