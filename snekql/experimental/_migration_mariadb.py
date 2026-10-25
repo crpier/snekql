@@ -255,13 +255,21 @@ def mariadb_declared_auto_increment(definition: str) -> bool:
         elif depth == 0 and token.kind == "word":
             word = token.value.lower()
             if word == "auto_increment":
-                if unparsed:
-                    msg = "unsupported MariaDB AUTO_INCREMENT position; explicit adapter required"
-                    raise PackageError(msg)
+                _check_auto_increment_position(found=found, unparsed=unparsed)
                 found = True
             elif word not in prefix_words:
                 unparsed = True
     return found
+
+
+def _check_auto_increment_position(*, found: bool, unparsed: bool) -> None:
+    """Require one generator attribute within the supported declaration prefix."""
+    if found:
+        msg = "multiple MariaDB AUTO_INCREMENT clauses require an explicit adapter"
+        raise PackageError(msg)
+    if unparsed:
+        msg = "unsupported MariaDB AUTO_INCREMENT position; explicit adapter required"
+        raise PackageError(msg)
 
 
 def _inline_primary_key(definition: str) -> bool:

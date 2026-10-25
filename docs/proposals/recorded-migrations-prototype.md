@@ -669,6 +669,38 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Native AUTO_INCREMENT construction agreement
+
+Compile/load binds managed native AUTO_INCREMENT presence/absence independently of key/
+nullability/storage agreement. Before/target and intermediate CREATE payload claims survive
+relinquishment; standalone ADD/ChangeDefault language admission is independent of final
+ownership/operation permission. Native adoption is not added. Extra executable generators
+or supporting unique indexes do not create recorded column/index/destructive authority.
+
+Reuse the existing bounded native attribute-prefix recognizer; known keyword case normalizes.
+Duplicate attributes now require adapters even with equal bytes. Unsupported positions need
+adapters, not a general DDL-parser/equivalence fallback. Identifier/default/comment/literal
+mentions do not manufacture attributes. SQLite rowid/AUTOINCREMENT key policy remains
+separate and unchanged. DEFAULT and other attribute admission remain independent.
+
+Actual archived9b4b442 writer/reader/runtime emitted/loaded/prepared real format2 recording
+AUTO_INCREMENT but constructing a plain primary key, committed DDL then refused UNCERTAIN/
+AMBIGUOUS recovery: **not native false completion**. Current literal load/typed prepare now
+refuse before effects/history. Truthful old companion retains literal dump/digest/model-free
+generation/default7; known fresh-session empty/NULL inserts allocate distinct ids, ordinary
+counter advancement does not invalidate a valid follow-up. Isolated copied-source table-gate
+bypass preserves old late catalog refusal/uncertainty, not false completion, leaving working
+sources untouched during native suites. No conversion/digest/ledger/receipt rewriting,
+retrospective repair/revocation or history recertification.
+
+Live accepted-catalog drift guard still blocks valid followup after removing the physical
+generator. Constructor admission does not replace catalog/recovery checks or guarantee exact
+next counters, contiguous/no-gap/non-reuse sequences, ranges/exhaustion, zero-input sql_mode,
+server offsets/increments or future-session semantics. No policy mutation or new recovery
+shortcut. Other generated/visibility/ON UPDATE/attribute agreement, constraints/namespaces/
+indexes/FK compatibility, combined workflows/interruption/resources/compiler/package/codec/
+ledger queue remain open. Trusted SQL unsandboxed; points1–4 incomplete, draft/guides deferred.
+
 ## Column collation construction agreement
 
 Compile/load binds each managed ColumnState collation to construction. SQLite's bounded

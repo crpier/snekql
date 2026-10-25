@@ -1820,7 +1820,7 @@ async def mariadb_collations_bind_by_name_and_ignore_default_literal_words() -> 
 
 
 @test(mark="slow")
-async def mariadb_missing_auto_increment_blocks_completion_and_finish() -> None:
+async def mariadb_missing_auto_increment_refuses_before_construction() -> None:
     """A primary key is not proof of the recorded server-side ID generator."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
@@ -1829,42 +1829,27 @@ async def mariadb_missing_auto_increment_blocks_completion_and_finish() -> None:
         update={"definition": "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"}
     )
     table = original.model_copy(update={"columns": (identifier, original.columns[1])})
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "AUTO_INCREMENT differs" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "AUTO_INCREMENT differs" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction AUTO_INCREMENT" in str(error.exception)
+        assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        assert_eq(
-            await tx.fetch_all(
-                mariadb.raw(
-                    "SELECT EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' AND COLUMN_NAME='id'"
-                )
-            ),
-            [{"EXTRA": ""}],
-        )
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
-async def mariadb_unrequested_auto_increment_cannot_complete() -> None:
+async def mariadb_unrequested_auto_increment_refuses_before_construction() -> None:
     """A stricter server-side generation policy is not the declared contract either."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
@@ -1877,23 +1862,23 @@ async def mariadb_unrequested_auto_increment_cannot_complete() -> None:
             )
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "AUTO_INCREMENT differs" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "AUTO_INCREMENT differs" in recovery.explanation
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction AUTO_INCREMENT" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")

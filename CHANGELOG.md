@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Bind experimental managed native AUTO_INCREMENT presence/absence to construction,
+  including intermediate/relinquished claims and standalone language admission. Move
+  known contradictions before DDL/history and refuse duplicate attributes; retain valid
+  old identities, generation/default behavior and independent drift guards. No native
+  false-completion, exact counter/session/sequence, format conversion or repair claim.
+
 - Bind experimental managed column collations to construction: SQLite built-in
   BINARY/NOCASE/RTRIM plus explicit labels, and the existing native type-prefix/JSON-bin
   declaration contract. Close a reproduced SQLite NOCASE/BINARY UNIQUE false completion;

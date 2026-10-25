@@ -747,3 +747,24 @@ catalog drift guard retained. No conversion/repair/retrospective certification, 
 collation/index/FK/data/session/codec/readiness proof. Other attributes/constraints/charset/
 generated/namespaces/FK/workflow/interruption/resource/evolution queue open; trusted SQL
 unsandboxed, points1–4 incomplete, draft/guides deferred.
+
+
+### Native AUTO_INCREMENT construction checkpoint
+
+Bind managed native generator presence/absence independently of key/storage/nullability.
+Before/target/intermediate CREATE claims survive handoff; standalone language admission
+independent of final ownership/operation permission, not native adoption/alter-key support.
+Extra SQL generators/indexes don't create recorded ownership/destructive authority. Existing
+bounded attribute prefix/case reused; duplicates/equal unknown positions require adapters;
+identifier/default/comment/literal mentions aren't attributes. SQLite identity unchanged.
+
+Archived9b4b442 real format2 emitted/loaded/prepared generator metadata/plain construction,
+committed DDL then refused UNCERTAIN/AMBIGUOUS: not false completion. Literal load/typed
+prepare now refuse pre-effects/history; truthful companion retains dump/digest/generation/
+default7/counter-tolerant followup. Isolated copied-source gate bypass preserves late refusal/
+uncertainty, working sources untouched during native suites. Independent post-completion
+physical generator drift guard kept. No conversion/repair/retrospective certification,
+exact counter/sequence/no-gap/non-reuse/range/zero-mode/offset/increment/future-session/codec/
+readiness proof or recovery shortcut. Other attributes/generated/visibility/constraints/
+namespaces/FK/workflows/interruption/resource/evolution queue open; trusted SQL unsandboxed,
+points1–4 incomplete, draft/guides deferred.
