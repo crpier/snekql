@@ -24,7 +24,11 @@ from snektest import (
 )
 
 from snekql.testing.mariadb import TemporaryMariaDBServerError, temporary_mariadb_server
-from tests.helpers import capture_snekql_logs, provide_mariadb_server
+from tests.helpers import (
+    capture_snekql_logs,
+    provide_mariadb_server,
+    wait_for_task_event,
+)
 
 SENTINEL = "harmless_bootstrap_sentinel_323"
 
@@ -209,12 +213,12 @@ async def cancelled_bootstrap_closes_sensitive_client(mode: str) -> None:
         try:
             # Native installation/startup is setup, not cancellation latency. Its
             # watchdog must allow the server's own 20-second readiness budget.
-            await asyncio.wait_for(gate.started.wait(), 60)
+            await wait_for_task_event(task, gate.started, timeout=60)
             if mode == "native":
                 task.cancel("first cancellation")
             else:
                 scope.cancel()
-            await asyncio.wait_for(gate.cleaning.wait(), 10)
+            await wait_for_task_event(task, gate.cleaning, timeout=10)
             if mode == "native":
                 task.cancel("repeated cancellation")
             gate.release.set()
