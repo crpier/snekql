@@ -669,6 +669,51 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## SQLite inline REFERENCES construction agreement
+
+Compile/load binds managed SQLite column REFERENCES presence/absence, one explicit
+unqualified target table and referenced member, bounded immediate ON DELETE/UPDATE actions
+and this clause's optional CONSTRAINT label against corresponding executable columns.
+Known identifier quote styles/ASCII identifier and keyword case normalize; action clause
+ordering and omitted/default NO ACTION normalize. SQLite NO ACTION remains DISTINCT from
+RESTRICT; native immediate-action normalization is not imported. Label presence/spelling/
+case bind, known label quotes normalize. Following known column-constraint boundaries own
+their own identity; a REFERENCES label never becomes table DropCheck authority.
+
+Finite action vocabulary is CASCADE/RESTRICT/NO ACTION. Implicit parent-key resolution,
+composite inline targets, qualified targets, string-role names, expressions/sort/prefix
+members, multiple REFERENCES/duplicate actions, MATCH/DEFERRABLE/NOT DEFERRABLE/INITIALLY,
+SET NULL/DEFAULT and unknown own suffix/actions require adapters even matching bytes. SET
+forms and broader ordinary-default/nullability/action role integration remain deferred,
+not silently certified by this gate. Compiler-generated table-level FKs are outside this
+inline gate; this is not complete SQLite FK syntax or SQL/DDL validity solving.
+
+Before/target/intermediate CREATE/SQLite ADOPT claims survive relinquishment; standalone
+ADD/ChangeDefault language admission is independent of final ownership and operation
+permission. Extra executable SQL fields' own references, including unknown timing forms,
+remain trusted/unclaimed, not owned child columns or implicit parent adoption. Native
+handling remains unchanged. No new FK alteration/destruction API, native adoption or
+referenced parent existence/key/index/type/collation/namespace/privilege proof. Query/model
+mapping and parent ownership remain separate; declaring a reference doesn't adopt a parent.
+
+Actual archived51e4b74 writer/reader/runtime emitted/loaded/completed real format2 recording
+REFERENCES parents(id) but constructing no FK, then accepted orphan999 with foreign_keys1:
+genuine SQLite false completion. Literal load/typed prepare now refuse pre-schema/history;
+truthful companion retains dump/digest/model-free parent/NULL-child/valid-child writes and
+orphan rejection. Isolated copied current-source table-gate-only bypass reproduces false
+completion with other guards active, no worktree mutation during native suites. No format/
+digest/ledger/receipt conversion, retrospective repair/revocation/certification or recovery
+shortcut. Missing parents or incompatible parent keys remain separate readiness work.
+
+Live CASCADE parent-key update and parent deletion retain child propagation/deletion;
+independent accepted-catalog drift still blocks followup after physical action changes.
+These bounded cases do not promise all future foreign_keys/defer_foreign_keys sessions,
+application writes/data/trigger/privilege/codec/query readiness, arbitrary FK equivalence,
+resource/deadline/total-memory coverage or full referenced-parent compatibility. Remaining
+attributes/constraints/namespaces/FK/combined workflows/interruption/resources/compiler/
+package/codec/ledger/release-scope queue open; points1–4 incomplete, trusted SQL unsandboxed,
+draft/guides deferred, not production/merge-ready.
+
 ## SQLite inline CHECK construction agreement
 
 Compile/load binds managed SQLite column CHECK bodies bidirectionally to the corresponding

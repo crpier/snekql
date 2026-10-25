@@ -867,3 +867,30 @@ current or future enforcement-session/data/privilege/codec/readiness or recovery
 Remaining native/attributes/constraints/namespaces/FK/combined interruption/resources/compiler/
 package/codec/ledger/release queue open; points1–4 incomplete, trusted SQL unsandboxed,
 draft/guides deferred, not production/merge-ready.
+
+
+### SQLite inline REFERENCES construction checkpoint
+
+Bind managed inline REFERENCES presence/explicit unqualified target+one member/CASCADE,
+RESTRICT, NO ACTION/own label. Known identifier quotes/ASCII names+keyword case/action
+ordering/omitted NO ACTION normalize; NO ACTION DISTINCT from RESTRICT, label presence/
+spelling/case bind. Unknown implicit parent key/composite or qualified targets/string roles/
+member expressions/multiple references/duplicate actions/MATCH/timing/SET actions need
+adapters even equal bytes. No full FK syntax/SQL validity/resource certificate. Before/
+target/intermediate CREATE/SQLite ADOPT after handoff and standalone ADD/ChangeDefault
+admission independent of final ownership/operation permission; extra SQL field references
+unclaimed/trusted, no parent adoption/extra child ownership/DropCheck authority. Generated
+table-level FKs/native path unchanged and separately partial.
+
+Archived51e4b74 actual format2 writer/reader/runtime falsely completed missing-FK SQL,
+accepted orphan999 with foreign_keys1. Literal load/typed prepare now pre-effects refusal;
+truthful companion retains body/digest/model-free parent/NULL-child/valid-child/orphan
+rejection. Copied current-source table-gate-only bypass reproduces false completion with
+other guards active, source untouched during native suites. No conversion/repair/revocation/
+retrospective certification. Live CASCADE update/delete and independent later physical-action
+drift guard retained. Not parent existence/key/index/type/collation/namespace/privilege/full
+compatibility/current or future enforcement-session/data/codec/readiness or recovery proof.
+Query/model mapping/parent ownership separate; SET forms/other attribute-role integration,
+namespace/constraint/FK/combined workflow/interruption/resource/compiler/package/codec/ledger/
+release queue open; points1–4 incomplete, trusted SQL unsandboxed, draft/guides deferred,
+not production/merge-ready.

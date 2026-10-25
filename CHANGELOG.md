@@ -4,6 +4,14 @@
 
 ### Experimental
 
+- Bind experimental SQLite managed inline REFERENCES presence, explicit target/member,
+  bounded immediate actions and own label to construction before effects. Close an
+  archived orphan-accepting false completion with foreign_keys enabled; retain valid old
+  identities, NULL/valid-child/orphan rejection, CASCADE behavior and drift guards.
+  Keep NO ACTION distinct from RESTRICT; unknown implicit/composite/timing/MATCH/SET forms
+  need adapters even equal bytes. No native path change, implicit parent adoption,
+  parent-compatibility/readiness certificate, format conversion or retrospective repair.
+
 - Bind experimental SQLite managed inline CHECK bodies, own labels, order and multiplicity
   to construction before effects, including handoff/intermediate/standalone admission.
   Close an archived missing-CHECK false completion; retain truthful old identities,

@@ -70,6 +70,10 @@ lazy from snekql.experimental._migration_inline_check import (
     validate_column_inline_check,
     validate_inline_check_claims,
 )
+lazy from snekql.experimental._migration_inline_reference import (
+    validate_column_inline_reference,
+    validate_inline_reference_claims,
+)
 lazy from snekql.experimental._migration_keys import (
     validate_column_inline_key,
     validate_inline_key_claims,
@@ -1130,6 +1134,7 @@ def _validate_draft(draft: Draft) -> None:
         validate_on_update_claims(table, draft.target.backend)
         validate_generation_claims(table, draft.target.backend)
         validate_inline_check_claims(table, draft.target.backend)
+        validate_inline_reference_claims(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
             _validate_column_identifier(op.column, draft.target.backend)
@@ -1145,6 +1150,7 @@ def _validate_draft(draft: Draft) -> None:
             validate_column_on_update(op.column, draft.target.backend)
             validate_column_generation(op.column, draft.target.backend)
             validate_column_inline_check(op.column, draft.target.backend)
+            validate_column_inline_reference(op.column, draft.target.backend)
     if any(
         table.name.casefold() in _RESERVED
         for table in (
