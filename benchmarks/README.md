@@ -291,3 +291,9 @@ point-read declines and added plan memory. No production change proposed.
 RETURNING projections: repeated wide tuple gains, variable named results,
 unchanged output retention and mixed point controls. StopIteration behavior and
 all per-field/final contracts retained; no general point/backend gain claim.
+
+[Current runtime reassessment](runtime-reassessment-534.md) records the post-#533
+SQLite/MariaDB baseline, fixed transaction/query costs, existing projection-stem
+reuse, bulk phase accounting and separate profiles/memory/acquisition evidence.
+No runtime change or new high-confidence large optimization proposed; prepared
+execution remains a conditional design question, not the next micro-optimization.

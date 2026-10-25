@@ -1,0 +1,20 @@
+{
+  "detected_ns": 1792915052955955066,
+  "estimated_other_test_start_ns": 1792914939955955066,
+  "labels": [
+    "timing-1-mariadb-contention",
+    "timing-2-mariadb-join",
+    "timing-2-mariadb-stream",
+    "timing-2-mariadb-bulk",
+    "timing-2-mariadb-contention",
+    "timing-2-mariadb-point",
+    "memory-3-mariadb-bulk"
+  ],
+  "reason": "Detected unrelated experimental normal/lazy test session in /home/crpier/Projects/snekql. Paused own orchestration; exclude and repeat overlapping/boundary reports after it exits. Do not stop unrelated work.",
+  "later_overlap": {
+    "estimated_start_ns": 1792916432688477203,
+    "labels": [
+      "memory-3-mariadb-bulk"
+    ]
+  }
+}

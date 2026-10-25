@@ -1,0 +1,80 @@
+[
+  {
+    "name": "stem-1-sqlite",
+    "argv": [
+      "/home/crpier/Projects/third-snekql/.venv/bin/python",
+      "/home/crpier/.cache/snekql-reassessment/diagnose.py",
+      "sqlite",
+      "stem",
+      "0"
+    ],
+    "started_ns": 1792917287591314831,
+    "finished_ns": 1792917299581950954,
+    "exit": 0
+  },
+  {
+    "name": "stem-1-mariadb",
+    "argv": [
+      "/home/crpier/Projects/third-snekql/.venv/bin/python",
+      "/home/crpier/.cache/snekql-reassessment/diagnose.py",
+      "mariadb",
+      "stem",
+      "0"
+    ],
+    "started_ns": 1792917299582187723,
+    "finished_ns": 1792917320015234856,
+    "exit": 0
+  },
+  {
+    "name": "stem-2-mariadb",
+    "argv": [
+      "/home/crpier/Projects/third-snekql/.venv/bin/python",
+      "/home/crpier/.cache/snekql-reassessment/diagnose.py",
+      "mariadb",
+      "stem",
+      "1"
+    ],
+    "started_ns": 1792917320015444281,
+    "finished_ns": 1792917342313265229,
+    "exit": 0
+  },
+  {
+    "name": "stem-2-sqlite",
+    "argv": [
+      "/home/crpier/Projects/third-snekql/.venv/bin/python",
+      "/home/crpier/.cache/snekql-reassessment/diagnose.py",
+      "sqlite",
+      "stem",
+      "1"
+    ],
+    "started_ns": 1792917342313506980,
+    "finished_ns": 1792917356440753804,
+    "exit": 0
+  },
+  {
+    "name": "stem-3-sqlite",
+    "argv": [
+      "/home/crpier/Projects/third-snekql/.venv/bin/python",
+      "/home/crpier/.cache/snekql-reassessment/diagnose.py",
+      "sqlite",
+      "stem",
+      "2"
+    ],
+    "started_ns": 1792917356441092987,
+    "finished_ns": 1792917368510152747,
+    "exit": 0
+  },
+  {
+    "name": "stem-3-mariadb",
+    "argv": [
+      "/home/crpier/Projects/third-snekql/.venv/bin/python",
+      "/home/crpier/.cache/snekql-reassessment/diagnose.py",
+      "mariadb",
+      "stem",
+      "2"
+    ],
+    "started_ns": 1792917368510365473,
+    "finished_ns": 1792917388651903345,
+    "exit": 0
+  }
+]
