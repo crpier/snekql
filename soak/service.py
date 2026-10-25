@@ -86,8 +86,10 @@ async def _phase(  # noqa: C901
         group.create_task(monitor())
         group.create_task(bursts())
         async with asyncio.TaskGroup() as workers:
-            for identity in range(config.workers):
-                worker_tasks.append(workers.create_task(worker(identity)))
+            worker_tasks.extend(
+                workers.create_task(worker(identity))
+                for identity in range(config.workers)
+            )
         done.set()
     return latency
 
