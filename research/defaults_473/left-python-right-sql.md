@@ -1,6 +1,6 @@
 # Python on the left, SQL on the right
 
-Research for #473, 2026-10-25, continuing from `cedd4a9`.
+Research for #473, 2026-10-26, continuing from `cedd4a9`.
 Environment: CPython 3.15.0, ty 0.0.84, snekql 0.9.0.
 This is a **static-only feasibility prototype**, not an accepted interface or a
 production implementation. No dependency changes or database runtime tests.
