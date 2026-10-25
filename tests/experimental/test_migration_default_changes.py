@@ -218,7 +218,12 @@ def default_operation_cannot_authorize_other_column_changes() -> None:
         )
         with assert_raises(m.PackageError) as error:
             m.compile(invalid)
-        assert "only the default" in str(error.exception)
+        diagnostic = (
+            "ordinary column nullability"
+            if "nullable" in update
+            else "only the default"
+        )
+        assert diagnostic in str(error.exception)
 
 
 @test(mark="fast")

@@ -353,7 +353,12 @@ def native_default_operations_cannot_change_other_recorded_column_facts() -> Non
                     }
                 )
             )
-        assert "must change only the default" in str(error.exception)
+        diagnostic = (
+            "ordinary column nullability"
+            if "nullable" in changes
+            else "must change only the default"
+        )
+        assert diagnostic in str(error.exception)
 
 
 _CHILD = r"""

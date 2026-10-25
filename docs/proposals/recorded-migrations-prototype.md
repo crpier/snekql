@@ -669,6 +669,48 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Ordinary-column nullability agreement before execution
+
+Compilation/loading binds ordinary ColumnState.nullable flags to both their frozen
+column definitions and corresponding construction declarations, in both directions.
+Top-level NOT NULL means required; explicit NULL or absence of a nullability clause
+means nullable. DEFAULT NULL, parenthesized expressions/CHECKs, quoted literals and
+identifier contents are not nullability clauses. Multiple clauses require an adapter,
+rather than selecting an arbitrary winner. This is a bounded declaration check, not
+arbitrary expression equivalence or a claim that CHECK/default effects cannot reject
+NULL independently.
+
+Before/target and intermediate CREATE/ADOPT claims remain checked even if later
+relinquished. ADD COLUMN and ChangeDefault payloads independently bind their own
+flags/definitions before projection, so relinquishment cannot hide inconsistent
+nullable ADD metadata with required executable SQL. Existing contraction/edit guards
+remain active; this grants no additional alteration authority or implicit backfill.
+
+**Primary-key members remain separate.** Inline keys and potential table-key members
+are excluded from this ordinary-column check; membership spelling is not a key-proof
+or a promise about primary-key nullability on every SQLite/native table mode. A
+constraint's name is not a member and cannot exempt an unrelated ordinary column.
+Existing native key/catalog checks are unchanged. Positive routes on both backends
+retain table-level primary-key operation while an ordinary nullable column accepts
+explicit NULL and future omission uses default7. Do not generalize this slice into
+all-column physical nullability or a future application-session enforcement certificate.
+
+An actual archived `adb59a6` SQLite compiler/reader/runtime completed a package with
+required metadata/definition but nullable construction SQL, then accepted NULL. The
+fixed real format2 artifact now refuses compile/load/preparation, including typed
+in-memory Package objects. Native opposing nullability mismatch tests now refuse
+before DDL/history rather than only after committed effects. Runtime endpoint guards
+are unchanged. An isolated copied-source gate bypass reproduces current-runtime
+false completion without mutating working source during native suites.
+
+No format/vocabulary/ledger conversion. The valid archived companion preserves bytes/
+digest and model-free deployment retains id42/default7. Previously valid backend2/7/8
+and fixed2/3 identities remain. No receipt rewriting or automatic revocation/repair
+of historical completions: status is history, not retrospective schema certification.
+Storage/default agreement, complete key/constraint/index/namespace/privilege/negative
+ownership/drift/FK compatibility and remaining workflow/resource/compiler/codec/ledger
+proofs stay separate. Trusted construction SQL is not sandboxed.
+
 ## Positive managed-column coverage before execution
 
 Compilation/loading now requires exactly one actual column declaration for every
@@ -706,8 +748,8 @@ the evidence. Gate bypass again falsely completes the inconsistent old SQLite
 artifact; no working-source mutation during native suites.
 
 This is **positive managed-column presence**, not complete body/all-effects proof,
-reverse ownership inference or full declaration/physical-claim agreement. Storage,
-nullability/defaults, indexes/constraints, native namespaces/privilege visibility,
+reverse ownership inference or full declaration/physical-claim agreement. Storage/defaults and broader key nullability,
+indexes/constraints, native namespaces/privilege visibility,
 unexpected objects/negative ownership/drift and FK compatibility need separate
 proof/refusal. SQL remains trusted executable input, not sandboxed.
 

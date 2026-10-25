@@ -145,7 +145,7 @@ def check_removal_authority_is_exact_and_cannot_broaden_old_formats() -> None:
     table = first.target.tables[0]
     inline = table.model_copy(
         update={
-            "sql": 'CREATE TABLE "entries" ("id" INTEGER PRIMARY KEY, "value" INTEGER CONSTRAINT "ck_nonnegative" CHECK ("value" >= 0)) STRICT'
+            "sql": 'CREATE TABLE "entries" ("id" INTEGER PRIMARY KEY, "value" INTEGER NOT NULL DEFAULT 7 CONSTRAINT "ck_nonnegative" CHECK ("value" >= 0)) STRICT'
         }
     )
     for source in (

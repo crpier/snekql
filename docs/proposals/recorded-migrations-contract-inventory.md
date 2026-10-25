@@ -463,3 +463,33 @@ Storage/nullability/default agreement and broader constraint/index/namespace/pri
 unexpected-object/negative-ownership/drift/FK compatibility, combined workflows/
 interruption/resource/compiler/codec/ledger queue remain open. Points1–4 incomplete;
 trusted SQL not sandboxed, draft/guides deferred, no production-readiness assertion.
+
+### Ordinary nullability-claim checkpoint
+
+Compile/load checks ordinary nullable flags against their column definitions and
+construction declarations, bidirectionally. Top-level NOT NULL vs explicit/implicit
+NULL; excludes DEFAULT NULL, parenthesized expression/CHECK/quoted tokens. Multiple
+clauses refuse. Before/target and intermediate CREATE/ADOPT checked despite later
+relinquishment; ADD/default payload flags independently bind before projection.
+
+Key members excluded from this **ordinary** proof (inline or potential table-level).
+This does not certify primary-key nullability across table/backend modes; existing key
+checks remain independent. Constraint names do not exempt unrelated ordinary columns.
+Both-engine table-key/ordinary-nullable positives retain explicit NULL/default7.
+CHECK/default effects may still reject NULL independently of declared nullability.
+
+Actual archivedadb59a6 SQLite completed a package claiming required metadata/definition
+but constructing a nullable column, then accepted NULL. Fixed format2 artifact now
+refuses at compile/load/prepare, including typed Package shortcuts. Opposing native
+nullability mismatches now preeffect/no history rather than late committed-effects
+refusal; runtime endpoint guards unchanged. Isolated copied-source gate bypass again
+falsely completes/accepts NULL, no mutation of working source during native suites.
+Valid companion literal digest/dump/model-free id42/default7 retained, prior backend2/7/8
+and fixed2/3 identities unchanged. No new format/ledger/receipt conversion, historical
+receipt revocation/repair or publisher authentication. Status remains history.
+
+Storage/default agreement, full key/constraint/index/native namespace/privilege/
+unexpected-object/negative-ownership/drift/FK and workflow/resource/compiler/codec/ledger
+queue remain open. No general SQL/all-effects/sandbox/production certificate; points1–4
+incomplete, draft/guides deferred. Existing default-edit restrictions and CHECK-removal
+scope tests remain, with consistent fixtures/precise earlier nullability diagnostics.

@@ -46,6 +46,10 @@ lazy from snekql.experimental._migration_indexes import (
     index_removals,
 )
 lazy from snekql.experimental._migration_mariadb import mariadb_default_parts
+lazy from snekql.experimental._migration_nullability import (
+    validate_column_nullability,
+    validate_nullability_claims,
+)
 lazy from snekql.experimental._migration_target import (
     Prepared,
     Progress,
@@ -1059,9 +1063,11 @@ def _validate_draft(draft: Draft) -> None:
         _validate_table_identifiers(table, draft.target.backend)
         _validate_construction_header(table, draft.target.backend)
         _validate_column_coverage(table, draft.target.backend)
+        validate_nullability_claims(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
             _validate_column_identifier(op.column, draft.target.backend)
+            validate_column_nullability(op.column, draft.target.backend)
     if any(
         table.name.casefold() in _RESERVED
         for table in (

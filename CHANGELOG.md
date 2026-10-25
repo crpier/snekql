@@ -4,6 +4,13 @@
 
 ### Experimental
 
+- Bind ordinary experimental nullable flags to column definitions and construction
+  declarations before execution, in both directions and through intermediate/payload
+  claims. Exclude expression/default/literal NULL tokens; refuse multiple clauses.
+  Close a reproduced SQLite required-claim/nullable-construction false completion.
+  Primary-key nullability remains separate. Preserve valid identities and explicitly
+  refuse old contradictions without format/ledger conversion or retrospective repair.
+
 - Require exactly one construction declaration for each experimental managed-column
   claim during compilation/loading/preparation. Constraint/string/expression mentions,
   pseudo-column aliases and ambiguous duplicate declarations cannot certify presence.

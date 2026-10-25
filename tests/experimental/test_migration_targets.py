@@ -1257,42 +1257,24 @@ async def mariadb_nullable_column_cannot_satisfy_a_required_contract() -> None:
             "sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY, title TEXT NULL) ENGINE=InnoDB"
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "nullability" in str(error.exception)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "ordinary column nullability" in str(error.exception)
         assert "title" in str(error.exception)
-        assert_eq(
-            [
-                (p.phase, p.acknowledged_steps, p.total_steps)
-                for p in await target.status()
-            ],
-            [("uncertain", 1, 1)],
-        )
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "nullability" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+        assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        await tx.execute(mariadb.raw("INSERT INTO entry VALUES(1,NULL)"))
-        assert_eq(
-            await tx.fetch_all(mariadb.raw("SELECT title FROM entry")),
-            [{"title": None}],
-        )
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
@@ -1309,34 +1291,23 @@ async def mariadb_required_column_cannot_satisfy_a_nullable_contract() -> None:
         }
     )
     table = original.model_copy(update={"columns": (original.columns[0], title)})
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "nullability" in str(error.exception)
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert_eq((await target.status())[0].phase, "uncertain")
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "ordinary column nullability" in str(error.exception)
+        assert_eq(await target.status(), ())
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
     ):
-        assert_eq(
-            await tx.fetch_all(
-                mariadb.raw(
-                    "SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' AND COLUMN_NAME='title'"
-                )
-            ),
-            [{"IS_NULLABLE": "NO"}],
-        )
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
