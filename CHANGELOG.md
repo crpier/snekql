@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Bind experimental managed native column visibility to construction before DDL/history,
+  including intermediate/relinquished claims and standalone language admission. Retain
+  valid old identities, invisible wildcard/positional/default behavior, named access and
+  independent drift guards. Existing explicit VISIBLE/unknown forms remain adapter-only;
+  no native false-completion, access-control, format conversion or repair claim.
+
 - Bind experimental managed native AUTO_INCREMENT presence/absence to construction,
   including intermediate/relinquished claims and standalone language admission. Move
   known contradictions before DDL/history and refuse duplicate attributes; retain valid

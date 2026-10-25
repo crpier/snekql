@@ -92,6 +92,10 @@ lazy from snekql.experimental._migration_unique import (
     validate_column_unique,
     validate_unique_claims,
 )
+lazy from snekql.experimental._migration_visibility import (
+    validate_column_visibility,
+    validate_visibility_claims,
+)
 lazy from snekql.mariadb.schema import _SCHEMA_DIALECT as MARIADB_DIALECT
 lazy from snekql.sqlite._schema_ddl import SCHEMA_DIALECT as SQLITE_DIALECT
 
@@ -1110,6 +1114,7 @@ def _validate_draft(draft: Draft) -> None:
         validate_unique_claims(table, draft.target.backend)
         validate_not_null_claims(table, draft.target.backend)
         validate_identity_claims(table, draft.target.backend)
+        validate_visibility_claims(table, draft.target.backend)
     for op in draft.operations:
         if isinstance(op, AddColumn | ChangeDefault):
             _validate_column_identifier(op.column, draft.target.backend)
@@ -1121,6 +1126,7 @@ def _validate_draft(draft: Draft) -> None:
             validate_column_unique(op.column, draft.target.backend)
             validate_column_not_null(op.column, draft.target.backend)
             validate_column_identity(op.column, draft.target.backend)
+            validate_column_visibility(op.column, draft.target.backend)
     if any(
         table.name.casefold() in _RESERVED
         for table in (

@@ -669,6 +669,38 @@ invalid subsequent insert. No ledger conversion, general compatibility promise o
 user guide. Explicit removal/replacement is described below; broader approved
 hardening remains incomplete.
 
+## Native column visibility construction agreement
+
+Compile/load binds managed native column visibility independently of named queryability,
+key/storage/nullability/generator agreement. Before/target/intermediate CREATE claims survive
+relinquishment; standalone ADD/ChangeDefault language admission is independent of final
+ownership/operation permission. No native adoption/visibility alteration operation is added.
+Extra SQL invisible fields do not create recorded column/index/destructive authority.
+
+Reuse the existing bounded native visibility recognizer: implicit ordinary visibility and
+INVISIBLE, known keyword case, literal/default/comment/expression role separation. Explicit
+VISIBLE, repeated/conflicting flags and unparsed roles remain adapter-only, now at compile
+rather than preparation; not a cross-version claim about server syntax. SQLite remains
+unchanged. Generated-column meaning/expression identity stays separate and unfinished.
+
+Actual archived566229c writer/reader/runtime emitted/loaded/prepared real format2 ordinary
+visible metadata/INVISIBLE construction, committed DDL then refused UNCERTAIN/AMBIGUOUS:
+**not native false completion**. Current literal load/typed prepare refuse before effects/
+history. Truthful old invisible companion retains dump/digest/model-free wildcard omission,
+positional default7 and explicit named access. Isolated copied-source table-gate bypass
+retains late live catalog refusal/uncertainty and other admission/recovery guards, leaving
+working sources unmutated during native suites. No conversion/digest/ledger/receipt rewriting,
+retrospective repair/revocation/history recertification or native recovery shortcut.
+
+Live ordinary visibility preserves wildcard/positional behavior, invisible columns remain
+explicitly addressable. Accepted-catalog drift still blocks followup after physical visibility
+changes. Visibility is not access control/privilege enforcement, column deletion, logical
+codec compatibility, arbitrary query projection ABI or data/readiness certification. Existing
+invisible generated/auto-increment and physical `_rowid` positives remain independent.
+Other generated/ON UPDATE/attribute/constraint/namespace/index/FK compatibility, combined
+workflows/interruption/resources/compiler/package/codec/ledger queue remain open. Trusted
+SQL unsandboxed, points1–4 incomplete, draft/guides deferred; not production/merge-ready.
+
 ## Native AUTO_INCREMENT construction agreement
 
 Compile/load binds managed native AUTO_INCREMENT presence/absence independently of key/

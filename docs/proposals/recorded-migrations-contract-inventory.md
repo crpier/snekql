@@ -768,3 +768,24 @@ exact counter/sequence/no-gap/non-reuse/range/zero-mode/offset/increment/future-
 readiness proof or recovery shortcut. Other attributes/generated/visibility/constraints/
 namespaces/FK/workflows/interruption/resource/evolution queue open; trusted SQL unsandboxed,
 points1–4 incomplete, draft/guides deferred.
+
+
+### Native column visibility construction checkpoint
+
+Bind managed implicit ordinary visibility/INVISIBLE independently of named queryability and
+other column facts. Before/target/intermediate CREATE claims survive handoff; standalone
+language admission independent of final ownership/operation permission, no native adoption/
+visibility alteration added. Extra invisible SQL columns don't create ownership/authority.
+Existing bounded recognizer reused: known keyword case; explicit VISIBLE/repeated/conflicting/
+unparsed roles still adapter-only, now compile-refused. SQLite unchanged, generated expression
+identity/equivalence not certified. Visibility is not access control/query projection ABI.
+
+Archived566229c real format2 emitted/loaded/prepared ordinary metadata/INVISIBLE construction,
+committed DDL then refused UNCERTAIN/AMBIGUOUS: not false completion; current literal load/
+typed prepare refuse pre-effects/history. Truthful companion retains dump/digest/wildcard
+omission/positional default7/named access; isolated copied-source gate bypass retains late
+catalog refusal/uncertainty, working sources untouched during native suites. Independent
+post-completion physical visibility drift guard retained. No conversion/repair/retrospective
+certification/recovery shortcut/full data/session/codec/readiness proof. Other generated/
+ON UPDATE/attributes/constraints/namespaces/FK/workflow/interruption/resource/evolution queue
+open; trusted SQL unsandboxed, points1–4 incomplete, draft/guides deferred.

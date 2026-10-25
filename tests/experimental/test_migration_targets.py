@@ -3006,7 +3006,7 @@ async def mariadb_ambiguous_generation_attributes_fail_before_effects() -> None:
 
 
 @test(mark="slow")
-async def mariadb_visible_column_cannot_silently_become_invisible() -> None:
+async def mariadb_visible_construction_cannot_become_invisible() -> None:
     """Physical name resolution does not prove visibility for wildcard/positional SQL."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
@@ -3023,30 +3023,27 @@ async def mariadb_visible_column_cannot_silently_become_invisible() -> None:
             ),
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "visibility" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-    async with migrations.connect(server.config()) as target:
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "visibility" in recovery.explanation
-        with assert_raises(migrations.PackageError):
-            await target.resume(recovery, schema_writers_excluded=True)
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction visibility" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
-async def mariadb_declared_invisible_column_cannot_become_visible() -> None:
+async def mariadb_invisible_construction_cannot_become_visible() -> None:
     """Stricter wildcard exposure is also a different recorded physical contract."""
     server = await load_fixture(provide_package_server())
     draft = migrations.generate("001", [Entry], backend="mariadb")
@@ -3065,23 +3062,23 @@ async def mariadb_declared_invisible_column_cannot_become_visible() -> None:
             ),
         }
     )
-    package = migrations.compile(
-        draft.model_copy(
-            update={
-                "target": migrations.State(backend="mariadb", tables=(table,)),
-                "operations": (migrations.CreateTable(table=table),),
-            }
-        )
-    )
     async with migrations.connect(server.config()) as target:
-        plan = await target.prepare(package, schema_writers_excluded=True)
         with assert_raises(migrations.PackageError) as error:
-            await target.apply(plan)
-        assert "visibility" in str(error.exception)
-        assert_eq((await target.status())[0].phase, "uncertain")
-        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(recovery.disposition, "ambiguous")
-        assert "visibility" in recovery.explanation
+            migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+        assert "construction visibility" in str(error.exception)
+        assert_eq(await target.status(), ())
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(await tx.fetch_all(mariadb.raw("SHOW FULL TABLES")), [])
 
 
 @test(mark="slow")
