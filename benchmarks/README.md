@@ -17,7 +17,8 @@ work across raw drivers, snekql and SQLAlchemy Core. It covers buffered point
 reads, bounded streaming, indexed joins and verified bulk writes on both
 backends, including shared-capacity contention, heartbeat diagnostics and
 separate pool/memory profiles. See its measurement-scope limitations before
-comparing numbers. The [dated baseline](findings.md) publishes individual trial
+comparing numbers. The [current baseline](current-baseline-2026-10-26.md) and
+[historical baseline](findings.md) publish individual trial
 reports and noise-aware regression guidance. The [projection-decoding optimization](projection-decoding-479.md)
 records the before/after measurements for #479.
 

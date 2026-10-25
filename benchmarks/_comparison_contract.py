@@ -27,6 +27,8 @@ type Read = Callable[[int], Awaitable[list[Record]]]
 class StreamObservation:
     """Verify ordered records online without retaining a complete result set."""
 
+    expected_payload_bytes: int = 32
+    payload_bytes: int = 0
     batches: int = 0
     identity_sum: int = 0
     max_batch_rows: int = 0
@@ -40,10 +42,11 @@ class StreamObservation:
             if (
                 record.id != expected_id
                 or record.email != f"user{expected_id}@example.com"
-                or record.payload != "x" * 32
+                or record.payload != "x" * self.expected_payload_bytes
             ):
                 message = "stream did not return its expected ordered record"
                 raise ComparisonError(message)
+            self.payload_bytes += len(record.payload)
             self.rows += 1
             self.identity_sum += record.id
             batch_rows += 1
@@ -69,3 +72,4 @@ class ReadSession:
     read: Read
     stream: Stream
     policy: dict[str, object] | None = None
+    prepared_sessions: int = 1

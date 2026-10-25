@@ -4,6 +4,10 @@
 
 ### Added
 
+- Extend comparative benchmarks with real bounded pool capacity, validated narrow/
+  wide payloads, balanced adapter permutations and optional counting observation,
+  with versioned provenance and logical setup/write budgets. Addresses #548.
+
 - Add reproducible owned TCP stream cuts, withheld real COMMIT replies, concurrent
   MariaDB restart and private bounded-tmpfs SQLite ENOSPC drills with explicit
   outcome/reconciliation evidence. Addresses #544.
@@ -13,6 +17,10 @@
   plus a manual both-backend/pool-size workflow. Addresses #538.
 
 ### Fixed
+
+- Let the service contention smoke require completed bursts independently of
+  elapsed duration, retaining recovery/resource checks without a machine-speed
+  throughput floor. Addresses #551.
 
 - Preserve MariaDB stream connection-loss classification when native cursor
   cleanup encounters an already-closed reader; detach without draining the dead

@@ -2,9 +2,8 @@
 
 import asyncio
 from collections.abc import AsyncIterator, Sequence
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from functools import partial
-from time import perf_counter
 from typing import cast
 
 from aiomysql import Connection, SSCursor, connect
@@ -19,6 +18,7 @@ from benchmarks._comparison_contract import (
     StreamObservation,
 )
 from benchmarks._comparison_diagnostics import PoolDiagnostics
+from benchmarks._comparison_pool import native_lease
 from benchmarks._comparison_transactions import core_transaction
 from benchmarks._models_mariadb import BenchProfile, BenchUser, BenchWrite
 from snekql import mariadb
@@ -94,16 +94,13 @@ def _verified_policy(cells: Sequence[object]) -> dict[str, object]:
 
 @asynccontextmanager
 async def _raw_transaction(
-    connection: Connection, admission: asyncio.Lock, diagnostics: PoolDiagnostics
-) -> AsyncIterator[None]:
+    available: asyncio.Queue[Connection], diagnostics: PoolDiagnostics
+) -> AsyncIterator[Connection]:
     """Keep native commit acknowledgement and rollback ownership inside the lease."""
-    started = perf_counter() if diagnostics.active else None
-    async with admission:
-        if started is not None:
-            diagnostics.samples.record(perf_counter() - started)
+    async with native_lease(available, diagnostics) as connection:
         await connection.begin()
         try:
-            yield
+            yield connection
             await connection.commit()
         except BaseException:
             await connection.rollback()
@@ -137,18 +134,22 @@ async def _connection(config: mariadb.Config) -> AsyncIterator[Connection]:
 
 @asynccontextmanager
 async def _open_raw(
-    config: mariadb.Config, diagnostics: PoolDiagnostics
+    config: mariadb.Config, diagnostics: PoolDiagnostics, *, payload_bytes: int
 ) -> AsyncIterator[ReadSession]:
-    admission = asyncio.Lock()
-    async with _connection(config) as connection:
-        async with connection.cursor() as cursor:
-            await cursor.execute(_POLICY_QUERY)
-            policy = _verified_policy(await cursor.fetchone())
-        await connection.rollback()
+    available: asyncio.Queue[Connection] = asyncio.Queue()
+    policies = []
+    async with AsyncExitStack() as owned:
+        for _ in range(config.pool_size):
+            connection = await owned.enter_async_context(_connection(config))
+            async with connection.cursor() as cursor:
+                await cursor.execute(_POLICY_QUERY)
+                policies.append(_verified_policy(await cursor.fetchone()))
+            await connection.rollback()
+            available.put_nowait(connection)
 
         async def read(identity: int, *, joined: bool = False) -> list[Record]:
             async with (
-                _raw_transaction(connection, admission, diagnostics),
+                _raw_transaction(available, diagnostics) as connection,
                 connection.cursor() as cursor,
             ):
                 await cursor.execute(
@@ -165,9 +166,9 @@ async def _open_raw(
                 ]
 
         async def stream(batch_size: int) -> StreamObservation:
-            observation = StreamObservation()
+            observation = StreamObservation(expected_payload_bytes=payload_bytes)
             async with (
-                _raw_transaction(connection, admission, diagnostics),
+                _raw_transaction(available, diagnostics) as connection,
                 connection.cursor(SSCursor) as cursor,
             ):
                 await cursor.execute(
@@ -185,7 +186,7 @@ async def _open_raw(
 
         async def reset_bulk() -> None:
             async with (
-                _raw_transaction(connection, admission, diagnostics),
+                _raw_transaction(available, diagnostics) as connection,
                 connection.cursor() as cursor,
             ):
                 await cursor.execute("DELETE FROM bench_write")
@@ -194,19 +195,23 @@ async def _open_raw(
             parameters = tuple(
                 value
                 for identity in range(start, start + size)
-                for value in (identity, f"user{identity}@example.com", "x" * 32)
+                for value in (
+                    identity,
+                    f"user{identity}@example.com",
+                    "x" * payload_bytes,
+                )
             )
             # Only placeholder count varies; every value is driver-bound.
             sql = "INSERT INTO bench_write (id, email, payload) VALUES " + ", ".join(  # noqa: S608
                 ["(%s, %s, %s)"] * size
             )
             async with (
-                _raw_transaction(connection, admission, diagnostics),
+                _raw_transaction(available, diagnostics) as connection,
                 connection.cursor() as cursor,
             ):
                 await cursor.execute(sql, parameters)
             async with (
-                _raw_transaction(connection, admission, diagnostics),
+                _raw_transaction(available, diagnostics) as connection,
                 connection.cursor() as cursor,
             ):
                 await cursor.execute(
@@ -226,20 +231,24 @@ async def _open_raw(
             join=partial(read, joined=True),
             read=read,
             stream=stream,
-            policy=policy,
+            policy=policies[0],
+            prepared_sessions=len(policies),
         )
 
 
 @asynccontextmanager
 async def _open_snekql(
-    config: mariadb.Config, diagnostics: PoolDiagnostics
+    config: mariadb.Config, diagnostics: PoolDiagnostics, *, payload_bytes: int
 ) -> AsyncIterator[ReadSession]:
     async with await mariadb.Database.initialize(
-        config, observer=diagnostics.observe if diagnostics.enabled else None
+        config, observer=diagnostics.observe if diagnostics.observer_enabled else None
     ) as database:
-        async with database.transaction() as transaction:
-            observed = await transaction.fetch_one(mariadb.raw(_POLICY_QUERY))
-            policy = _verified_policy(list(observed.values()))
+        policies = []
+        async with AsyncExitStack() as prepared:
+            for _ in range(config.pool_size):
+                transaction = await prepared.enter_async_context(database.transaction())
+                observed = await transaction.fetch_one(mariadb.raw(_POLICY_QUERY))
+                policies.append(_verified_policy(tuple(observed.values())))
 
         async def read(identity: int, *, joined: bool = False) -> list[Record]:
             if joined:
@@ -269,7 +278,7 @@ async def _open_snekql(
                 return await transaction.fetch_all(query)
 
         async def stream(batch_size: int) -> StreamObservation:
-            observation = StreamObservation()
+            observation = StreamObservation(expected_payload_bytes=payload_bytes)
             query = (
                 mariadb.select(BenchUser)
                 .project(
@@ -300,7 +309,7 @@ async def _open_snekql(
                     BenchWrite(
                         id=identity,
                         email=f"user{identity}@example.com",
-                        payload="x" * 32,
+                        payload="x" * payload_bytes,
                     )
                     for identity in range(start, start + size)
                 ],
@@ -327,13 +336,14 @@ async def _open_snekql(
             join=partial(read, joined=True),
             read=read,
             stream=stream,
-            policy=policy,
+            policy=policies[0],
+            prepared_sessions=len(policies),
         )
 
 
 @asynccontextmanager
 async def _open_sqlalchemy(
-    config: mariadb.Config, diagnostics: PoolDiagnostics
+    config: mariadb.Config, diagnostics: PoolDiagnostics, *, payload_bytes: int
 ) -> AsyncIterator[ReadSession]:
     table = Table(
         "bench_user",
@@ -365,18 +375,21 @@ async def _open_sqlalchemy(
             database=config.database,
             query={"charset": "utf8mb4"},
         ),
-        pool_size=1,
+        pool_size=config.pool_size,
         max_overflow=0,
         connect_args={"autocommit": False},
     )
     try:
-        async with engine.connect() as connection:
-            for statement in _SETTINGS:
-                (await connection.exec_driver_sql(statement)).close()
-            result = await connection.exec_driver_sql(_POLICY_QUERY)
-            policy = _verified_policy(tuple(result.one()))
-            result.close()
-            await connection.commit()
+        policies = []
+        async with AsyncExitStack() as prepared:
+            for _ in range(config.pool_size):
+                connection = await prepared.enter_async_context(engine.connect())
+                for statement in _SETTINGS:
+                    (await connection.exec_driver_sql(statement)).close()
+                result = await connection.exec_driver_sql(_POLICY_QUERY)
+                policies.append(_verified_policy(tuple(result.one())))
+                result.close()
+                await connection.commit()
 
         async def read(identity: int, *, joined: bool = False) -> list[Record]:
             query = (
@@ -395,7 +408,7 @@ async def _open_sqlalchemy(
             return records
 
         async def stream(batch_size: int) -> StreamObservation:
-            observation = StreamObservation()
+            observation = StreamObservation(expected_payload_bytes=payload_bytes)
             query = select(table).order_by(table.c.id)
             async with (
                 core_transaction(engine, diagnostics) as connection,
@@ -424,7 +437,7 @@ async def _open_sqlalchemy(
                     {
                         "id": identity,
                         "email": f"user{identity}@example.com",
-                        "payload": "x" * 32,
+                        "payload": "x" * payload_bytes,
                     }
                     for identity in range(start, start + size)
                 ]
@@ -450,38 +463,42 @@ async def _open_sqlalchemy(
             join=partial(read, joined=True),
             read=read,
             stream=stream,
-            policy=policy,
+            policy=policies[0],
+            prepared_sessions=len(policies),
         )
     finally:
         await engine.dispose()
 
 
-async def seed(config: mariadb.Config, rows: int) -> dict[str, object]:
+async def seed(
+    config: mariadb.Config, rows: int, *, payload_bytes: int = 32
+) -> dict[str, object]:
     """Populate the private server and record actual native durability settings."""
     async with _connection(config) as connection, connection.cursor() as cursor:
         await cursor.execute(
             "CREATE TABLE bench_user (id INTEGER PRIMARY KEY, "
-            "email VARCHAR(255) NOT NULL, payload VARCHAR(255) NOT NULL) "
+            "email VARCHAR(255) NOT NULL, payload VARCHAR(8192) NOT NULL) "
             "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         )
         await cursor.execute(
-            "CREATE TABLE bench_profile (user_id INTEGER PRIMARY KEY, payload VARCHAR(255) NOT NULL, "
+            "CREATE TABLE bench_profile (user_id INTEGER PRIMARY KEY, payload VARCHAR(8192) NOT NULL, "
             "FOREIGN KEY (user_id) REFERENCES bench_user(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         )
         await cursor.execute(
             "CREATE TABLE bench_write (id INTEGER PRIMARY KEY, email VARCHAR(255) NOT NULL, "
-            "payload VARCHAR(255) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            "payload VARCHAR(8192) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         )
         await connection.begin()
         await cursor.executemany(
             "INSERT INTO bench_user VALUES (%s, %s, %s)",
             [
-                (index, f"user{index}@example.com", "x" * 32)
+                (index, f"user{index}@example.com", "x" * payload_bytes)
                 for index in range(1, rows + 1)
             ],
         )
         await cursor.execute(
-            "INSERT INTO bench_profile SELECT id, %s FROM bench_user", ("j" * 32,)
+            "INSERT INTO bench_profile SELECT id, %s FROM bench_user",
+            ("j" * payload_bytes,),
         )
         await connection.commit()
         await cursor.execute(
@@ -507,13 +524,19 @@ async def seed(config: mariadb.Config, rows: int) -> dict[str, object]:
 
 @asynccontextmanager
 async def open_reader(
-    config: mariadb.Config, adapter: str, diagnostics: PoolDiagnostics
+    config: mariadb.Config,
+    adapter: str,
+    diagnostics: PoolDiagnostics,
+    *,
+    payload_bytes: int = 32,
 ) -> AsyncIterator[ReadSession]:
-    """Own one warmed connection for an explicit adapter selection."""
+    """Own a fully prepared bounded pool for an explicit adapter selection."""
     factories = {
         "raw": _open_raw,
         "snekql": _open_snekql,
         "sqlalchemy": _open_sqlalchemy,
     }
-    async with factories[adapter](config, diagnostics) as session:
+    async with factories[adapter](
+        config, diagnostics, payload_bytes=payload_bytes
+    ) as session:
         yield session

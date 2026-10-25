@@ -14,7 +14,7 @@ async def core_transaction(
     engine: AsyncEngine, diagnostics: PoolDiagnostics
 ) -> AsyncIterator[AsyncConnection]:
     """Acquire, explicitly BEGIN, acknowledge commit, and return the lease."""
-    started = perf_counter() if diagnostics.active else None
+    started = perf_counter() if diagnostics.collect_pool else None
     async with engine.connect() as connection:
         if started is not None:
             diagnostics.samples.record(perf_counter() - started)
