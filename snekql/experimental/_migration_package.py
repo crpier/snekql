@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Literal
 
 _OLD_FORMAT = 2
 _RELAXATION_FORMAT = 4
@@ -19,9 +19,20 @@ _FORMAT_VERSIONS = {
     _CHECK_FORMAT,
     _DROP_CHECK_FORMAT,
 }
+# Deliberately separate from capability admission: a future format must choose
+# its execution interpretation, not acquire today's default by joining that set.
+_EPOCH_ONE_FORMATS = frozenset({2, 3, 4, 5, 6, 7, 8})
 _MAX_BYTES = 8 * 1024 * 1024
 _MAX_DEPTH = 64
 _MAX_STRUCTURE = 100_000
+
+
+def execution_epoch(version: int) -> Literal[1]:
+    """The explicitly supported legacy formats have epoch-one execution semantics."""
+    if type(version) is not int or version not in _EPOCH_ONE_FORMATS:
+        msg = "unsupported execution interpretation; no automatic conversion"
+        raise ValueError(msg)
+    return 1
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -88,6 +99,10 @@ def read_package(text: str) -> Any:
     ):
         msg = "unsupported execution package version; no automatic conversion"
         raise ValueError(msg)
+    if "execution_epoch" in value:
+        msg = "unsupported explicit execution epoch; formats 2-8 use the legacy epoch-one reader; no automatic conversion"
+        raise ValueError(msg)
+    execution_epoch(value["version"])
     draft = value.get("draft")
     operations = draft.get("operations") if isinstance(draft, dict) else None
     if isinstance(operations, list) and any(

@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Define epoch-one canonical execution and deferred target lowering for legacy migration
+  formats2–8, independently of current public authoring compilation. Keep historical bytes
+  unchanged and current safety gates live; refuse incompatible future interpretation rather
+  than regenerate artifacts. Exercise a runtime without the authoring verb and an isolated
+  candidate changing real contraction grouping; no general future-epoch registry or conversion.
+
 - Add bounded versioned `Prepared.dump()` / `Prepared.load()` for original migration execution
   evidence, with explicit execution-epoch admission, integrity and nested-package validation.
   Exercise real preserved SQLite contraction/replacement-worker application and native

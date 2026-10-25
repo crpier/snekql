@@ -16,10 +16,21 @@ The [prepared-evidence checkpoint](recorded-migrations-prepared-evidence-review.
 ledger-bound plans, and explicit incompatible/raw-unversioned refusal. Real deferred SQLite
 preservation/replacement-worker application and native client-death/server-restart resume use
 retained original evidence. Historical package bytes and completed receipts are not converted.
-This is the G2 persistence foundation, not completion of G1: standalone Package.load still
-recompiles and ordinary apply still rechecks current target lowering. Durable storage and the
+That G2 persistence foundation did not itself complete G1: at that point standalone Package.load
+still used public current compilation and ordinary apply used unversioned target lowering.
+The subsequent defined interpretation is described below. Durable storage and the
 ledger's observation evidence remain caller responsibilities; no host-loss or generic upgrade
 promise. Candidate support and the remaining gates below are still proposed/incomplete.
+
+## Defined historical execution follow-through
+
+The [execution-epoch checkpoint](recorded-migrations-execution-epoch-review.md) now binds legacy
+formats2–8 to a defined epoch-one canonical interpreter and target lowerer, independent of the
+public current authoring verb. Package bytes stay unchanged; capability admission and epoch
+mapping are separate. Actual isolated changed contraction grouping makes current authoring
+stale/refused as epoch one while original package/Prepared execution still works. Only epoch
+one is supported, not a general registry or automatic future conversion. Live admission and
+endpoint checks remain; runtime policy, finite qualification and release decisions stay open.
 
 ## Recommendation
 
@@ -119,7 +130,7 @@ prepared evidence is a missing capability, not a reason to expose private loweri
 | Native restart after client rollback | Durable uncertainty survives; ordinary prepare/apply refuses, explicit inspection/resume is required. | Actual private-server kill/restart and competing resumers demonstrated; loser reassesses status. |
 | Native DDL/COMMIT effect with a missing acknowledgement | Do not infer success or authorize data replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Selected lost-receipt/refusal tests exist. The role server kill was AFTER rollback, not during COMMIT/DDL; a real selected receipt-loss window remains a qualification gate. |
 | I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Selected cancellation tests exist; the experimental path does not yet implement the ordinary runtime's complete per-operation deadline policy. |
-| Missing/incompatible original plan or ledger | Refuse without receipt rewriting, reconstruction from current models, or endpoint stamping. | Actual old nine-column ledger refusal demonstrated. Current Prepared JSON is not a stable versioned persistence interface. |
+| Missing/incompatible original plan or ledger | Refuse without receipt rewriting, reconstruction from current models, or endpoint stamping. | Actual old nine-column ledger refusal demonstrated. Original raw Prepared JSON was not versioned; the later version-one envelope is not a ledger backup or cross-version conversion policy. |
 
 [Workflow](recorded-migrations-workflow-review.md),
 [ownership](recorded-migrations-ownership-review.md),
@@ -137,9 +148,10 @@ historical execution identities or explicitly refuse it when compatibility canno
 An old-epoch reader/validator may be retained deliberately, but automatic conversion is not
 required. Package capability versions 2–8 are not that policy.
 
-Today `Package.load` recompiles the recorded draft using the current compiler, and target
-preparation generates deferred rebuild SQL using the current lowerer. Frozen bindings alone
-do not remove either coupling. The epoch policy must cover compiler AND target-preparation
+At the proposal baseline, `Package.load` recompiled with the current public compiler and
+preparation used an unversioned lowerer. The follow-through above now selects defined epoch-one
+canonical replay and lowering. Frozen bindings alone would not remove either coupling.
+The epoch policy must cover compiler AND target-preparation
 semantics, without freezing catalog bugs as truth: stronger verification may safely refuse,
 but must not reinterpret old receipts as stronger certificates. An incompatible reader must
 stop before database mutation, not regenerate packages or rewrite accepted plan identities.
@@ -147,7 +159,9 @@ stop before database mutation, not regenerate packages or rewrite accepted plan 
 Acceptance: unchanged committed valid references retain their identities; a deliberately
 incompatible execution interpretation is dispatched to its supported semantics or refused
 explicitly. Include a prepared/deferred-contraction case, not just new operation admission.
-Actual archived capability evolution already demonstrated is not this missing guarantee.
+Archived capability evolution alone did not provide this guarantee. The later execution-epoch
+checkpoint adds actual incompatible current grouping plus an original deferred-plan case for
+one supported historical interpretation, with current safety gates still active.
 
 ### G2 — Make original prepared evidence a durable interface
 
@@ -216,5 +230,6 @@ SQL and expression limits stay enforced, but are not total-work guarantees.
 
 Security/dependency alerts are separate maintenance work. These exclusions do not weaken
 existing safety checks or justify claiming an unverified supported fact. The next engineering
-slice should address G1/G2 through the approved package/prepare/recovery seams, not resume
+slice should build on the bounded G1/G2 follow-through through the approved seams, prioritizing
+G3 runtime integration rather than unsupported future epochs, and must not resume
 attribute-by-attribute verifier expansion. The proposal remains draft and not merge-ready.

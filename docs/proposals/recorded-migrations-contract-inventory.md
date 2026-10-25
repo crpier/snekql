@@ -23,6 +23,12 @@ plans, with actual replacement-worker/deferred-rebuild/native-restart use. Neste
 validation/current lowering checks remain: this does not solve standalone compiler-epoch
 compatibility or change historical package identities, adoption authority or readiness scope.
 
+The later [execution-epoch checkpoint](recorded-migrations-execution-epoch-review.md) now
+separates defined epoch-one canonical replay and target lowering from public current authoring.
+It preserves legacy bytes and live safety gates; an actual changed grouping candidate is
+refused rather than silently replacing historical interpretation. This is one supported legacy
+interpreter, not a general future compiler/codec/dependency ABI or automatic conversion.
+
 ## Objective and evidence rules
 
 The first production proposal should cover a deliberately bounded set of physical

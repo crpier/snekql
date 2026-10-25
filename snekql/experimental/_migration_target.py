@@ -417,11 +417,15 @@ class Target:
                     msg = f"existing objects require explicit adoption: {conflicts}"
                     raise PackageError(msg)
             return Prepared(
-                execution_epoch=_EXECUTION_EPOCH,
+                execution_epoch=package.execution_epoch,
                 package=package,
                 target_id=self._target_id,
                 catalog_digest=catalog,
-                steps=() if already_applied else prepare_steps(package, objects),
+                steps=()
+                if already_applied
+                else prepare_steps(
+                    package, objects, execution_epoch=package.execution_epoch
+                ),
                 preserve_unmanaged=preserve_unmanaged,
             )
 
@@ -1372,7 +1376,9 @@ class Target:
                 if prepared.catalog_digest != catalog:
                     msg = "prepared catalog is stale; prepare and review again"
                     raise PackageError(msg)
-                if prepared.steps != prepare_steps(package, objects):
+                if prepared.steps != prepare_steps(
+                    package, objects, execution_epoch=prepared.execution_epoch
+                ):
                     msg_0 = "prepared execution steps have changed"
                     raise PackageError(msg_0)
                 await self._execute_package(prepared)

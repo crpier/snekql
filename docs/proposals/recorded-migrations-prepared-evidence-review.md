@@ -96,9 +96,9 @@ Evidence root `.snektest/477-prepared-evidence/` retains separate real SQLite/na
 original envelope bytes, operator programs, actual row/lock observations and validation reports.
 No new environment-matrix or full-suite claim follows from those selected traces.
 
-**G1 remains open:** Package.load recompiles recorded drafts using today's compiler, and ordinary
-apply rechecks current deferred lowering. Current packages have no independent explicit compiler
-execution epoch. Prepared epoch admission prevents accepting a different declared plan epoch;
+**G1 remained open at this checkpoint:** Package.load recompiled recorded drafts using the
+then-current public compiler, and ordinary apply rechecked unversioned deferred lowering.
+Standalone packages did not yet select a defined historical compiler interpretation. Prepared epoch admission prevents accepting a different declared plan epoch;
 it does not provide historical compiler dispatch, generic downgrade fencing or future old-emission
 independence. Existing 67 historical package fixtures keep their exact bodies/digests. This slice
 implements the versioned-original-evidence foundation of G2 without pretending that metadata
@@ -110,6 +110,12 @@ config policy, finite maintained-version qualification, WAL and selected native 
 windows, historical-source ergonomics and final interface/ADR/release approval remain. Epoch
 changes must preserve supported interpretation or refuse explicitly; no old-evidence conversion
 or retrospective stronger certificate is introduced. Entire prototype remains draft/incomplete.
+
+The subsequent [execution-epoch follow-through](recorded-migrations-execution-epoch-review.md)
+now dispatches legacy package replay/lowering through defined epoch-one implementations,
+independent of the public authoring compiler. The earlier G1 paragraph describes this checkpoint's
+historical limit, not a claim that the current reader still calls public compile. Only one
+legacy interpretation is supported; live safety checks and the remaining release gates stay.
 
 ## Completed local validation
 

@@ -35,6 +35,12 @@ from a different internally valid file. Historical packages/complete receipts ar
 Package compiler-epoch separation, runtime policies and qualification remain open; this is
 not general compiler independence or a portable database backup.
 
+The [execution-epoch follow-through](recorded-migrations-execution-epoch-review.md) now pins
+legacy formats2–8 to epoch-one canonical replay and lowering, separately from current public
+authoring. Original bytes and live safety checks remain; different candidate contraction
+grouping is stale/refused instead of reinterpreting history. Only one historical interpreter,
+not a general future-epoch registry or automatic conversion, is supported.
+
 ## Workflow-first checkpoint
 
 The [authoring-to-application review](recorded-migrations-workflow-review.md) exercises the
