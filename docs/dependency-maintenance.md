@@ -201,3 +201,5 @@ gh api --include "repos/$repo/vulnerability-alerts"  # 204 means alerts enabled
 
 - [2026-10-09: Python 3.15 and lazy imports](dependency-reviews/2026-10-09-python315.md)
 - [2026-10-10: System-library SQLite CI repair](dependency-reviews/2026-10-10-sqlite-system-python315.md)
+
+- [2026-10-25: Dependabot security fixes](dependency-reviews/2026-10-25-security.md)
