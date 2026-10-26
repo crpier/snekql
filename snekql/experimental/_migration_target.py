@@ -391,10 +391,22 @@ class Target:
         except BaseException:
             logger.warning("migration SQLite physical close failed", exc_info=True)
 
+    async def _join_close(self, task: asyncio.Task[None]) -> None:
+        """Bound a fresh physical-close wait without cancelling its retained owner."""
+        try:
+            with anyio.fail_after(self._config.operation_timeout):
+                await asyncio.shield(task)
+        except TimeoutError as error:
+            operation = "migration close"
+            raise DatabaseOperationTimeoutError(
+                operation, self._config.operation_timeout
+            ) from error
+
     async def _close(self) -> None:
-        """Stop admission, drain the active owner, then close its physical connection."""
+        """Drain this lifetime's owner/known cleanup, never unsafe policy SQL."""
         if self._closed:
-            # Unsafe work already owns detached cleanup, not more policy SQL.
+            if self._close_task is not None:
+                await self._join_close(self._close_task)
             return
         self._closing = True
         try:
@@ -410,20 +422,14 @@ class Target:
         try:
             # The active owner may have discarded the connection while we waited.
             if self._closed:  # ty: ignore[redundant-condition-strict]
+                if self._close_task is not None:
+                    await self._join_close(self._close_task)
                 return
             self._closed = True
             if not self._sqlite:
                 self._connection.close()
                 return
-            task = self._start_close(interrupt=False)
-            try:
-                with anyio.fail_after(self._config.operation_timeout):
-                    await asyncio.shield(task)
-            except TimeoutError as error:
-                operation = "migration close"
-                raise DatabaseOperationTimeoutError(
-                    operation, self._config.operation_timeout
-                ) from error
+            await self._join_close(self._start_close(interrupt=False))
         finally:
             self._guard.release()
 
@@ -1673,8 +1679,11 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
     preserves DELETE/WAL rather than selecting WAL, and applies Config.durability
     synchronization for this connection. In-memory targets retain native policy.
     Context exit stops admission and drains the active operation under a fresh
-    acquisition budget before physical close. Failed/cancelled drain discards the
-    connection, not the caller's task; return does not prove physical quiescence.
+    acquisition budget before physical close. A known retained SQLite close is
+    joined under a fresh operation budget even after I/O failure; expiry/cancellation
+    retains its owner. Failed/cancelled guard drain discards the connection, not the
+    caller's task. No global drain of other targets or abandoned openings is implied;
+    failed exit/return is not physical quiescence. Retained cleanup needs a live loop.
     Native metadata requires direct global or exact-database SELECT, SHOW VIEW,
     TRIGGER and EXECUTE grants, or the server's explicit unrestricted grant-bypass
     profile. Role/table/column grants alone are not admitted. Caller keeps

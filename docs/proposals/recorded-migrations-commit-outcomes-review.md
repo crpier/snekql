@@ -118,3 +118,14 @@ Environment: CPython3.15.0/GIL/default asyncio/Linux/SQLite3.53.1/MariaDB13.0.2/
 PyMySQL1.2.0, plain TCP on isolated loopback. Not TLS/server crash/power-loss/host-loss/upgrade/
 MySQL/LTS matrix/all-driver/all-COMMIT qualification. G3 retained cleanup/shutdown and G4/G5
 remain open. No merge/tag/publication, dependency change or consumer-guide promotion.
+
+## Retained cleanup/lifetime follow-through
+
+The [retained-cleanup checkpoint](recorded-migrations-retained-cleanup-review.md) now joins a
+Target's known SQLite close with a fresh close budget even after unsafe I/O. Success observes
+that close result; expiry/cancellation retains physical ownership and preserves primary errors.
+Actual DELETE role work proves caller return can precede worker disappearance, then independent
+physical cleanup/fresh original apply/current app. Candidate G3 shutdown policy requires live
+loop/supervision, NOT global quiescence/all-task cancellation/failed-close/host-loss support.
+Remaining G4 matrix/WAL death/native DDL loss and G5 lifecycle-interface/ADR/release approval
+remain; candidate policy decisions do not approve promotion or add a public supervisor.

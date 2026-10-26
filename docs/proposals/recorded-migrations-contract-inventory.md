@@ -1199,3 +1199,14 @@ fix/outcome flag. Same original/endpoint, all own earlier receipts/current typed
 Candidate G3 outcome policy distinguishes caller acknowledgement, durable per-unit progress,
 completion and cleanup. Remaining retained-cleanup/global shutdown and G4 matrix/WAL death/
 native DDL loss, G5 approval remain open; no universal crash/COMMIT/transport qualification.
+
+## Retained cleanup/lifetime follow-through
+
+The [retained-cleanup checkpoint](recorded-migrations-retained-cleanup-review.md) now joins a
+Target's known SQLite close with a fresh close budget even after unsafe I/O. Success observes
+that close result; expiry/cancellation retains physical ownership and preserves primary errors.
+Actual DELETE role work proves caller return can precede worker disappearance, then independent
+physical cleanup/fresh original apply/current app. Candidate G3 shutdown policy requires live
+loop/supervision, NOT global quiescence/all-task cancellation/failed-close/host-loss support.
+Remaining G4 matrix/WAL death/native DDL loss and G5 lifecycle-interface/ADR/release approval
+remain; candidate policy decisions do not approve promotion or add a public supervisor.

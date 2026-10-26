@@ -9,6 +9,11 @@ reviews are evidence for their own checkpoints, not an ever-growing release chec
 [ADR 0023](../adr/0023-recorded-migration-ownership-and-execution.md) records the architectural
 trade-off; the [glossary](../../GLOSSARY.md) distinguishes ownership, mapping and readiness.
 
+Current lifecycle policy is summarized under **G3** below and the
+[retained-cleanup review](recorded-migrations-retained-cleanup-review.md). The chronological
+follow-through entries record their checkpoint's limits, not today's remaining checklist.
+Candidate G3 decisions are recorded; G4 qualification and G5 approval remain outstanding.
+
 ## Versioned original-evidence follow-through
 
 The [prepared-evidence checkpoint](recorded-migrations-prepared-evidence-review.md) implements
@@ -181,7 +186,7 @@ prepared evidence is a missing capability, not a reason to expose private loweri
 | Native restart after client rollback | Durable uncertainty survives; ordinary prepare/apply refuses, explicit inspection/resume is required. | Actual private-server kill/restart and competing resumers demonstrated; loser reassesses status. |
 | Native transactional COMMIT request/response loss | Failed await does not prove rollback/completion. Fresh durable marker/data selects ORIGINAL inspection/resume, not replay of committed work. Already-durable complete receipt means already_applied even if the final explicit COMMIT call failed. | Actual first request/OK loss/EOF and final request/OK loss demonstrated on one local build in the [COMMIT checkpoint](recorded-migrations-commit-outcomes-review.md). Not crash/fsync/all-build qualification. |
 | Native DDL effect with a missing acknowledgement | Do not infer data execution or authorize replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Selected lost-receipt/refusal tests exist. Role server kill was AFTER rollback, not during DDL; a selected real DDL-loss window and maintained matrix remain qualification gates. |
-| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Owned opening, local/backend coordination, per-I/O/control, context drain and normal close have separate budgets. Native/session/metadata and SQLite file-policy checkpoints are implemented. Real late SQLite COMMIT and native request/reply loss observed. Remaining detached-cleanup/global shutdown/live-loop policy is open; no universal physical-stop guarantee. |
+| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Owned opening, local/backend coordination, per-I/O/control, context drain and normal close have separate budgets. Native/session/metadata and SQLite file-policy checkpoints are implemented. Real late SQLite COMMIT and native request/reply loss observed. Known retained close is joined with a fresh budget; candidate live-loop/supervision restrictions exclude global task/loop termination with pending physical work. No universal physical-stop guarantee; G5 must approve lifecycle adequacy. |
 | Missing/incompatible original plan or ledger | Refuse without receipt rewriting, reconstruction from current models, or endpoint stamping. | Actual old nine-column ledger refusal demonstrated. Original raw Prepared JSON was not versioned; the later version-one envelope is not a ledger backup or cross-version conversion policy. |
 
 [Workflow](recorded-migrations-workflow-review.md),
@@ -265,7 +270,20 @@ work, while final explicit COMMIT failure can follow already-durable complete3. 
 outcome policy keeps caller knowledge, per-unit durable markers, completion and cleanup separate;
 no whole-Target outcome flag or automatic replay. Existing runtime already passed; no fake fix.
 
-Remaining acceptance: settle remaining detached-cleanup/global shutdown/live-loop limits.
+The [retained-cleanup checkpoint](recorded-migrations-retained-cleanup-review.md) now joins a
+Target's known SQLite close under fresh operation_timeout even after I/O invalidation. Normal
+successful exit observes that close result; expiry/cancellation retains physical ownership and
+preserves primary failures. Actual busy-worker journeys distinguish caller return from physical
+cleanup, followed by fresh ORIGINAL application and ordinary typed use.
+
+**Candidate G3 policy checkpoint recorded within explicit limits:** caller keeps default asyncio
+loop alive until retained physical work settles, owns its tasks/blockers/process supervision and
+original evidence. No global drain/supervisor is added; an abandoned opening never yielded Target
+and is NOT joined by another Target's exit. Global all-task cancellation/loop termination with
+pending physical work, failed-close recovery and host/process death are outside first-promotion
+qualification, not silently handled. G5 must approve or reject these lifecycle restrictions and
+may require a separately designed interface before promotion. G3 engineering choices are no
+longer unspecified; this is NOT release acceptance or excluded-shutdown qualification.
 Qualification stays finite through public journeys/independent real observations, consistent
 with [ADR0017](../adr/0017-per-operation-deadlines-fail-closed.md); not all failure permutations.
 

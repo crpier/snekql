@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Join a Target's known retained SQLite close under a fresh bounded operation budget at context
+  exit, including after an I/O failure. Do not silently report successful exit while known
+  cleanup remains pending; preserve primary failures/cancellation and retain cleanup on expiry.
+  Explicit live-loop/global-shutdown limits remain candidate policy, not quiescence proof (#477).
+
 - Qualify real native COMMIT request/response loss and EOF using original role plans: recover
   from actual durable progress without replaying committed work, or observe already-durable
   completion despite a failed final COMMIT call. Keep driver outcome separate from migration
