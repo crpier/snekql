@@ -233,12 +233,17 @@ async def provide_restarted_database() -> AsyncGenerator[mariadb.Database]:
         database: mariadb.Database | None = None
         try:
             async with temporary_mariadb_server(
-                data_directory=Path(directory), transports={"tcp"}
+                runtime_base_directory=Path(directory),
+                data_directory=Path(directory) / "data",
+                transports={"tcp"},
             ) as server:
                 config = replace(server.config(pool_size=1), health_check="checkout")
                 database = await mariadb.Database.initialize(config)
             async with temporary_mariadb_server(
-                data_directory=Path(directory), transports={"tcp"}, port=config.port
+                runtime_base_directory=Path(directory),
+                data_directory=Path(directory) / "data",
+                transports={"tcp"},
+                port=config.port,
             ):
                 yield database
         finally:

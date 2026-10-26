@@ -14,6 +14,7 @@ from typing import Any
 from anyio import fail_after
 from snektest import assert_eq, assert_raises, assert_true
 
+from benchmarks._artifacts import mariadb_artifacts
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
 from snekql.runtime import Database
@@ -88,13 +89,14 @@ async def _run_cycles(
 async def run_soak(backend: BackendFamily, cycles: int) -> None:
     """Measure closed database cycles against a warmed-up handle baseline."""
     async with AsyncExitStack() as resources:
-        server = (
-            await resources.enter_async_context(
-                temporary_mariadb_server(transports={"tcp"})
+        server = None
+        if backend == "mariadb":
+            root = await resources.enter_async_context(mariadb_artifacts())
+            server = await resources.enter_async_context(
+                temporary_mariadb_server(
+                    transports={"tcp"}, runtime_base_directory=root
+                )
             )
-            if backend == "mariadb"
-            else None
-        )
         await _run_cycles(
             backend, cycles, server.config(pool_size=1) if server else None
         )

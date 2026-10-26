@@ -63,6 +63,7 @@ os.execv({real_client!r}, [{real_client!r}, *sys.argv[1:]])
                 assert_raises(TemporaryMariaDBServerError),
             ):
                 async with temporary_mariadb_server(
+                    runtime_base_directory=data_directory.parent,
                     data_directory=data_directory,
                     client=client,
                     reset_database=True,
@@ -71,7 +72,8 @@ os.execv({real_client!r}, [{real_client!r}, *sys.argv[1:]])
             assert_true(all(process.returncode is not None for process in processes))
             assert_true(await asyncio.to_thread(data_directory.is_dir))
             async with temporary_mariadb_server(
-                data_directory=data_directory
+                runtime_base_directory=data_directory.parent,
+                data_directory=data_directory,
             ) as server:
                 assert_eq((await server.run_sql("SELECT 1")).returncode, 0)
         finally:
@@ -161,6 +163,7 @@ async def cancellation_reaps_owned_children(case: tuple[str, str]) -> None:
     async def run(data_directory: Path) -> None:
         with scope:
             async with temporary_mariadb_server(
+                runtime_base_directory=data_directory.parent,
                 data_directory=data_directory,
                 auth="password" if phase == "bootstrap" else "insecure",
                 reset_database=phase == "reset",
@@ -264,7 +267,8 @@ async def readiness_error_remains_primary(policy: str) -> None:
                 assert_raises(_ReadinessError) as error,
             ):
                 async with temporary_mariadb_server(
-                    data_directory=Path(directory) / "data"
+                    runtime_base_directory=Path(directory),
+                    data_directory=Path(directory) / "data",
                 ):
                     assert_true(False)
             assert_is(error.exception, failure)
@@ -305,7 +309,10 @@ async def terminate_resistant_server_is_killed() -> None:
 
         try:
             with patch("asyncio.create_subprocess_exec", record):
-                async with temporary_mariadb_server(data_directory=data_directory):
+                async with temporary_mariadb_server(
+                    runtime_base_directory=data_directory.parent,
+                    data_directory=data_directory,
+                ):
                     with anyio.fail_after(5):
                         # Readiness comes from another process, not an asyncio task.
                         while not await asyncio.to_thread(ready.exists):  # noqa: ASYNC110
@@ -328,7 +335,9 @@ async def server_spawn_failure_is_a_domain_error() -> None:
         await asyncio.to_thread((data_directory / "mysql").mkdir, parents=True)
         with assert_raises(TemporaryMariaDBServerError) as error:
             async with temporary_mariadb_server(
-                data_directory=data_directory, mariadbd=Path(directory) / "absent"
+                runtime_base_directory=data_directory.parent,
+                data_directory=data_directory,
+                mariadbd=Path(directory) / "absent",
             ):
                 assert_true(False)
 

@@ -88,6 +88,7 @@ async def tls_config_connects_to_a_certificate_required_server() -> None:
         certificate, private_key = _create_self_signed_server_certificate(directory)
         async with temporary_mariadb_server(
             auth="password",
+            runtime_base_directory=directory,
             data_directory=directory / "data",
             server_args=(
                 f"--ssl-ca={certificate}",

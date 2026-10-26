@@ -1,8 +1,10 @@
 """Self-contained driver contracts, also copied into isolated wheel installs."""
 
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import ClassVar
 
+from anyio import CancelScope, TemporaryDirectory
 from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb
@@ -12,8 +14,18 @@ from snekql.testing.mariadb import TemporaryMariaDBServer, temporary_mariadb_ser
 @fixture(scope="session")
 async def provide_artifact_server() -> AsyncGenerator[TemporaryMariaDBServer]:
     """Keep native server ownership inside the installed-package test process."""
-    async with temporary_mariadb_server() as server:
-        yield server
+    owner = TemporaryDirectory(prefix="sq-", delete=False)
+    async with owner as directory:
+        try:
+            async with temporary_mariadb_server(
+                runtime_base_directory=Path(directory)
+            ) as server:
+                yield server
+            with CancelScope(shield=True):
+                await owner.cleanup()
+        except BaseException as error:
+            error.add_note(f"MariaDB artifacts may remain at {directory}")
+            raise
 
 
 @fixture
