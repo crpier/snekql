@@ -110,17 +110,40 @@ async def native_check_addition_refuses_disabled_check_enforcement_without_a_rec
     async with m.connect(server.config()) as target:
         await target.apply(await target.prepare(first, schema_writers_excluded=True))
     await server.run_sql("INSERT INTO entries VALUES(1,-1)")
+    async with (
+        await mariadb.Database.initialize(server.config()) as app,
+        app.transaction() as tx,
+    ):
+        saved = await tx.fetch_one(
+            mariadb.raw("SELECT @@GLOBAL.check_constraint_checks AS value")
+        )
+        before = await tx.fetch_all(
+            mariadb.raw("SELECT * FROM snekql_experimental_migrations")
+        )
     await server.run_sql("SET GLOBAL check_constraint_checks=0")
     try:
-        async with m.connect(server.config()) as target:
-            with assert_raises(m.PackageError) as error:
+        with assert_raises(mariadb.DatabaseRuntimeError) as error:
+            async with m.connect(server.config()) as target:
                 await target.apply(
                     await target.prepare(second, schema_writers_excluded=True)
                 )
-            assert "CHECK addition" in str(error.exception)
-            assert_eq(len(await target.status()), 1)
+        assert "check_constraint_checks" in str(error.exception)
+        async with (
+            await mariadb.Database.initialize(server.config()) as app,
+            app.transaction() as tx,
+        ):
+            assert_eq(
+                await tx.fetch_all(
+                    mariadb.raw("SELECT * FROM snekql_experimental_migrations")
+                ),
+                before,
+            )
+            assert_eq(
+                await tx.fetch_all(mariadb.raw("SELECT value FROM entries")),
+                [{"value": -1}],
+            )
     finally:
-        await server.run_sql("SET GLOBAL check_constraint_checks=1")
+        await server.run_sql(f"SET GLOBAL check_constraint_checks={saved['value']}")
 
 
 @test(mark="medium")

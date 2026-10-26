@@ -319,3 +319,13 @@ explicitly different UTF-8 target deploys original role packages and normal type
 The ordinary fixed busy wait/WAL/synchronous initializer is deliberately NOT imported, so
 migration acquisition and pending journal/durability policy are not silently changed. This is
 not complete SQLite runtime admission, failure-window qualification or completion of G3/G4/G5.
+
+## Native integrity admission follow-through
+
+The [native integrity checkpoint](recorded-migrations-native-enforcement-review.md) verifies
+shared foreign_key_checks/check_constraint_checks/unique_checks1/ON prerequisites before
+native Target yield. It does NOT implicitly enable disabled settings or repair GLOBAL state;
+UTC remains the sole native normalization, preserving actual SQL-mode/rendering/recovery
+facts. Real disabled-default refusals preserve original role plans/earlier receipts/data;
+explicit caller restoration permits original work. Version/strictness/metadata, journal/
+durability, remaining outcome/shutdown policy and G4/G5 remain open, not implicitly qualified.

@@ -97,3 +97,13 @@ CPython3.15.0/SQLite3.53.1/MariaDB13.0.2, not maintained-version qualification. 
 maintainer-disabled: no CI requested/polled/awaited/claimed. No full-suite/matrix/all-admission-
 failure/failed-close/WAL active-death/power-loss/native lost-ack/shutdown qualification or
 merge/tag/publication. Remaining G3/G4/G5 decisions above remain open.
+
+## Native integrity admission follow-through
+
+The [native integrity checkpoint](recorded-migrations-native-enforcement-review.md) verifies
+shared foreign_key_checks/check_constraint_checks/unique_checks1/ON prerequisites before
+native Target yield. It does NOT implicitly enable disabled settings or repair GLOBAL state;
+UTC remains the sole native normalization, preserving actual SQL-mode/rendering/recovery
+facts. Real disabled-default refusals preserve original role plans/earlier receipts/data;
+explicit caller restoration permits original work. Version/strictness/metadata, journal/
+durability, remaining outcome/shutdown policy and G4/G5 remain open, not implicitly qualified.

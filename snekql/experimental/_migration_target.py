@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any, Literal
 lazy import sqlite3
+lazy from dataclasses import replace
 
 import anyio
 lazy import aiomysql
@@ -77,7 +78,10 @@ from snekql.mariadb.identifiers import quote_identifier
 from snekql.sqlite.config import Config as SQLiteConfig
 lazy from snekql._settings import apply_connection_settings
 lazy from snekql.mariadb._pool import connect_owned
-lazy from snekql.mariadb.settings import _UTC_TIME_ZONE_SETTING
+lazy from snekql.mariadb.settings import (
+    _UTC_TIME_ZONE_SETTING,
+    MARIADB_SESSION_SETTINGS,
+)
 lazy from snekql.sqlite.settings import SQLITE_CONNECTION_SETTINGS
 
 logger = logging.getLogger(__name__)
@@ -1626,7 +1630,21 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
         else:
             await apply_connection_settings(
                 _SessionSettingsProbe(target),
-                (_UTC_TIME_ZONE_SETTING,),
+                (
+                    _UTC_TIME_ZONE_SETTING,
+                    # Verify inherited integrity prerequisites; do not repair policy
+                    # or overwrite sql_mode/rendering/recovery evidence at admission.
+                    *(
+                        replace(setting, apply_statements=())
+                        for setting in MARIADB_SESSION_SETTINGS
+                        if setting.name
+                        in {
+                            "foreign_key_checks",
+                            "check_constraint_checks",
+                            "unique_checks",
+                        }
+                    ),
+                ),
                 backend="mariadb",
             )
         yield target

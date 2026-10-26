@@ -194,15 +194,34 @@ async def native_drop_requires_foreign_key_checks_and_no_opaque_program_dependen
     )
     async with m.connect(server.config()) as target:
         await target.apply(await target.prepare(first, schema_writers_excluded=True))
+    async with (
+        await mariadb.Database.initialize(server.config()) as app,
+        app.transaction() as tx,
+    ):
+        saved = await tx.fetch_one(
+            mariadb.raw("SELECT @@GLOBAL.foreign_key_checks AS value")
+        )
+        before = await tx.fetch_all(
+            mariadb.raw("SELECT * FROM snekql_experimental_migrations")
+        )
     await server.run_sql("SET GLOBAL foreign_key_checks=0")
     try:
-        async with m.connect(server.config()) as target:
-            with assert_raises(m.PackageError) as error:
+        with assert_raises(mariadb.DatabaseRuntimeError) as error:
+            async with m.connect(server.config()) as target:
                 await target.prepare(second, schema_writers_excluded=True)
-            assert "index removal" in str(error.exception)
-            assert_eq(len(await target.status()), 1)
+        assert "foreign_key_checks" in str(error.exception)
+        async with (
+            await mariadb.Database.initialize(server.config()) as app,
+            app.transaction() as tx,
+        ):
+            assert_eq(
+                await tx.fetch_all(
+                    mariadb.raw("SELECT * FROM snekql_experimental_migrations")
+                ),
+                before,
+            )
     finally:
-        await server.run_sql("SET GLOBAL foreign_key_checks=1")
+        await server.run_sql(f"SET GLOBAL foreign_key_checks={saved['value']}")
     await server.run_sql(
         "CREATE PROCEDURE hidden_dependency() SELECT value FROM entries FORCE INDEX(by_value)"
     )

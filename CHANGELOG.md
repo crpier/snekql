@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Verify inherited native foreign-key/CHECK/unique enforcement prerequisites before yielding
+  a dedicated migration target. Refuse disabled session flags without silently enabling them,
+  changing GLOBAL defaults or overwriting SQL-mode/rendering/recovery evidence. Original role
+  plans remain unchanged across refusal and explicit caller policy restoration (#477).
+
 - Apply/read back shared SQLite foreign-key and UTF-8 admission policy before yielding a
   dedicated migration target; refuse existing UTF-16 files without changing bytes/data/history.
   Retain migration-specific busy waits rather than importing the ordinary pool's fixed wait
