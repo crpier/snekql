@@ -73,6 +73,16 @@ cancellation, then completes on that same target with original bytes/current typ
 Server coordination acquisition, session/durability and remaining outcome/shutdown policy are
 still open; this does not fence other writers, supply new fairness or complete G3.
 
+## Native server coordination follow-through
+
+The [native coordination checkpoint](recorded-migrations-native-coordination-review.md)
+preserves fractional GET_LOCK server waits and reports known non-acquisition with the existing
+MigrationLockTimeoutError while retaining the synchronized contender. Real role grant/refusal
+and I/O/task/scope interruption preserve the separate active owner, original evidence and typed
+application. Unsafe contenders are discarded and server disconnect is independently observed.
+Server wait and driver operation deadlines are distinct; this is not a new end-to-end client
+acquisition clock. SQLite writer coordination and remaining G3 policy are still incomplete.
+
 ## Recommendation
 
 Retain the opt-in experimental interface until the five gates below are satisfied. The first

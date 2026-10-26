@@ -70,6 +70,13 @@ the much shorter guard-acquisition budget, proving the timer did not encompass i
 Application models remain present in this process; author-source removal was established by
 prior separate-process journeys, not newly by this test.
 
+## Subsequent native server-wait follow-through
+
+The [native coordination checkpoint](recorded-migrations-native-coordination-review.md) now
+retains fractional GET_LOCK server waits and distinguishes known refusal from interrupted
+unsafe driver waiting without disturbing the active owner. The list below records this local-
+guard checkpoint's remaining work; end-to-end coordination/SQLite and other G3 policy remain.
+
 ## Remaining G3 and finite promotion
 
 - Server coordination acquisition is deliberately unchanged. Native GET_LOCK still uses the

@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Preserve fractional native migration advisory-lock waits instead of truncating them to zero;
+  report known non-acquisition as MigrationLockTimeoutError without invalidating the contender.
+  Exercise original role plans through real refusal/grant and interrupted driver waits, isolate
+  the active owner's session, and observe disconnect independently before physical-stop claims.
+  Server wait and driver deadlines remain distinct; complete G3 coordination policy is pending.
+
 - Bound local migration target-guard waiting with an acquisition budget without timing the
   admitted body or discarding another task's active connection. Exercise real partially modified
   native role work while queued status/prepare/apply expire or queued callers cancel, then

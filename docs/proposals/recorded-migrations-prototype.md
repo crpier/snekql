@@ -65,6 +65,13 @@ whole body. Actual native role work survives queued expiry/cancellation and comp
 same target. Server coordination acquisition and remaining session/durability/outcome/shutdown
 policy remain open; no new public facade or complete G3 claim.
 
+The [native coordination checkpoint](recorded-migrations-native-coordination-review.md)
+retains fractional server waits and distinguishes known refusal/reusable target from unsafe
+interrupted GET_LOCK I/O. Real grant/refusal/deadline/cancellation leaves the active role owner
+intact and retains original evidence/current typed use. Server wait is not a new client-wide
+acquisition clock; SQLite coordination and other G3 session/durability/outcome/shutdown policy
+remain open.
+
 ## Workflow-first checkpoint
 
 The [authoring-to-application review](recorded-migrations-workflow-review.md) exercises the

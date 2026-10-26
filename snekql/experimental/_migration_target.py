@@ -13,7 +13,12 @@ import anyio
 lazy import aiomysql
 lazy import aiosqlite
 
-from snekql.errors import DatabaseOperationTimeoutError, PoolTimeoutError, SchemaError
+from snekql.errors import (
+    DatabaseOperationTimeoutError,
+    MigrationLockTimeoutError,
+    PoolTimeoutError,
+    SchemaError,
+)
 from snekql.experimental._migration_checks import removed_check_obstacle
 from snekql.experimental._migration_indexes import removed_indexes
 from snekql.experimental._migration_mariadb import (
@@ -624,8 +629,11 @@ class Target:
         else:
             acquired = await self._query(
                 "SELECT GET_LOCK(%s,%s)",
-                (self._lock_name, int(self._config.acquire_timeout)),
+                (self._lock_name, self._config.acquire_timeout),
             )
+            if acquired == [(0,)]:
+                msg = "timed out acquiring migration advisory lock"
+                raise MigrationLockTimeoutError(msg)
             if acquired != [(1,)]:
                 msg = "could not acquire migration advisory lock"
                 raise PackageError(msg)
