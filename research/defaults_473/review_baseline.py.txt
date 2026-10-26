@@ -1,0 +1,63 @@
+"""Review-sheet scenarios; this caller is only type-checked, never executed."""
+
+from typing import ClassVar, assert_type
+from uuid import UUID, uuid4
+
+
+class Review[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[Review[database.Row]]]
+    required: database.Col[str] = __REQUIRED__
+    required_nullable: database.Col[str | None] = __REQUIRED_NULLABLE__
+    python_value: database.Col[int] = __PYTHON_VALUE__
+    python_none: database.Col[str | None] = __PYTHON_NONE__
+    python_nullable: database.Col[str | None] = __PYTHON_NULLABLE__
+    python_factory: database.Col[UUID] = __PYTHON_FACTORY__
+    server_value: database.GenCol[bool] = __SERVER_VALUE__
+    server_clock: database.GenCol[database.UtcDatetime] = __SERVER_CLOCK__
+    server_nullable: database.GenCol[str | None] = __SERVER_NULLABLE__
+    server_null: database.GenCol[str | None] = __SERVER_NULL__
+    identity: database.GenCol[int] = __IDENTITY__
+
+
+pending = Review(required="Ada", required_nullable=None)
+assert_type(pending, Review[database.Pending])
+assert_type(pending.required, str)
+assert_type(pending.required_nullable, str | None)
+assert_type(pending.python_value, int)
+assert_type(pending.python_none, str | None)
+assert_type(pending.python_nullable, str | None)
+assert_type(pending.python_factory, UUID)
+assert_type(pending.server_value, bool | database.PENDING_GENERATION)
+assert_type(pending.server_clock, database.UtcDatetime | database.PENDING_GENERATION)
+assert_type(pending.server_nullable, str | None | database.PENDING_GENERATION)
+assert_type(pending.server_null, str | None | database.PENDING_GENERATION)
+assert_type(pending.identity, int | database.PENDING_GENERATION)
+Review(required="Ada", required_nullable="x", python_value=3, python_none="value", python_nullable=None, python_factory=uuid4(), server_value=True, server_nullable=None, server_null="override", identity=42)
+Review(required="Ada", required_nullable=None, server_value=database.PENDING_GENERATION)
+write: database.Write[Review[database.Row]] = database.insert(pending).returning()
+
+
+def fetched(row: Review[database.Row]) -> None:
+    assert_type(row.required, str)
+    assert_type(row.required_nullable, str | None)
+    assert_type(row.python_value, int)
+    assert_type(row.python_none, str | None)
+    assert_type(row.python_nullable, str | None)
+    assert_type(row.python_factory, UUID)
+    assert_type(row.server_value, bool)
+    assert_type(row.server_clock, database.UtcDatetime)
+    assert_type(row.server_nullable, str | None)
+    assert_type(row.server_null, str | None)
+    assert_type(row.identity, int)
+
+
+Review(required_nullable=None)  # error: missing-argument
+Review(required="Ada")  # error: missing-argument
+Review(required="Ada", required_nullable=None, python_value=None)  # error: invalid-argument-type
+Review(required="Ada", required_nullable=None, python_factory="wrong")  # error: invalid-argument-type
+Review(required="Ada", required_nullable=None, server_value=None)  # error: invalid-argument-type
+Review(required="Ada", required_nullable=None, server_value=0)  # error: invalid-argument-type
+Review(required="Ada", required_nullable=None, server_nullable=42)  # error: invalid-argument-type
+Review(required="Ada", required_nullable=None, python_value=database.PENDING_GENERATION)  # error: invalid-argument-type
+Review[database.Row](required="Ada", required_nullable=None)  # error: invalid-argument-type
+pending.python_value = 3  # error: invalid-assignment

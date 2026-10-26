@@ -1,7 +1,13 @@
 # Explicit default policies — native typing, no left/right split
 
 Research for #473, 2026-10-26. Supersedes the left/right split as the active
-investigation, not as an accepted interface. Static-only; no production change.
+investigation at that time, not as an accepted interface. Static-only; no production change.
+
+**Current status:** this is a challenger, not a maintainer-approved fourth
+shortlist item. The [review sheet](review-sheet.md) and
+[latest results](review-results.md) supersede this round's priorities. Subsequent
+discussion restored separate Python/SQL parameters as a valid shortlisted design;
+required Python input despite a SQL default is not inherently contradictory.
 
 ## Maintainer direction
 

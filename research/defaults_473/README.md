@@ -6,15 +6,23 @@ or authorization for a breaking change. Names below are experimental.
 
 ## Latest direction
 
-The maintainer has **rejected the left/right split**: native typing does not
-support the needed omission behavior, and its independently configurable
-settings did not make useful declarations clearer. Its generated-typing route
-is no longer pursued; [the record](left-python-right-sql.md) is historical.
+The maintainer's [review sheet](review-sheet.md) fixes eleven core scenarios,
+contrast cases, exact constructor/Pending/Row expectations and an explicit
+nonsense audit. **Three design families remain shortlisted**, none selected:
 
-[Explicit default policies](explicit-policies.md) are the current experiment:
-name both Python and server defaults, keep their useful behaviors coherent,
-and use native ty with no generated signatures. This is not a selected design.
-Earlier prefixed constructors and ownership selectors remain comparison points.
+1. Separate Python `default` / SQL `server_default` parameters.
+2. A `default_on="python"` / `default_on="server"` selector.
+3. Prefixed server constructors such as `ServerInteger`.
+
+[The review-sheet results](review-results.md) exercise all three, a new
+symmetric Python/Server prefix variation, and the earlier policy-wrapper
+challenger. The prefix variation is not a fourth approved shortlist item.
+The latest report includes full declarations, validated rejections, accepted
+typing gaps, runtime-only obligations and a reasoned comparison.
+
+The [left/right split](left-python-right-sql.md) and its generated-typing route
+are abandoned. Earlier reports below are historical rounds, not the current
+shortlist or accepted decisions. Validate locally; do not wait for GitHub Actions.
 
 ## Follow-up
 
@@ -84,11 +92,12 @@ field default in the probe (`GenCol[int]` with `server_default="wrong"`, or
 Those are recorded limitations of these blocked forms, not positive guarantees.
 The viable forms reject the corresponding mismatch with `invalid-assignment`.
 
-**Interpretation:** a separate server-default parameter is possible, but not
-currently sufficient by itself in the registered field-specifier mechanism. A dedicated
-outer declaration can give the recognized `default=` argument an unambiguous
-database meaning. We do not have to choose between the current marker semantics
-and an untyped constructor.
+**Interpretation:** a separate server-default parameter is possible. By itself
+it keeps Python input required in the registered field-specifier mechanism;
+that is a valid design, not a typing blocker. Explicit `default=PENDING_GENERATION`
+is needed only when Python omission should request server generation. A dedicated
+outer declaration provides another omission mechanism, not the only alternative.
+See the latest review for the required-input and coexistence cases.
 
 ## Compare the viable shapes
 

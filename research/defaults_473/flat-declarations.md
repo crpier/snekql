@@ -10,9 +10,10 @@ form, but rank it lower for verbosity. This round looks for flatter alternatives
 rather than trying to persuade the maintainer to like nesting.
 
 The subsequent [Python-left / SQL-right split](left-python-right-sql.md) was
-rejected by the maintainer. [Explicit default policies](explicit-policies.md)
-are now being compared with the flatter forms below. This round's shortlist
-is historical, not an accepted interface decision.
+rejected by the maintainer. The [agreed review sheet](review-sheet.md) and
+[latest comparison](review-results.md) now evaluate three shortlisted families,
+including the flat selector and prefixes below. This round's findings are
+historical, not accepted interface decisions.
 
 ## Important correction to the design space
 

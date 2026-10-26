@@ -1,0 +1,54 @@
+"""Contrasts and native ty gaps; accepted gaps are observations, not promises."""
+from typing import ClassVar, assert_type
+
+
+class RequiredSQL[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[RequiredSQL[database.Row]]]
+    value: database.Col[bool] = TwinInteger(server_default=False)
+
+
+RequiredSQL(value=True)
+RequiredSQL()  # error: missing-argument
+RequiredSQL(value="wrong")  # error: invalid-argument-type
+
+
+class RequiredGenerated[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[RequiredGenerated[database.Row]]]
+    value: database.GenCol[bool] = TwinInteger(server_default=False)
+
+
+explicit_pending = RequiredGenerated(value=database.PENDING_GENERATION)
+assert_type(explicit_pending.value, bool | database.PENDING_GENERATION)
+RequiredGenerated(value=False)
+RequiredGenerated()  # error: missing-argument
+
+
+class Both[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[Both[database.Row]]]
+    value: database.Col[bool] = TwinInteger(default=False, server_default=True)
+    label: database.Col[str] = TwinText(default_factory=lambda: "client", server_default="server")
+
+
+assert_type(Both().value, bool)
+assert_type(Both().label, str)
+Both(value=True)
+Both(value=None)  # error: invalid-argument-type
+
+
+# No recognized default argument: ty accepts these inconsistent declarations.
+# Accurate constructor inputs do NOT certify the SQL default's logical type.
+class AcceptedGaps[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[AcceptedGaps[database.Row]]]
+    literal: database.Col[int] = TwinInteger(server_default="wrong")
+    null: database.Col[str] = TwinText(server_default=None)
+    clock: database.Col[str] = TwinText(server_default=database.CurrentTimestamp)
+
+
+AcceptedGaps(literal=3, null="name", clock="text")
+AcceptedGaps(literal="wrong", null="name", clock="text")  # error: invalid-argument-type
+
+
+class BothInvalid[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[BothInvalid[database.Row]]]
+    wrong_server: database.Col[bool] = TwinInteger(default=False, server_default="wrong")  # error: invalid-assignment
+    wrong_python: database.Col[bool] = TwinInteger(default="wrong", server_default=True)  # error: invalid-assignment
