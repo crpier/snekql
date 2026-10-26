@@ -54,6 +54,15 @@ def _sql_mode_has_required_flags(value: object) -> bool:
     return flags >= _REQUIRED_SQL_MODE_FLAGS
 
 
+_UTC_TIME_ZONE_SETTING = ConnectionSetting(
+    name="time_zone",
+    apply_statements=("SET time_zone = '+00:00'",),
+    probe_sql="SELECT @@SESSION.time_zone",
+    expected_value="+00:00",
+    expectation="'+00:00' (UTC)",
+)
+"""One shared UTC clock policy for ordinary and dedicated migration connections."""
+
 MARIADB_SESSION_SETTINGS: tuple[ConnectionSetting, ...] = (
     ConnectionSetting(
         name="sql_mode",
@@ -62,13 +71,7 @@ MARIADB_SESSION_SETTINGS: tuple[ConnectionSetting, ...] = (
         predicate=_sql_mode_has_required_flags,
         expectation="STRICT_ALL_TABLES and NO_ENGINE_SUBSTITUTION enabled",
     ),
-    ConnectionSetting(
-        name="time_zone",
-        apply_statements=("SET time_zone = '+00:00'",),
-        probe_sql="SELECT @@SESSION.time_zone",
-        expected_value="+00:00",
-        expectation="'+00:00' (UTC)",
-    ),
+    _UTC_TIME_ZONE_SETTING,
     ConnectionSetting(
         name="foreign_key_checks",
         apply_statements=("SET SESSION foreign_key_checks = 1",),

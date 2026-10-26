@@ -111,3 +111,13 @@ Evidence: `.snektest/477-sqlite-coordination/` and matching external-cache scrip
 validation/trace runners finished; owned-server audit empty. Local default asyncio/GIL
 CPython3.15.0/Linux/SQLite3.53.1/MariaDB13.0.2, not maintained-version qualification. Actions
 remain disabled: no CI requested, polled, awaited or claimed. No merge/tag/publication.
+
+## Native UTC admission follow-through
+
+The [native UTC checkpoint](recorded-migrations-native-utc-review.md) applies/readbacks the
+shared ordinary runtime UTC policy before yielding a dedicated native target, through owned
+per-I/O deadlines. Actual frozen role/clock work under non-UTC server defaults now agrees with
+ordinary DATETIME/TEXT UtcDatetime reads/writes; SQL-mode rendering evidence is not normalized
+away and old rows/receipts are never repaired. This is only UTC session admission, not version/
+metadata/strictness/enforcement admission or complete G3. Journal/durability and remaining
+outcome/shutdown policy, G4/G5 and release decisions remain open.

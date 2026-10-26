@@ -1,0 +1,133 @@
+{
+  "bindings": [
+    [],
+    [],
+    []
+  ],
+  "contractions": [
+    null,
+    null,
+    null
+  ],
+  "digest": "5df892374b1b4bc324714d2a7f03f71d89016708be3eb7faae7d58a8348e0d7b",
+  "draft": {
+    "before": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
+              "name": "role",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "`accounts`",
+          "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "operations": [
+      {
+        "column": {
+          "definition": "`changed` DATETIME(6)",
+          "name": "changed",
+          "nullable": true,
+          "query_type": null,
+          "storage": "TEXT"
+        },
+        "kind": "add_column",
+        "table_name": "accounts"
+      },
+      {
+        "column": {
+          "definition": "`wire_changed` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+          "name": "wire_changed",
+          "nullable": true,
+          "query_type": null,
+          "storage": "TEXT"
+        },
+        "kind": "add_column",
+        "table_name": "accounts"
+      },
+      {
+        "kind": "checkpoint",
+        "name": "stamp"
+      },
+      {
+        "backend": "mariadb",
+        "checkpoint": "stamp",
+        "contract_digest": "82161184146320604c7d60480e75b3a74fb7e27d7432d4195ff52cf666f3d3d6",
+        "kind": "data_change",
+        "params": [],
+        "sql": "UPDATE `accounts` SET `changed` = CURRENT_TIMESTAMP(6), `wire_changed` = CONCAT(REPLACE(CURRENT_TIMESTAMP(6), ' ', 'T'), 'Z')"
+      }
+    ],
+    "predecessor": "b9dac64f7771e89d7e0b628463792bfc287065cfa307874e6af4763d6a992e0f",
+    "revision": "004_clock",
+    "target": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
+              "name": "role",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            },
+            {
+              "definition": "`changed` DATETIME(6)",
+              "name": "changed",
+              "nullable": true,
+              "query_type": null,
+              "storage": "TEXT"
+            },
+            {
+              "definition": "`wire_changed` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+              "name": "wire_changed",
+              "nullable": true,
+              "query_type": null,
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "`accounts`",
+          "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `changed` DATETIME(6), `wire_changed` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "ALTER TABLE `accounts` ADD COLUMN `changed` DATETIME(6)",
+    "ALTER TABLE `accounts` ADD COLUMN `wire_changed` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+    "UPDATE `accounts` SET `changed` = CURRENT_TIMESTAMP(6), `wire_changed` = CONCAT(REPLACE(CURRENT_TIMESTAMP(6), ' ', 'T'), 'Z')"
+  ],
+  "transactional": [
+    false,
+    false,
+    true
+  ],
+  "version": 2
+}

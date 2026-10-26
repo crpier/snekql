@@ -2331,3 +2331,13 @@ synchronized target usable. Real original role plans cover grant/refusal and int
 I/O/task/scope waits; unsafe workers are independently disposed before fresh status/apply.
 The busy-handler acquisition budget and per-I/O deadline remain separate, not a new end-to-end
 client clock. Session/journal/durability, remaining outcome/shutdown policy and G4/G5 stay open.
+
+## Native UTC admission follow-through
+
+The [native UTC checkpoint](recorded-migrations-native-utc-review.md) applies/readbacks the
+shared ordinary runtime UTC policy before yielding a dedicated native target, through owned
+per-I/O deadlines. Actual frozen role/clock work under non-UTC server defaults now agrees with
+ordinary DATETIME/TEXT UtcDatetime reads/writes; SQL-mode rendering evidence is not normalized
+away and old rows/receipts are never repaired. This is only UTC session admission, not version/
+metadata/strictness/enforcement admission or complete G3. Journal/durability and remaining
+outcome/shutdown policy, G4/G5 and release decisions remain open.

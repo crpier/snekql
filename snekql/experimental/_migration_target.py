@@ -75,7 +75,9 @@ from snekql.experimental.migrations import (
 from snekql.mariadb.config import Config as MariaDBConfig
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.sqlite.config import Config as SQLiteConfig
+lazy from snekql._settings import apply_connection_settings
 lazy from snekql.mariadb._pool import connect_owned
+lazy from snekql.mariadb.settings import _UTC_TIME_ZONE_SETTING
 
 logger = logging.getLogger(__name__)
 
@@ -1564,6 +1566,20 @@ class Target:
             return "applied"
 
 
+class _SessionSettingsProbe:
+    """Apply shared admission policy through the target's fail-closed I/O owner."""
+
+    def __init__(self, target: Target) -> None:
+        self.target = target
+
+    async def execute(self, sql: str) -> None:
+        await self.target._query(sql)  # noqa: SLF001 - module owns target admission
+
+    async def fetch_value(self, sql: str) -> object:
+        rows = await self.target._query(sql)  # noqa: SLF001 - module owns target admission
+        return rows[0][0] if rows else None
+
+
 @asynccontextmanager
 async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]:
     """Open a dedicated migration connection; importing the module opens nothing.
@@ -1598,6 +1614,12 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
     try:
         if isinstance(config, SQLiteConfig):
             await target._query("PRAGMA foreign_keys=ON")  # noqa: SLF001 - module owns connection lifecycle
+        else:
+            await apply_connection_settings(
+                _SessionSettingsProbe(target),
+                (_UTC_TIME_ZONE_SETTING,),
+                backend="mariadb",
+            )
         yield target
     except BaseException:
         failed = True

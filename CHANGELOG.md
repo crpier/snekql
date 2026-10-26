@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Admit native migration sessions with the ordinary runtime's verified UTC time-zone policy
+  before yielding a target. Real original role/clock packages now preserve UTC meaning for
+  DATETIME and canonical TEXT CurrentTimestamp backfills under non-UTC server defaults,
+  without clearing SQL-mode/rendering evidence or rewriting old data/receipts (#477).
+  Remaining native admission, durability and outcome/shutdown policy is still experimental.
+
 - Identify exact SQLite BEGIN IMMEDIATE/SQLITE_BUSY as known writer acquisition refusal
   with MigrationLockTimeoutError, retaining the synchronized target. Exercise original role
   plans through actual refusal/grant and interrupted busy waits; unsafe targets remain closed.
