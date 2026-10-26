@@ -146,6 +146,8 @@ async def service_soak_recovers_from_repeated_saturation(
                 ("--workers", "129"),
                 ("--sample-interval", "0"),
                 ("--seed", "-1"),
+                ("--minimum-bursts", "-1"),
+                ("--minimum-bursts", "1001"),
                 ("--rows", "15"),
                 ("--batch-size", "0"),
             ]
@@ -166,7 +168,7 @@ async def service_soak_rejects_invalid_inputs(value: tuple[str, str]) -> None:
 
 @test(mark="slow")
 async def service_soak_sustained_multislot_saturation_does_not_stall() -> None:
-    """Repeated native bursts must not leave free capacity behind sleeping tickets."""
+    """Complete five bursts under native contention, independent of host speed."""
     result = await run_process(
         [
             sys.executable,
@@ -176,6 +178,8 @@ async def service_soak_sustained_multislot_saturation_does_not_stall() -> None:
             "mariadb",
             "--duration",
             "2",
+            "--minimum-bursts",
+            "5",
             "--warmup",
             "0.1",
             "--burst-interval",
@@ -196,6 +200,13 @@ async def service_soak_sustained_multislot_saturation_does_not_stall() -> None:
     assert_eq(result.returncode, 0, msg=result.stderr.decode())
     summary = json.loads(result.stdout.splitlines()[-1])
     assert_eq(summary["measured_cancelled_waiters"] >= 5, True)
+    assert_eq(summary["cancelled_waiters"] >= 2, True)
+    assert_eq(summary["resource_checks_passed"], True)
+    assert_eq(summary["recovery_verified"], True)
+    assert_eq(summary["drained_pool"]["occupied"], 0)
+    assert_eq(summary["drained_pool"]["waiters"], 0)
+    assert_eq(summary["closed_pool"]["state"], "closed")
+    assert_eq(summary["closed_pool"]["occupied"], 0)
 
 
 @test(mark="slow")

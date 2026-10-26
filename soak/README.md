@@ -47,6 +47,15 @@ workflow duration is limited to 1–3000 seconds under its 60-minute job limit.
 Ordinary full-suite CI runs only short native CLI tests. Longer runs are not PR
 correctness or throughput gates.
 
+For a repeatable contention smoke, `--minimum-bursts 5` keeps measured workers
+active until at least five queued-cancellation bursts complete, even when the
+nominal duration has elapsed. Default zero preserves duration-driven runs; the
+accepted range is 0–1000. The count excludes preparation and warmup. Operation
+and acquisition deadlines remain in force. This replaces the test's former
+five-bursts-in-two-seconds machine-speed floor (#551), not its contention,
+reconciliation, resource, drain or recovery checks. Scheduling remains
+nondeterministic; this smoke is not an exhaustive admission-scheduler proof.
+
 ## Workload and correctness
 
 After literal fixture migrations and schema verification, the runner fills all

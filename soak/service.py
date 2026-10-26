@@ -35,6 +35,7 @@ class Config:
     slow_consumer: float = 0.001
     burst_interval: float = 5
     seed: int = 538
+    minimum_bursts: int = 0
 
 
 async def _phase(  # noqa: C901
@@ -43,12 +44,14 @@ async def _phase(  # noqa: C901
     duration: float,
     *,
     latency: dict[str, Histogram] | None = None,
+    minimum_bursts: int = 0,
 ) -> dict[str, Histogram]:
     """Drain rather than cancel workers: no in-flight write is silently abandoned."""
     operations = ("read", "write", "stream", "early_stream")
     if latency is None:
         latency = {name: Histogram() for name in (*operations, "loop_delay")}
     deadline = monotonic() + duration
+    initial_cancellations = work.cancelled_waiters
     done = asyncio.Event()
     worker_tasks: list[asyncio.Task[None]] = []
 
@@ -56,7 +59,11 @@ async def _phase(  # noqa: C901
         random = Random(config.seed + identity)
         operation = 0
         # Each worker exercises every kind even in a short smoke-sized phase.
-        while operation < len(operations) or monotonic() < deadline:
+        while (
+            operation < len(operations)
+            or monotonic() < deadline
+            or work.cancelled_waiters - initial_cancellations < minimum_bursts
+        ):
             name = operations[operation % len(operations)]
             started = monotonic()
             async with asyncio.timeout(60):
@@ -134,7 +141,15 @@ async def _exercise(database: Any, config: Config, namespace: Any) -> dict[str, 
     before = work.writes.copy()
     cancellations_before = work.cancelled_waiters
     async with asyncio.TaskGroup() as group:
-        task = group.create_task(_phase(work, config, config.duration, latency=latency))
+        task = group.create_task(
+            _phase(
+                work,
+                config,
+                config.duration,
+                latency=latency,
+                minimum_bursts=config.minimum_bursts,
+            )
+        )
         while not task.done():
             done, _ = await asyncio.wait({task}, timeout=config.sample_interval)
             if not done:
@@ -245,6 +260,7 @@ def main() -> None:
         ("rows", 64),
         ("batch-size", 16),
         ("seed", 538),
+        ("minimum-bursts", 0),
     ):
         parser.add_argument(f"--{name}", type=int, default=default)
     args = parser.parse_args()
@@ -259,6 +275,7 @@ def main() -> None:
         "rows": (16, 4096),
         "batch_size": (1, 1024),
         "seed": (0, 2**32 - 1),
+        "minimum_bursts": (0, 1000),
     }
     for name, (lower, upper) in bounds.items():
         value = getattr(args, name)

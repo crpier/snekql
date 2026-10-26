@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-10-25T23:51:01.015460+00:00",
+  "loadavg": [
+    3.04833984375,
+    3.34912109375,
+    3.14013671875
+  ],
+  "proc_meminfo": "MemTotal:       32670696 kB\nMemFree:         1082904 kB\nMemAvailable:    9000128 kB\nBuffers:             104 kB\nCached:         21666380 kB\nSwapCached:           64 kB\nActive:          5351452 kB\nInactive:       23014924 kB\nActive(anon):    4402044 kB\nInactive(anon): 14753036 kB\nActive(file):     949408 kB\nInactive(file):  8261888 kB\nUnevictable:          16 kB\nMlocked:              16 kB\nSwapTotal:      65345940 kB\nSwapFree:       63845056 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:             25664 kB\nWriteback:           392 kB\nAnonPages:       6559724 kB\nMapped:          1736528 kB\nShmem:          12455448 kB\nKReclaimable:     411512 kB\nSlab:             805028 kB\nSReclaimable:     371696 kB\nSUnreclaim:       433332 kB\nKernelStack:       32608 kB\nPageTables:       110668 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    81681288 kB\nCommitted_AS:   40721332 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:      304616 kB\nVmallocChunk:          0 kB\nPercpu:            24080 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:   1613824 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nBalloon:               0 kB\nGPUActive:             0 kB\nGPUReclaim:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:     1475444 kB\nDirectMap2M:    31905792 kB\nDirectMap1G:     2097152 kB\n",
+  "proc_pressure_cpu": "some avg10=0.00 avg60=0.00 avg300=0.05 total=28760549\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n",
+  "proc_pressure_io": "some avg10=3.80 avg60=3.20 avg300=2.85 total=518644000\nfull avg10=3.56 avg60=2.98 avg300=2.66 total=501858347\n"
+}
