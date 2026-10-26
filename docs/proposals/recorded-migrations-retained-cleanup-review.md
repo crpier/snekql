@@ -83,8 +83,8 @@ is introduced. Do NOT cancel all loop tasks/stop the loop and assume shielded cl
 
 Explicitly OUTSIDE first-promotion qualification: global all-tasks cancellation while SQLite
 opening/close remains pending, event-loop close before physical work settles, failed-close
-recovery, abrupt interpreter/host termination, unavailable OS/filesystem waits and universal
-cleanup after SIGKILL. Shielding/retention is not immortality, cross-process backup or a force
+recovery, guaranteed library cleanup under abrupt interpreter/host termination, unavailable
+OS/filesystem waits and universal cleanup after SIGKILL. Shielding/retention is not immortality, cross-process backup or a force
 stop. Raw abandoned opening never yielded Target: no Target exit can join it; caller must keep
 loop alive for its existing retained owner and arrange separate lifetime supervision. No hidden
 promise that asyncio.run can immediately terminate safely after every opening/I/O failure.
@@ -135,3 +135,13 @@ regressions use local13.0.2. Not the maintained-version/filesystem matrix, induc
 close, unavailable-loop/global-cancel/host-death support, WAL process death, native DDL lost ACK,
 all tests/full-suite/CI or release approval. Historical evidence and query-mapping independence
 remain unchanged.
+
+## Actual WAL process-death follow-through
+
+The [WAL interruption checkpoint](recorded-migrations-wal-interruption-review.md) now exercises
+real uncommitted role UPDATE-trigger spill/NORMAL-FULL, validated physical WAL frames, actual
+client SIGKILL, independent rollback/no003 and fresh SAME original completion/current app.
+This qualifies a selected database outcome after client death, NOT library-managed cleanup or
+global graceful shutdown under abrupt termination; those G3 exclusions remain. Pinned WAL readers keep their old snapshot without blocking the fresh writer. Production code
+unchanged; no fabricated runtime RED/fix or power-loss inference. G4 maintained environment
+matrix/native DDL lost ACK and G5 interface/lifecycle/ADR/coexistence/release approval remain.

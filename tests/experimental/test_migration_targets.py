@@ -25,9 +25,17 @@ from snekql.testing.mariadb import TemporaryMariaDBServer, temporary_mariadb_ser
 async def package_server_session() -> AsyncGenerator[TemporaryMariaDBServer]:
     """Own a unique data directory, including across concurrent test invocations."""
     await asyncio.to_thread(Path(".snektest").mkdir, exist_ok=True)
+    home = os.environ.get("SNEKQL_TEST_MARIADB_HOME")
+    installation = await asyncio.to_thread(Path(home).resolve) if home else None
     with TemporaryDirectory(prefix="packages-", dir=".snektest") as directory:
         async with temporary_mariadb_server(
-            data_directory=Path(directory) / "data"
+            data_directory=Path(directory) / "data",
+            mariadbd=installation / "bin/mariadbd" if installation else "mariadbd",
+            install_db=installation / "scripts/mariadb-install-db"
+            if installation
+            else "mariadb-install-db",
+            client=installation / "bin/mariadb" if installation else "mariadb",
+            server_args=(f"--basedir={installation}",) if installation else (),
         ) as server:
             yield server
 

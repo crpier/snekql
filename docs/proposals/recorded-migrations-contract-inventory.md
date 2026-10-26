@@ -1210,3 +1210,21 @@ physical cleanup/fresh original apply/current app. Candidate G3 shutdown policy 
 loop/supervision, NOT global quiescence/all-task cancellation/failed-close/host-loss support.
 Remaining G4 matrix/WAL death/native DDL loss and G5 lifecycle-interface/ADR/release approval
 remain; candidate policy decisions do not approve promotion or add a public supervisor.
+
+## Actual WAL process-death follow-through
+
+The [WAL interruption checkpoint](recorded-migrations-wal-interruption-review.md) now exercises
+real uncommitted role UPDATE-trigger spill/NORMAL-FULL, validated physical WAL frames, actual
+client SIGKILL, independent rollback/no003 and fresh SAME original completion/current app.
+Pinned WAL readers keep their old snapshot without blocking the fresh writer. Production code
+unchanged; no fabricated runtime RED/fix or power-loss inference. G4 maintained environment
+matrix/native DDL lost ACK and G5 interface/lifecycle/ADR/coexistence/release approval remain.
+
+## Finite G4 qualification follow-through
+
+The [G4 qualification record](recorded-migrations-g4-qualification-review.md) defines the maintained
+exact-build normal/lazy selection and actual native ALTER OK-loss recovery, complementing WAL
+process death. `tests/experimental/qualification-matrix.json` keeps that set explicit; tests
+select only verified external installations, with no production environment selector/download.
+Only completed stable-source matrix/broad reports discharge G4; G5 approval/consumer guides/
+merge/release remain separate. See that record for current completion counts and exclusions.

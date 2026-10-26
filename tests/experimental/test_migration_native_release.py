@@ -133,7 +133,7 @@ async def original_role_application_positively_drains_recursive_native_lock(  # 
                             await cursor.execute("CREATE DATABASE release_bootstrap")
                             await cursor.execute(
                                 "CREATE PROCEDURE release_bootstrap.claim() BEGIN "
-                                "DECLARE remaining INT DEFAULT 4096; "
+                                "DECLARE remaining INT DEFAULT 65536; "
                                 "WHILE remaining>0 DO "
                                 f"DO GET_LOCK('{name}',0); "
                                 "SET remaining=remaining-1; END WHILE; "
@@ -151,7 +151,7 @@ async def original_role_application_positively_drains_recursive_native_lock(  # 
                         config,
                         user="release_user",
                         password="owned-test-only",
-                        operation_timeout=0.15 if mode == "deadline" else 30,
+                        operation_timeout=1.5 if mode == "deadline" else 30,
                     )
                     async with m.connect(user_config) as target:
                         async with observer.cursor() as cursor:
@@ -183,7 +183,7 @@ async def original_role_application_positively_drains_recursive_native_lock(  # 
                                 deadline.exception.operation,
                                 "migration advisory lock release",
                             )
-                            assert_eq(deadline.exception.timeout, 0.15)
+                            assert_eq(deadline.exception.timeout, 1.5)
                             with assert_raises(m.PackageError):
                                 await target.status()
                             await _wait_disconnected(config, owner[0])

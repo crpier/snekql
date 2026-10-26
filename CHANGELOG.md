@@ -4,6 +4,17 @@
 
 ### Experimental
 
+- Add finite recorded-migration qualification selection for SQLite3.45.1/3.53.1 and MariaDB
+  LTS10.11/11.4/11.8/12.3, normal/forced-lazy workflow, ownership/refusal/codec and real COMMIT/
+  DDL-loss journeys. Lost real ALTER OK requires explicit original structural reconciliation,
+  never replay. External installations only; no production/runtime/dependency change (#477).
+
+- Qualify actual WAL role-backfill client death under NORMAL/FULL using validated uncommitted
+  audit spill, SIGKILL, independent restart and unchanged original-plan application. Pinned
+  readers retain their old snapshot while fresh application completes. Existing runtime passes;
+  later finite-matrix/native DDL qualification is recorded separately. No power-loss certificate
+  or G5/release approval is implied (#477).
+
 - Join a Target's known retained SQLite close under a fresh bounded operation budget at context
   exit, including after an I/O failure. Do not silently report successful exit while known
   cleanup remains pending; preserve primary failures/cancellation and retain cleanup on expiry.

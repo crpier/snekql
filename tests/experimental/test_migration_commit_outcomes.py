@@ -1,6 +1,7 @@
 """Real COMMIT request/acknowledgement loss must be settled by fresh durable evidence."""
 
 import asyncio
+import os
 from contextlib import suppress
 from dataclasses import replace
 from pathlib import Path
@@ -24,6 +25,7 @@ class _CommitProxy:
         self.upstream = upstream
         self.arm: tuple[int, Literal["before", "after", "eof"]] | None = None
         self.commits = 0
+        self.statement: str | None = None
         self.hit = asyncio.Event()
         self.disposed = asyncio.Event()
         self.server_ok: bytes | None = None
@@ -68,7 +70,11 @@ class _CommitProxy:
                     header, body = await self._packet(client)
                     if body[:1] == b"\x03":
                         sql = body[1:].decode("utf-8")
-                        if self.arm is not None and sql.upper() == "COMMIT":
+                        if self.arm is not None and (
+                            sql == self.statement
+                            if self.statement is not None
+                            else sql.upper() == "COMMIT"
+                        ):
                             self.commits += 1
                             if self.commits == self.arm[0]:
                                 where = self.arm[1]
@@ -158,11 +164,21 @@ async def missing_commit_response_requires_fresh_original_evidence(  # noqa: PLR
     ],
 ) -> None:
     """Client COMMIT error alone proves neither rollback nor absence of completion."""
+    home = os.environ.get("SNEKQL_TEST_MARIADB_HOME")
+    installation = await asyncio.to_thread(Path(home).resolve) if home else None
     completed = mode.startswith("final")
     acknowledged = 3 if completed else (0 if mode == "first_before" else 1)
     with TemporaryDirectory(prefix="commit-", dir=".snektest") as directory:
         async with temporary_mariadb_server(
-            auth="password", transports={"tcp"}, data_directory=Path(directory) / "data"
+            auth="password",
+            transports={"tcp"},
+            data_directory=Path(directory) / "data",
+            mariadbd=installation / "bin/mariadbd" if installation else "mariadbd",
+            install_db=installation / "scripts/mariadb-install-db"
+            if installation
+            else "mariadb-install-db",
+            client=installation / "bin/mariadb" if installation else "mariadb",
+            server_args=(f"--basedir={installation}",) if installation else (),
         ) as server:
             direct = server.config(transport="tcp")
             proxy = _CommitProxy(direct)

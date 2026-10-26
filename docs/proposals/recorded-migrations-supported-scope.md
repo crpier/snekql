@@ -12,7 +12,9 @@ trade-off; the [glossary](../../GLOSSARY.md) distinguishes ownership, mapping an
 Current lifecycle policy is summarized under **G3** below and the
 [retained-cleanup review](recorded-migrations-retained-cleanup-review.md). The chronological
 follow-through entries record their checkpoint's limits, not today's remaining checklist.
-Candidate G3 decisions are recorded; G4 qualification and G5 approval remain outstanding.
+Candidate G3 decisions are recorded; local WAL active-backfill process death is now exercised.
+The finite G4 matrix and selected WAL/COMMIT/DDL windows are now exercised; completed broad
+validation is recorded in the G4 review. G5 approval remains outstanding.
 
 ## Versioned original-evidence follow-through
 
@@ -112,15 +114,16 @@ release version explicitly; neither is decided here.
 
 ## Candidate environment matrix
 
-These are **qualification targets**, not newly demonstrated experimental support. Use the
+These are the **finite candidate qualification set**, not an accepted G5 release contract.
+Completed normal/lazy evidence is recorded in the [G4 review](recorded-migrations-g4-qualification-review.md). Use the
 released [MariaDB policy](../mariadb-support.md) as a source of target families, not as evidence
 that the experimental connection has inherited its admission/session/runtime guarantees.
 
 | Dimension | Proposed first promotion | Evidence and remaining qualification |
 | --- | --- | --- |
-| Python/platform | GIL-enabled CPython 3.15 on Linux, default asyncio | Local workflow evidence uses this family. No experimental Windows/macOS, alternative event-loop or free-threaded promise. |
-| SQLite | Actual 3.45.1 and 3.53.1 builds; file-backed DELETE and WAL | Local selected journeys use 3.53.1. Real active-death evidence is DELETE only. Existing SQLite environment jobs do not run the experimental suite. |
-| MariaDB | Maintained Community LTS 10.11, 11.4, 11.8 and 12.3; InnoDB | Qualify the same selected workflow and refusal contract on each family, recording exact builds. Local native binaries are 13.0.2, not evidence for all LTS families. |
+| Python/platform | GIL-enabled CPython 3.15 on Linux, default asyncio | Actual3.15.0 GIL builds on local Linux x86_64/default asyncio qualified; exact versions/maps recorded. No Windows/macOS, alternative event-loop or free-threaded promise. |
+| SQLite | Actual 3.45.1 and 3.53.1 builds; file-backed DELETE and WAL | Both actual builds run selected normal/lazy authoring/codec/ownership/refusal and DELETE-WAL/NORMAL-FULL journeys, including actual WAL active-client death. No inference from existing Actions jobs. |
+| MariaDB | Maintained Community LTS 10.11, 11.4, 11.8 and 12.3; InnoDB | Actual10.11.19/11.4.13/11.8.9/12.3.3 builds run selected normal/lazy workflow/refusal/codec/handoff/COMMIT-DDL loss. Actual /proc executable hashes/VERSION recorded;13.0.2 remains regression-only. |
 | Regression-only native targets | 12.2 catalog regressions and rolling/newer binaries | Passing these does not promote a series to a maintained target. The known malformed escaped-FK catalog form remains refused. MySQL is excluded. |
 
 Record exact Python/driver/server/SQLite versions, OS and completed reports. An admitted
@@ -181,11 +184,11 @@ prepared evidence is a missing capability, not a reason to expose private loweri
 | Situation | Required outcome | Current evidence / limit |
 | --- | --- | --- |
 | SQLite package failure or DELETE active-process death | Schema/data/new receipt remain atomic; after confirmed rollback use fresh prepare/apply. Competing ordinary appliers recheck under the writer lock. | Actual role-process death and applied/already_applied race demonstrated. Not WAL proof. |
-| SQLite WAL active-process death | Same truthful atomic receipt contract, with the actual WAL mode observed. | Still a qualification gap; the final ordinary app switching to WAL does not exercise this window. |
+| SQLite WAL active-process death | Same truthful atomic receipt contract, with the actual WAL mode observed. | Actual uncommitted UPDATE-trigger WAL spill, SIGKILL and fresh SAME-original completion demonstrated under both SQLite builds/NORMAL-FULL/normal-lazy. Pinned reader retains old snapshot across fresh COMMIT. Not host/power/storage-loss proof. |
 | Native acknowledged work followed by transactional failure | Retain acknowledged progress; inspect original evidence and resume only proven remaining work. | Selected operation tests and real blocked-backfill death demonstrate this; no blanket DDL atomicity. |
 | Native restart after client rollback | Durable uncertainty survives; ordinary prepare/apply refuses, explicit inspection/resume is required. | Actual private-server kill/restart and competing resumers demonstrated; loser reassesses status. |
 | Native transactional COMMIT request/response loss | Failed await does not prove rollback/completion. Fresh durable marker/data selects ORIGINAL inspection/resume, not replay of committed work. Already-durable complete receipt means already_applied even if the final explicit COMMIT call failed. | Actual first request/OK loss/EOF and final request/OK loss demonstrated on one local build in the [COMMIT checkpoint](recorded-migrations-commit-outcomes-review.md). Not crash/fsync/all-build qualification. |
-| Native DDL effect with a missing acknowledgement | Do not infer data execution or authorize replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Selected lost-receipt/refusal tests exist. Role server kill was AFTER rollback, not during DDL; a selected real DDL-loss window and maintained matrix remain qualification gates. |
+| Native DDL effect with a missing acknowledgement | Do not infer data execution or authorize replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Actual role ALTER genuine-OK withholding/EOF demonstrated across all four exact LTS builds/normal-lazy: uncertain2, explicit original reconciliation then finish, no DDL/data replay. Role server kill AFTER rollback is separate evidence, not DDL-loss proof. |
 | I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Owned opening, local/backend coordination, per-I/O/control, context drain and normal close have separate budgets. Native/session/metadata and SQLite file-policy checkpoints are implemented. Real late SQLite COMMIT and native request/reply loss observed. Known retained close is joined with a fresh budget; candidate live-loop/supervision restrictions exclude global task/loop termination with pending physical work. No universal physical-stop guarantee; G5 must approve lifecycle adequacy. |
 | Missing/incompatible original plan or ledger | Refuse without receipt rewriting, reconstruction from current models, or endpoint stamping. | Actual old nine-column ledger refusal demonstrated. Original raw Prepared JSON was not versioned; the later version-one envelope is not a ledger backup or cross-version conversion policy. |
 
@@ -280,8 +283,9 @@ cleanup, followed by fresh ORIGINAL application and ordinary typed use.
 loop alive until retained physical work settles, owns its tasks/blockers/process supervision and
 original evidence. No global drain/supervisor is added; an abandoned opening never yielded Target
 and is NOT joined by another Target's exit. Global all-task cancellation/loop termination with
-pending physical work, failed-close recovery and host/process death are outside first-promotion
-qualification, not silently handled. G5 must approve or reject these lifecycle restrictions and
+pending physical work, failed-close recovery and guaranteed library cleanup under host/process
+death are outside first-promotion qualification, not silently handled. Selected G4 database
+outcomes after client death are separate from graceful/global cleanup guarantees. G5 must approve or reject these lifecycle restrictions and
 may require a separately designed interface before promotion. G3 engineering choices are no
 longer unspecified; this is NOT release acceptance or excluded-shutdown qualification.
 Qualification stays finite through public journeys/independent real observations, consistent
@@ -289,10 +293,24 @@ with [ADR0017](../adr/0017-per-operation-deadlines-fail-closed.md); not all fail
 
 ### G4 — Qualify the finite environment/recovery matrix
 
-Run the selected role author/review/model-free deploy/current-app journey and relevant
-ownership/evolution/refusal checks across the candidate matrix. Add actual WAL active-death
-and one deliberately selected native DDL/receipt-loss observation, validating honest stopped
-outcomes rather than attempting every crash permutation or inventing automatic recovery.
+The [WAL process-death checkpoint](recorded-migrations-wal-interruption-review.md) now qualifies
+selected local normal/FULL uncommitted role UPDATE-trigger spill, actual SIGKILL, fresh atomic
+no003/all earlier own receipts intact, SAME original completion and current typed use. Pinned
+WAL readers retain old snapshots while fresh writer commits. Actual checksum-validated spill
+proves data work, not BEGIN waiting/DELETE-journal behavior; production runtime already passed.
+This is local SQLite3.53.1 process-death evidence, NOT maintained3.45.1/other filesystems,
+power/host/fsync/lost-ledger qualification. The [G4 review](recorded-migrations-g4-qualification-review.md)
+adds both SQLite builds plus actual native ALTER OK loss across the finite LTS matrix; current
+completion/broad-validation status and exclusions are recorded there.
+
+**G4 complete for the explicit finite candidate (2026-10-26):** selected role author/review/
+model-free deploy/current-app, ownership/codec/refusal/handoff, WAL process death and actual
+native ALTER OK-loss reconciliation now pass all12 normal/lazy environment rows/148 cases.
+Real DDL OK withholding/EOF proves uncertain2→explicit original structural reconciliation→finish,
+without DDL/data replay. This validates honest stopped outcomes, not every crash permutation,
+automatic repair or a general upgrade/host-loss certificate. The maintained selection and exact
+builds are in `tests/experimental/qualification-matrix.json`; repeat it when maintaining that set.
+Final-source953+953 experimental/1784fast/157+157focused/old-floor1+1 also pass. G5 remains OPEN.
 
 Keep isolated owned processes, real models/generated historical source and unchanged committed
 artifacts. Normal/lazy modes, exact environment records, completed reports and cleanup evidence
@@ -406,3 +424,13 @@ Actual10.10.7 refuses without schema/data/history mutation; installed positive s
 original-role/current typed use/exact VERSION observations and unowned data. No fake server,
 new parser, minimum change, old receipt conversion or positive LTS/matrix/upgrade qualification.
 Remaining G3 metadata/other prerequisites/admission/outcome/shutdown policy and G4/G5 stay open.
+
+## Finite G4 qualification follow-through
+
+The [G4 qualification record](recorded-migrations-g4-qualification-review.md) defines the maintained
+exact-build normal/lazy selection and actual native ALTER OK-loss recovery, complementing WAL
+process death. `tests/experimental/qualification-matrix.json` keeps that set explicit; tests
+select only verified external installations, with no production environment selector/download.
+Completed stable-source matrix/broad reports now discharge G4 for that explicit finite set;
+G5 approval/consumer guides/merge/release remain separate. See that record for completed counts
+and exclusions. Earlier follow-through paragraphs are chronological checkpoint evidence.
