@@ -7,7 +7,7 @@ from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
 from snekql.model import require_model_columns
-from tests.query.test_join_compilation import Order, User
+from tests.query.join_models import Order, User
 
 
 class ManagerRole:
