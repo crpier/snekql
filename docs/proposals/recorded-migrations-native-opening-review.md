@@ -89,6 +89,13 @@ this does not replace the earlier separate-process author-source-removal evidenc
 existing ordinary-runtime TLS tests also exercise growth/replacement, trust, hostname, protocol,
 plaintext-authentication refusal and cancellation after sharing the same connector.
 
+## Subsequent SQLite follow-through
+
+The [SQLite physical-opening checkpoint](recorded-migrations-sqlite-opening-review.md) now adds
+its own acquisition budget and retained late-handle cleanup. The remaining-work list below
+records this native checkpoint's scope; local guard/server coordination acquisition and the
+other session/durability/outcome/shutdown gates are still open.
+
 ## Remaining G3 and qualification
 
 - SQLite opening/partial-open worker ownership and acquisition deadlines remain unresolved.

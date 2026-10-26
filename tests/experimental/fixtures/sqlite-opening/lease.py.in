@@ -1,0 +1,26 @@
+"""Hold a Linux file lease until the controller releases it or closes stdin."""
+
+import fcntl
+import os
+import signal
+import sys
+from types import FrameType
+
+
+def breaking(signum: int, frame: FrameType | None) -> None:
+    """Report a real kernel lease-break request without releasing it yet."""
+    del signum, frame
+    print("breaking", flush=True)
+
+
+assert sys.get_lazy_imports() == sys.argv[2]
+signal.signal(signal.SIGIO, breaking)
+fd = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT, 0o600)
+try:
+    fcntl.fcntl(fd, fcntl.F_SETLEASE, fcntl.F_WRLCK)
+    print("held", flush=True)
+    sys.stdin.readline()
+finally:
+    fcntl.fcntl(fd, fcntl.F_SETLEASE, fcntl.F_UNLCK)
+    os.close(fd)
+print("released", flush=True)

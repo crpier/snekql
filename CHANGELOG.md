@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Bound SQLite physical migration opening with the acquisition budget, retain blocked opening
+  futures after caller timeout/cancellation, and explicitly close eventual late handles instead
+  of relying on GC. Exercise real Linux file leases, surviving kernel waits, worker/FD disposal
+  and fresh frozen-role deployment/current typed use. Guard/coordination acquisition, session/
+  durability and shutdown/outcome policy remain incomplete; no physical-stop or replay inference.
+
 - Bound native migration connection opening with the acquisition budget, retain partial socket
   ownership through cancellation, and require configured TLS rather than opportunistic plaintext
   fallback. Share the existing owned connector with ordinary runtime pool filling; exercise actual

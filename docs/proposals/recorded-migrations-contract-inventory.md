@@ -39,6 +39,12 @@ native acquisition deadline and shares owned partial-connection/mandatory-TLS ad
 ordinary pool filling. It observes actual TCP EOF/cancellation and frozen-role/current-app use
 over verified TLS; SQLite opening, coordination acquisition and remaining G3 policy stay open.
 
+The later [SQLite physical-opening checkpoint](recorded-migrations-sqlite-opening-review.md)
+adds a separate acquisition budget and retained explicit cleanup for eventual late handles.
+Actual Linux leases expose continued worker waits after caller timeout/cancellation; physical
+worker/FD observations precede fresh frozen-role/current-app use. Guard/coordination acquisition,
+session/durability and outcome/shutdown policy remain open; no journal or replay policy change.
+
 ## Objective and evidence rules
 
 The first production proposal should cover a deliberately bounded set of physical

@@ -53,6 +53,12 @@ mandatory TLS with ordinary runtime pool filling. Actual peer EOF/cancellation a
 application over verified TLS are exercised; configured TLS no longer silently accepts a
 non-TLS greeting. SQLite opening, coordination acquisition and the other G3 gates remain open.
 
+The later [SQLite physical-opening checkpoint](recorded-migrations-sqlite-opening-review.md)
+adds a separate acquisition budget and retained explicit cleanup for eventual late handles.
+Actual Linux leases expose continued worker waits after caller timeout/cancellation; physical
+worker/FD observations precede fresh frozen-role/current-app use. Guard/coordination acquisition,
+session/durability and outcome/shutdown policy remain open; no journal or replay policy change.
+
 ## Workflow-first checkpoint
 
 The [authoring-to-application review](recorded-migrations-workflow-review.md) exercises the

@@ -73,6 +73,57 @@ lazy from snekql.mariadb._pool import connect_owned
 
 logger = logging.getLogger(__name__)
 
+_sqlite_opening_closes: set[asyncio.Task[None]] = set()
+"""Own abandoned openings until their eventual connection has physically closed."""
+
+
+async def _close_sqlite_opening(opening: asyncio.Future[aiosqlite.Connection]) -> None:
+    """Do not cancel the driver or close before its pending open produced a handle."""
+    try:
+        connection = await opening
+    except Exception:
+        logger.debug("abandoned migration SQLite opening failed", exc_info=True)
+        return
+    await connection.close()
+
+
+def _sqlite_opening_closed(task: asyncio.Task[None]) -> None:
+    """Observe detached cleanup, including shutdown that interrupts physical disposal."""
+    _sqlite_opening_closes.discard(task)
+    try:
+        task.result()
+    except BaseException:
+        logger.warning("migration SQLite opening cleanup failed", exc_info=True)
+
+
+def _abandon_sqlite_opening(opening: asyncio.Future[aiosqlite.Connection]) -> None:
+    """Transfer ownership rather than queue close against a still-unopened driver."""
+    task = asyncio.create_task(_close_sqlite_opening(opening))
+    _sqlite_opening_closes.add(task)
+    task.add_done_callback(_sqlite_opening_closed)
+
+
+async def _open_sqlite(config: SQLiteConfig) -> aiosqlite.Connection:
+    """Bound caller acquisition without cancelling the worker's pending physical open."""
+    opening = asyncio.ensure_future(
+        aiosqlite.connect(
+            str(config.database),
+            isolation_level=None,
+            timeout=config.acquire_timeout,
+        )
+    )
+    try:
+        with anyio.fail_after(config.acquire_timeout):
+            return await asyncio.shield(opening)
+    except TimeoutError as error:
+        _abandon_sqlite_opening(opening)
+        msg = "timed out opening migration connection"
+        raise PoolTimeoutError(msg) from error
+    except anyio.get_cancelled_exc_class():
+        _abandon_sqlite_opening(opening)
+        raise
+
+
 _HISTORY = "snekql_experimental_migrations"
 _MARIADB_NO_SUCH_TABLE = 1146
 _MARIADB_UNKNOWN_COLUMN = 1054
@@ -1488,14 +1539,13 @@ class Target:
 async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]:
     """Open a dedicated migration connection; importing the module opens nothing.
 
-    Native physical opening uses the acquisition budget and the shared owned/TLS
-    connector. Checked-out I/O has separate per-operation budgets; neither budget
+    Physical opening uses the acquisition budget; abandoned SQLite opens retain
+    cleanup ownership, and native opens use the shared owned/TLS connector.
+    Checked-out I/O has separate per-operation budgets; neither budget
     limits the caller's time inside the yielded context.
     """
     if isinstance(config, SQLiteConfig):
-        connection = await aiosqlite.connect(
-            str(config.database), isolation_level=None, timeout=config.acquire_timeout
-        )
+        connection = await _open_sqlite(config)
     else:
         try:
             with anyio.fail_after(config.acquire_timeout):
