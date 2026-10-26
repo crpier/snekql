@@ -17,6 +17,7 @@ lazy import aiosqlite
 
 from snekql.errors import (
     DatabaseOperationTimeoutError,
+    MigrationLockError,
     MigrationLockTimeoutError,
     PoolTimeoutError,
     SchemaError,
@@ -329,7 +330,7 @@ class Target:
             self._guard.release()
 
     async def _io[T](self, operation: str, call: Callable[[], Awaitable[T]]) -> T:
-        """Give each driver interaction a fresh budget; abandon unsafe sessions."""
+        """Give driver/control operations fresh budgets; abandon unsafe sessions."""
         self._require_open()
         try:
             with anyio.fail_after(self._config.operation_timeout):
@@ -1498,10 +1499,12 @@ class Target:
     async def _coordinated(self, *, rebuild: bool = False) -> AsyncIterator[None]:
         """Restore connection policy even if acquisition or execution is cancelled."""
         failed = False
+        acquired = False
         try:
             if rebuild:
                 await self._query("PRAGMA foreign_keys=OFF")
             await self._begin()
+            acquired = True
             yield
         except BaseException as error:
             failed = True
@@ -1519,19 +1522,32 @@ class Target:
             if not self._closed:
                 with anyio.CancelScope(shield=True):
                     try:
-                        await self._restore_policy(rebuild=rebuild)
+                        await self._restore_policy(rebuild=rebuild, acquired=acquired)
                     except BaseException:
                         self._discard()
                         if not failed:
                             raise
                         logger.warning("migration policy cleanup failed", exc_info=True)
 
-    async def _restore_policy(self, *, rebuild: bool) -> None:
+    async def _restore_policy(self, *, rebuild: bool, acquired: bool) -> None:
         """Restore policy only on a known-safe, still-admitted connection."""
         if rebuild:
             await self._query("PRAGMA foreign_keys=ON")
-        if not self._sqlite:
-            await self._query("SELECT RELEASE_LOCK(%s)", (self._lock_name,))
+        if not self._sqlite and acquired:
+            await self._io("migration advisory lock release", self._release_lock)
+
+    async def _release_lock(self) -> None:
+        """Drain recursive ownership within one fresh, bounded release operation."""
+        released = False
+        while True:
+            rows = await self._query("SELECT RELEASE_LOCK(%s)", (self._lock_name,))
+            if rows == [(1,)]:
+                released = True
+                continue
+            if released and rows in ([(0,)], [(None,)]):
+                return
+            msg = "could not confirm release of migration advisory lock; inspect fresh execution evidence before retry"
+            raise MigrationLockError(msg)
 
     async def apply(self, prepared: Prepared) -> Literal["applied", "already_applied"]:
         """Recheck observations under coordination; never replay uncertain progress."""

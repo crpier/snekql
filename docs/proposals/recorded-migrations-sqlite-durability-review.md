@@ -108,3 +108,13 @@ CPython3.15.0/Linux/SQLite3.53.1/MariaDB13.0.2, NOT maintained matrix/build/file
 loss qualification. Actions maintainer-disabled: no CI requested/polled/awaited/claimed.
 Remaining G3/G4/G5 limits above remain; no all-policy-failure/failed-close/WAL active-death/
 power-loss/native lost-ack/shutdown/full-suite qualification, consumer guides or release action.
+
+## Positive bounded native release follow-through
+
+The [native release checkpoint](recorded-migrations-native-release-review.md) tracks acquired
+coordination scopes and positively drains ONLY that native advisory name within a fresh
+release-control operation budget. Actual server bootstrap recursion no longer leaks ownership;
+primary refusals survive, unrelated names remain owned, and postcommit release expiry closes
+the target without undoing acknowledged receipts. Fresh ORIGINAL evidence observes already_
+applied after independent session disappearance. No cumulative package clock or automatic
+replay. Remaining native prerequisites/admission/outcome/shutdown policy and G4/G5 stay open.

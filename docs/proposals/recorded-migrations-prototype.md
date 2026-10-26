@@ -2372,3 +2372,13 @@ original evidence/earlier receipts remain. Prepared/receipts do not certify disk
 power loss; NORMAL now explicitly requests1 rather than coincidentally inheriting2. Ordinary
 runtime still selects WAL. Memory remains native/volatile. Remaining G3 outcome/admission/
 shutdown/native prerequisites and G4 WAL-death/matrix/native lost-ack/G5 approval remain open.
+
+## Positive bounded native release follow-through
+
+The [native release checkpoint](recorded-migrations-native-release-review.md) tracks acquired
+coordination scopes and positively drains ONLY that native advisory name within a fresh
+release-control operation budget. Actual server bootstrap recursion no longer leaks ownership;
+primary refusals survive, unrelated names remain owned, and postcommit release expiry closes
+the target without undoing acknowledged receipts. Fresh ORIGINAL evidence observes already_
+applied after independent session disappearance. No cumulative package clock or automatic
+replay. Remaining native prerequisites/admission/outcome/shutdown policy and G4/G5 stay open.

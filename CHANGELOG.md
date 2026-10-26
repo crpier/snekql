@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Positively drain native migration advisory-lock ownership after acknowledged acquisition,
+  including recursive server bootstrap claims, within a fresh bounded release-control operation.
+  Keep primary errors and acknowledged receipts truthful; known acquisition refusal does not
+  release another owner's lock. Leave unrelated names untouched; unsafe cleanup expires closed
+  and fresh original evidence decides next action (#477).
+
 - Admit/preserve existing SQLite DELETE or WAL migration journals and apply/read back shared
   NORMAL/FULL synchronization from Config.durability before target yield, retaining configured
   migration busy waits. Real retained-trigger observations verify actual role-backfill policy;
