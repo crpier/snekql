@@ -13,7 +13,7 @@ from typing import ClassVar
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import sqlite
+from snekql import mariadb, sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
     Pending,
@@ -23,7 +23,8 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
+from tests.helpers import initialized_database
+from tests.query.aggregate_models import MariaUser
 
 
 class User[S = Pending](sqlite.Model[S]):
@@ -57,11 +58,12 @@ class Order[S = Pending](sqlite.Model[S]):
 def group_by_renders_between_where_and_order_by() -> None:
     """GROUP BY sits between WHERE and ORDER BY in the compiled clause order."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User.country, User.id.count())
         .where(User.id.gt(0))
         .group_by(User.country)
-        .order_by(User.country.asc()),
+        .order_by(User.country.asc())
+        .compile()
     )
 
     expected = " ".join(
@@ -70,30 +72,31 @@ def group_by_renders_between_where_and_order_by() -> None:
             'WHERE ("id" > ?) GROUP BY "country" ORDER BY "country" ASC',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, (0,))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, (0,))
 
 
 @test(mark="fast")
 def mixed_projection_compiles_to_group_key_and_aggregate() -> None:
     """A bare column and an aggregate project together under GROUP BY."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User.country, User.id.count()).group_by(User.country),
-    )
+    compiled = select(User.country, User.id.count()).group_by(User.country).compile()
 
-    assert_eq(sql, 'SELECT "country", COUNT("id") FROM "user" GROUP BY "country"')
-    assert_eq(params, ())
+    assert_eq(
+        compiled.sql, 'SELECT "country", COUNT("id") FROM "user" GROUP BY "country"'
+    )
+    assert_eq(compiled.params, ())
 
 
 @test(mark="fast")
 def group_by_qualifies_columns_under_a_join() -> None:
     """Joined grouped projections qualify both the key and the aggregate."""
 
-    sql, _ = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User.country, Order.amount.sum())
         .join(Order, on=Order.user_id.references(User.id))
-        .group_by(User.country),
+        .group_by(User.country)
+        .compile()
     )
 
     expected = " ".join(
@@ -103,17 +106,18 @@ def group_by_qualifies_columns_under_a_join() -> None:
             'GROUP BY "user"."country"',
         ],
     )
-    assert_eq(sql, expected)
+    assert_eq(compiled.sql, expected)
 
 
 @test(mark="fast")
 def aggregate_renders_in_order_by_position() -> None:
     """An aggregate can drive ORDER BY in a grouped query."""
 
-    sql, _ = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User.country, User.id.count())
         .group_by(User.country)
-        .order_by(User.id.count().desc()),
+        .order_by(User.id.count().desc())
+        .compile()
     )
 
     expected = " ".join(
@@ -122,19 +126,25 @@ def aggregate_renders_in_order_by_position() -> None:
             'GROUP BY "country" ORDER BY COUNT("id") DESC',
         ],
     )
-    assert_eq(sql, expected)
+    assert_eq(compiled.sql, expected)
 
 
 @test(mark="fast")
 def group_by_is_backend_portable() -> None:
     """GROUP BY is identical SQL in MariaDB save for identifier quoting."""
 
+    compiled = (
+        mariadb.select(MariaUser.country, MariaUser.id.count())
+        .group_by(MariaUser.country)
+        .compile()
+    )
+
     assert_eq(
-        MARIADB_CODEC.compile_select_sql(
-            select(User.country, User.id.count()).group_by(User.country),
-        )[0],
+        compiled.sql,
         "SELECT `country`, COUNT(`id`) FROM `user` GROUP BY `country`",
     )
+    assert_eq(compiled.params, ())
+    assert_eq(compiled.backend, "mariadb")
 
 
 @test(mark="fast")
@@ -147,9 +157,7 @@ def ungrouped_bare_column_with_aggregate_is_a_compilation_error() -> None:
     """
 
     with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_select_sql(
-            select(User.country, User.id.count()),
-        )
+        _ = select(User.country, User.id.count()).compile()
 
 
 @test(mark="fast")
