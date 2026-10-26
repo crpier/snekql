@@ -40,6 +40,24 @@ Use equivalent environments and repeated measurements before claiming a speedup.
 The [artifact-ownership verification](test-suite-reviews/2026-10-26-artifact-ownership.md)
 records successful-run cleanup, explicit error retention, and its validation limits.
 
+## Focused benchmark checks
+
+```sh
+uv run snektest tests/test_benchmark_planning.py
+uv run snektest 'tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds[zero-workers]'
+PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest \
+  'tests/test_comparative_benchmarks.py::streaming_comparison_consumes_partial_final_batch[raw, sqlite]'
+```
+
+The first two selections check pure planning, not database execution. The last
+keeps a focused real CLI/native stream check; adapter/backend selections do not
+share an all-adapter success result. Use the complete comparative and fixture
+files, or the full suite, for the remaining native and fault coverage.
+The [planning interface](../benchmarks/comparison.md#plan-without-running-a-database)
+describes the distinction between requested metadata and observed work. The
+[benchmark test review](test-suite-reviews/2026-10-26-benchmark-planning.md)
+records the coverage map, matched timings and validation limits.
+
 ## Focused typing checks
 
 ```sh

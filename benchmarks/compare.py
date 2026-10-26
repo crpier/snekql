@@ -11,7 +11,7 @@ from contextlib import (
     asynccontextmanager,
     suppress,
 )
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from datetime import UTC, datetime
 from functools import partial
 from gc import isenabled
@@ -36,29 +36,12 @@ from benchmarks._comparison_contract import (
 )
 from benchmarks._comparison_diagnostics import PoolDiagnostics, measure_memory
 from benchmarks._metrics import LatencyRecorder
+from benchmarks.comparison_plan import ComparisonPlan
 from snekql.testing.mariadb import temporary_mariadb_server
 
 
-@dataclass(frozen=True, kw_only=True)
-class _RunConfig:
-    adapter: str
-    backend: str
-    batch_size: int
-    operations: int
-    order: str
-    pool_size: int
-    payload_bytes: int
-    profile: str
-    rows: int
-    trials: int
-    telemetry: str
-    warmup: int
-    workload: str
-    workers: int
-
-
 async def _operation(
-    session: ReadSession, target: int, run: _RunConfig
+    session: ReadSession, target: int, run: ComparisonPlan
 ) -> StreamObservation:
     """Check completed work, including warmup, without retaining streamed rows."""
     if run.workload == "bulk":
@@ -132,7 +115,7 @@ async def _measure(
     ],
     *,
     adapter: str,
-    run: _RunConfig,
+    run: ComparisonPlan,
 ) -> dict[str, object]:
     diagnostics = PoolDiagnostics(
         enabled=run.profile == "diagnostic", telemetry_enabled=run.telemetry == "on"
@@ -283,7 +266,7 @@ async def _environment() -> dict[str, object]:
     }
 
 
-async def _run(run: _RunConfig) -> dict[str, object]:
+async def _run(run: ComparisonPlan) -> dict[str, object]:
     server_metadata: dict[str, object] | None = None
     async with AsyncExitStack() as resources:
         if run.backend == "sqlite":
@@ -315,62 +298,16 @@ async def _run(run: _RunConfig) -> dict[str, object]:
                 _comparison_mariadb.open_reader, config, payload_bytes=run.payload_bytes
             )
         measurements = []
-        adapters = (
-            ["raw", "snekql", "sqlalchemy"] if run.adapter == "all" else [run.adapter]
-        )
-        for trial in range(run.trials):
-            reverse = run.order == "reverse" or (
-                run.order == "balanced" and (trial // len(adapters)) % 2 == 1
-            )
-            ordered = list(reversed(adapters)) if reverse else adapters
-            offset = trial % len(adapters)
-            for position, selected in enumerate(ordered[offset:] + ordered[:offset], 1):
-                measurement = await _measure(
-                    open_reader,
-                    adapter=selected,
-                    run=run,
-                )
-                measurement["round"] = trial + 1
-                measurement["position"] = position
-                measurements.append(measurement)
+        for trial in run.schedule:
+            measurement = await _measure(open_reader, adapter=trial.adapter, run=run)
+            measurement["round"] = trial.round
+            measurement["position"] = trial.position
+            measurements.append(measurement)
     return {
         "backend": run.backend,
-        "configuration": {
-            "operations": run.operations,
-            "adapter_order": run.order,
-            "rows": run.rows,
-            "trials": run.trials,
-            "warmup": run.warmup,
-            "workers": run.workers,
-            "pool_size": run.pool_size,
-            "payload_bytes": run.payload_bytes,
-            "telemetry": run.telemetry,
-            "buffering": "fetch-many" if run.workload == "stream" else "fetch-all",
-            **(
-                {"batch_size": run.batch_size}
-                if run.workload in {"stream", "bulk"}
-                else {}
-            ),
-            "validation": "strict-pydantic",
-            "transaction": "explicit-begin-commit",
-            "query_construction": "per-operation",
-            run.backend: {
-                "journal_mode": "WAL",
-                "synchronous": "NORMAL",
-                "foreign_keys": True,
-                "busy_timeout_ms": 5000,
-            }
-            if run.backend == "sqlite"
-            else _comparison_mariadb.POLICY,
-        },
+        "configuration": run.configuration,
         "environment": {**await _environment(), "mariadb": server_metadata},
-        "measurement": {
-            "profile": run.profile,
-            "heartbeat_interval_seconds": 0.005,
-            "latency_includes_correctness_checks": True,
-            "setup_included": False,
-            "warmup_included": False,
-        },
+        "measurement": run.measurement,
         "recorded_at": datetime.now(UTC).isoformat(),
         "schema_version": 2,
         "trials": measurements,
@@ -380,76 +317,44 @@ async def _run(run: _RunConfig) -> dict[str, object]:
 
 def main() -> None:
     """Emit a JSON report only after every requested transaction succeeds."""
+    defaults = ComparisonPlan(backend="sqlite")
     parser = ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=("sqlite", "mariadb"), required=True)
     parser.add_argument(
-        "--adapter", choices=("all", "raw", "snekql", "sqlalchemy"), default="all"
+        "--adapter",
+        choices=("all", "raw", "snekql", "sqlalchemy"),
+        default=defaults.adapter,
     )
     parser.add_argument(
         "--workload",
         choices=("point-read", "stream", "join", "bulk"),
-        default="point-read",
+        default=defaults.workload,
     )
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=defaults.batch_size)
     parser.add_argument(
-        "--profile", choices=("timing", "diagnostic", "memory"), default="timing"
+        "--profile",
+        choices=("timing", "diagnostic", "memory"),
+        default=defaults.profile,
     )
     parser.add_argument(
-        "--order", choices=("balanced", "forward", "reverse"), default="balanced"
+        "--order", choices=("balanced", "forward", "reverse"), default=defaults.order
     )
-    parser.add_argument("--telemetry", choices=("off", "on"), default="off")
-    parser.add_argument("--payload-bytes", type=int, default=32)
-    parser.add_argument("--pool-size", type=int, default=1)
-    parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--operations", type=int, default=1000)
-    parser.add_argument("--rows", type=int, default=1000)
-    parser.add_argument("--trials", type=int, default=3)
-    parser.add_argument("--warmup", type=int, default=100)
+    parser.add_argument(
+        "--telemetry", choices=("off", "on"), default=defaults.telemetry
+    )
+    parser.add_argument("--payload-bytes", type=int, default=defaults.payload_bytes)
+    parser.add_argument("--pool-size", type=int, default=defaults.pool_size)
+    parser.add_argument("--workers", type=int, default=defaults.workers)
+    parser.add_argument("--operations", type=int, default=defaults.operations)
+    parser.add_argument("--rows", type=int, default=defaults.rows)
+    parser.add_argument("--trials", type=int, default=defaults.trials)
+    parser.add_argument("--warmup", type=int, default=defaults.warmup)
     arguments = parser.parse_args()
-    for name, lower, upper in (
-        ("workers", 1, 128),
-        ("pool_size", 1, 32),
-        ("payload_bytes", 1, 8192),
-        ("batch_size", 1, 10000),
-        ("operations", 1, 100000),
-        ("rows", 1, 1000000),
-        ("trials", 1, 30),
-        ("warmup", 0, 10000),
-    ):
-        if not lower <= getattr(arguments, name) <= upper:
-            parser.error(
-                f"--{name.replace('_', '-')} must be between {lower} and {upper}"
-            )
-    if arguments.rows * arguments.payload_bytes > 64 * 1024**2:
-        parser.error("seed payload budget must not exceed 64 MiB across one table")
-    if arguments.workload == "bulk":
-        if arguments.batch_size * arguments.payload_bytes > 8 * 1024**2:
-            parser.error("INSERT payload budget must not exceed 8 MiB")
-        write_rows = max(arguments.operations, arguments.warmup) * arguments.batch_size
-        if write_rows * (arguments.payload_bytes + 64) > 128 * 1024**2:
-            parser.error(
-                "write payload budget including row allowance must not exceed 128 MiB"
-            )
-    report = asyncio.run(
-        _run(
-            _RunConfig(
-                backend=arguments.backend,
-                batch_size=arguments.batch_size,
-                workload=arguments.workload,
-                workers=arguments.workers,
-                adapter=arguments.adapter,
-                operations=arguments.operations,
-                order=arguments.order,
-                pool_size=arguments.pool_size,
-                payload_bytes=arguments.payload_bytes,
-                profile=arguments.profile,
-                rows=arguments.rows,
-                trials=arguments.trials,
-                telemetry=arguments.telemetry,
-                warmup=arguments.warmup,
-            )
-        )
-    )
+    try:
+        plan = ComparisonPlan(**vars(arguments))
+    except ValueError as error:
+        parser.error(str(error))
+    report = asyncio.run(_run(plan))
     print(dumps(report, allow_nan=False))
 
 

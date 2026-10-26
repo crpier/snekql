@@ -200,6 +200,45 @@ limited to 8 MiB; the larger of warmup/measured write phases is limited to 128 M
 of payload plus a 64-byte-per-row allowance. These are logical safety budgets,
 not physical disk/RSS limits, packet-size guarantees or filesystem isolation.
 
+## Plan without running a database
+
+The source-checkout interface `benchmarks.comparison_plan.ComparisonPlan` is a
+frozen, keyword-only dataclass. `backend` is required; its other fields use the
+CLI defaults above. Field names match CLI options with underscores instead of
+hyphens (`pool_size`, `payload_bytes`, and so on).
+
+```python
+from benchmarks.comparison_plan import ComparisonPlan
+
+plan = ComparisonPlan(
+    backend="mariadb", operations=3, rows=4, trials=2, order="reverse"
+)
+configuration = plan.configuration
+measurement_scope = plan.measurement
+schedule = [(trial.round, trial.position, trial.adapter) for trial in plan.schedule]
+```
+
+Construction raises `ValueError` for unsupported selectors, non-integer sizes
+(including booleans), individual bounds or combined budget violations. It does
+not parse command-line arguments, import database drivers, find server tools,
+start a server, seed data or run work. The CLI uses the same defaults and
+validation, translating invalid requests into usage errors before native setup.
+This interface belongs to the repository's benchmark tooling, not the installed
+`snekql` package API.
+
+- `schedule` is a tuple of frozen `TrialPlan` records. `round` and `position` are
+  one-based; `adapter` identifies requested work, not completed work.
+- `configuration` and `measurement` return fresh report-metadata dictionaries.
+  Editing a view cannot change the plan or the shared declared MariaDB policy.
+  These dictionaries have the meanings described in report version 2 below;
+  they do not contain observed rows, timings or native verification results.
+
+A valid plan does **not** certify actual delivery, commits, prepared sessions,
+effective native policy, resource availability or physical disk/RSS limits.
+Planning checks are deliberately separate from real CLI/backend and owned fault
+checks. In particular, never manufacture `observed` or successful trial results
+from a schedule.
+
 ## Report version 2
 
 - `configuration` records workload sizes and the policies above.
@@ -237,8 +276,10 @@ not physical disk/RSS limits, packet-size guarantees or filesystem isolation.
 - Version 1 historical reports lack these additional fields and use capacity one,
   fixed 32-byte payloads and forward-only rotation. Do not silently pool schemas.
 
-No latency or throughput value is a CI pass threshold. CLI tests check observed
-work, argument bounds, trial ordering and report configuration. An injected
+No latency or throughput value is a CI pass threshold. Pure planning tests check
+bounds, schedules and metadata. Retained CLI tests independently check argument
+wiring and early rejection, real trial order, report configuration and observed
+work. An injected
 50 ms driver callback block checks the heartbeat, not machine throughput.
 See [the published baseline](findings.md) for repeated results and noise-aware
 regression review.

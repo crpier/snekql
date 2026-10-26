@@ -2,6 +2,7 @@
 
 import sys
 from asyncio import to_thread
+from dataclasses import replace
 from hashlib import sha256
 from json import loads
 from os import environ, pathsep
@@ -9,7 +10,9 @@ from pathlib import Path
 
 from anyio import Path as AsyncPath
 from anyio import TemporaryDirectory, run_process
-from snektest import Param, assert_eq, assert_in, test
+from snektest import Param, assert_eq, assert_in, assert_raises, test
+
+from benchmarks.comparison_plan import ComparisonPlan
 
 
 @test(
@@ -70,62 +73,24 @@ async def comparison_reports_observed_work(adapter: str, backend: str) -> None:
         Param(("payload-bytes", "0"), name="zero-payload"),
         Param(("payload-bytes", "8193"), name="excess-payload"),
     ],
-    mark="slow",
+    mark="fast",
 )
-async def comparison_rejects_invalid_bounds(option: tuple[str, str]) -> None:
-    """Invalid run sizes must fail as usage errors without a success report."""
-    result = await run_process(
-        [
-            sys.executable,
-            "-m",
-            "benchmarks.compare",
-            "--backend",
-            "sqlite",
-            "--operations",
-            "1",
-            "--rows",
-            "1",
-            "--trials",
-            "1",
-            "--warmup",
-            "0",
-            f"--{option[0]}",
-            option[1],
-        ],
-        check=False,
-    )
-    assert_eq(result.returncode, 2)
-    assert_eq(result.stdout, b"")
-    assert_in(b"must be between", result.stderr)
+def comparison_rejects_invalid_bounds(option: tuple[str, str]) -> None:
+    """Unsafe individual sizes fail planning before there is runnable work."""
+    field, value = option
+    with assert_raises(ValueError) as error:
+        replace(
+            ComparisonPlan(backend="sqlite"), **{field.replace("-", "_"): int(value)}
+        )
+    assert_in("must be between", str(error.exception))
 
 
-@test(mark="slow")
-async def comparison_rotates_adapter_order_between_trials() -> None:
+@test(mark="fast")
+def comparison_rotates_adapter_order_between_trials() -> None:
     """Every adapter gets each run position, rather than always running last."""
-    result = await run_process(
-        [
-            sys.executable,
-            "-m",
-            "benchmarks.compare",
-            "--backend",
-            "sqlite",
-            "--adapter",
-            "all",
-            "--operations",
-            "1",
-            "--rows",
-            "1",
-            "--trials",
-            "3",
-            "--warmup",
-            "0",
-        ],
-        check=False,
-    )
-    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
-    report = loads(result.stdout)
+    plan = ComparisonPlan(backend="sqlite", trials=3)
     assert_eq(
-        [(trial["round"], trial["adapter"]) for trial in report["trials"]],
+        [(trial.round, trial.adapter) for trial in plan.schedule],
         [
             (1, "raw"),
             (1, "snekql"),
@@ -1170,3 +1135,132 @@ async def comparison_startup_failure_retains_owned_diagnostics() -> None:
         assert_eq(len(owners), 1)
         assert_in(str(owners[0]).encode(), result.stderr)
         assert_eq(len([path async for path in owners[0].iterdir()]), 1)
+
+
+@test(mark="slow")
+async def comparison_cli_rejects_individual_bounds_before_native_setup() -> None:
+    """The CLI delegates validation and emits no report before looking for tools."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "-m",
+            "benchmarks.compare",
+            "--backend",
+            "mariadb",
+            "--pool-size",
+            "33",
+        ],
+        env={**environ, "PATH": ""},
+        check=False,
+    )
+    assert_eq(completed.returncode, 2)
+    assert_eq(completed.stdout, b"")
+    assert_in(b"--pool-size must be between 1 and 32", completed.stderr)
+
+
+@test(mark="slow")
+async def comparison_planning_needs_no_installed_native_dependencies() -> None:
+    """The documented planning interface is usable without site-packages."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "-S",
+            "-c",
+            (
+                "from benchmarks.comparison_plan import ComparisonPlan; "
+                'plan = ComparisonPlan(backend="mariadb", adapter="raw", trials=1); '
+                'print(plan.schedule[0].adapter, plan.configuration["mariadb"]["unique_checks"])'
+            ),
+        ],
+        check=False,
+    )
+    assert_eq((completed.returncode, completed.stderr.decode()), (0, ""))
+    assert_eq(completed.stdout.strip(), b"raw 1")
+
+
+@test(mark="slow")
+async def comparison_cli_propagates_nondefault_plan_into_real_work() -> None:
+    """Reverse order, instrumentation and sizing survive parse/plan/execute/report."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "-m",
+            "benchmarks.compare",
+            "--backend",
+            "sqlite",
+            "--adapter",
+            "all",
+            "--workload",
+            "stream",
+            "--batch-size",
+            "2",
+            "--operations",
+            "3",
+            "--rows",
+            "4",
+            "--trials",
+            "2",
+            "--warmup",
+            "1",
+            "--workers",
+            "2",
+            "--pool-size",
+            "2",
+            "--payload-bytes",
+            "64",
+            "--profile",
+            "diagnostic",
+            "--telemetry",
+            "on",
+            "--order",
+            "reverse",
+        ],
+        check=False,
+    )
+    assert_eq((completed.returncode, completed.stderr.decode()), (0, ""))
+    report = loads(completed.stdout)
+    assert_eq(
+        report["configuration"],
+        {
+            "operations": 3,
+            "adapter_order": "reverse",
+            "rows": 4,
+            "trials": 2,
+            "warmup": 1,
+            "workers": 2,
+            "pool_size": 2,
+            "payload_bytes": 64,
+            "telemetry": "on",
+            "buffering": "fetch-many",
+            "batch_size": 2,
+            "validation": "strict-pydantic",
+            "transaction": "explicit-begin-commit",
+            "query_construction": "per-operation",
+            "sqlite": {
+                "journal_mode": "WAL",
+                "synchronous": "NORMAL",
+                "foreign_keys": True,
+                "busy_timeout_ms": 5000,
+            },
+        },
+    )
+    assert_eq(report["measurement"]["profile"], "diagnostic")
+    assert_eq(
+        [(t["round"], t["position"], t["adapter"]) for t in report["trials"]],
+        [
+            (1, 1, "sqlalchemy"),
+            (1, 2, "snekql"),
+            (1, 3, "raw"),
+            (2, 1, "snekql"),
+            (2, 2, "raw"),
+            (2, 3, "sqlalchemy"),
+        ],
+    )
+    for trial in report["trials"]:
+        assert_eq(
+            trial["observed"], {"rows": 12, "identity_sum": 30, "payload_bytes": 768}
+        )
+        assert_eq(trial["stream"], {"batches": 6, "max_batch_rows": 2})
+        assert_eq(trial["latency"]["count"], 3)
+        assert_eq(trial["prepared_sessions"], 2)
+        assert_eq(trial["pool"]["summary"]["count"], 3)
