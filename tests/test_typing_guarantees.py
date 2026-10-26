@@ -1,10 +1,8 @@
 """Paired public callers protect typing guarantees through application helpers."""
 
-import sys
-from json import loads
+from snektest import Param, assert_eq, assert_true, load_fixture, test
 
-from anyio import run_process
-from snektest import Param, assert_eq, assert_true, test
+from tests.typing_assessment import assessed_cases, provide_typing_assessment
 
 
 @test(
@@ -34,20 +32,10 @@ from snektest import Param, assert_eq, assert_true, test
 )
 async def public_typing_contract_has_exact_diagnostic(case: tuple[str, str]) -> None:
     """Reject only the invalid operation beside exact inferred-type controls."""
+    output = await load_fixture(provide_typing_assessment())
     name, rule = case
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            name,
-        ],
-        check=False,
-    )
-
-    report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 2)
-    for observation in report["cases"]:
+    observations = assessed_cases(output, name)
+    for observation in observations:
         assert_eq(observation["positive_errors"], [])
         assert_eq(len(observation["negative_errors"]), 1)
         assert_eq(
@@ -55,4 +43,3 @@ async def public_typing_contract_has_exact_diagnostic(case: tuple[str, str]) -> 
         )
         assert_eq(observation["negative_errors"][0]["rule"], rule)
         assert_true(observation["conforms"])
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
