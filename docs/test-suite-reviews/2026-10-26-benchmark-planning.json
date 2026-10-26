@@ -1,0 +1,788 @@
+{
+  "issue": 564,
+  "base_revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+  "raw_evidence_directory": "/home/crpier/.cache/sq564-VWZ1Y9mx",
+  "pointer": "/tmp/snekql-benchmark-planning-latest",
+  "environment": {
+    "revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+    "sha256": {
+      "benchmarks/compare.py": "4f3857b51e9d121cdd996158ce795459f995120eab3209b407d070dbabb8cbef",
+      "benchmarks/_comparison_mariadb.py": "a270672ffca2e9081a639c038726251bfbde096612e4bf5705043a61a44de6d6",
+      "tests/test_comparative_benchmarks.py": "b6f069b172489cf4378d458e905b85ae01c0043d41f157f38e9f10fdefc34958",
+      "tests/test_benchmark_fixtures.py": "c1c7d4024b988509c074e67c8602c3445a597ca7e61d82d848f8e55808d300d5",
+      "uv.lock": "7e622ca52611bcfed193b5d167f2eb1856ccc855ed5133c7fff6c1c9808210bc"
+    },
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+    "packages": {
+      "snektest": "0.16.0",
+      "ty": "0.0.84",
+      "pydantic": "2.14.0",
+      "sqlalchemy": "2.1.1",
+      "aiomysql": "0.3.2"
+    },
+    "TMPDIR": "/tmp",
+    "uv": "uv 0.13.4 (x86_64-unknown-linux-gnu)",
+    "mariadb": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+    ],
+    "context_aware_warnings": "PYTHON_CONTEXT_AWARE_WARNINGS=1",
+    "host_exclusive": false,
+    "signal_dispositions": "SIGINT, SIGQUIT, SIGHUP default before controlled and complete command launches"
+  },
+  "coverage": {
+    "base_revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+    "unchanged_original_test_functions": [
+      "comparison_reports_observed_work",
+      "comparison_reports_reproduction_settings",
+      "mariadb_comparison_verifies_session_policy",
+      "comparison_rejects_session_policy_drift",
+      "unavailable_mariadb_does_not_become_a_successful_skip",
+      "streaming_comparison_consumes_partial_final_batch",
+      "streaming_comparison_rejects_incomplete_delivery",
+      "comparison_observes_an_injected_loop_stall",
+      "streaming_comparison_does_not_fetch_all",
+      "join_comparison_reads_the_related_record",
+      "bulk_comparison_verifies_committed_rows",
+      "bulk_comparison_rejects_uncommitted_rows",
+      "contended_comparison_completes_every_request",
+      "pool_diagnostics_exclude_setup_and_warmup",
+      "memory_profile_reports_scoped_python_allocations",
+      "comparison_reports_hardware_provenance",
+      "comparison_prepares_every_capacity_slot_before_timing",
+      "comparison_validates_wide_payload_work_on_every_adapter",
+      "comparison_times_counting_observation_independently_of_pool_profile",
+      "six_balanced_rounds_cover_every_adapter_permutation",
+      "comparison_rejects_combined_resource_budgets_before_native_setup",
+      "comparison_identifies_lock_and_raw_driver_dependencies",
+      "comparison_startup_failure_retains_owned_diagnostics"
+    ],
+    "changed_original_test_functions": [
+      "comparison_rejects_invalid_bounds",
+      "comparison_rotates_adapter_order_between_trials"
+    ],
+    "added_comparative_test_functions": [
+      "comparison_cli_propagates_nondefault_plan_into_real_work",
+      "comparison_cli_rejects_individual_bounds_before_native_setup",
+      "comparison_planning_needs_no_installed_native_dependencies"
+    ],
+    "unchanged_native_mariadb_functions": [
+      "_connection",
+      "_open_raw",
+      "_open_snekql",
+      "_open_sqlalchemy",
+      "_raw_transaction",
+      "_verified_policy",
+      "open_reader",
+      "seed"
+    ],
+    "native_policy_literal_unchanged": true,
+    "measured_work_loop_observation_and_environment_bodies_unchanged": true,
+    "native_setup_and_artifact_scope_unchanged": true,
+    "cli_defaults_unchanged": {
+      "adapter": "all",
+      "workload": "point-read",
+      "batch_size": 256,
+      "profile": "timing",
+      "order": "balanced",
+      "telemetry": "off",
+      "payload_bytes": 32,
+      "pool_size": 1,
+      "workers": 1,
+      "operations": 1000,
+      "rows": 1000,
+      "trials": 3,
+      "warmup": 100
+    },
+    "prior_88_case_baseline_source_hashes_match_current_base": true
+  },
+  "inventory": {
+    "normal_lazy_inventories_identical": true,
+    "prior_full_cases_preserved": 4187,
+    "already_merged_main_additions": [
+      "tests/test_typing_assessment_execution.py::broken_controls_retain_named_failures",
+      "tests/test_typing_assessment_execution.py::focused_contract_is_independent_of_an_unselected_failure"
+    ],
+    "new_cases": [
+      "tests/test_benchmark_planning.py::boolean_operation_count_is_not_a_numeric_work_request",
+      "tests/test_benchmark_planning.py::configuration_labels_buffering_and_batching_by_workload[bulk]",
+      "tests/test_benchmark_planning.py::configuration_labels_buffering_and_batching_by_workload[join]",
+      "tests/test_benchmark_planning.py::configuration_labels_buffering_and_batching_by_workload[point-read]",
+      "tests/test_benchmark_planning.py::configuration_labels_buffering_and_batching_by_workload[stream]",
+      "tests/test_benchmark_planning.py::editing_a_report_view_cannot_change_the_planned_session_policy",
+      "tests/test_benchmark_planning.py::exact_joint_budgets_remain_usable_plans",
+      "tests/test_benchmark_planning.py::exceeding_any_numeric_ceiling_is_rejected[batch-size]",
+      "tests/test_benchmark_planning.py::exceeding_any_numeric_ceiling_is_rejected[operations]",
+      "tests/test_benchmark_planning.py::exceeding_any_numeric_ceiling_is_rejected[payload-bytes]",
+      "tests/test_benchmark_planning.py::exceeding_any_numeric_ceiling_is_rejected[pool-size]",
+      "tests/test_benchmark_planning.py::exceeding_any_numeric_ceiling_is_rejected[rows]",
+      "tests/test_benchmark_planning.py::exceeding_any_numeric_ceiling_is_rejected[trials]",
+      "tests/test_benchmark_planning.py::exceeding_any_numeric_ceiling_is_rejected[warmup]",
+      "tests/test_benchmark_planning.py::exceeding_any_numeric_ceiling_is_rejected[workers]",
+      "tests/test_benchmark_planning.py::insert_budget_rejects_an_oversized_single_statement",
+      "tests/test_benchmark_planning.py::measurement_labels_describe_scope_without_fabricating_measurements",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[batch_size-lower]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[batch_size-upper]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[operations-lower]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[operations-upper]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[payload_bytes-lower]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[payload_bytes-upper]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[pool_size-lower]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[pool_size-upper]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[rows-lower]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[rows-upper]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[trials-lower]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[trials-upper]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[warmup-lower]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[warmup-upper]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[workers-lower]",
+      "tests/test_benchmark_planning.py::numeric_boundaries_are_inclusive[workers-upper]",
+      "tests/test_benchmark_planning.py::plan_rejects_zero_operations",
+      "tests/test_benchmark_planning.py::plan_reports_effective_configuration_without_running_work",
+      "tests/test_benchmark_planning.py::plans_reject_unknown_execution_labels[adapter]",
+      "tests/test_benchmark_planning.py::plans_reject_unknown_execution_labels[backend]",
+      "tests/test_benchmark_planning.py::plans_reject_unknown_execution_labels[order]",
+      "tests/test_benchmark_planning.py::plans_reject_unknown_execution_labels[profile]",
+      "tests/test_benchmark_planning.py::plans_reject_unknown_execution_labels[telemetry]",
+      "tests/test_benchmark_planning.py::plans_reject_unknown_execution_labels[workload]",
+      "tests/test_benchmark_planning.py::schedule_preserves_direction_and_balanced_cycles[balanced]",
+      "tests/test_benchmark_planning.py::schedule_preserves_direction_and_balanced_cycles[forward]",
+      "tests/test_benchmark_planning.py::schedule_preserves_direction_and_balanced_cycles[reverse]",
+      "tests/test_benchmark_planning.py::seed_budget_rejects_a_combination_of_individually_valid_sizes",
+      "tests/test_benchmark_planning.py::single_adapter_schedule_keeps_one_position_per_round[raw]",
+      "tests/test_benchmark_planning.py::single_adapter_schedule_keeps_one_position_per_round[snekql]",
+      "tests/test_benchmark_planning.py::single_adapter_schedule_keeps_one_position_per_round[sqlalchemy]",
+      "tests/test_benchmark_planning.py::write_budget_bounds_the_larger_phase_including_row_overhead[measured]",
+      "tests/test_benchmark_planning.py::write_budget_bounds_the_larger_phase_including_row_overhead[warmup]",
+      "tests/test_comparative_benchmarks.py::comparison_cli_propagates_nondefault_plan_into_real_work",
+      "tests/test_comparative_benchmarks.py::comparison_cli_rejects_individual_bounds_before_native_setup",
+      "tests/test_comparative_benchmarks.py::comparison_planning_needs_no_installed_native_dependencies"
+    ],
+    "prior_benchmark_cases_preserved": 88,
+    "new_benchmark_group_cases": 141,
+    "new_total_full_cases": 4242
+  },
+  "converted_cases": {
+    "numeric_bounds": 10,
+    "three_round_schedule": 1,
+    "markers": "slow to fast only for these 11 cases; all remain in default scope"
+  },
+  "unchanged_baseline_first_samples": {
+    "before": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "snektest",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup",
+          "tests/test_comparative_benchmarks.py::comparison_rotates_adapter_order_between_trials",
+          "tests/test_comparative_benchmarks.py::six_balanced_rounds_cover_every_adapter_permutation",
+          "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+          "--json-output"
+        ],
+        "wall_seconds": 4.516594589993474,
+        "returncode": 0,
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "snektest",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup",
+          "tests/test_comparative_benchmarks.py::comparison_rotates_adapter_order_between_trials",
+          "tests/test_comparative_benchmarks.py::six_balanced_rounds_cover_every_adapter_permutation",
+          "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+          "--json-output"
+        ],
+        "wall_seconds": 4.493581738992361,
+        "returncode": 0,
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    ],
+    "after": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "snektest",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup",
+          "tests/test_comparative_benchmarks.py::comparison_rotates_adapter_order_between_trials",
+          "tests/test_comparative_benchmarks.py::six_balanced_rounds_cover_every_adapter_permutation",
+          "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+          "--json-output"
+        ],
+        "wall_seconds": 1.763852895994205,
+        "returncode": 0,
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "snektest",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup",
+          "tests/test_comparative_benchmarks.py::comparison_rotates_adapter_order_between_trials",
+          "tests/test_comparative_benchmarks.py::six_balanced_rounds_cover_every_adapter_permutation",
+          "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+          "--json-output"
+        ],
+        "wall_seconds": 1.8106877539976267,
+        "returncode": 0,
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    ],
+    "mean_before_seconds": 4.505088164492918,
+    "mean_after_seconds": 1.7872703249959159,
+    "conditions": "Before edits at clean base; same 16 selectors afterwards; inherited default /tmp, no extra outer containment root. Sequential before/after, not interleaved."
+  },
+  "controlled_owned_btrfs_verification": {
+    "records": [
+      {
+        "mode": "before",
+        "run": 1,
+        "command": [
+          "uv",
+          "run",
+          "snektest",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup",
+          "tests/test_comparative_benchmarks.py::comparison_rotates_adapter_order_between_trials",
+          "tests/test_comparative_benchmarks.py::six_balanced_rounds_cover_every_adapter_permutation",
+          "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+          "--json-output"
+        ],
+        "wall_seconds": 4.45101970298856,
+        "returncode": 0,
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "tmpdir": "/tmp/sqp-5u694_3_",
+        "storage": "TARGET FSTYPE OPTIONS\n/tmp   tmpfs  rw,nosuid,nodev,nr_inodes=1048576,inode64,huge=advise,usrquota\n",
+        "remaining_entries": [
+          {
+            "path": "uv-d1196c17db265703.lock",
+            "bytes": 0
+          }
+        ],
+        "live_owned_processes": [],
+        "source_sha256": {
+          "benchmarks/compare.py": "4f3857b51e9d121cdd996158ce795459f995120eab3209b407d070dbabb8cbef",
+          "benchmarks/_comparison_mariadb.py": "a270672ffca2e9081a639c038726251bfbde096612e4bf5705043a61a44de6d6",
+          "tests/test_comparative_benchmarks.py": "b6f069b172489cf4378d458e905b85ae01c0043d41f157f38e9f10fdefc34958"
+        },
+        "report_sha256": "c133a1577abbc0017e982d99c1211a976f911ddf3ba844131c093a1f2fefbf12"
+      },
+      {
+        "mode": "before",
+        "run": 2,
+        "command": [
+          "uv",
+          "run",
+          "snektest",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup",
+          "tests/test_comparative_benchmarks.py::comparison_rotates_adapter_order_between_trials",
+          "tests/test_comparative_benchmarks.py::six_balanced_rounds_cover_every_adapter_permutation",
+          "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+          "--json-output"
+        ],
+        "wall_seconds": 4.4538063799991505,
+        "returncode": 0,
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "tmpdir": "/tmp/sqp-bhqg2at2",
+        "storage": "TARGET FSTYPE OPTIONS\n/tmp   tmpfs  rw,nosuid,nodev,nr_inodes=1048576,inode64,huge=advise,usrquota\n",
+        "remaining_entries": [
+          {
+            "path": "uv-d1196c17db265703.lock",
+            "bytes": 0
+          }
+        ],
+        "live_owned_processes": [],
+        "source_sha256": {
+          "benchmarks/compare.py": "4f3857b51e9d121cdd996158ce795459f995120eab3209b407d070dbabb8cbef",
+          "benchmarks/_comparison_mariadb.py": "a270672ffca2e9081a639c038726251bfbde096612e4bf5705043a61a44de6d6",
+          "tests/test_comparative_benchmarks.py": "b6f069b172489cf4378d458e905b85ae01c0043d41f157f38e9f10fdefc34958"
+        },
+        "report_sha256": "d3e1ccf18aaf5e97ac9bcccfc83b91dcb6ea4c1159ce257daa8e16efa64c8f78"
+      },
+      {
+        "mode": "after",
+        "run": 1,
+        "command": [
+          "uv",
+          "run",
+          "snektest",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup",
+          "tests/test_comparative_benchmarks.py::comparison_rotates_adapter_order_between_trials",
+          "tests/test_comparative_benchmarks.py::six_balanced_rounds_cover_every_adapter_permutation",
+          "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+          "--json-output"
+        ],
+        "wall_seconds": 1.59552873299981,
+        "returncode": 0,
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "tmpdir": "/tmp/sqp-t36nevkg",
+        "storage": "TARGET FSTYPE OPTIONS\n/tmp   tmpfs  rw,nosuid,nodev,nr_inodes=1048576,inode64,huge=advise,usrquota\n",
+        "remaining_entries": [
+          {
+            "path": "uv-d1196c17db265703.lock",
+            "bytes": 0
+          }
+        ],
+        "live_owned_processes": [],
+        "source_sha256": {
+          "benchmarks/compare.py": "169b10e14fb3fa90ccb5780b0cca1606e631808a9b9540815171637dbd9c21e6",
+          "benchmarks/_comparison_mariadb.py": "caa197e72732c78c0a22f7fd680a38c04e91b20fe00b8bf2027322df94e7d129",
+          "tests/test_comparative_benchmarks.py": "3099e7393bbdd6f273b46a1489dcb33af1ee222b70edd9ee6abfd860625e5685"
+        },
+        "report_sha256": "ee945dff9779835eb69db53a9931ad63f44f1b948342ce148efde67e854c34c0"
+      },
+      {
+        "mode": "after",
+        "run": 2,
+        "command": [
+          "uv",
+          "run",
+          "snektest",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds",
+          "tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup",
+          "tests/test_comparative_benchmarks.py::comparison_rotates_adapter_order_between_trials",
+          "tests/test_comparative_benchmarks.py::six_balanced_rounds_cover_every_adapter_permutation",
+          "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+          "--json-output"
+        ],
+        "wall_seconds": 1.5775907420029398,
+        "returncode": 0,
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "tmpdir": "/tmp/sqp-_qcweb1b",
+        "storage": "TARGET FSTYPE OPTIONS\n/tmp   tmpfs  rw,nosuid,nodev,nr_inodes=1048576,inode64,huge=advise,usrquota\n",
+        "remaining_entries": [
+          {
+            "path": "uv-d1196c17db265703.lock",
+            "bytes": 0
+          }
+        ],
+        "live_owned_processes": [],
+        "source_sha256": {
+          "benchmarks/compare.py": "169b10e14fb3fa90ccb5780b0cca1606e631808a9b9540815171637dbd9c21e6",
+          "benchmarks/_comparison_mariadb.py": "caa197e72732c78c0a22f7fd680a38c04e91b20fe00b8bf2027322df94e7d129",
+          "tests/test_comparative_benchmarks.py": "3099e7393bbdd6f273b46a1489dcb33af1ee222b70edd9ee6abfd860625e5685"
+        },
+        "report_sha256": "a88f32b7dd7a4d7e78f882dbe3d19d64a4a9e6882458e8a2fbb2a9d96406311f"
+      }
+    ],
+    "mean_before_seconds": 4.452413041493855,
+    "mean_after_seconds": 1.586559737501375,
+    "observed_mean_reduction_percent": 64.3662947997956,
+    "observed_seconds_saved": 2.8658533039924805,
+    "conditions": "After complete validation: restore the three original code/test files from fixed HEAD, run twice, restore feature bytes in finally and run twice. New unused module files and documentation remain present; not a pristine whole checkout. Every command has its own fresh short owned /tmp root on Btrfs. No concurrent suite from this session; no change to locked dependencies or interpreter."
+  },
+  "prior_88_case_baseline": {
+    "directory": "/home/crpier/.cache/sqb.eHtyeXr1",
+    "inputs_sha256": "c3a1438a4495e3a13faaca70ccfdbaf1308406877f464eaf53b6b23ab9df0f41",
+    "reports_sha256": {
+      "before-1.json": "524c4f331d30a946f0dc962eecf9711be51456050491cc1de18e4cd959643af6",
+      "before-2.json": "811c7294e60e5b35edc77482c4f0adc1cb8acf8f832f1e596a776e61b40ae20a"
+    },
+    "use": "Provenance/ranking only. Same benchmark/source/lock bytes at fixed base, not a matched comparison to the new larger tmpfs group."
+  },
+  "cold_focused_samples": [
+    {
+      "mode": "before",
+      "selection": "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds[zero-workers]",
+      "run": 1,
+      "wall_seconds": 0.5154962590022478
+    },
+    {
+      "mode": "before",
+      "selection": "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds[zero-workers]",
+      "run": 2,
+      "wall_seconds": 0.471801627005334
+    },
+    {
+      "mode": "before",
+      "selection": "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+      "run": 1,
+      "wall_seconds": 0.5063241220050259
+    },
+    {
+      "mode": "before",
+      "selection": "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+      "run": 2,
+      "wall_seconds": 0.5024071410007309
+    },
+    {
+      "mode": "after",
+      "selection": "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds[zero-workers]",
+      "run": 1,
+      "wall_seconds": 0.19696906200260855
+    },
+    {
+      "mode": "after",
+      "selection": "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds[zero-workers]",
+      "run": 2,
+      "wall_seconds": 0.18437465799797792
+    },
+    {
+      "mode": "after",
+      "selection": "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+      "run": 1,
+      "wall_seconds": 0.4856207309931051
+    },
+    {
+      "mode": "after",
+      "selection": "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+      "run": 2,
+      "wall_seconds": 0.4956885389983654
+    }
+  ],
+  "fault_calibration": [
+    {
+      "mutation": "numeric-validation",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds[zero-workers]",
+        "tests/test_comparative_benchmarks.py::comparison_cli_rejects_individual_bounds_before_native_setup",
+        "--json-output"
+      ],
+      "passed": 0,
+      "failed": 2,
+      "errors": 0,
+      "remaining_tmp_entries": [
+        "sq-qqti_23c",
+        "sq-qqti_23c/snekql-mariadb-h1qf533n",
+        "sq-qqti_23c/snekql-mariadb-h1qf533n/data"
+      ]
+    },
+    {
+      "mutation": "write-phase",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_benchmark_planning.py::write_budget_bounds_the_larger_phase_including_row_overhead",
+        "--json-output"
+      ],
+      "passed": 0,
+      "failed": 2,
+      "errors": 0,
+      "remaining_tmp_entries": []
+    },
+    {
+      "mutation": "policy-view",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_benchmark_planning.py::editing_a_report_view_cannot_change_the_planned_session_policy",
+        "--json-output"
+      ],
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "remaining_tmp_entries": []
+    },
+    {
+      "mutation": "config-wiring",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_benchmark_planning.py::plan_reports_effective_configuration_without_running_work",
+        "tests/test_comparative_benchmarks.py::comparison_reports_reproduction_settings",
+        "--json-output"
+      ],
+      "passed": 1,
+      "failed": 1,
+      "errors": 0,
+      "remaining_tmp_entries": []
+    },
+    {
+      "mutation": "schedule-wiring",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_benchmark_planning.py::schedule_preserves_direction_and_balanced_cycles",
+        "tests/test_comparative_benchmarks.py::comparison_cli_propagates_nondefault_plan_into_real_work",
+        "--json-output"
+      ],
+      "passed": 3,
+      "failed": 1,
+      "errors": 0,
+      "remaining_tmp_entries": []
+    }
+  ],
+  "full_validation": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 358.2469198300096,
+      "tmpdir": "/dev/shm/sqp-iBIEfl",
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "directory": false,
+          "bytes": 0
+        }
+      ],
+      "passed": 4242,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "raw_sha256": "a5623823b002851b0fe2598c43cb7f025b5cd43943a940456bea37bf9bde7882"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 359.4944705149974,
+      "tmpdir": "/dev/shm/sqp-iBIEfl",
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "directory": false,
+          "bytes": 0
+        }
+      ],
+      "passed": 4242,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "raw_sha256": "36254cadc4982c3880c1daa6efee680b4d89102f1e6eee3d823f08620255eea8"
+    }
+  ],
+  "full_source": {
+    "revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+    "sha256": {
+      "benchmarks/compare.py": "169b10e14fb3fa90ccb5780b0cca1606e631808a9b9540815171637dbd9c21e6",
+      "benchmarks/comparison_plan.py": "238e07974deb88e749879edc6c339822ab61580921d3967d1c9fcc80d0bfb69e",
+      "benchmarks/_comparison_policy.py": "3fa1b4052258d606122747468e194e3a05b219e46aaace8c03a3d0db3d104f77",
+      "benchmarks/_comparison_mariadb.py": "caa197e72732c78c0a22f7fd680a38c04e91b20fe00b8bf2027322df94e7d129",
+      "tests/test_comparative_benchmarks.py": "3099e7393bbdd6f273b46a1489dcb33af1ee222b70edd9ee6abfd860625e5685",
+      "tests/test_benchmark_planning.py": "38f764db24aa31a4e7a1bacba5ed4b7bf5c1177bc98290a4ca819626b17e6eb5"
+    }
+  },
+  "full_cleanup": {
+    "path": "/dev/shm/sqp-iBIEfl",
+    "live_owned_processes": [],
+    "remaining_entries": [
+      {
+        "path": "uv-d1196c17db265703.lock",
+        "bytes": 0
+      }
+    ],
+    "removed": true
+  },
+  "direct_lazy_planning": {
+    "command": [
+      "uv",
+      "run",
+      "python",
+      "-X",
+      "lazy_imports=all",
+      "-S",
+      "-c",
+      "from json import dumps; from benchmarks.comparison_plan import ComparisonPlan; p = ComparisonPlan(backend=\"mariadb\", adapter=\"raw\", trials=2); print(dumps({\"order\": [(t.round, t.position, t.adapter) for t in p.schedule], \"config\": p.configuration, \"measurement\": p.measurement}))"
+    ],
+    "result": {
+      "order": [
+        [
+          1,
+          1,
+          "raw"
+        ],
+        [
+          2,
+          1,
+          "raw"
+        ]
+      ],
+      "config": {
+        "operations": 1000,
+        "adapter_order": "balanced",
+        "rows": 1000,
+        "trials": 2,
+        "warmup": 100,
+        "workers": 1,
+        "pool_size": 1,
+        "payload_bytes": 32,
+        "telemetry": "off",
+        "buffering": "fetch-all",
+        "validation": "strict-pydantic",
+        "transaction": "explicit-begin-commit",
+        "query_construction": "per-operation",
+        "mariadb": {
+          "autocommit": 0,
+          "read_only": 0,
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO",
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "transport": "tcp-loopback"
+        }
+      },
+      "measurement": {
+        "profile": "timing",
+        "heartbeat_interval_seconds": 0.005,
+        "latency_includes_correctness_checks": true,
+        "setup_included": false,
+        "warmup_included": false
+      }
+    },
+    "native_work": false,
+    "note": "-S removes site-packages. This is direct pure-interface evidence, not forced-lazy all-adapter CLI certification; #558 remains."
+  },
+  "validation_limits": [
+    "No whole-suite speedup or timing gate.",
+    "Earlier 88-case Btrfs timings are provenance/ranking, not compared to larger tmpfs validation inventory.",
+    "Normal and lazy suite runners execute benchmark CLI children in ordinary mode; direct pure-interface forced-lazy execution is separately recorded.",
+    "GitHub Actions intentionally disabled; local host only, not a remote platform/database matrix."
+  ],
+  "raw_sha256": {
+    "before-source.json": "748e13299d82339be82cbf7710579cf03e3f2c8b0ec33b2c86d4a9a6300fb528",
+    "coverage-audit.json": "5b1a740bc7a10861402eb0fe9eca7ef45b37f8bfa53561890b8891cfba646d93",
+    "inventory-audit.json": "feeae68c2d9343a8776a6c4039c5d6215655b37ad78a3ed54597fd06fbc0c80c",
+    "full-source.json": "15a4bfa6c1f9294c93e477319346a511b7c17255dd20ae820b5726a1bc0a0bef",
+    "full-cleanup.json": "e65c6ddabba295dd0f89475e4cbd7939cbb3758b1ecc81e26334997bf87ad4fc",
+    "matched-records.json": "6992def2cba2802c43ec811b8a5d524fd520a9f115bf3a971b3dc09c2c62baf9",
+    "before-records.json": "d3268828612df34684bd686883105a36a37f4fdc4c3527aabdae4bed621863bb",
+    "after-records.json": "a211bcd5a851a498468556bdef2e547b61bf6f879c3684f69a41c4d0ac369301",
+    "focused-records.json": "81642d1504e660e129c45bef147034c92ed5a2e7a65d89d79d7146eaaf703b14",
+    "fault-records.json": "67889596ce9ce5ac26799c3f25bcf8d6ec7d74f292f586eef36a3eedf79c6f1f",
+    "direct-lazy-plan.json": "8a77c9e5b2f177e9f64066aa15682cdb272f2366b4aec01d5f7c10d378b3317a",
+    "before-1.json": "3692bda46f7103439c2b84b64d4e7169f2640c5b6108ccb9277690cf5285ad03",
+    "before-2.json": "8dcc639de8e61c573f4d7fd5f32862fee94fc21c06d258289f9149a3027015a4",
+    "after-1.json": "3f773142bc61a79bc250fd2f984a43fd2db5b388fb9a24b6fae870363a3fb755",
+    "after-2.json": "ff86080d26811a5de877277db60ae8176d463deb172f2b37c3b81af4e0bba56d",
+    "full-1.json": "a5623823b002851b0fe2598c43cb7f025b5cd43943a940456bea37bf9bde7882",
+    "full-2.json": "36254cadc4982c3880c1daa6efee680b4d89102f1e6eee3d823f08620255eea8",
+    "matched-before-1.json": "c133a1577abbc0017e982d99c1211a976f911ddf3ba844131c093a1f2fefbf12",
+    "matched-before-2.json": "d3e1ccf18aaf5e97ac9bcccfc83b91dcb6ea4c1159ce257daa8e16efa64c8f78",
+    "matched-after-1.json": "ee945dff9779835eb69db53a9931ad63f44f1b948342ce148efde67e854c34c0",
+    "matched-after-2.json": "a88f32b7dd7a4d7e78f882dbe3d19d64a4a9e6882458e8a2fbb2a9d96406311f",
+    "red-boolean.json": "1961f7933b07b53ee6ecbcc5463881688e202cf10fa07fdf81420ea687d45b14",
+    "red-configuration.json": "d0a12da256b0bd1f26cc3c882c7b3bed57746acc3fa377692912886c4233ee05",
+    "red-insert.json": "7f24eac0065796cefb5c1a2be28fa39c242f6a676ef6a86b9e2c2288d4bc4253",
+    "red-labels.json": "2d37201d8eacaaff08e158b4353798fd1e486dc815d8a55c6171230a673405f6",
+    "red-measurement.json": "b3a8842b4efe5a6629547b41167f864dbd0bdb4229eebe7d0bee61ac423c7094",
+    "red-numeric.json": "fa935238022bd7721f39e9f59c601861d7278a4ceb335ea7238f5b867789e80c",
+    "red-plan.json": "f9e1df3975ada26b592f1d04a7517a1c3ab3624664e226af22baf164e4d5b90b",
+    "red-schedule.json": "f402ba263b57bc7524ebaf36faa1acf669cf9bf13be169d63fbf9a388de747f3",
+    "red-seed.json": "e212cf2d13a83b210553d4f6f13ad0623a50c423f8db97c3f5b5b1c342c12f32",
+    "red-write.json": "bdbb1e15cd1aa54a738c0b189cd48805a40fe9f9c3f81b254d063bef27d8208d",
+    "green-boolean.json": "93d719dafabb5c4d83ac384731c6481e9e34f4d4bbea8013f3bae5767d2cc02e",
+    "green-budgets.json": "cfd062962c27075fa93c252cf6618779891c18f3c1488bd1c289e66c4a9242b2",
+    "green-configuration.json": "6cbfe85fb136ae53e1f49ff465d7d20259a3824fd3854157d7d930ee3d126b88",
+    "green-insert.json": "5ead94588b931872ab179ddfad8d4ae9eb5097428f6359fee3cbd7c790953bce",
+    "green-labels.json": "4ad57c64d623f8e4d72fa46b158419af288b7ea3c6738cd15596fb792a02944b",
+    "green-measurement.json": "c7754b23edc2f577c99a98cd7f1bdc010d6266178c942e4ca78b448ed4e1bb1d",
+    "green-numeric.json": "22a4b715fa996c33cf1e9147456c1edb61d2cd2c4325b9db6bd33c4c9f8cdabc",
+    "green-plan.json": "d4ceabf46292cde0b80ca09d59803540a996aaa597fa34fd118b6762e7798fba",
+    "green-schedule.json": "de79d241ec80c2c9fd6acaeac8a116e9932539ff72d08ab9619baa98ff7d86ab",
+    "green-seed.json": "150a48645a50281322f71f5052354400a997fe4e4905fe006f295714d4efbe3c",
+    "pure-final.json": "2f732fd0d2011b0521eab1319ed422018427d6a19570322d18475ff2a49f124c",
+    "planning-green.json": "b640cdee4dea141d809f52879474454a9f4013c17eadcc45657e9dbe3fd0e6c7",
+    "coverage-audit.py": "3ee8baeb039a11c7c2cd7bb8158dc50f515fb215951cff689f160d457bbc95f6",
+    "measure-controlled.py": "2255c173774e9eab8709236d255625313f2c799dff159e5f2885ad93da329915",
+    "measure-after.py": "1c78ea36862bf2a31a149ebedc10976d40b7667280e6debd30fca89425d1b594",
+    "validate-full.py": "12c5c17bb43a8f7fd5f80541c5391acbcfd473102d2391821bfc91c484f08dac",
+    "calibrate.py": "6ddc1f32b9576a5159222ba837ca99b8d375a02da12c1623abfc4a5316e9417c",
+    "faults/numeric-validation/result.json": "e1ba8050a2c582546c6cc1279e758fae825ce58d5beffb13d341cb605194d614",
+    "faults/write-phase/result.json": "5f50ab1f6b1f95afe184f244a974544e7a925c2c853dc6947a4cd31432628470",
+    "faults/policy-view/result.json": "64564f5f7b48cbd9ad50fd2ea2c0289a03882959f2b307566fe5e7aaceb489f9",
+    "faults/config-wiring/result.json": "ecfdcac3eee6cb05cd35f15e9a427302a0b83b36d80eb2ab7160a518d676709b",
+    "faults/schedule-wiring/result.json": "f9a3ed4a1739b6381de5f00ba3a625666d0a0fdaee5063acba94c7d2ba53bb48"
+  }
+}

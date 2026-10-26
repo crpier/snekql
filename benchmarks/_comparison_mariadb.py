@@ -18,24 +18,11 @@ from benchmarks._comparison_contract import (
     StreamObservation,
 )
 from benchmarks._comparison_diagnostics import PoolDiagnostics
+from benchmarks._comparison_policy import POLICY
 from benchmarks._comparison_pool import native_lease
 from benchmarks._comparison_transactions import core_transaction
 from benchmarks._models_mariadb import BenchProfile, BenchUser, BenchWrite
 from snekql import mariadb
-
-POLICY = {
-    "autocommit": 0,
-    "read_only": 0,
-    "charset": "utf8mb4",
-    "isolation": "REPEATABLE-READ",
-    "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO",
-    "time_zone": "+00:00",
-    "foreign_key_checks": 1,
-    "check_constraint_checks": 1,
-    "unique_checks": 1,
-    "transport": "tcp-loopback",
-}
-"""Common application policy; backend setup is outside timed transactions."""
 
 _SETTINGS = (
     "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ",
