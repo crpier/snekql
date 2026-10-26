@@ -80,6 +80,7 @@ from snekql.sqlite.config import Config as SQLiteConfig
 lazy from snekql._settings import ConnectionSetting, apply_connection_settings
 lazy from snekql.mariadb._pool import connect_owned
 lazy from snekql.mariadb.settings import (
+    _INNODB_STRICT_MODE_SETTING,
     _UTC_TIME_ZONE_SETTING,
     MARIADB_SESSION_SETTINGS,
 )
@@ -1156,9 +1157,7 @@ class Target:
                 raise PackageError(msg)
         if step.required and not self._sqlite:
             mode = (await self._query("SELECT @@SESSION.sql_mode"))[0][0]
-            if not {"STRICT_ALL_TABLES", "STRICT_TRANS_TABLES"}.intersection(
-                mode.split(",")
-            ):
+            if not _INNODB_STRICT_MODE_SETTING.matches(mode):
                 msg = "required-column alteration needs strict MariaDB SQL mode"
                 raise PackageError(msg)
 
@@ -1666,6 +1665,7 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
             await apply_connection_settings(
                 _SessionSettingsProbe(target),
                 (
+                    _INNODB_STRICT_MODE_SETTING,
                     _UTC_TIME_ZONE_SETTING,
                     # Verify inherited integrity prerequisites; do not repair policy
                     # or overwrite sql_mode/rendering/recovery evidence at admission.

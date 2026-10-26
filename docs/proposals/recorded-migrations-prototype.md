@@ -2382,3 +2382,13 @@ primary refusals survive, unrelated names remain owned, and postcommit release e
 the target without undoing acknowledged receipts. Fresh ORIGINAL evidence observes already_
 applied after independent session disappearance. No cumulative package clock or automatic
 replay. Remaining native prerequisites/admission/outcome/shutdown policy and G4/G5 stay open.
+
+## Inherited native strictness follow-through
+
+The [strictness checkpoint](recorded-migrations-native-strictness-review.md) moves the existing
+InnoDB strict-mode prerequisite to admission as well as retaining the live required-column
+check. Verify inherited STRICT_TRANS_TABLES or STRICT_ALL_TABLES without rewriting sql_mode;
+weak sessions refuse BEFORE yield/original-role execution, and NO_BACKSLASH_ESCAPES remains in
+actual execution evidence. Ordinary all-table normalization is unchanged. No old receipt/data
+repair or new artifact/epoch/layout. Remaining native version/metadata/other prerequisites,
+admission/outcome/shutdown policy and G4/G5 remain open.

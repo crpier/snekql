@@ -54,6 +54,20 @@ def _sql_mode_has_required_flags(value: object) -> bool:
     return flags >= _REQUIRED_SQL_MODE_FLAGS
 
 
+_INNODB_STRICT_MODE_SETTING = ConnectionSetting(
+    name="sql_mode",
+    probe_sql="SELECT @@SESSION.sql_mode",
+    predicate=lambda value: (
+        isinstance(value, str)
+        and bool(
+            {"STRICT_ALL_TABLES", "STRICT_TRANS_TABLES"}.intersection(value.split(","))
+        )
+    ),
+    expectation="STRICT_ALL_TABLES or STRICT_TRANS_TABLES enabled (InnoDB migration work)",
+)
+"""Verify inherited InnoDB strictness, unlike ordinary all-table normalization."""
+
+
 _UTC_TIME_ZONE_SETTING = ConnectionSetting(
     name="time_zone",
     apply_statements=("SET time_zone = '+00:00'",),

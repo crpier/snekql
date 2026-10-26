@@ -506,7 +506,7 @@ async def native_check_removal_preserves_encoded_defaults_in_no_backslash_mode()
         saved = (await tx.fetch_all(mariadb.raw("SELECT @@GLOBAL.sql_mode AS mode")))[
             0
         ]["mode"]
-    await server.run_sql("SET GLOBAL sql_mode='NO_BACKSLASH_ESCAPES'")
+    await server.run_sql("SET GLOBAL sql_mode='STRICT_ALL_TABLES,NO_BACKSLASH_ESCAPES'")
     try:
         first = m.compile(m.generate("001", [NativeTextChecked], backend="mariadb"))
         draft = m.generate("002", [], backend="mariadb", previous=first).resolve(

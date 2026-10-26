@@ -127,3 +127,13 @@ Local default asyncio/GIL CPython3.15.0/Linux/SQLite3.53.1/MariaDB13.0.2, not ma
 qualification. Actions remain disabled: no CI requested/polled/awaited/claimed. No every-release-
 response/failed-cleanup/primary-plus-cleanup-failure/caller-cancel/privilege window, WAL active-
 death/power-loss/native lost-ack/shutdown qualification, consumer guides or release action.
+
+## Inherited native strictness follow-through
+
+The [strictness checkpoint](recorded-migrations-native-strictness-review.md) moves the existing
+InnoDB strict-mode prerequisite to admission as well as retaining the live required-column
+check. Verify inherited STRICT_TRANS_TABLES or STRICT_ALL_TABLES without rewriting sql_mode;
+weak sessions refuse BEFORE yield/original-role execution, and NO_BACKSLASH_ESCAPES remains in
+actual execution evidence. Ordinary all-table normalization is unchanged. No old receipt/data
+repair or new artifact/epoch/layout. Remaining native version/metadata/other prerequisites,
+admission/outcome/shutdown policy and G4/G5 remain open.

@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Verify inherited native STRICT_ALL_TABLES or STRICT_TRANS_TABLES before yielding a recorded
+  migration target, retaining exact SQL-mode/rendering evidence and the live required-column
+  check. Refuse weak sessions without original role execution, mode repair or receipt rewriting;
+  ordinary all-table normalization remains unchanged (#477).
+
 - Positively drain native migration advisory-lock ownership after acknowledged acquisition,
   including recursive server bootstrap claims, within a fresh bounded release-control operation.
   Keep primary errors and acknowledged receipts truthful; known acquisition refusal does not
