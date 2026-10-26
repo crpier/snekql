@@ -14,7 +14,7 @@ from typing import ClassVar
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import sqlite
+from snekql import mariadb, sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
     Integer,
@@ -29,7 +29,8 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
+from tests.helpers import initialized_database
+from tests.query.aggregate_models import MariaUser
 
 
 class User[S = Pending](sqlite.Model[S]):
@@ -63,20 +64,20 @@ class Order[S = Pending](sqlite.Model[S]):
 def count_star_compiles_to_count_all() -> None:
     """A model ``_count()`` renders ``COUNT(*)``."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(select(User.count_all()))
+    compiled = select(User.count_all()).compile()
 
-    assert_eq(sql, 'SELECT COUNT(*) FROM "user"')
-    assert_eq(params, ())
+    assert_eq(compiled.sql, 'SELECT COUNT(*) FROM "user"')
+    assert_eq(compiled.params, ())
 
 
 @test(mark="fast")
 def count_column_compiles_to_count_of_column() -> None:
     """A column ``.count()`` renders ``COUNT(col)``."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(select(User.id.count()))
+    compiled = select(User.id.count()).compile()
 
-    assert_eq(sql, 'SELECT COUNT("id") FROM "user"')
-    assert_eq(params, ())
+    assert_eq(compiled.sql, 'SELECT COUNT("id") FROM "user"')
+    assert_eq(compiled.params, ())
 
 
 @test(mark="fast")
@@ -84,19 +85,19 @@ def sum_avg_min_max_compile_to_their_functions() -> None:
     """Each column aggregate renders its SQL function over the column."""
 
     assert_eq(
-        SQLITE_CODEC.compile_select_sql(select(Order.amount.sum()))[0],
+        select(Order.amount.sum()).compile().sql,
         'SELECT SUM("amount") FROM "order"',
     )
     assert_eq(
-        SQLITE_CODEC.compile_select_sql(select(Order.amount.avg()))[0],
+        select(Order.amount.avg()).compile().sql,
         'SELECT AVG("amount") FROM "order"',
     )
     assert_eq(
-        SQLITE_CODEC.compile_select_sql(select(Order.amount.min()))[0],
+        select(Order.amount.min()).compile().sql,
         'SELECT MIN("amount") FROM "order"',
     )
     assert_eq(
-        SQLITE_CODEC.compile_select_sql(select(Order.amount.max()))[0],
+        select(Order.amount.max()).compile().sql,
         'SELECT MAX("amount") FROM "order"',
     )
 
@@ -105,22 +106,21 @@ def sum_avg_min_max_compile_to_their_functions() -> None:
 def aggregate_compiles_with_where() -> None:
     """An aggregate composes with a WHERE filter over the same table."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(Order.amount.sum()).where(Order.amount.gt(10)),
-    )
+    compiled = select(Order.amount.sum()).where(Order.amount.gt(10)).compile()
 
-    assert_eq(sql, 'SELECT SUM("amount") FROM "order" WHERE ("amount" > ?)')
-    assert_eq(params, (10,))
+    assert_eq(compiled.sql, 'SELECT SUM("amount") FROM "order" WHERE ("amount" > ?)')
+    assert_eq(compiled.params, (10,))
 
 
 @test(mark="fast")
 def count_star_is_backend_portable() -> None:
     """COUNT(*) is identical SQL in MariaDB save for identifier quoting."""
 
-    assert_eq(
-        MARIADB_CODEC.compile_select_sql(select(User.count_all()))[0],
-        "SELECT COUNT(*) FROM `user`",
-    )
+    compiled = mariadb.select(MariaUser.count_all()).compile()
+
+    assert_eq(compiled.sql, "SELECT COUNT(*) FROM `user`")
+    assert_eq(compiled.params, ())
+    assert_eq(compiled.backend, "mariadb")
 
 
 @test(mark="medium")

@@ -1,0 +1,1818 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "issue": 571,
+  "status": "Second bounded slice; broader audit remains open. Independent of PR #576.",
+  "performance_claim": false,
+  "seams": [
+    "Public Query Builder construction/compile()",
+    "Existing focused snektest selection"
+  ],
+  "scope_limits": [
+    "Not native execution evidence for the new MariaDB inspection input. Existing native/decoder/runtime cases remain.",
+    "No SDK changes, fixture/lifetime changes, merged model identities, reduced property budgets, default exclusions, removed test cases or saved compilations.",
+    "No second-branch full forced-lazy claim: lazy validation is the 671-case query directory.",
+    "Actions intentionally disabled. Single/full walls are validation, not repeated matched performance comparisons."
+  ],
+  "environment": {
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+    "uv": "uv 0.13.4 (x86_64-unknown-linux-gnu)",
+    "packages": {
+      "snekql": "0.9.0",
+      "snektest": "0.16.0",
+      "pydantic": "2.14.0",
+      "hypothesis": "6.168.1",
+      "aiosqlite": "0.22.1",
+      "aiomysql": "0.3.2",
+      "ty": "0.0.84",
+      "ruff": "0.16.9"
+    },
+    "host_exclusivity": "Not guaranteed; no parallel suite runs from this session."
+  },
+  "contract_audit": {
+    "base": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+    "files": [
+      {
+        "path": "tests/query/test_aggregates.py",
+        "classes_ast_identical": true,
+        "unchanged_function_bodies": [
+          "count_returns_row_count_at_runtime",
+          "sum_normalizes_to_int_for_integer_column",
+          "sum_and_avg_reject_non_numeric_columns",
+          "sum_and_avg_allow_numeric_columns",
+          "min_and_max_decode_datetime_to_logical_type",
+          "aggregate_over_unjoined_table_is_a_construction_error",
+          "min_and_max_decode_to_column_type_and_none_over_empty",
+          "avg_decodes_to_float_and_none_over_empty"
+        ],
+        "changed_contracts": [
+          {
+            "name": "count_star_compiles_to_count_all",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "'SELECT COUNT(*) FROM \"user\"'",
+              "()"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "count_column_compiles_to_count_of_column",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "'SELECT COUNT(\"id\") FROM \"user\"'",
+              "()"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "sum_avg_min_max_compile_to_their_functions",
+            "compilations": 4,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 4,
+            "new_assertions": 4,
+            "expected_values": [
+              "'SELECT SUM(\"amount\") FROM \"order\"'",
+              "'SELECT AVG(\"amount\") FROM \"order\"'",
+              "'SELECT MIN(\"amount\") FROM \"order\"'",
+              "'SELECT MAX(\"amount\") FROM \"order\"'"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "aggregate_compiles_with_where",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "'SELECT SUM(\"amount\") FROM \"order\" WHERE (\"amount\" > ?)'",
+              "(10,)"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "count_star_is_backend_portable",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 1,
+            "new_assertions": 3,
+            "expected_values": [
+              "'SELECT COUNT(*) FROM `user`'"
+            ],
+            "portable_namespace_changed": true
+          }
+        ]
+      },
+      {
+        "path": "tests/query/test_group_by.py",
+        "classes_ast_identical": true,
+        "unchanged_function_bodies": [
+          "grouping_by_an_unjoined_table_is_a_construction_error",
+          "grouped_count_returns_a_count_per_group",
+          "grouped_sum_normalizes_per_group"
+        ],
+        "changed_contracts": [
+          {
+            "name": "group_by_renders_between_where_and_order_by",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "expected",
+              "(0,)"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "mixed_projection_compiles_to_group_key_and_aggregate",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "'SELECT \"country\", COUNT(\"id\") FROM \"user\" GROUP BY \"country\"'",
+              "()"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "group_by_qualifies_columns_under_a_join",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 1,
+            "new_assertions": 1,
+            "expected_values": [
+              "expected"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "aggregate_renders_in_order_by_position",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 1,
+            "new_assertions": 1,
+            "expected_values": [
+              "expected"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "group_by_is_backend_portable",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 1,
+            "new_assertions": 3,
+            "expected_values": [
+              "'SELECT `country`, COUNT(`id`) FROM `user` GROUP BY `country`'"
+            ],
+            "portable_namespace_changed": true
+          },
+          {
+            "name": "ungrouped_bare_column_with_aggregate_is_a_compilation_error",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 1,
+            "new_assertions": 1,
+            "expected_values": [],
+            "portable_namespace_changed": false
+          }
+        ]
+      },
+      {
+        "path": "tests/query/test_having.py",
+        "classes_ast_identical": true,
+        "unchanged_function_bodies": [
+          "having_over_an_ungrouped_bare_column_is_a_construction_error",
+          "aggregates_are_rejected_in_where",
+          "having_filters_groups_at_runtime",
+          "having_over_a_sum_filters_per_group"
+        ],
+        "changed_contracts": [
+          {
+            "name": "having_renders_between_group_by_and_order_by",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "expected",
+              "(0, 1)"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "having_over_an_aggregate_renders_the_function",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "expected",
+              "(5,)"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "having_over_a_grouped_column_renders_the_column",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "expected",
+              "('antarctica',)"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "having_qualifies_aggregates_under_a_join",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 2,
+            "new_assertions": 2,
+            "expected_values": [
+              "expected",
+              "(10,)"
+            ],
+            "portable_namespace_changed": false
+          },
+          {
+            "name": "having_is_backend_portable",
+            "compilations": 1,
+            "same_builder_after_explicit_namespace_model_mapping": true,
+            "same_original_expected_values": true,
+            "old_assertions": 1,
+            "new_assertions": 3,
+            "expected_values": [
+              "' '.join(['SELECT `country`, COUNT(`id`) FROM `user`', 'GROUP BY `country` HAVING (COUNT(`id`) > %s)'])"
+            ],
+            "portable_namespace_changed": true
+          }
+        ]
+      }
+    ],
+    "changed_functions": 16,
+    "unchanged_functions": 15,
+    "compilations_before": 19,
+    "compilations_after": 19,
+    "all_non_target_tracked_inputs_unchanged": true,
+    "sdk_files_byte_identical": 114,
+    "changed_source_sha256": {
+      "tests/query/test_aggregates.py": "e26db092751c9bad2a7e30ee4b4d93e5aaca91224e69e0adb77b6e5cb563e491",
+      "tests/query/test_group_by.py": "3b250cb78437ba80dd05a0e1097afd8e0a7f657a0f2bd67df730bfc24c3bf9b1",
+      "tests/query/test_having.py": "67495b646ef78a783d38a02a1caa3a4116ff620e420ba457f6efecbfc10321cb",
+      "tests/query/aggregate_models.py": "c74181263f48012985edefbe09b0a49fea66d16ddaf12c4833914d4ffbfc2420"
+    },
+    "group_inventory": {
+      "cases": 31,
+      "labels": [
+        "before-group",
+        "after-group"
+      ],
+      "identical_names_and_markers": true,
+      "names": [
+        "tests/query/test_aggregates.py::aggregate_compiles_with_where",
+        "tests/query/test_aggregates.py::aggregate_over_unjoined_table_is_a_construction_error",
+        "tests/query/test_aggregates.py::avg_decodes_to_float_and_none_over_empty",
+        "tests/query/test_aggregates.py::count_column_compiles_to_count_of_column",
+        "tests/query/test_aggregates.py::count_returns_row_count_at_runtime",
+        "tests/query/test_aggregates.py::count_star_compiles_to_count_all",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_aggregates.py::min_and_max_decode_datetime_to_logical_type",
+        "tests/query/test_aggregates.py::min_and_max_decode_to_column_type_and_none_over_empty",
+        "tests/query/test_aggregates.py::sum_and_avg_allow_numeric_columns",
+        "tests/query/test_aggregates.py::sum_and_avg_reject_non_numeric_columns",
+        "tests/query/test_aggregates.py::sum_avg_min_max_compile_to_their_functions",
+        "tests/query/test_aggregates.py::sum_normalizes_to_int_for_integer_column",
+        "tests/query/test_group_by.py::aggregate_renders_in_order_by_position",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_qualifies_columns_under_a_join",
+        "tests/query/test_group_by.py::group_by_renders_between_where_and_order_by",
+        "tests/query/test_group_by.py::grouped_count_returns_a_count_per_group",
+        "tests/query/test_group_by.py::grouped_sum_normalizes_per_group",
+        "tests/query/test_group_by.py::grouping_by_an_unjoined_table_is_a_construction_error",
+        "tests/query/test_group_by.py::mixed_projection_compiles_to_group_key_and_aggregate",
+        "tests/query/test_group_by.py::ungrouped_bare_column_with_aggregate_is_a_compilation_error",
+        "tests/query/test_having.py::aggregates_are_rejected_in_where",
+        "tests/query/test_having.py::having_filters_groups_at_runtime",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "tests/query/test_having.py::having_over_a_grouped_column_renders_the_column",
+        "tests/query/test_having.py::having_over_a_sum_filters_per_group",
+        "tests/query/test_having.py::having_over_an_aggregate_renders_the_function",
+        "tests/query/test_having.py::having_over_an_ungrouped_bare_column_is_a_construction_error",
+        "tests/query/test_having.py::having_qualifies_aggregates_under_a_join",
+        "tests/query/test_having.py::having_renders_between_group_by_and_order_by"
+      ]
+    },
+    "query_inventory": {
+      "cases": 671,
+      "labels": [
+        "before-query",
+        "after-query",
+        "lazy-query"
+      ],
+      "identical_names_and_markers": true,
+      "names": null
+    }
+  },
+  "codec_call_counts": {
+    "before": {
+      "compile_select_sql": 76,
+      "compile_write_sql": 39,
+      "materialize_select_row": 10,
+      "compile_select_plan": 2,
+      "compile_write_plan": 2
+    },
+    "after": {
+      "compile_select_sql": 57,
+      "compile_write_sql": 39,
+      "materialize_select_row": 10,
+      "compile_select_plan": 2,
+      "compile_write_plan": 2
+    }
+  },
+  "codec_inventory_limit": "Mechanical direct-call inventory only; omits indirect aliases/calls and strings containing subprocess code. No blanket brittleness or duplication verdict.",
+  "focused_and_red_green": [
+    {
+      "label": "before-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3240509419993032,
+      "totals": {
+        "passed": 31,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "before-query",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.1262450740032364,
+      "totals": {
+        "passed": 671,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "red-native-count",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.23794589599128813,
+      "totals": {
+        "passed": 0,
+        "failed": 0,
+        "errors": 1,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "green-native-count",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.33463661099085584,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "red-native-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.22386298699711915,
+      "totals": {
+        "passed": 0,
+        "failed": 0,
+        "errors": 1,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "green-native-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.22203192599408794,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "green-native-having",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.22791488199436571,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "after-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3002205639932072,
+      "totals": {
+        "passed": 31,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "after-query",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.0806239430094138,
+      "totals": {
+        "passed": 671,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    },
+    {
+      "label": "lazy-query",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.0680181170027936,
+      "totals": {
+        "passed": 671,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      }
+    }
+  ],
+  "fault_calibrations": [
+    {
+      "snapshot": "faults/before-public-family",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=\"sqlite\", params=params, sql=sql)",
+        "sha256": "79573af17eae555fab37a97c02bc86e4c4c2252ece311ccdc8ed63a4013a63c8"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "9c9bffbeeb04e0113c2da43d2e3ea91cb7aa31fea9546a4cf2dc477113775876"
+    },
+    {
+      "snapshot": "faults/before-public-family",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "0603a2390f9c1e1c0e5a8e816a327c50c1daf0d4442778a2d7cb279f0cc69334"
+    },
+    {
+      "snapshot": "faults/before-public-maria-sql",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=params, sql=sql.replace('`', '\"'))",
+        "sha256": "b49ffed1eefe88c27c96e59b4d1737cfed36eed07434c5512cad66e50551752b"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "a9684dcef9bfe69dfca2c2b9f2c872b10cd7d454a45148f2a9d1a3a9ad9eb3e6"
+    },
+    {
+      "snapshot": "faults/before-public-maria-sql",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "dbc87aba6d0701334e7c27f2ac9eb75bf48e45762c36ddc9ddf62d3752401b26"
+    },
+    {
+      "snapshot": "faults/before-public-maria-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=(), sql=sql)",
+        "sha256": "85c7fdcd25d09aa3edefd44a45c53f8bb214b7e7d20a74dc3400bcea885d62ab"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "22b6bf716fce283b0661cf02e52f2ae30ce4f037b354be54ca50cee81d8f7773"
+    },
+    {
+      "snapshot": "faults/before-public-maria-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "ab17f1b94a2c9d497d523e03e8729a4dc55560ae66378bec1efdf9a17b5c731f"
+    },
+    {
+      "snapshot": "faults/before-public-binding-order",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)",
+        "sha256": "7c00054f92974ce4f06fd9be0db9a66a71ad082238069fe707019acba38772c2"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "812b13384ff0d06b6add64628a470cd94046c5897fc80493ca8927730fa22689"
+    },
+    {
+      "snapshot": "faults/before-public-binding-order",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "75f0f442df44cb94789d22dd5a9573c80199456cfb84ef10705e4e3a67d228e4"
+    },
+    {
+      "snapshot": "faults/before-common-count-star",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return f\"{aggregate.func}(*)\"",
+        "new": "return \"SUM(*)\"",
+        "sha256": "92dc5e4461040961746220935ace9963b88f481911ed798b6d1bfeb85eb35569"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 2,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_aggregates.py::count_star_compiles_to_count_all",
+          "type": "AssertionFailure",
+          "status": "failed"
+        },
+        {
+          "name": "tests/query/test_aggregates.py::count_star_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 20,
+      "raw_report_sha256": "2cdcca58f301aeaf4ec8db36c06614e209f6b313a45d9f2a45cbe9590e44f997"
+    },
+    {
+      "snapshot": "faults/before-common-count-star",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "d8adc8bfb0bc70a7d49e79003823c2ea5d9548ec32fb657639b5a70370852266"
+    },
+    {
+      "snapshot": "faults/before-common-having-order",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "params = (*params, *having_params)",
+        "new": "params = (*having_params, *params)",
+        "sha256": "2f72342c0195ffb11cf450baf8f316eceeae66c2e93fc53466d0f00b8f9e3fd7"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_having.py::having_renders_between_group_by_and_order_by",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 21,
+      "raw_report_sha256": "a72133db0cb974d7d17fc970e66504dece1faa1ff269b0c1b1f79ddeebaebe1b"
+    },
+    {
+      "snapshot": "faults/before-common-having-order",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "06ddf537dd281a17f33295e6ffa10293bc75a77b8c8b9facdb5a45edb2068980"
+    },
+    {
+      "snapshot": "faults/before-common-grouping-guard",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    ensure_grouping_covers_projection(state)\n",
+        "new": "    # Seeded fault: omit grouping validation.\n",
+        "sha256": "57f4ac3338f4d68e0f9f73967c460fec5966563c10478787c2b8efb408f205f7"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_group_by.py::ungrouped_bare_column_with_aggregate_is_a_compilation_error",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 21,
+      "raw_report_sha256": "bb97de0f09b249019b841a1e0acd0af5e471758b916deafaf177fe709c85c184"
+    },
+    {
+      "snapshot": "faults/before-common-grouping-guard",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "33d7e1da8eae238733d0546b6a82839ab1f40ca9f229a3335f4305e99fb13a36"
+    },
+    {
+      "snapshot": "faults/after-public-family",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=\"sqlite\", params=params, sql=sql)",
+        "sha256": "79573af17eae555fab37a97c02bc86e4c4c2252ece311ccdc8ed63a4013a63c8"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 0,
+        "failed": 3,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_aggregates.py::count_star_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        },
+        {
+          "name": "tests/query/test_group_by.py::group_by_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        },
+        {
+          "name": "tests/query/test_having.py::having_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 0,
+      "raw_report_sha256": "6e5957ebbf0275920738201a1f1969d7f80fa577832a4e2ee68ff4b97b9a5fae"
+    },
+    {
+      "snapshot": "faults/after-public-family",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "7823c5f94f7fdbdfdab283ff82be3c74f8661ebbb49497e79a519f45760a850d"
+    },
+    {
+      "snapshot": "faults/after-public-maria-sql",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=params, sql=sql.replace('`', '\"'))",
+        "sha256": "b49ffed1eefe88c27c96e59b4d1737cfed36eed07434c5512cad66e50551752b"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 0,
+        "failed": 3,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_aggregates.py::count_star_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        },
+        {
+          "name": "tests/query/test_group_by.py::group_by_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        },
+        {
+          "name": "tests/query/test_having.py::having_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 0,
+      "raw_report_sha256": "74a2fdd189dc9ebd5919c295d840e0a047c038a84cdf672edb69405b1bc5ba40"
+    },
+    {
+      "snapshot": "faults/after-public-maria-sql",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "65e835f40f1a8de70b819dddd112a12ae2cdf8fb18e4c40b7da921f720bce6c0"
+    },
+    {
+      "snapshot": "faults/after-public-maria-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=(), sql=sql)",
+        "sha256": "85c7fdcd25d09aa3edefd44a45c53f8bb214b7e7d20a74dc3400bcea885d62ab"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 2,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_having.py::having_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 2,
+      "raw_report_sha256": "dd129774fbe0d6ec4339eb71628592f335b9448df1788f32f3499bf7c4e65537"
+    },
+    {
+      "snapshot": "faults/after-public-maria-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "55e5227a7106bf8038cab55267b2aeaca8985f44a66fec9500242f20499ebd57"
+    },
+    {
+      "snapshot": "faults/after-public-binding-order",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)",
+        "sha256": "7c00054f92974ce4f06fd9be0db9a66a71ad082238069fe707019acba38772c2"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_having.py::having_renders_between_group_by_and_order_by",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 21,
+      "raw_report_sha256": "b66caf6772d5bb189e2aeba618564d729032c573186f97f0de25d80530781eac"
+    },
+    {
+      "snapshot": "faults/after-public-binding-order",
+      "label": "focused-healthy",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_group_by.py::mixed_projection_compiles_to_group_key_and_aggregate",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)",
+        "sha256": "7c00054f92974ce4f06fd9be0db9a66a71ad082238069fe707019acba38772c2"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 1,
+      "raw_report_sha256": "775a740eb8342e6f43a9e07beca0147af8fc522cb9eeadfec9f0e426330d2e4d"
+    },
+    {
+      "snapshot": "faults/after-public-binding-order",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "3aafce44e72cd06d7d1db1a28aeda3a5e621c6bf1df951c417d1fcf6e137cf84"
+    },
+    {
+      "snapshot": "faults/after-common-count-star",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return f\"{aggregate.func}(*)\"",
+        "new": "return \"SUM(*)\"",
+        "sha256": "92dc5e4461040961746220935ace9963b88f481911ed798b6d1bfeb85eb35569"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 2,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_aggregates.py::count_star_compiles_to_count_all",
+          "type": "AssertionFailure",
+          "status": "failed"
+        },
+        {
+          "name": "tests/query/test_aggregates.py::count_star_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 20,
+      "raw_report_sha256": "6a453d8aada8a71f88f18b5a49896c95568de08d0bff6991593c686eb9d42b7f"
+    },
+    {
+      "snapshot": "faults/after-common-count-star",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "55dfdd66a9f16e17a48b1ceea7fab631118fd95a1deebf315f95521af4dc0de9"
+    },
+    {
+      "snapshot": "faults/after-common-having-order",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "params = (*params, *having_params)",
+        "new": "params = (*having_params, *params)",
+        "sha256": "2f72342c0195ffb11cf450baf8f316eceeae66c2e93fc53466d0f00b8f9e3fd7"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_having.py::having_renders_between_group_by_and_order_by",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 21,
+      "raw_report_sha256": "0fd36a34d8fea0e2ec2980178a44bed620db340daf1221cc0739b4d0822e7dc5"
+    },
+    {
+      "snapshot": "faults/after-common-having-order",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "336167f4169d7c62d89ff1eab81ffe2cb7fbbb6a0816686207d8088ca9c043eb"
+    },
+    {
+      "snapshot": "faults/after-common-grouping-guard",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    ensure_grouping_covers_projection(state)\n",
+        "new": "    # Seeded fault: omit grouping validation.\n",
+        "sha256": "57f4ac3338f4d68e0f9f73967c460fec5966563c10478787c2b8efb408f205f7"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_group_by.py::ungrouped_bare_column_with_aggregate_is_a_compilation_error",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 21,
+      "raw_report_sha256": "caf84a14eef7090732405ce9e3602f033313159f3b37fbef02619bb4a6ce4312"
+    },
+    {
+      "snapshot": "faults/after-common-grouping-guard",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py",
+        "tests/query/test_group_by.py",
+        "tests/query/test_having.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 22,
+      "raw_report_sha256": "f1788a5ae5bac7d9fbad801cdd8138171383433ce30e093738bc4efec27be309"
+    },
+    {
+      "snapshot": "faults/after-wrong-namespace",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "mutation": {
+        "wiring": "use SQLite select/User instead of MariaDB select/MariaUser"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 0,
+        "failed": 3,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [
+        {
+          "name": "tests/query/test_aggregates.py::count_star_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        },
+        {
+          "name": "tests/query/test_group_by.py::group_by_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        },
+        {
+          "name": "tests/query/test_having.py::having_is_backend_portable",
+          "type": "AssertionFailure",
+          "status": "failed"
+        }
+      ],
+      "passed_cases": 0,
+      "raw_report_sha256": "d4cab241c05ea7f1ae6f6dabb03c3c99b01616747357330f256503386b9dc9d7"
+    },
+    {
+      "snapshot": "faults/after-wrong-namespace",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "77c41eb6d69416033952f55d689c1b5c4f326cd9e35bde675b2925f5e917b896"
+    },
+    {
+      "snapshot": "faults/after-no-binaries",
+      "label": "portable-no-path",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregates.py::count_star_is_backend_portable",
+        "tests/query/test_group_by.py::group_by_is_backend_portable",
+        "tests/query/test_having.py::having_is_backend_portable",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "mutation": null,
+      "empty_path": true,
+      "totals": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_cases": [],
+      "passed_cases": 3,
+      "raw_report_sha256": "cc48bf27430c8fd4e3bd1b94bbb65db4ca188959eb277b78e07c61c720f91c71"
+    }
+  ],
+  "full_normal": [
+    {
+      "label": "full-normal",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 361.8036863599991,
+      "totals": {
+        "passed": 4242,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "tmpdir": "/dev/shm/sqa-r5_ijmh8",
+      "failed_tests": [],
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0,
+          "directory": false
+        }
+      ],
+      "source_unchanged": true
+    }
+  ],
+  "full_case_inventory": {
+    "cases": 4242,
+    "same_names_and_markers_as_previous_full_report": true,
+    "comparison_limit": "Identity comparison only; previous full report is not a matched performance baseline or certification of this branch."
+  },
+  "cleanup": {
+    "owned_tmpdir": "/dev/shm/sqa-r5_ijmh8",
+    "user_processes_checked": 152,
+    "live_owned_processes": [],
+    "unreadable_environments": [
+      {
+        "pid": 1582,
+        "started_before_validation": true
+      },
+      {
+        "pid": 1590,
+        "started_before_validation": true
+      },
+      {
+        "pid": 24690,
+        "started_before_validation": true
+      }
+    ],
+    "environment_audit_limit": "Inaccessible environments are recorded; every such process predates validation and its readable command line contains no owned root.",
+    "remaining": [
+      {
+        "path": "uv-d1196c17db265703.lock",
+        "size": 0,
+        "directory": false
+      }
+    ],
+    "reusable_mariadb_data": "Caller-owned .snektest/mariadb-data was left untouched.",
+    "removed": true
+  },
+  "static_validation": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "ty",
+        "check"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.5261651549953967,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.01825716599705629,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.017553318990394473,
+      "stdout": "622 files already formatted\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "scripts/generate_query_overloads.py",
+        "--check"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.042997629003366455,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.0023284260096261278,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "capture_corrections": [
+    "Initial AST normalizer did not equate inline public compile().sql with codec tuple indexing. Initial audit script/error retained; tests were not weakened."
+  ],
+  "local_evidence": {
+    "root": "/home/crpier/.cache/sq571-aggregate-5BbMMqzE",
+    "pointer": "/tmp/snekql-aggregate-audit-latest",
+    "raw_sha256": {
+      "before-source.json": "923f6ed1b02a74ee44cf5b71d5360caa0a777698fae1c163d154996467a6a478",
+      "before-group.json": "44b109070ef6fa933cb8964ed4838c98abcead89be621f5947f434a80e41eb29",
+      "before-query.json": "54a9119c2d14ce448b7b68123280bad65d15d323b76b78820910dc2e3c3692aa",
+      "red-native-count.json": "aa60249840bf4d367aa043576d29c1be1b2acc93da2bcb6c3eccf56617bb04a7",
+      "green-native-count.json": "35fbef97b5c4515157566dd1c1a22a6c055a676462f0481955e3f8f5234dbad3",
+      "red-native-group.json": "f02d3cf3e23e1a46441ddef106ddbee63336f4f8c5992a76a45ec0c47724e19c",
+      "green-native-group.json": "ba639a32cd49e9f559ff969d739a063f4cc6c2cd24d814d17aac0faef2c49939",
+      "green-native-having.json": "22db4d5195a7ea4309bc77fcdfebd697071b3806dbc6b14e453435c52909b869",
+      "after-group.json": "a55260c59d8cd7d116568a2bd872a5fdee96fe7cafaa61dfff282027a5017cab",
+      "after-query.json": "e438e23c062b55ced8733f5a1fed13b088dfe02d8b08dfafe9db6e15b036acfc",
+      "lazy-query.json": "7aa97ba0fb690237ed2a7200c3ebcd5ca845b3457cd8cdfedc57bdb818c27f97",
+      "coverage-audit.json": "114d197c5334c83f41f95c4401fe708c15385db349806c34e163485912a0f5df",
+      "codec-call-inventory.json": "80413869ca36e260ef84d3b2d5c21d48ffc7812206db38819ed558836f2d6cda",
+      "fault-records.json": "3259cfb2e035a39ae244209e51531722c298ef7642f89123730004c1fb0867d4",
+      "full-normal.json": "bd064e3d11cb0235ec1a63359d3498b189a84790f3e29b8673e60cc010aceba8",
+      "full-source.json": "9fdcca24ed789c981cde8af34114dd6fd573ab9912e444676594920b5c28c67a",
+      "full-records.json": "6cedf9634f6c9eb575a52fc1d731bd37ecb3a8fc36e484855462888d9d26c53b",
+      "full-cleanup.json": "6f69c4058ea10256eb0826eaf2ffa133962dc5a4a08e500abfc0a04519079acf",
+      "validation.json": "20d2cf15c66dc3b2f1e65826696afd907be8d8a3a275c9c9423d76d65706de7c",
+      "audit.py": "712c2c23c1198215db471d6e2e50594e86fbd20ae82ee2a434d600dea7abb8f6",
+      "audit-initial.py": "542a8363dbae65dd10616c8ad09f9278a1de9de94b9376733f1aec0ac5882610",
+      "audit-initial-error.txt": "af79992cc27250edde9603585f8a2121df5d5e5dde6f8d633e73667f4851c100",
+      "calibrate.py": "a001cdd42c4e6e928d47e15ccd1f750d379feaec02ccb27bacb0f4eefef1cc3e",
+      "run.py": "fb755afe46623517c029b402ea5651a3aed2f74680788f3fce1bcc275ea51fe8",
+      "validate-full.py": "a3b26d8c1cdc56086e248c38dedb68ef64471571ac4cd8e154ea6c5a2384aabf",
+      "cleanup-full.py": "bf8cc5fd026b4aa6eaa765b08f1b54ed563c36f8a449ecfef8ab6c19a6443f18"
+    }
+  }
+}
