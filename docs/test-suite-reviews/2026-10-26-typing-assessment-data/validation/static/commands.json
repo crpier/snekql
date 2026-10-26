@@ -1,0 +1,64 @@
+[
+  {
+    "name": "typing",
+    "command": [
+      "uv",
+      "run",
+      "ty",
+      "check"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "lint",
+    "command": [
+      "uv",
+      "run",
+      "ruff",
+      "check",
+      "."
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "format",
+    "command": [
+      "uv",
+      "run",
+      "ruff",
+      "format",
+      "--check",
+      "."
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "generated",
+    "command": [
+      "uv",
+      "run",
+      "python",
+      "scripts/generate_query_overloads.py",
+      "--check"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "lock",
+    "command": [
+      "uv",
+      "lock",
+      "--check"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "whitespace",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0
+  }
+]

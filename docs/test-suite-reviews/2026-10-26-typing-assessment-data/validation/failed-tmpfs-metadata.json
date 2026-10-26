@@ -1,0 +1,13 @@
+{
+  "revision": "94220e1eabb52a98e220f71bac17fed5efc08f79",
+  "status": "",
+  "tmpdir": "/tmp/sqt-S16jyA9r",
+  "command": [
+    "uv",
+    "run",
+    "snektest",
+    "tests",
+    "--json-output"
+  ],
+  "warning_context": "1"
+}

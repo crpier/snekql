@@ -54,6 +54,9 @@ prepares that report; the direct CLI retains narrow case/backend execution.
 Source-mutation, special-configuration and distinct expression-variant tests
 remain isolated. The [static typing assessment review](test-suite-reviews/2026-10-26-static-typing-assessments.md)
 records measured savings, the small cold-start tradeoff, and coverage accounting.
+The complementary [end-to-end fault proofs](test-suite-reviews/2026-10-26-typing-assessment.md)
+exercise independently named diagnostic failures and focused selection through
+real copied-checkout runner commands; historical measurements remain revision-pinned.
 
 ## Find the code
 

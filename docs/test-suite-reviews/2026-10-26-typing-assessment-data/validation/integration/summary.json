@@ -1,0 +1,66 @@
+{
+  "revision": "93daf7b6e15201c48d03153550904fd729e5c917",
+  "base": "4ad6564543580e91fda16852964947cc4b14e7d5",
+  "code_delta": "Only tests/test_typing_assessment_execution.py differs from base; shared support and both consumers retained byte-for-byte.",
+  "runs": [
+    {
+      "mode": "normal",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_guarantees.py",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "tests/test_typing_assessment.py",
+        "tests/test_typing_assessment_execution.py",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "tmpdir": "/home/crpier/.cache/sq563-7l66xz26",
+      "env": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1"
+      },
+      "exit_code": 0,
+      "wall_seconds": 32.33675217628479,
+      "passed": 182,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "report_sha256": "2af14d7330c447b1838430f1fa95462254f139eea55f097d018bf7e91fb12f5d",
+      "remaining_tmp_entries": []
+    },
+    {
+      "mode": "forced-lazy",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_guarantees.py",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "tests/test_typing_assessment.py",
+        "tests/test_typing_assessment_execution.py",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "tmpdir": "/home/crpier/.cache/sq563-py_rkoq0",
+      "env": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1"
+      },
+      "exit_code": 0,
+      "wall_seconds": 33.168344497680664,
+      "passed": 182,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "report_sha256": "22db2783dac5c219180dbd4a92387c3cb95680d54af79e38d91369c3c4b86af5",
+      "remaining_tmp_entries": []
+    }
+  ]
+}
