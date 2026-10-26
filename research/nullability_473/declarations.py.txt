@@ -1,0 +1,46 @@
+# Typing research only. Do not import or execute this source.
+from collections.abc import Callable
+from typing import Any, Literal, dataclass_transform, overload
+from snekql import __BACKEND__ as database
+from snekql.model import Pending, Row, Table
+from snekql.storage import Attr, _UnboundOwner
+
+# Research convention: input/Pending domain first, successfully decoded Row second.
+# SQL nullable= remains separately declared, not inferred by this alias.
+type Col[Write, Read = Write] = Attr[
+    Table[Pending], Table[Row], _UnboundOwner,
+    Write, Read, Write, Any, Literal["__BACKEND__"],
+]
+
+type GenCol[Write, Read = Write] = Attr[
+    Table[Pending], Table[Row], _UnboundOwner,
+    Write | database.PENDING_GENERATION, Read,
+    Write | database.PENDING_GENERATION, Any, Literal["__BACKEND__"],
+]
+
+from snekql.__BACKEND__.model import ModelMeta as BaseMeta
+
+# Minimal producers for independent schema and application domains, not a full
+# constructor surface. A nullable schema does not force nullable successful reads.
+# Explicit Python pending defaults are retained: this does not revive the
+# required=True intersection workaround or claim to solve implicit omission.
+@overload
+def Text[Write, Read](*, server_default: Read, nullable: Literal[True]) -> Col[Write, Read]: ...
+
+@overload
+def Text[Write, Read](*, default_factory: Callable[[], Write], server_default: Read, nullable: Literal[True]) -> Col[Write, Read]: ...
+
+@overload
+def Text[Write, Read](*, default: Write, server_default: None, nullable: Literal[True]) -> Col[Write, Read | None]: ...
+
+@overload
+def Text[Write, Read](*, default: Write, server_default: Read, nullable: Literal[True]) -> Col[Write, Read]: ...
+
+# A typed implementation contract is not executable implementation proof.
+def Text(*, server_default: object, nullable: bool, default: object = ..., default_factory: object = ...) -> Any:
+    raise NotImplementedError
+
+@dataclass_transform(field_specifiers=(Text, database.Text, database.Integer), kw_only_default=True, frozen_default=True)
+class ResearchMeta(BaseMeta): ...
+
+class ResearchModel[S = database.Pending](database.Model[S], metaclass=ResearchMeta): ...
