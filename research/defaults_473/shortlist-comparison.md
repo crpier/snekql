@@ -1,11 +1,20 @@
 # Compare the shortlist, including keeping the current interface — #473
 
-2026-10-26. Continuing research commit `066e3ae`. No design selected.
+2026-10-26. Continuing research commit `066e3ae`. No final public interface selected.
 
-This is the **current decision comparison**, superseding the ranking in
-[the preceding investigation](review-results.md). The maintainer considers
-separate parameters shortlist-worthy, is unsure about the selector, and is not
-enthusiastic about prefixes. Stop expanding the design space. Compare:
+**Subsequent maintainer direction:** an interface change is now considered
+worthwhile, with separate parameters favored for brownfield flexibility and
+independent Python/SQL policies. The conservative recommendation below is
+historical and superseded by that reprioritization. The scenario evidence remains
+relevant; C1/C2 carry more weight under the clarified goal. See the
+[latest direction](README.md) and [new callable-intersection omission prototype](callable-intersections.md).
+The latter removes pending boilerplate from common split declarations with an
+explicit required-input exception; the syntax snapshots below predate it.
+
+This report records the **earlier four-way decision comparison**, superseding the
+ranking in [the preceding investigation](review-results.md). At that stage the
+maintainer considered separate parameters shortlist-worthy, was unsure about the
+selector, and was not enthusiastic about prefixes. The compared options were:
 
 - **Keep current:** plain Python values/factories, `LiteralDefault` for SQL
   literals, `CurrentTimestamp` for SQL clocks, and explicit pending for identity.
@@ -18,7 +27,7 @@ Symmetric prefixes, value policies, outer wrappers and namespaces remain prior
 research, not new contenders in this comparison. The annotation split and its
 typing generator remain abandoned. Names for unimplemented choices are provisional.
 
-## Summary judgment
+## Original summary judgment (recommendation superseded)
 
 There is no core-capability winner: **all four cover R1–R11 with truthful native
 Pending/Row typing in the tested declarations.** The decision is predominantly
@@ -47,7 +56,7 @@ about how callers recognize ownership and how much interface change that buys.
   Given the maintainer's preference, their concise syntax is not enough to rank
   them ahead of the other choices. Do not keep proposing prefix variants.
 
-**Recommendation:** retain the current interface as the no-change reference and
+**Recommendation at that stage:** retain the current interface as the no-change reference and
 compare any proposed change against it, not just against the other proposals.
 If uniform owner wording is worth a change, favor the selector for that purpose.
 If explicit Python state is the priority, favor separate parameters. On the

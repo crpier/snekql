@@ -12,6 +12,8 @@ The proposed namespaces are placeholders, not implementations. no_type_check
 allows this visual document to contain hypothetical APIs and deliberate errors.
 It is NOT typing evidence: tests extract the eleven core declarations and check
 those against the existing native research signatures and consumer controls.
+These are the earlier split signatures; callable-intersections.md documents a
+newer no-pending-boilerplate variant with an explicit required-input override.
 Nothing here executes a model, factory, constructor or SQL. TYPE_CHECKING keeps
 all examples inactive. Initial values and SQL comments describe existing or
 intended semantics, not newly executed runtime proof. No design is selected.

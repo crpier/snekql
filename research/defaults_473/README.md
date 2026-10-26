@@ -6,43 +6,64 @@ or authorization for a breaking change. Names below are experimental.
 
 ## Latest direction
 
-**Stop expanding the design space.** The maintainer requests a comparison using
-[the same review sheet](review-sheet.md), with **keeping the current interface**
-as a fully valid choice alongside the shortlisted families:
+The maintainer now considers an interface change worthwhile and favors **separate
+Python `default` / SQL `server_default` parameters** for brownfield flexibility:
+other writers use the same database, so Python construction and SQL defaults
+must be independently expressible. Different values such as Python False and
+SQL True are not inherently incoherent. **Final spelling, compatibility policy,
+full semantics and production implementation remain unselected.**
 
-1. Separate Python `default` / SQL `server_default` parameters.
-2. A `default_on="python"` / `default_on="server"` selector.
-3. Prefixed server constructors such as `ServerInteger` (lower preference).
+Continue investigating shorter generated-field declarations within that direction,
+without expanding the public design families or reviving generated constructors.
+A [new callable-intersection prototype](callable-intersections.md) now passes
+R1–R11 without repeated pending-default arguments, including identity, with
+stock ty. Required ordinary/defaultless fields stay required. The trade-off is
+an explicit constructor-required override for SQL-default/required-input cases;
+it is checker-sensitive research, not a selected public contract or runtime proof.
 
-[The current shortlist comparison](shortlist-comparison.md) reviews all eleven
-scenarios, contrast cases, precise types, nonsense, original-mistake prevention,
-and compatibility/change cost for all four choices. It uses actual current
-constructors/models for the no-change option. **No design is selected.**
+[The prior shortlist comparison](shortlist-comparison.md) reviews current,
+separate parameters, selector and server prefixes using
+[the same review sheet](review-sheet.md). Its evidence remains useful, but its
+conservative keep-current recommendation predates and is superseded by the
+maintainer's increased weight on independent Python/SQL policies. Current remains
+a reference for behavior and migration, not the latest recommendation.
 
 For a **scenario-first Python view**, read [`scenarios.py`](scenarios.py): each
 scenario places current, separate parameters and selector declarations together;
 invalid cases, accepted gaps and surprising valid forms are grouped at the end.
 It is a non-executing visual document, not a production module. Its eleven core
 scenarios are also extracted into the existing native typing/consumer checks.
+This visual sheet retains the earlier split-signature snapshot; the new
+intersection variant and its required-input override are documented separately.
 
 The [implicit server-omission follow-up](implicit-server-omission.md) probes
 whether separate parameters can omit the explicit pending default. Six native
-mechanisms are checked with required-input and override controls. None satisfies
-the full desired contract yet; this is not an impossibility result or a rejection
-of the shorter spelling as an ergonomic goal.
+mechanisms are checked with required-input and override controls. None of those six satisfies the full desired contract; this is not an
+impossibility result. The later callable-intersection result is a different
+mechanism, with its own explicit required-input exception.
 
 The [preceding investigation](review-results.md) and its extra variants are
 historical evidence, not the current ranking. The annotation-left / SQL-right
 split and its generated-typing route are abandoned. Validate locally; do not
 wait for GitHub Actions.
 
-## Deferred discussion
+The [source-informed omission follow-up](native-omission-hooks.md) traces the
+published ty 0.0.84 implementation and adds five paired mechanisms/controls plus
+two identity controls on each backend. Registering `__new__` can preserve
+requiredness, but does not infer omission; a typed unpack works only by supplying
+the same explicit default channel. Those hook probes did not remove duplication;
+the subsequent callable-intersection prototype combines two callable views to
+make the common generated declarations omittable.
 
-After the defaults discussion, revisit whether SQL nullability should be declared
-explicitly rather than inferred from the Python field type, as the maintainer
-requested. This topic is deferred, not decided by the defaults research.
+## Nullability handoff
 
-## Follow-up
+The maintainer requested a separate investigation into explicit SQL nullability
+versus annotation-derived nullability. [`nullability-handoff.md`](nullability-handoff.md)
+is a self-contained prompt for that agent, including current behavior, brownfield
+priorities, scenario coverage, static-only constraints and independent-worktree
+instructions. No nullability design is selected here.
+
+## Historical first-round follow-up
 
 The maintainer ranks the outer declaration lower for verbosity, without
 eliminating it. [The follow-up research](flat-declarations.md) finds flatter

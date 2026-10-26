@@ -85,7 +85,7 @@ async def assert_paired_typing(
     modules: dict[str, str] | None = None,
     positive_source: str | None = None,
 ) -> None:
-    """Require clean controls and exactly the marked diagnostics in the challenge."""
+    """Require clean controls and exact diagnostics; comma-separated rules share a line."""
     async with TemporaryDirectory(prefix="snekql-defaults-473-") as directory:
         positive = Path(directory) / "positive.py"
         negative = Path(directory) / "negative.py"
@@ -103,9 +103,10 @@ async def assert_paired_typing(
         )
         await negative.write_text(source)
         expected_errors = [
-            (index, line.split("# error: ")[1])
+            (index, rule.strip())
             for index, line in enumerate(source.splitlines(), 1)
             if "# error: " in line
+            for rule in line.split("# error: ")[1].split(",")
         ]
         assert_true(bool(expected_errors))
         for path, expected in ((positive, []), (negative, expected_errors)):

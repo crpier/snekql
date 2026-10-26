@@ -1,8 +1,16 @@
 # Column-default design review sheet — #473
 
-Agreed with the maintainer, 2026-10-26. No design is selected.
+Agreed with the maintainer, 2026-10-26. No final public interface is selected.
 
-## Options under the same review
+**Latest direction:** the maintainer now considers a change worthwhile and favors
+separate parameters for brownfield flexibility. C1/C2 are meaningful independent
+Python/SQL policies, not incoherent merely because the defaults differ. The
+options/preferences below record the earlier comparison stage; the same scenario
+contracts remain useful for ongoing omission research. See the [latest direction](README.md)
+and [callable-intersection variant](callable-intersections.md), which preserves
+the contrast capabilities with an explicit constructor-required override for C1.
+
+## Options under the earlier comparison
 
 0. **Keep the current interface unchanged:** Python values/factories, SQL
    `LiteralDefault`/`CurrentTimestamp` markers, and explicit pending for identity.
@@ -18,8 +26,9 @@ the comparison at lower preference; stop expanding the design space.
 Names remain provisional. The annotation-left / SQL-right split and its typing
 generator are abandoned. Symmetric prefixes, policy wrappers, outer wrappers
 and server namespaces remain historical research, not additional contenders.
-The [current comparison](shortlist-comparison.md) applies this sheet to all four
-options and supersedes the preceding investigation's ranking. No design selected.
+The [four-way comparison](shortlist-comparison.md) applied this sheet to all four
+options and superseded the preceding investigation's ranking. Its own conservative
+recommendation is now historical; final spelling and implementation remain open.
 
 ## Core scenarios
 

@@ -1,8 +1,16 @@
 # Can separate parameters avoid the explicit pending default?
 
-Static-only follow-up for #473, 2026-10-26. No public interface is selected.
+Static-only follow-up for #473, 2026-10-26. No final public interface is selected.
 
-## Desired declaration, not a demonstrated capability
+A [subsequent source-informed follow-up](native-omission-hooks.md) explains the
+published ty 0.0.84 hook, tests constructor-function registration and typed kwargs,
+and distinguishes a working explicit-pack control from zero-duplication inference.
+A still later [callable-intersection prototype](callable-intersections.md) passes
+the common scenarios without repeated pending defaults, but needs an explicit
+required-input override for C1. This report records the earlier six mechanisms,
+not that new candidate. Separate parameters are now favored for brownfield flexibility.
+
+## Desired declaration, not demonstrated by these six mechanisms
 
 ```python
 value: db.GenCol[bool] = db.Integer(server_default=False)

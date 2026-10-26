@@ -1,0 +1,116 @@
+"""Native callable intersections for #473; bodies and assertions are never executed.
+
+The required=True option is a provisional constructor-only override, NOT SQL
+nullability and NOT a selected public name. See callable-intersections.md.
+"""
+
+from collections.abc import Callable
+from typing import Any, Literal, Protocol, dataclass_transform, overload, runtime_checkable
+
+from snekql import __BACKEND__ as database
+from __META_MODULE__ import ModelMeta as BaseMeta
+from snekql.model import Table
+from snekql.storage import Attr, _UnboundOwner
+
+
+type RequiredColumn[Write, Read] = Attr[
+    Table[database.Pending], Table[database.Row], _UnboundOwner,
+    Write, Read, Write, Any, Literal["__BACKEND__"]
+]
+
+
+# Registered field-specifier half: required inputs and explicit Python defaults.
+@overload
+def _RequiredInteger[Write, Read]() -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def _RequiredInteger[Write, Read](*, server_default: Read, required: Literal[True]) -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def _RequiredInteger(*, default: database.PENDING_GENERATION, primary_key: Literal[True], auto_increment: Literal[True]) -> database.GenCol[int]: ...
+
+
+@overload
+def _RequiredInteger[Write, Read](*, default: Write, server_default: Read) -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def _RequiredInteger[T](*, default: T) -> database.Col[T]: ...
+
+
+def _RequiredInteger(*, required: bool = False, default: object = ..., server_default: object = ..., primary_key: bool = False, auto_increment: bool = False) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def _RequiredText[Write, Read]() -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def _RequiredText[Write](*, server_default: type[database.CurrentTimestamp], required: Literal[True]) -> RequiredColumn[Write, database.UtcDatetime]: ...
+
+
+@overload
+def _RequiredText[Write, Read](*, server_default: Read, required: Literal[True]) -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def _RequiredText[Write, Null: None](*, default: Write, server_default: type[database.CurrentTimestamp]) -> RequiredColumn[Write, database.UtcDatetime | Null]: ...
+
+
+@overload
+def _RequiredText[Write, Read](*, default: Write, server_default: None) -> RequiredColumn[Write, Read | None]: ...
+
+
+@overload
+def _RequiredText[Write, Read](*, default: Write, server_default: Read) -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def _RequiredText[T](*, default: T) -> database.Col[T]: ...
+
+
+@overload
+def _RequiredText[T](*, default_factory: Callable[[], T], server_default: T = ...) -> database.Col[T]: ...
+
+
+def _RequiredText(*, required: bool = False, default: object = ..., server_default: object = ..., default_factory: object = ...) -> Any:
+    raise NotImplementedError
+
+
+# Unregistered descriptor-return half: ordinary RHS defaults grant omission.
+@runtime_checkable
+class _ServerInteger(Protocol):
+    @overload
+    def __call__[T](self, *, server_default: T) -> database.GenCol[T]: ...
+
+    @overload
+    def __call__(self, *, primary_key: Literal[True], auto_increment: Literal[True]) -> database.GenCol[int]: ...
+
+
+@runtime_checkable
+class _ServerText(Protocol):
+    @overload
+    def __call__[Null: None](self, *, server_default: type[database.CurrentTimestamp]) -> database.GenCol[database.UtcDatetime | Null]: ...
+
+    @overload
+    def __call__[T](self, *, server_default: None) -> database.GenCol[T | None]: ...
+
+    @overload
+    def __call__[T](self, *, server_default: T) -> database.GenCol[T]: ...
+
+
+# Native narrowing retains both callable views without erasing to Any.
+Integer = _RequiredInteger
+assert isinstance(Integer, _ServerInteger)
+Text = _RequiredText
+assert isinstance(Text, _ServerText)
+
+@dataclass_transform(field_specifiers=(_RequiredInteger, _RequiredText, database.Integer, database.Text), kw_only_default=True, frozen_default=True)
+class ReviewMeta(BaseMeta):
+    pass
+
+class ReviewModel[S](database.Model[S], metaclass=ReviewMeta):
+    pass
