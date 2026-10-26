@@ -1,0 +1,2 @@
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[mariadb, bulk] ... OK (10.19s)
+────────────────────────────── 1 passed in 10.19s ──────────────────────────────

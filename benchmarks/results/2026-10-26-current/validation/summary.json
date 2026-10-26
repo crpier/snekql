@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-26T00:23:31.820602+00:00",
+  "validated_code_revision": "0bb5ab1ff0d2a47b9aa017e621d293f0d2b7aff1",
+  "full_suite": {
+    "command": [
+      "uv",
+      "run",
+      "snektest",
+      "tests"
+    ],
+    "passed": 4155,
+    "elapsed_seconds": 1118.99,
+    "exit_status": 0,
+    "source_dirty": false
+  },
+  "focused_development": {
+    "command": [
+      "uv",
+      "run",
+      "snektest",
+      "tests/test_comparative_benchmarks.py",
+      "tests/test_soak_runner.py",
+      "tests/test_benchmark_fixtures.py"
+    ],
+    "passed": 106,
+    "elapsed_seconds": 242.77,
+    "exit_status": 0,
+    "source_state": "precommit development working tree"
+  },
+  "forced_lazy_focused_runner": {
+    "command": [
+      "uv",
+      "run",
+      "python",
+      "-X",
+      "lazy_imports=all",
+      "scripts/run_lazy_tests.py",
+      "tests/test_comparative_benchmarks.py",
+      "tests/test_soak_runner.py",
+      "tests/test_benchmark_fixtures.py"
+    ],
+    "passed": 106,
+    "elapsed_seconds": 304.53,
+    "exit_status": 0,
+    "source_dirty": false,
+    "scope": "test runner; fresh CLI children do not automatically inherit -X"
+  },
+  "direct_forced_lazy": {
+    "raw_snekql_cli_passed": 16,
+    "all_adapter_cli_failed": 8,
+    "isolated_sqlalchemy_failed": 1,
+    "tracked_issue": "https://github.com/crpier/snekql/issues/558",
+    "manifest": "direct-lazy/manifest.json",
+    "scope": "validation smoke, not comparative baseline timing"
+  },
+  "static_commands": [
+    [
+      "uv",
+      "run",
+      "ty",
+      "check"
+    ],
+    [
+      "uv",
+      "run",
+      "ruff",
+      "check",
+      "."
+    ],
+    [
+      "uv",
+      "run",
+      "ruff",
+      "format",
+      "--check",
+      "."
+    ],
+    [
+      "uv",
+      "run",
+      "python",
+      "scripts/generate_query_overloads.py",
+      "--check"
+    ],
+    [
+      "uv",
+      "lock",
+      "--check"
+    ]
+  ],
+  "static_exit_statuses": [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "environment": {
+    "TMPDIR": "/home/crpier/.cache/snekql-current-baseline-A3PFfpNU/tmp",
+    "PYTHON_CONTEXT_AWARE_WARNINGS": "1"
+  },
+  "github_ci": "CI, CodeQL and dependency-review workflows disabled_manually; settings left unchanged; no #555 CI pass claimed"
+}

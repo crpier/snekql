@@ -1,0 +1,25 @@
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[sqlite, stream] ... FAIL (0.27s)
+
+=================================== FAILURES ===================================
+
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[sqlite, stream] ... FAIL (0.27s)
+Traceback (most recent call last):
+  File 
+"/home/crpier/Projects/fourth-snekql/tests/test_comparative_benchmarks.py", line
+866, in comparison_validates_wide_payload_work_on_every_adapter
+        assert_eq((result.returncode, result.stderr.decode()), (0, ""))         
+E       (2, 'usage: python -m benchmarks.compare [-h] --backend 
+{sqlite,mariadb}\n                                    [--adapter 
+{all,raw,snekql,sqlalchemy}]\n                                    [--workload 
+{point-read,stream,join,bulk}]\n                                    
+[--batch-size BATCH_SIZE]\n                                    [--profile 
+{timing,diagnostic,memory}]\n                                    [--pool-size 
+POOL_SIZE]\n                                    [--workers WORKERS]\n           
+[--operations OPERATIONS] [--rows ROWS]\n                                    
+[--trials TRIALS] [--warmup WARMUP]\npython -m benchmarks.compare: error: 
+unrecognized arguments: --payload-bytes 4096\n') != (0, '')
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[sqlite, stream] - …
+
+───────────────────────── 1 failed, 0 passed in 0.28s ──────────────────────────

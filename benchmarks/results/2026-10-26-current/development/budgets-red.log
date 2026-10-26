@@ -1,0 +1,40 @@
+   Building snekql @ file:///home/crpier/Projects/fourth-snekql
+      Built snekql @ file:///home/crpier/Projects/fourth-snekql
+Uninstalled 5 packages in 5ms
+Installed 5 packages in 6ms
+tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[seed-payload] ... FAIL (0.30s)
+tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[write-growth] ... FAIL (0.27s)
+tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[insert-payload] ... FAIL (0.27s)
+
+=================================== FAILURES ===================================
+
+tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[seed-payload] ... FAIL (0.30s)
+Traceback (most recent call last):
+  File 
+"/home/crpier/Projects/fourth-snekql/tests/test_comparative_benchmarks.py", line
+1049, in comparison_rejects_combined_resource_budgets_before_native_setup
+        assert_eq(result.returncode, 2)                                         
+E       1 != 2
+
+tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[write-growth] ... FAIL (0.27s)
+Traceback (most recent call last):
+  File 
+"/home/crpier/Projects/fourth-snekql/tests/test_comparative_benchmarks.py", line
+1049, in comparison_rejects_combined_resource_budgets_before_native_setup
+        assert_eq(result.returncode, 2)                                         
+E       1 != 2
+
+tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[insert-payload] ... FAIL (0.27s)
+Traceback (most recent call last):
+  File 
+"/home/crpier/Projects/fourth-snekql/tests/test_comparative_benchmarks.py", line
+1049, in comparison_rejects_combined_resource_budgets_before_native_setup
+        assert_eq(result.returncode, 2)                                         
+E       1 != 2
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[seed-payload] - …
+FAILED tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[write-growth] - …
+FAILED tests/test_comparative_benchmarks.py::comparison_rejects_combined_resource_budgets_before_native_setup[insert-payload] - …
+
+───────────────────────── 3 failed, 0 passed in 0.85s ──────────────────────────

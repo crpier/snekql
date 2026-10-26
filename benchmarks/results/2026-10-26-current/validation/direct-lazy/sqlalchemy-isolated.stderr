@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    from sqlalchemy import Table, MetaData, Column, Integer; Table("example", MetaData(), Column("id", Integer, primary_key=True))
+                                                             ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<sqlalchemy generated warned() wrapper for sqlalchemy.sql.schema.Table.__new__>", line 2, in __new__
+    return target(fn, cls, *args, **kw)
+  File "/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/sqlalchemy/util/deprecations.py", line 281, in warned
+    return fn(*args, **kwargs)  # type: ignore[no-any-return]
+  File "/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/sqlalchemy/sql/schema.py", line 489, in __new__
+    return cls._new(*args, **kw)
+           ~~~~~~~~^^^^^^^^^^^^^
+  File "/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/sqlalchemy/sql/schema.py", line 557, in _new
+    table.dispatch.before_parent_attach(table, metadata)
+    ^^^^^^^^^^^^^^
+AttributeError: 'Table' object has no attribute 'dispatch'

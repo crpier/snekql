@@ -1,0 +1,7 @@
+SOURCE                           FSTYPE OPTIONS                                                                  TARGET
+/dev/mapper/omarchy_root[/@home] btrfs  rw,noatime,compress=zstd:3,ssd,space_cache=v2,subvolid=257,subvol=/@home /home
+NAME    MODEL                    SIZE ROTA TRAN
+zram0                           31.2G    0 
+nvme0n1 Samsung SSD 990 PRO 2TB  1.8T    0 nvme
+Filesystem                Size  Used Avail Use% Mounted on
+/dev/mapper/omarchy_root  1.6T  535G  1.1T  34% /home

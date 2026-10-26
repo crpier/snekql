@@ -1,0 +1,84 @@
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[sqlite, point] ... OK (0.42s)
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[sqlite, join] ... OK (0.38s)
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[sqlite, stream] ... OK (0.37s)
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[sqlite, bulk] ... OK (0.53s)
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[mariadb, point] ... OK (11.18s)
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[mariadb, join] ... OK (12.00s)
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[mariadb, stream] ... OK (10.67s)
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[mariadb, bulk] ... FAIL (11.21s)
+
+=================================== FAILURES ===================================
+
+tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[mariadb, bulk] ... FAIL (11.21s)
+Traceback (most recent call last):
+  File 
+"/home/crpier/Projects/fourth-snekql/tests/test_comparative_benchmarks.py", line
+916, in comparison_validates_wide_payload_work_on_every_adapter
+        assert_eq((result.returncode, result.stderr.decode()), (0, ""))         
+E       (1, 'Traceback (most recent call last):\n  File "<frozen runpy>", line 
+201, in _run_module_as_main\n  File "<frozen runpy>", line 87, in _run_code\n  
+File "/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 413, in 
+<module>\n    main()\n    ~~~~^^\n  File 
+"/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 391, in main\n
+report = asyncio.run(\n        _run(\n    ...<14 lines>...\n        )\n    )\n  
+File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/runners.py", line 205, in run\n    return runner.run(main)\n        
+~~~~~~~~~~^^^^^^\n  File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/runners.py", line 128, in run\n    return 
+self._loop.run_until_complete(task)\n           
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/base_events.py", line 724, in run_until_complete\n    return 
+future.result()\n           ~~~~~~~~~~~~~^^\n  File 
+"/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 303, in _run\n
+measurement = await _measure(\n                  ^^^^^^^^^^^^^^^\n    ...<3 
+lines>...\n    )\n    ^\n  File 
+"/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 141, in 
+_measure\n    await _operation(\n        session, index if run.workload == 
+"bulk" else index % run.rows + 1, run\n    )\n  File 
+"/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 62, in 
+_operation\n    records = await session.bulk(start, run.batch_size)\n           
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File 
+"/home/crpier/Projects/fourth-snekql/benchmarks/_comparison_mariadb.py", line 
+318, in bulk\n    await transaction.execute(query)\n  File 
+"/home/crpier/Projects/fourth-snekql/snekql/runtime.py", line 1355, in execute\n
+plan = self.runtime.query_codec.compile_write_plan(\n        
+cast("_ExecutableWrite[FamilyT, object]", query),\n        validate=validate,\n 
+)\n  File "/home/crpier/Projects/fourth-snekql/snekql/_query_codec.py", line 
+140, in compile_write_plan\n    return compile_write_plan_for_dialect(\n        
+query,\n        self.dialect,\n        validate=validate,\n    )\n  File 
+"/home/crpier/Projects/fourth-snekql/snekql/_query_plan.py", line 238, in 
+compile_write_plan_for_dialect\n    sql, params = 
+compile_write_sql_for_dialect(query, dialect)\n                  
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^\n  File 
+"/home/crpier/Projects/fourth-snekql/snekql/_query_compile.py", line 901, in 
+compile_write_sql_for_dialect\n    return _compile_insert_sql(state, dialect)\n 
+File "/home/crpier/Projects/fourth-snekql/snekql/_query_compile.py", line 456, 
+in _compile_insert_sql\n    encoded_rows = [_encode_insert_row(row, model_class,
+dialect) for row in state.rows]\n                    
+~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File 
+"/home/crpier/Projects/fourth-snekql/snekql/_query_compile.py", line 372, in 
+_encode_insert_row\n    row_values[name] = dialect.encode_write_value(column, 
+value)\n                       ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^\n  File
+"/home/crpier/Projects/fourth-snekql/snekql/mariadb/_dialect_sql.py", line 49, 
+in _encode_write_value\n    return column.encode(value, backend="mariadb", 
+write=True)\n           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  
+File "/home/crpier/Projects/fourth-snekql/snekql/storage.py", line 1421, in 
+encode\n    return self._encode_value(\n           ~~~~~~~~~~~~~~~~~~^\n        
+value,\n        ^^^^^^\n    ...<2 lines>...\n        write=write,\n        
+^^^^^^^^^^^^\n    )\n    ^\n  File 
+"/home/crpier/Projects/fourth-snekql/snekql/storage.py", line 1739, in 
+_encode_value\n    return self._encode_primitive(value, codec=codec, 
+integer_sum=integer_sum)\n           
+~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File 
+"/home/crpier/Projects/fourth-snekql/snekql/storage.py", line 1873, in 
+_encode_primitive\n    raise 
+ModelValidationError(msg)\nsnekql.errors.ModelValidationError: \'payload\' text 
+value exceeds the 255-character limit for this backend\n') != (0, '')
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/test_comparative_benchmarks.py::comparison_validates_wide_payload_work_on_every_adapter[mariadb, bulk] - …
+
+───────────────────────── 1 failed, 7 passed in 46.77s ─────────────────────────

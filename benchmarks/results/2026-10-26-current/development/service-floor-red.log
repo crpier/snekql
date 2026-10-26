@@ -1,0 +1,15 @@
+tests/test_soak_runner.py::service_soak_sustained_multislot_saturation_does_not_stall ... FAIL (19.80s)
+
+=================================== FAILURES ===================================
+
+tests/test_soak_runner.py::service_soak_sustained_multislot_saturation_does_not_stall ... FAIL (19.80s)
+Traceback (most recent call last):
+  File "/home/crpier/Projects/fourth-snekql/tests/test_soak_runner.py", line 
+198, in service_soak_sustained_multislot_saturation_does_not_stall
+        assert_eq(summary["measured_cancelled_waiters"] >= 5, True)             
+E       False != True
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/test_soak_runner.py::service_soak_sustained_multislot_saturation_does_not_stall - …
+
+───────────────────────── 1 failed, 0 passed in 19.90s ─────────────────────────

@@ -1,0 +1,5 @@
+tests/test_comparative_benchmarks.py::comparison_times_counting_observation_independently_of_pool_profile[sqlite, off] ... OK (0.44s)
+tests/test_comparative_benchmarks.py::comparison_times_counting_observation_independently_of_pool_profile[sqlite, on] ... OK (0.43s)
+tests/test_comparative_benchmarks.py::comparison_times_counting_observation_independently_of_pool_profile[mariadb, off] ... OK (10.25s)
+tests/test_comparative_benchmarks.py::comparison_times_counting_observation_independently_of_pool_profile[mariadb, on] ... OK (10.62s)
+────────────────────────────── 4 passed in 21.75s ──────────────────────────────

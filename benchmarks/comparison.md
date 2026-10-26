@@ -31,6 +31,13 @@ Install `mariadbd`, `mariadb-install-db` and `mariadb` first. Startup, bootstrap
 shutdown are outside the timed region. Missing tools fail the command, rather
 than silently skipping the requested comparison. No existing database is used.
 
+The published commands use ordinary interpreter import mode. Direct
+`python -X lazy_imports=all` all-adapter execution currently hits a SQLAlchemy
+2.1.1 initialization failure, reproducible without snekql; see
+[the tracked limitation](https://github.com/crpier/snekql/issues/558). Native raw/snekql forced-lazy probes pass,
+but a forced-lazy test runner alone does not propagate that mode to CLI children.
+No dependency or silent import exemption is applied by this command.
+
 `--adapter` accepts `all`, `raw`, `snekql`, and `sqlalchemy`. `--workload` accepts
 `point-read`, the default, `stream`, `join`, or `bulk`. For a scan, one operation means reading the
 entire seeded dataset, so use fewer operations:
@@ -87,7 +94,9 @@ includes VERSION(), redo flush policy, binary logging, sync_binlog and page size
 
 Every adapter has exactly `--pool-size` prepared sessions. Raw aiosqlite/aiomysql
 retains that many connections behind an asyncio.Queue of free leases held from
-before BEGIN through commit/rollback. Snekql and SQLAlchemy acquire their own
+before BEGIN through commit/rollback. The raw queue does not reproduce snekql's
+FIFO/no-barging admission guarantee; inspect maximum waits as well as percentiles.
+Snekql and SQLAlchemy acquire their own
 bounded pools per transaction; Core has zero overflow. Session preparation,
 policy verification and physical connection creation are outside timing. Their checkout and reset costs remain part of the
 comparison. This is a raw-driver baseline, not a claim that either raw driver provides
