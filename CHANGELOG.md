@@ -413,6 +413,12 @@
 
 ### Added
 
+- Experimental recorded migrations now identify known SQLite writer acquisition
+  refusal with `MigrationLockTimeoutError` while retaining the safe target; actual
+  DELETE-mode role journeys distinguish BUSY, grant, per-I/O expiry and caller
+  cancellation with physical disposal/fresh evidence before unsafe-target reuse
+  (#477). Runtime integration and qualification remain incomplete.
+
 - Bundle an official `snekql` Agent Skill for discovery with `library-skills`,
   directing agents to the included release-matched documentation and consumer
   validation workflow. Addresses #469.

@@ -2322,3 +2322,12 @@ unsupported; the test deliberately does not extend that operation. Existing
 SQLite adoption/relinquishment/re-adoption coverage remains separate. Compiler
 and ledger evolution policies, broader adoption and resource limits are still
 open hardening gates.
+
+## SQLite writer coordination follow-through
+
+The [SQLite coordination checkpoint](recorded-migrations-sqlite-coordination-review.md)
+classifies exact BEGIN IMMEDIATE/SQLITE_BUSY as known acquisition refusal, keeping the
+synchronized target usable. Real original role plans cover grant/refusal and interrupted
+I/O/task/scope waits; unsafe workers are independently disposed before fresh status/apply.
+The busy-handler acquisition budget and per-I/O deadline remain separate, not a new end-to-end
+client clock. Session/journal/durability, remaining outcome/shutdown policy and G4/G5 stay open.

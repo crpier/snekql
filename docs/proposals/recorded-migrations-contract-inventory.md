@@ -1090,3 +1090,12 @@ not product runtime defects; fixture/cache/type/timeout issues excluded. Origina
 no stable Prepared wire ABI promised. Finite supported scope, WAL/other receipt-loss windows,
 compiler/codec/partial adoption remain open. Advisory coordination != application pause/fencing
 or same-table writer safety; schema exclusion caller-owned. No production changes, guides deferred.
+
+## SQLite writer acquisition disposition
+
+The [SQLite coordination checkpoint](recorded-migrations-sqlite-coordination-review.md)
+classifies exact BEGIN IMMEDIATE/SQLITE_BUSY as known acquisition refusal, keeping the
+synchronized target usable. Real original role plans cover grant/refusal and interrupted
+I/O/task/scope waits; unsafe workers are independently disposed before fresh status/apply.
+The busy-handler acquisition budget and per-I/O deadline remain separate, not a new end-to-end
+client clock. Session/journal/durability, remaining outcome/shutdown policy and G4/G5 stay open.

@@ -8,6 +8,7 @@ import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any, Literal
+lazy import sqlite3
 
 import anyio
 lazy import aiomysql
@@ -625,7 +626,13 @@ class Target:
 
     async def _begin(self) -> None:
         if self._sqlite:
-            await self._query("BEGIN IMMEDIATE")
+            try:
+                await self._query("BEGIN IMMEDIATE")
+            except aiosqlite.OperationalError as error:
+                if error.sqlite_errorcode != sqlite3.SQLITE_BUSY:
+                    raise
+                msg = "timed out acquiring migration SQLite writer lock"
+                raise MigrationLockTimeoutError(msg) from error
         else:
             acquired = await self._query(
                 "SELECT GET_LOCK(%s,%s)",

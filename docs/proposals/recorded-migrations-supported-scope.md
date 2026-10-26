@@ -290,3 +290,12 @@ existing safety checks or justify claiming an unverified supported fact. The nex
 slice should build on the bounded G1/G2 follow-through through the approved seams, prioritizing
 G3 runtime integration rather than unsupported future epochs, and must not resume
 attribute-by-attribute verifier expansion. The proposal remains draft and not merge-ready.
+
+## SQLite writer coordination follow-through
+
+The [SQLite coordination checkpoint](recorded-migrations-sqlite-coordination-review.md)
+classifies exact BEGIN IMMEDIATE/SQLITE_BUSY as known acquisition refusal, keeping the
+synchronized target usable. Real original role plans cover grant/refusal and interrupted
+I/O/task/scope waits; unsafe workers are independently disposed before fresh status/apply.
+The busy-handler acquisition budget and per-I/O deadline remain separate, not a new end-to-end
+client clock. Session/journal/durability, remaining outcome/shutdown policy and G4/G5 stay open.
