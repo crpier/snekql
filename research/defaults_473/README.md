@@ -19,6 +19,12 @@ scenarios, contrast cases, precise types, nonsense, original-mistake prevention,
 and compatibility/change cost for all four choices. It uses actual current
 constructors/models for the no-change option. **No design is selected.**
 
+For a **scenario-first Python view**, read [`scenarios.py`](scenarios.py): each
+scenario places current, separate parameters and selector declarations together;
+invalid cases, accepted gaps and surprising valid forms are grouped at the end.
+It is a non-executing visual document, not a production module. Its eleven core
+scenarios are also extracted into the existing native typing/consumer checks.
+
 The [preceding investigation](review-results.md) and its extra variants are
 historical evidence, not the current ranking. The annotation-left / SQL-right
 split and its generated-typing route are abandoned. Validate locally; do not

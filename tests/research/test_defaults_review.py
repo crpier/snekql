@@ -1,5 +1,7 @@
 """The agreed review sheet exercised at declaration/consumer typing seams."""
 
+from ast import AnnAssign, ClassDef, FunctionDef, If, parse, unparse
+
 from anyio import Path
 from snektest import Param, test
 
@@ -469,3 +471,42 @@ Boolean(value=database.PENDING_GENERATION)  # error: invalid-argument-type
         "default=7", "default=False"
     )
     await assert_paired_typing(source)
+
+
+@test(
+    [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
+    [
+        Param(candidate, name=candidate)
+        for candidate in ("current", "split", "selector")
+    ],
+    mark="slow",
+)
+async def visual_examples_keep_the_review_sheet_constructor_and_consumer_contracts(
+    backend: str, candidate: str
+) -> None:
+    """Check the displayed declarations, never import or execute the examples."""
+    examples = parse(await Path("research/defaults_473/scenarios.py").read_text())
+    guarded = next(node for node in examples.body if isinstance(node, If))
+    scenarios = [node for node in guarded.body if isinstance(node, FunctionDef)]
+    consumer = await Path("research/defaults_473/review_baseline.py.txt").read_text()
+    model = next(node for node in parse(consumer).body if isinstance(node, ClassDef))
+    fields = [
+        node
+        for node in model.body
+        if isinstance(node, AnnAssign) and node.value is not None
+    ]
+    approach = ("current", "split", "selector").index(candidate)
+    for index, field in enumerate(fields, 1):
+        scenario = next(
+            node for node in scenarios if node.name.startswith(f"scenario_{index:02}_")
+        )
+        declarations = [node for node in scenario.body if isinstance(node, AnnAssign)]
+        declaration = declarations[approach]
+        assert declaration.value is not None
+        displayed = f"    {unparse(field.target)}: {unparse(declaration.annotation)} = {unparse(declaration.value)}"
+        consumer = consumer.replace(consumer.splitlines()[field.lineno - 1], displayed)
+    consumer = consumer.replace("db.", "database.")
+    for namespace, prefix in (("separate", "Twin"), ("selector", "Choice")):
+        for storage in ("Integer", "Text"):
+            consumer = consumer.replace(f"{namespace}.{storage}", f"{prefix}{storage}")
+    await assert_paired_typing(await review_source(backend, candidate, consumer))
