@@ -1,0 +1,1 @@
+{"passed": 1, "failed": 0, "errors": 0, "fixture_teardown_failed": 0, "session_teardown_failed": 0, "session_teardown_failures": [], "tests": [{"name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]", "duration": 7.9042954570031725, "markers": ["slow"], "status": "passed"}]}

@@ -1,0 +1,33 @@
+"""Diagnostic only, not a test runner or an uninstrumented timing sample."""
+import asyncio,hashlib,json,os,runpy,signal,sys,time
+from collections import Counter
+from pathlib import Path
+from unittest.mock import patch
+import shutil
+
+ROOT=Path(__file__).parent
+original_spawn=asyncio.create_subprocess_exec
+original_copy=shutil.copytree
+processes=[]
+events=[]
+copies=[]
+
+async def spawn(*args,**kwargs):
+ p=await original_spawn(*args,**kwargs);processes.append(p);events.append({'executable':Path(str(args[0])).name,'pid':p.pid});return p
+
+def copy(*args,**kwargs):
+ source=Path(args[0]);destination=Path(args[1]);start=time.perf_counter();result=original_copy(*args,**kwargs);elapsed=time.perf_counter()-start
+ if source.name=='data' and source.parent.name.startswith('sq-'):
+  files=[p for p in destination.rglob('*') if p.is_file()];copies.append({'source':str(source),'destination':str(destination),'copy_seconds':elapsed,'files':len(files),'st_blocks_bytes':sum(p.stat().st_blocks*512 for p in files),'logical_bytes':sum(p.stat().st_size for p in files)})
+ return result
+
+if __name__=='__main__':
+ for sig in (signal.SIGINT,signal.SIGQUIT,signal.SIGHUP):signal.signal(sig,signal.SIG_DFL)
+ sys.argv=['snektest','tests/testing/mariadb/test_password_literals.py::password_authenticates','--json-output']
+ with patch('asyncio.create_subprocess_exec',spawn),patch('shutil.copytree',copy):
+  try:runpy.run_module('snektest',run_name='__main__')
+  except SystemExit as error:code=error.code or 0
+  else:code=0
+ metadata={'scope':'Instrumented 12-case Python group only; no CLI descendants. Not a timing comparison.','command':[sys.executable,str(Path(__file__))],'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'env':{'PYTHON_CONTEXT_AWARE_WARNINGS':os.environ.get('PYTHON_CONTEXT_AWARE_WARNINGS')},'exit_code':code,'copies':copies,'processes':events,'process_counts':dict(Counter(e['executable'] for e in events)),'all_children_reaped':all(p.returncode is not None for p in processes)}
+ (ROOT/'copy-diagnostic.json').write_text(json.dumps(metadata,indent=2)+'\n')
+ assert code==0 and len(copies)==12 and len({c['source'] for c in copies})==1 and metadata['all_children_reaped'];assert metadata['process_counts']['mariadb-install-db']==1

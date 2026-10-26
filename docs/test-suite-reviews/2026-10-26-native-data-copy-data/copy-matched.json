@@ -1,0 +1,864 @@
+{
+  "before_revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+  "after_revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+  "single": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+  "runs": [
+    {
+      "variant": "before",
+      "profile": "single",
+      "revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+      "cwd": "/home/crpier/.cache/sqn.TCLuPteb/before-copy-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/m1",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 11.080510139465332,
+      "load_start": [
+        3.94921875,
+        1.8798828125,
+        1.09423828125
+      ],
+      "load_end": [
+        3.79443359375,
+        1.951171875,
+        1.13037109375
+      ],
+      "exit_code": 0,
+      "report": "copy-matched-1-before-single.json",
+      "report_sha256": "112be9bb3eaac147db6aa955e88db62e1bbb2de1b5c443a77cfb57bf19ba46c6",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+          "duration": 10.823386119998759,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        }
+      ],
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "before",
+      "profile": "file",
+      "revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+      "cwd": "/home/crpier/.cache/sqn.TCLuPteb/before-copy-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_password_literals.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/m2",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 172.4317216873169,
+      "load_start": [
+        3.79443359375,
+        1.951171875,
+        1.13037109375
+      ],
+      "load_end": [
+        3.76416015625,
+        2.64794921875,
+        1.5341796875
+      ],
+      "exit_code": 0,
+      "report": "copy-matched-2-before-file.json",
+      "report_sha256": "2c09578feba858bc2895acaa23557f4a0b798de50a0d53983a6e60a4b80d4694",
+      "counts": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, root]",
+          "duration": 11.54872222400445,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, worker]",
+          "duration": 10.519083020000835,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, root]",
+          "duration": 11.4563992350013,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, worker]",
+          "duration": 8.141304628996295,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, backslash]",
+          "duration": 9.45076678400801,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, quote]",
+          "duration": 12.384818353995797,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, mixed]",
+          "duration": 10.302003242992214,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, backslash]",
+          "duration": 11.79375264000555,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, quote]",
+          "duration": 10.88566903899482,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+          "duration": 10.691534464989672,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, backslash]",
+          "duration": 11.94062503700843,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, quote]",
+          "duration": 10.530818283004919,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, mixed]",
+          "duration": 10.360264693998033,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, backslash]",
+          "duration": 10.645199721999234,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, quote]",
+          "duration": 10.0784114900016,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, mixed]",
+          "duration": 11.49695830399287,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        }
+      ],
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "after",
+      "profile": "single",
+      "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/m3",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 11.576884746551514,
+      "load_start": [
+        3.76416015625,
+        2.64794921875,
+        1.5341796875
+      ],
+      "load_end": [
+        3.64599609375,
+        2.65966796875,
+        1.55078125
+      ],
+      "exit_code": 0,
+      "report": "copy-matched-3-after-single.json",
+      "report_sha256": "3ce18998062d24d9bd203bdefb34297a8b4124ce01c345b09075ba093af657bb",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+          "duration": 11.368070270007593,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        }
+      ],
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "after",
+      "profile": "file",
+      "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_password_literals.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/m4",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 72.91396903991699,
+      "load_start": [
+        3.64599609375,
+        2.65966796875,
+        1.55078125
+      ],
+      "load_end": [
+        3.7607421875,
+        2.9287109375,
+        1.73388671875
+      ],
+      "exit_code": 0,
+      "report": "copy-matched-4-after-file.json",
+      "report_sha256": "03dbe833ae61fbda2eff7dd710b369933c97430d64bad3b250340282f3defb2b",
+      "counts": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, root]",
+          "duration": 10.718537880995427,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, worker]",
+          "duration": 11.08755542599829,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, root]",
+          "duration": 10.858833574995515,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, worker]",
+          "duration": 11.282682977005607,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, backslash]",
+          "duration": 12.85596414700558,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, quote]",
+          "duration": 1.1170390030019917,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, mixed]",
+          "duration": 1.8013255900004879,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, backslash]",
+          "duration": 1.4756254980020458,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, quote]",
+          "duration": 1.442544101999374,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+          "duration": 1.428499030007515,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, backslash]",
+          "duration": 1.3793962180061499,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, quote]",
+          "duration": 1.134705633012345,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, mixed]",
+          "duration": 2.0631173889996717,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, backslash]",
+          "duration": 1.6984550060005859,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, quote]",
+          "duration": 1.1760632329969667,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, mixed]",
+          "duration": 1.1837095490045613,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        }
+      ],
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "after",
+      "profile": "file",
+      "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_password_literals.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/m5",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 59.86965346336365,
+      "load_start": [
+        3.7607421875,
+        2.9287109375,
+        1.73388671875
+      ],
+      "load_end": [
+        3.39404296875,
+        2.97509765625,
+        1.82568359375
+      ],
+      "exit_code": 0,
+      "report": "copy-matched-5-after-file.json",
+      "report_sha256": "ac9317c69d4e9f4b2429a2dec19afeca8cf3527940912de19d93311353c45757",
+      "counts": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, root]",
+          "duration": 8.690156272990862,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, worker]",
+          "duration": 7.994951234999462,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, root]",
+          "duration": 8.788933118994464,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, worker]",
+          "duration": 9.786561440996593,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, backslash]",
+          "duration": 8.977825735986698,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, quote]",
+          "duration": 1.6259426709875697,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, mixed]",
+          "duration": 1.636813795004855,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, backslash]",
+          "duration": 1.2371686120022787,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, quote]",
+          "duration": 1.4296817889990052,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+          "duration": 1.7091253580001649,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, backslash]",
+          "duration": 0.9321487670094939,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, quote]",
+          "duration": 1.8996567190042697,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, mixed]",
+          "duration": 1.248816520004766,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, backslash]",
+          "duration": 0.8668122009985382,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, quote]",
+          "duration": 1.650569513993105,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, mixed]",
+          "duration": 1.1815081030072179,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        }
+      ],
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "after",
+      "profile": "single",
+      "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/m6",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 11.966195583343506,
+      "load_start": [
+        3.39404296875,
+        2.97509765625,
+        1.82568359375
+      ],
+      "load_end": [
+        3.4072265625,
+        2.99267578125,
+        1.84375
+      ],
+      "exit_code": 0,
+      "report": "copy-matched-6-after-single.json",
+      "report_sha256": "420332713aff835aff50fb0049241a0d08a73c9da93c0cac0016ec17f7adf85d",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+          "duration": 11.753803240993875,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        }
+      ],
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "before",
+      "profile": "file",
+      "revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+      "cwd": "/home/crpier/.cache/sqn.TCLuPteb/before-copy-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_password_literals.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/m7",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 165.58480978012085,
+      "load_start": [
+        3.4072265625,
+        2.99267578125,
+        1.84375
+      ],
+      "load_end": [
+        3.25390625,
+        3.14892578125,
+        2.1015625
+      ],
+      "exit_code": 0,
+      "report": "copy-matched-7-before-file.json",
+      "report_sha256": "e25ac57eb77015e6840fc1ec8ffb1b97cf30b8b8f2b8b95585ff371e9cd635b9",
+      "counts": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, root]",
+          "duration": 10.756091240997193,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, worker]",
+          "duration": 8.985431292996509,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, root]",
+          "duration": 10.159821402994567,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, worker]",
+          "duration": 9.763817421000567,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, backslash]",
+          "duration": 11.067422102001728,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, quote]",
+          "duration": 9.02390477299923,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, root, mixed]",
+          "duration": 11.041594039998017,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, backslash]",
+          "duration": 10.825088505007443,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, quote]",
+          "duration": 11.253579620999517,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+          "duration": 10.52188819499861,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, backslash]",
+          "duration": 10.669709795998642,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, quote]",
+          "duration": 11.457454174000304,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, root, mixed]",
+          "duration": 10.901425057993038,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, backslash]",
+          "duration": 10.62127082599909,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, quote]",
+          "duration": 10.321068769000703,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        },
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[NO_BACKSLASH_ESCAPES, worker, mixed]",
+          "duration": 8.011882136997883,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        }
+      ],
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "before",
+      "profile": "single",
+      "revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+      "cwd": "/home/crpier/.cache/sqn.TCLuPteb/before-copy-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/m8",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 8.1049644947052,
+      "load_start": [
+        3.25390625,
+        3.14892578125,
+        2.1015625
+      ],
+      "load_end": [
+        3.28857421875,
+        3.16015625,
+        2.11669921875
+      ],
+      "exit_code": 0,
+      "report": "copy-matched-8-before-single.json",
+      "report_sha256": "58f16da2088ec630f1d584c9a34f886ab357bbd162958ffe15cbde62966348e4",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_password_literals.py::password_authenticates[ordinary, worker, mixed]",
+          "duration": 7.9042954570031725,
+          "markers": [
+            "slow"
+          ],
+          "status": "passed"
+        }
+      ],
+      "remaining_tmp_entries": []
+    }
+  ],
+  "interpreter": "/home/crpier/Projects/fourth-snekql/.venv/bin/python"
+}
