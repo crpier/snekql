@@ -1,0 +1,91 @@
+"""Static signatures only: these declarations deliberately have no implementation."""
+
+from typing import Any, Literal, dataclass_transform, overload
+
+from snekql import __BACKEND__ as database
+from __META_MODULE__ import ModelMeta as BaseMeta
+
+
+def SplitInteger[T](
+    *, server_default: T, default: object = database.PENDING_GENERATION
+) -> database.GenCol[T]:
+    raise NotImplementedError
+
+
+@overload
+def SplitText(
+    *,
+    server_default: type[database.CurrentTimestamp],
+    default: object = database.PENDING_GENERATION,
+) -> database.GenCol[database.UtcDatetime]: ...
+
+
+@overload
+def SplitText[T](
+    *, server_default: None, default: object = database.PENDING_GENERATION
+) -> database.GenCol[T | None]: ...
+
+
+@overload
+def SplitText[T](
+    *, server_default: T, default: object = database.PENDING_GENERATION
+) -> database.GenCol[T]: ...
+
+
+def SplitText(
+    *, server_default: object, default: object = database.PENDING_GENERATION
+) -> Any:
+    raise NotImplementedError
+
+
+def PythonInteger[T](*, python_default: T) -> database.Col[T]:
+    raise NotImplementedError
+
+
+@overload
+def DatabaseDefault(
+    column: database.Col[Any], *, default: type[database.CurrentTimestamp]
+) -> database.GenCol[database.UtcDatetime]: ...
+
+
+@overload
+def DatabaseDefault[T](
+    column: database.Col[Any], *, default: None
+) -> database.GenCol[T | None]: ...
+
+
+@overload
+def DatabaseDefault[T](
+    column: database.Col[Any], *, default: T
+) -> database.GenCol[T]: ...
+
+
+def DatabaseDefault(column: database.Col[Any], *, default: object) -> Any:
+    raise NotImplementedError
+
+
+def Excluded[T](
+    column: database.Col[T], *, init: Literal[False] = False
+) -> database.GenCol[T]:
+    raise NotImplementedError
+
+
+@dataclass_transform(
+    field_specifiers=(
+        Excluded,
+        SplitText,
+        PythonInteger,
+        DatabaseDefault,
+        SplitInteger,
+        database.Text,
+        database.Integer,
+    ),
+    kw_only_default=True,
+    frozen_default=True,
+)
+class ProbeMeta(BaseMeta):
+    pass
+
+
+class ProbeModel[S](database.Model[S], metaclass=ProbeMeta):
+    pass

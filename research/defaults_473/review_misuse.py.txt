@@ -1,0 +1,14 @@
+"""Ordinary typed code with independently rejected declaration mistakes."""
+from typing import ClassVar
+from uuid import uuid4
+
+
+class Invalid[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[Invalid[database.Row]]]
+    python_value: database.Col[str] = __PYTHON_VALUE__  # error: invalid-assignment
+    python_none: database.Col[str] = __PYTHON_NONE__  # error: invalid-assignment
+    python_factory: database.Col[str] = __PYTHON_FACTORY__  # error: invalid-assignment
+    server_shape: database.Col[bool] = __SERVER_VALUE__  # error: invalid-assignment
+    server_literal: database.GenCol[str] = __SERVER_VALUE__  # error: invalid-assignment
+    server_clock: database.GenCol[str] = __SERVER_CLOCK__  # error: invalid-assignment
+    server_null: database.GenCol[str] = __SERVER_NULL__  # error: invalid-assignment

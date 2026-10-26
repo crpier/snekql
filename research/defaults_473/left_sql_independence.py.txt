@@ -1,0 +1,44 @@
+"""SQL defaults do not silently become Python construction defaults."""
+
+
+class Split[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[Split[database.Row]]]
+    required: database.Col[bool] = Integer(server_default=False)
+    local: Annotated[database.Col[str], Default("python")] = Text(server_default="database")
+    pending_required: database.GenCol[int] = Integer(server_default=7)
+    pending_default: Annotated[database.GenCol[int], Default(database.PENDING_GENERATION)] = Integer(server_default=7)
+    clock: Annotated[database.GenCol[database.UtcDatetime], Default(database.PENDING_GENERATION)] = Text(server_default=database.CurrentTimestamp)
+    clock_required: database.Col[database.UtcDatetime] = Text(server_default=database.CurrentTimestamp)
+    nullable_literal: Annotated[database.GenCol[str | None], Default(database.PENDING_GENERATION)] = Text(server_default="fallback")
+    server_null: Annotated[database.GenCol[str | None], Default(database.PENDING_GENERATION)] = Text(server_default=None)
+
+
+def construct(instant: database.UtcDatetime) -> Split[database.Pending]:
+    pending = Split(required=True, pending_required=database.PENDING_GENERATION, clock_required=instant)
+    assert_type(pending.required, bool)
+    assert_type(pending.local, str)
+    assert_type(pending.pending_required, int | database.PENDING_GENERATION)
+    assert_type(pending.pending_default, int | database.PENDING_GENERATION)
+    assert_type(pending.clock, database.UtcDatetime | database.PENDING_GENERATION)
+    assert_type(pending.clock_required, database.UtcDatetime)
+    assert_type(pending.nullable_literal, str | None | database.PENDING_GENERATION)
+    assert_type(pending.server_null, str | None | database.PENDING_GENERATION)
+    Split(required=False, pending_required=3, clock_required=instant, clock=instant, server_null=None)
+    Split(pending_required=3, clock_required=instant)  # error: missing-argument
+    Split(required=True, clock_required=instant)  # error: missing-argument
+    Split(required=True, pending_required=3)  # error: missing-argument
+    Split(required=None, pending_required=3, clock_required=instant)  # error: invalid-argument-type
+    Split(required=True, pending_required=3, clock_required=instant, local=database.PENDING_GENERATION)  # error: invalid-argument-type
+    Split(required=True, pending_required=3, clock_required=instant, server_null=42)  # error: invalid-argument-type
+    return pending
+
+
+def row_types(row: Split[database.Row]) -> None:
+    assert_type(row.required, bool)
+    assert_type(row.local, str)
+    assert_type(row.pending_required, int)
+    assert_type(row.pending_default, int)
+    assert_type(row.clock, database.UtcDatetime)
+    assert_type(row.clock_required, database.UtcDatetime)
+    assert_type(row.nullable_literal, str | None)
+    assert_type(row.server_null, str | None)

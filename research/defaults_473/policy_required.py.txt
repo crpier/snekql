@@ -1,0 +1,16 @@
+class Required[S = database.Pending](PolicyModel[S]):
+    __row_type__: ClassVar[database.ReadType[Required[database.Row]]]
+    value: database.Col[int] = PolicyInteger()
+    generated: database.GenCol[int] = PolicyInteger()
+    nullable: database.Col[str | None] = PolicyText()
+
+
+required = Required(value=3, generated=database.PENDING_GENERATION, nullable=None)
+assert_type(required.value, int)
+assert_type(required.generated, int | database.PENDING_GENERATION)
+assert_type(required.nullable, str | None)
+Required(value=3, generated=7, nullable="text")
+Required(generated=7, nullable=None)  # error: missing-argument
+Required(value=3, nullable=None)  # error: missing-argument
+Required(value=3, generated=7)  # error: missing-argument
+Required(value=database.PENDING_GENERATION, generated=7, nullable=None)  # error: invalid-argument-type

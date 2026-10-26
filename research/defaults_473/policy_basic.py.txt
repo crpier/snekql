@@ -1,0 +1,38 @@
+from typing import ClassVar, assert_type
+
+
+class Entry[S = database.Pending](PolicyModel[S]):
+    __row_type__: ClassVar[database.ReadType[Entry[database.Row]]]
+    name: database.Col[str] = database.Text()
+    local: database.Col[bool] = PolicyInteger(default=PythonDefault(False))
+    remote: database.GenCol[bool] = PolicyInteger(default=ServerDefault(False))
+
+
+pending = Entry(name="Ada")
+assert_type(pending, Entry[database.Pending])
+assert_type(pending.local, bool)
+assert_type(pending.remote, bool | database.PENDING_GENERATION)
+Entry(name="Ada", local=True, remote=False)
+Entry(name="Ada", remote=database.PENDING_GENERATION)
+write: database.Write[Entry[database.Row]] = database.insert(pending).returning()
+
+
+def row_types(row: Entry[database.Row]) -> None:
+    assert_type(row.local, bool)
+    assert_type(row.remote, bool)
+
+
+Entry()  # error: missing-argument
+Entry(name="Ada", local="wrong")  # error: invalid-argument-type
+Entry(name="Ada", local=None)  # error: invalid-argument-type
+Entry(name="Ada", local=database.PENDING_GENERATION)  # error: invalid-argument-type
+Entry(name="Ada", remote="wrong")  # error: invalid-argument-type
+Entry[database.Row](name="Ada")  # error: invalid-argument-type
+pending.local = True  # error: invalid-assignment
+
+
+class Invalid[S = database.Pending](PolicyModel[S]):
+    __row_type__: ClassVar[database.ReadType[Invalid[database.Row]]]
+    bad_python: database.Col[bool] = PolicyInteger(default=PythonDefault("wrong"))  # error: invalid-assignment
+    bad_sql: database.GenCol[bool] = PolicyInteger(default=ServerDefault("wrong"))  # error: invalid-assignment
+    wrong_shape: database.Col[bool] = PolicyInteger(default=ServerDefault(False))  # error: invalid-assignment
