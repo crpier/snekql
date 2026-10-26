@@ -2,7 +2,7 @@
 
 from snektest import Param, assert_eq, assert_true, load_fixture, test
 
-from tests.typing_assessment import assessed_cases, provide_typing_assessment
+from tests.typing_assessment import provide_typing_assessment
 
 
 @test(
@@ -32,9 +32,11 @@ from tests.typing_assessment import assessed_cases, provide_typing_assessment
 )
 async def public_typing_contract_has_exact_diagnostic(case: tuple[str, str]) -> None:
     """Reject only the invalid operation beside exact inferred-type controls."""
-    output = await load_fixture(provide_typing_assessment())
     name, rule = case
-    observations = assessed_cases(output, name)
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases(name)
+
+    assert_eq(len(observations), 2)
     for observation in observations:
         assert_eq(observation["positive_errors"], [])
         assert_eq(len(observation["negative_errors"]), 1)

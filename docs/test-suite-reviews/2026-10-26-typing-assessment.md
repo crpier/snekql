@@ -3,7 +3,26 @@
 Tracking: [#536](https://github.com/crpier/snekql/issues/536),
 [PR #563](https://github.com/crpier/snekql/pull/563).
 
-## Scope
+## Integration with #561
+
+Main independently merged the same static-sharing optimization in #561 at
+`4ad6564543580e91fda16852964947cc4b14e7d5` before #563 was merged. The integrated
+#563 **preserves main's support module and both consumer modules unchanged**,
+including its defensive `TypingAssessment` lookup, actual aggregate exit status,
+isolated report views, nine lookup regressions and stronger identity/cardinality
+completeness assertion. It does not install a second cache or revert those checks.
+The remaining code delta is the two end-to-end copied-checkout/focused-runner
+proofs below. Both execute against main's retained implementation.
+
+The scope description, comparison and 4,166-case full validation below are
+**historical observations pinned to `94220e1...`**, not measurements or a full-suite
+pass of the reconciled head. In that measured implementation, private reports were
+parsed from immutable bytes; the integrated implementation instead retains main's
+isolated report/observation views. See the integration validation record for exact
+reconciled-source commands and results. No new performance claim is made at that
+head, and #562's distinct dynamic probes are not changed by this PR.
+
+## Historical measured scope
 
 This slice changes test execution, not library declarations, typing templates,
 the consumer-assessment CLI, dependencies, or API/migration semantics. It does
