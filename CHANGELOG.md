@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Identify exact SQLite BEGIN IMMEDIATE/SQLITE_BUSY as known writer acquisition refusal
+  with MigrationLockTimeoutError, retaining the synchronized target. Exercise original role
+  plans through actual refusal/grant and interrupted busy waits; unsafe targets remain closed.
+  Independently observe worker/descriptor disposal and unchanged history/data before explicit
+  ORIGINAL application on a replacement target. Runtime integration/qualification remain open.
+
 - Preserve fractional native migration advisory-lock waits instead of truncating them to zero;
   report known non-acquisition as MigrationLockTimeoutError without invalidating the contender.
   Exercise original role plans through real refusal/grant and interrupted driver waits, isolate
@@ -412,12 +418,6 @@
 ## 0.9.0 - 2026-10-11
 
 ### Added
-
-- Experimental recorded migrations now identify known SQLite writer acquisition
-  refusal with `MigrationLockTimeoutError` while retaining the safe target; actual
-  DELETE-mode role journeys distinguish BUSY, grant, per-I/O expiry and caller
-  cancellation with physical disposal/fresh evidence before unsafe-target reuse
-  (#477). Runtime integration and qualification remain incomplete.
 
 - Bundle an official `snekql` Agent Skill for discovery with `library-skills`,
   directing agents to the included release-matched documentation and consumer
