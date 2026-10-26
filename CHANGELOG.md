@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Qualify real native COMMIT request/response loss and EOF using original role plans: recover
+  from actual durable progress without replaying committed work, or observe already-durable
+  completion despite a failed final COMMIT call. Keep driver outcome separate from migration
+  completion; no runtime patch or new outcome flag (#477).
+
 - Require positive native migration metadata coverage from direct global/exact-database SELECT,
   SHOW VIEW, TRIGGER and EXECUTE grants (or observed unrestricted server grant bypass) before
   admission. Privilege-filtered absence, role-only

@@ -179,8 +179,9 @@ prepared evidence is a missing capability, not a reason to expose private loweri
 | SQLite WAL active-process death | Same truthful atomic receipt contract, with the actual WAL mode observed. | Still a qualification gap; the final ordinary app switching to WAL does not exercise this window. |
 | Native acknowledged work followed by transactional failure | Retain acknowledged progress; inspect original evidence and resume only proven remaining work. | Selected operation tests and real blocked-backfill death demonstrate this; no blanket DDL atomicity. |
 | Native restart after client rollback | Durable uncertainty survives; ordinary prepare/apply refuses, explicit inspection/resume is required. | Actual private-server kill/restart and competing resumers demonstrated; loser reassesses status. |
-| Native DDL/COMMIT effect with a missing acknowledgement | Do not infer success or authorize data replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Selected lost-receipt/refusal tests exist. The role server kill was AFTER rollback, not during COMMIT/DDL; a real selected receipt-loss window remains a qualification gate. |
-| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Checked-out I/O and normal close now have deadlines; actual late SQLite COMMIT and native partial-backfill expiry are observed. Native opening now has an acquisition budget and shared owned/TLS admission. SQLite physical opening now has a separate budget and explicit late-handle cleanup. Local guard waiting is also bounded without discarding the active owner. Server coordination acquisition, session/durability and remaining outcome/cleanup policy are still incomplete. |
+| Native transactional COMMIT request/response loss | Failed await does not prove rollback/completion. Fresh durable marker/data selects ORIGINAL inspection/resume, not replay of committed work. Already-durable complete receipt means already_applied even if the final explicit COMMIT call failed. | Actual first request/OK loss/EOF and final request/OK loss demonstrated on one local build in the [COMMIT checkpoint](recorded-migrations-commit-outcomes-review.md). Not crash/fsync/all-build qualification. |
+| Native DDL effect with a missing acknowledgement | Do not infer data execution or authorize replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Selected lost-receipt/refusal tests exist. Role server kill was AFTER rollback, not during DDL; a selected real DDL-loss window and maintained matrix remain qualification gates. |
+| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Owned opening, local/backend coordination, per-I/O/control, context drain and normal close have separate budgets. Native/session/metadata and SQLite file-policy checkpoints are implemented. Real late SQLite COMMIT and native request/reply loss observed. Remaining detached-cleanup/global shutdown/live-loop policy is open; no universal physical-stop guarantee. |
 | Missing/incompatible original plan or ledger | Refuse without receipt rewriting, reconstruction from current models, or endpoint stamping. | Actual old nine-column ledger refusal demonstrated. Original raw Prepared JSON was not versioned; the later version-one envelope is not a ledger backup or cross-version conversion policy. |
 
 [Workflow](recorded-migrations-workflow-review.md),
@@ -258,8 +259,13 @@ exclusion, NOT a general DDL/engine/storage/readiness audit, privilege repair or
 Actual hidden routine/MyISAM objects refuse before original role work; proper authority reveals
 existing obstacles and preserves original recovery rather than certifies readiness.
 
-Remaining acceptance: retain acknowledged COMMIT evidence vs unknown unacknowledged outcomes,
-and settle remaining detached-cleanup/global shutdown/live-loop limits.
+The [real COMMIT checkpoint](recorded-migrations-commit-outcomes-review.md) now demonstrates
+transactional request/actual-OK loss and EOF: fresh ORIGINAL marker0/1 recovery skips committed
+work, while final explicit COMMIT failure can follow already-durable complete3. Candidate
+outcome policy keeps caller knowledge, per-unit durable markers, completion and cleanup separate;
+no whole-Target outcome flag or automatic replay. Existing runtime already passed; no fake fix.
+
+Remaining acceptance: settle remaining detached-cleanup/global shutdown/live-loop limits.
 Qualification stays finite through public journeys/independent real observations, consistent
 with [ADR0017](../adr/0017-per-operation-deadlines-fail-closed.md); not all failure permutations.
 

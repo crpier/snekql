@@ -151,3 +151,13 @@ Environment: CPython3.15.0/GIL/default asyncio/Linux/SQLite3.53.1/MariaDB13.0.2;
 LTS/SQLite-floor/upgrade/MySQL/all-build/role evaluator/privilege revocation fencing qualification.
 G3 remains incomplete; ADR0023 is proposed and G4/G5 stay open. No merge/tag/publication,
 dependency change, consumer-guide expansion, new artifact format or historical repair.
+
+## Real native COMMIT outcome follow-through
+
+The [COMMIT checkpoint](recorded-migrations-commit-outcomes-review.md) qualifies actual request/
+server-OK loss and EOF, not a simulated driver: original marker0/1 recovery or already-durable
+complete3 selects action from fresh evidence. Existing runtime already passed; no manufactured
+fix/outcome flag. Same original/endpoint, all own earlier receipts/current typed use retained.
+Candidate G3 outcome policy distinguishes caller acknowledgement, durable per-unit progress,
+completion and cleanup. Remaining retained-cleanup/global shutdown and G4 matrix/WAL death/
+native DDL loss, G5 approval remain open; no universal crash/COMMIT/transport qualification.
