@@ -298,6 +298,20 @@ class Target:
             + hashlib.sha256(str(config.database).encode()).hexdigest()[:40]
         )
 
+    @asynccontextmanager
+    async def _admitted(self) -> AsyncIterator[None]:
+        """Bound only this caller's guard wait; do not disturb the active owner."""
+        try:
+            with anyio.fail_after(self._config.acquire_timeout):
+                await self._guard.acquire()
+        except TimeoutError as error:
+            msg = "timed out acquiring migration target guard"
+            raise PoolTimeoutError(msg) from error
+        try:
+            yield
+        finally:
+            self._guard.release()
+
     async def _io[T](self, operation: str, call: Callable[[], Awaitable[T]]) -> T:
         """Give each driver interaction a fresh budget; abandon unsafe sessions."""
         self._require_open()
@@ -493,7 +507,7 @@ class Target:
 
     async def status(self) -> tuple[Progress, ...]:
         """Read execution evidence without requiring an executable next package."""
-        async with self._guard:
+        async with self._admitted():
             self._require_open()
             return tuple(
                 Progress(
@@ -518,7 +532,7 @@ class Target:
         preserve_unmanaged: bool = False,
     ) -> Prepared:
         """Observe without creating history or modifying the target schema."""
-        async with self._guard:
+        async with self._admitted():
             self._require_open()
             Package.load(package.dump())
             if not self._sqlite and not schema_writers_excluded:
@@ -1276,7 +1290,7 @@ class Target:
         self, prepared: Prepared, *, schema_writers_excluded: bool = False
     ) -> Recovery:
         """Classify progress using durable acknowledgement and current catalog evidence."""
-        async with self._guard:
+        async with self._admitted():
             self._require_open()
             self._require_recovery_access(prepared, excluded=schema_writers_excluded)
             async with self._coordinated():
@@ -1393,7 +1407,7 @@ class Target:
         if not reason.strip():
             msg = "reconciliation requires a nonempty review reason"
             raise PackageError(msg)
-        async with self._guard:
+        async with self._admitted():
             self._require_open()
             self._require_recovery_access(
                 recovery.prepared, excluded=schema_writers_excluded
@@ -1437,7 +1451,7 @@ class Target:
         self, recovery: Recovery, *, schema_writers_excluded: bool = False
     ) -> Literal["applied"]:
         """Recheck reviewed evidence under coordination and continue only proven work."""
-        async with self._guard:
+        async with self._admitted():
             self._require_open()
             self._require_recovery_access(
                 recovery.prepared, excluded=schema_writers_excluded
@@ -1496,7 +1510,7 @@ class Target:
 
     async def apply(self, prepared: Prepared) -> Literal["applied", "already_applied"]:
         """Recheck observations under coordination; never replay uncertain progress."""
-        async with self._guard:
+        async with self._admitted():
             self._require_open()
             _require_execution_epoch(prepared.execution_epoch)
             package = Package.load(prepared.package.dump())

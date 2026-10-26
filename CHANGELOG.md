@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Bound local migration target-guard waiting with an acquisition budget without timing the
+  admitted body or discarding another task's active connection. Exercise real partially modified
+  native role work while queued status/prepare/apply expire or queued callers cancel, then
+  complete on the same target and use the typed application. Server coordination acquisition,
+  session/durability and outcome/shutdown policy remain incomplete.
+
 - Bound SQLite physical migration opening with the acquisition budget, retain blocked opening
   futures after caller timeout/cancellation, and explicitly close eventual late handles instead
   of relying on GC. Exercise real Linux file leases, surviving kernel waits, worker/FD disposal

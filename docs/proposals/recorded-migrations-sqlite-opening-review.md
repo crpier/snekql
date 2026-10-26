@@ -95,6 +95,12 @@ The ordinary application runtime may apply its existing WAL settings between sta
 already does. This functional journey is neither active-WAL process death nor a durability,
 receipt-loss, data-replay or native crash qualification.
 
+## Subsequent local-guard follow-through
+
+The [local-guard checkpoint](recorded-migrations-local-guard-review.md) now bounds queued
+caller waits without disturbing the active owner. The list below records this physical-opening
+checkpoint's remaining scope; server coordination and other G3 gates are still unresolved.
+
 ## Remaining G3 and promotion scope
 
 - Local target-guard waiting and server coordination-lock acquisition still need an explicit

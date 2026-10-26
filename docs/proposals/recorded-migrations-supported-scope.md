@@ -63,6 +63,16 @@ produced an unclosed-database ResourceWarning. Local guard/server coordination a
 session/journal/durability, remaining outcomes and shutdown policy are still open; a retained
 in-process task is not a physical-stop, loop-shutdown or host-loss guarantee.
 
+## Local target-guard follow-through
+
+The [local-guard checkpoint](recorded-migrations-local-guard-review.md) bounds each caller's
+local guard wait, not the admitted operation's lifetime. Expired/cancelled queued callers do
+not touch/discard the current owner's connection. Real partially modified native role work
+remains on the same server connection after queued status/prepare/apply expiry or caller
+cancellation, then completes on that same target with original bytes/current typed use.
+Server coordination acquisition, session/durability and remaining outcome/shutdown policy are
+still open; this does not fence other writers, supply new fairness or complete G3.
+
 ## Recommendation
 
 Retain the opt-in experimental interface until the five gates below are satisfied. The first
@@ -160,7 +170,7 @@ prepared evidence is a missing capability, not a reason to expose private loweri
 | Native acknowledged work followed by transactional failure | Retain acknowledged progress; inspect original evidence and resume only proven remaining work. | Selected operation tests and real blocked-backfill death demonstrate this; no blanket DDL atomicity. |
 | Native restart after client rollback | Durable uncertainty survives; ordinary prepare/apply refuses, explicit inspection/resume is required. | Actual private-server kill/restart and competing resumers demonstrated; loser reassesses status. |
 | Native DDL/COMMIT effect with a missing acknowledgement | Do not infer success or authorize data replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Selected lost-receipt/refusal tests exist. The role server kill was AFTER rollback, not during COMMIT/DDL; a real selected receipt-loss window remains a qualification gate. |
-| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Checked-out I/O and normal close now have deadlines; actual late SQLite COMMIT and native partial-backfill expiry are observed. Native opening now has an acquisition budget and shared owned/TLS admission. SQLite physical opening now has a separate budget and explicit late-handle cleanup. Coordination acquisition, session/durability and remaining outcome/cleanup policy are still incomplete. |
+| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Checked-out I/O and normal close now have deadlines; actual late SQLite COMMIT and native partial-backfill expiry are observed. Native opening now has an acquisition budget and shared owned/TLS admission. SQLite physical opening now has a separate budget and explicit late-handle cleanup. Local guard waiting is also bounded without discarding the active owner. Server coordination acquisition, session/durability and remaining outcome/cleanup policy are still incomplete. |
 | Missing/incompatible original plan or ledger | Refuse without receipt rewriting, reconstruction from current models, or endpoint stamping. | Actual old nine-column ledger refusal demonstrated. Original raw Prepared JSON was not versioned; the later version-one envelope is not a ledger backup or cross-version conversion policy. |
 
 [Workflow](recorded-migrations-workflow-review.md),
@@ -216,8 +226,9 @@ The dedicated connector uses direct driver calls. The bounded follow-through now
 targets without declaring physical quiescence. The subsequent native-opening follow-through
 bounds native acquisition and shares owned/TLS admission. SQLite physical opening now also
 has an acquisition budget and retained explicit late cleanup, not a physical-stop guarantee.
-Local guard/server coordination acquisition, application session admission, SQLite journal/
-durability policy and other outcome/shutdown rules are still incomplete.
+Local guard waiting now has a separate acquisition budget and leaves an active owner intact.
+Server coordination acquisition, application session admission, SQLite journal/durability
+policy and other outcome/shutdown rules are still incomplete.
 Resolve these explicitly rather than adding a second generic runtime facade or documenting
 ignored shared Config settings as implemented behavior.
 

@@ -45,6 +45,12 @@ Actual Linux leases expose continued worker waits after caller timeout/cancellat
 worker/FD observations precede fresh frozen-role/current-app use. Guard/coordination acquisition,
 session/durability and outcome/shutdown policy remain open; no journal or replay policy change.
 
+The later [local target-guard checkpoint](recorded-migrations-local-guard-review.md) bounds
+queued caller acquisition without discarding another operation's active session or timing its
+whole body. Actual native role work survives queued expiry/cancellation and completes on the
+same target. Server coordination acquisition and remaining session/durability/outcome/shutdown
+policy remain open; no new public facade or complete G3 claim.
+
 ## Objective and evidence rules
 
 The first production proposal should cover a deliberately bounded set of physical
