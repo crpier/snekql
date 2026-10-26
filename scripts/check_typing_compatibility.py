@@ -5,16 +5,18 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from importlib.metadata import version
 from json import dumps
 from pathlib import Path
 from platform import platform
+from typing import Literal
 
 from anyio import Path as AsyncPath
 from anyio import TemporaryDirectory, fail_after, run, run_process, to_thread
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 _CASES = (
     "lifecycle",
@@ -240,58 +242,120 @@ async def _invoke_checker(
     return version.stdout.decode().strip(), command, diagnostics
 
 
+class _Request(BaseModel):
+    """A named positive template and appended negative fragment for one backend."""
+
+    model_config = {"extra": "forbid", "strict": True}
+
+    name: str = Field(min_length=1)
+    backend: Literal["sqlite", "mariadb"]
+    positive: str
+    negative: str
+
+
+class _Manifest(BaseModel):
+    model_config = {"extra": "forbid", "strict": True}
+
+    schema_version: Literal[1]
+    cases: list[_Request] = Field(min_length=1)
+
+
+@dataclass(frozen=True)
+class _Selection:
+    backend: Literal["all", "sqlite", "mariadb"]
+    case_name: str
+    manifest: Path | None = None
+    name: str | None = None
+
+
 async def _write_sources(
-    root: AsyncPath, directory: str, backend: str, selection: str
+    root: AsyncPath, directory: str, selection: _Selection
 ) -> list[_Source]:
-    """Materialize paired examples; their filenames identify diagnostic ownership."""
-    sources: list[_Source] = []
-    for name in _CASES if selection == "all" else (selection,):
-        positive_template = await (
-            root / f"typing_probes/{name}.positive.py.txt"
-        ).read_text()
-        negative_template = await (
-            root / f"typing_probes/{name}.negative.py.txt"
-        ).read_text()
-        for family in ("sqlite", "mariadb") if backend == "all" else (backend,):
-            positive = positive_template.replace("__BACKEND__", family).replace(
-                "__OTHER_BACKEND__", "mariadb" if family == "sqlite" else "sqlite"
-            )
-            negative = positive + negative_template
-            expected_lines = [
-                index
-                for index, line in enumerate(negative.splitlines(), start=1)
-                if "# expect-error" in line
-            ]
-            if len(expected_lines) != 1:
-                message = "each negative probe must mark exactly one expected error"
-                raise ProbeError(message)
-            positive_path = str(Path(directory) / f"{family}_{name}_positive.py")
-            negative_path = str(Path(directory) / f"{family}_{name}_negative.py")
-            await AsyncPath(positive_path).write_text(
-                positive, encoding="utf-8", newline="\n"
-            )
-            await AsyncPath(negative_path).write_text(
-                negative, encoding="utf-8", newline="\n"
-            )
-            sources.append(
-                _Source(
-                    backend=family,
-                    expected_line=expected_lines[0],
-                    name=name,
-                    negative_path=negative_path,
-                    negative_sha256=sha256(negative.encode()).hexdigest(),
-                    positive_path=positive_path,
-                    positive_sha256=sha256(positive.encode()).hexdigest(),
+    """Materialize independent pairs; filenames identify diagnostic ownership."""
+    if selection.manifest is not None:
+        requests = _Manifest.model_validate_json(
+            await AsyncPath(selection.manifest).read_bytes()
+        ).cases
+    else:
+        requests = []
+        for name in _CASES if selection.case_name == "all" else (selection.case_name,):
+            positive = await (
+                root / f"typing_probes/{name}.positive.py.txt"
+            ).read_text()
+            negative = await (
+                root / f"typing_probes/{name}.negative.py.txt"
+            ).read_text()
+            for family in (
+                ("sqlite", "mariadb")
+                if selection.backend == "all"
+                else (selection.backend,)
+            ):
+                requests.append(
+                    _Request(
+                        name=name, backend=family, positive=positive, negative=negative
+                    )
                 )
+    identities = [(request.name, request.backend) for request in requests]
+    if len(identities) != len(set(identities)):
+        message = "duplicate typing request name/backend"
+        raise ProbeError(message)
+    requests = [
+        request
+        for request in requests
+        if selection.backend in ("all", request.backend)
+        and (selection.name is None or request.name == selection.name)
+    ]
+    if not requests:
+        message = "no typing requests match the selection"
+        raise ProbeError(message)
+    sources: list[_Source] = []
+    for index, request in enumerate(requests):
+        family = request.backend
+        positive = request.positive.replace("__BACKEND__", family).replace(
+            "__OTHER_BACKEND__", "mariadb" if family == "sqlite" else "sqlite"
+        )
+        negative = positive + request.negative
+        expected_lines = [
+            index
+            for index, line in enumerate(negative.splitlines(), start=1)
+            if "# expect-error" in line
+        ]
+        if len(expected_lines) != 1:
+            message = "each negative probe must mark exactly one expected error"
+            raise ProbeError(message)
+        # Caller-supplied labels never become paths; retain legacy static filenames.
+        stem = (
+            f"{family}_{request.name}"
+            if selection.manifest is None
+            else f"probe_{index}"
+        )
+        positive_path = str(Path(directory) / f"{stem}_positive.py")
+        negative_path = str(Path(directory) / f"{stem}_negative.py")
+        await AsyncPath(positive_path).write_text(
+            positive, encoding="utf-8", newline="\n"
+        )
+        await AsyncPath(negative_path).write_text(
+            negative, encoding="utf-8", newline="\n"
+        )
+        sources.append(
+            _Source(
+                backend=family,
+                expected_line=expected_lines[0],
+                name=request.name,
+                negative_path=negative_path,
+                negative_sha256=sha256(negative.encode()).hexdigest(),
+                positive_path=positive_path,
+                positive_sha256=sha256(positive.encode()).hexdigest(),
             )
+        )
     return sources
 
 
-async def _assess(backend: str, case_name: str) -> _Report:
+async def _assess(selection: _Selection) -> _Report:
     """A negative diagnostic is evidence only when its positive control is clean."""
     root = (await AsyncPath(__file__).resolve()).parent.parent
     async with TemporaryDirectory(prefix="snekql-typing-") as directory:
-        sources = await _write_sources(root, directory, backend, case_name)
+        sources = await _write_sources(root, directory, selection)
         paths = [
             path
             for source in sources
@@ -331,10 +395,10 @@ async def _assess(backend: str, case_name: str) -> _Report:
         )
 
 
-async def _run_cli(backend: str, case_name: str) -> _Report:
+async def _run_cli(selection: _Selection) -> _Report:
     """Bound the entire checker assessment, including tool startup."""
     with fail_after(90):
-        return await _assess(backend, case_name)
+        return await _assess(selection)
 
 
 def main() -> int:
@@ -343,10 +407,18 @@ def main() -> int:
     parser.add_argument(
         "--backend", choices=("all", "sqlite", "mariadb"), default="all"
     )
-    parser.add_argument("--case", choices=("all", *_CASES), default="all")
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--case", choices=("all", *_CASES), default="all")
+    selection.add_argument("--manifest", type=Path)
+    parser.add_argument("--name", help="Select one name from an explicit manifest")
     options = parser.parse_args()
+    if options.name is not None and options.manifest is None:
+        parser.error("--name requires --manifest")
     try:
-        report = run(_run_cli, options.backend, options.case)
+        report = run(
+            _run_cli,
+            _Selection(options.backend, options.case, options.manifest, options.name),
+        )
     except (OSError, TimeoutError, ValidationError, ProbeError) as error:
         print(f"typing assessment unavailable: {error}", file=sys.stderr)
         return 2
