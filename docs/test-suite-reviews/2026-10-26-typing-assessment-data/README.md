@@ -2,7 +2,13 @@
 
 Source baseline: `74c4216032e55bfbfb45cab551926b1b96388179`.
 Measured candidate: `94220e1eabb52a98e220f71bac17fed5efc08f79`.
-Later commits add documentation/evidence only.
+Historical evidence through `d71b39c` adds documentation only. Integration at
+`93daf7b6e15201c48d03153550904fd729e5c917` then preserves main #561's support
+and consumers; its only code delta from main is two end-to-end tests. Historical
+measurements and full validation are not re-labelled as integration results.
+`validation/integration/` records **182 normal + 182 forced-lazy** focused passes
+and repeated private-copy mutant calibration at that exact source revision.
+There is no newly claimed complete 4,175-case run.
 
 - `matched.json`: exact commands, cwd/revision, fresh TMPDIR, wall time, load,
   per-file reported duration, case names and report hashes. Profile order is

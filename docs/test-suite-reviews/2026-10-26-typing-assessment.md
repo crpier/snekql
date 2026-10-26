@@ -22,6 +22,27 @@ isolated report/observation views. See the integration validation record for exa
 reconciled-source commands and results. No new performance claim is made at that
 head, and #562's distinct dynamic probes are not changed by this PR.
 
+### Reconciled-head validation
+
+At clean `93daf7b6e15201c48d03153550904fd729e5c917`:
+
+- **182 normal + 182 forced-lazy focused cases passed**, with zero test, fixture
+  or session teardown failures. This includes the original 171 cases, #561's nine
+  lookup cases and the two new end-to-end proofs. All affected typing modules
+  were selected explicitly; child CLIs remain ordinary mode.
+- Global-status, negative-count and negative-rule mutants were calibrated again
+  against this retained implementation in private copies: each is rejected, and
+  restored copies pass both end-to-end proofs.
+- Typing, Ruff lint/format, generated-interface, lock and whitespace checks pass.
+- Private disk-backed TMPDIRs were empty after both focused runs and removed
+  after checking process inactivity. Workflows remain disabled and unawaited.
+
+The historical 4,166-pass full run below does **not** qualify a fresh reconciled
+4,175-case full run. This integration validates every affected typing case; no
+new complete-suite or remote/platform matrix pass is claimed. Exact reports,
+commands, source revision and repeated calibration are in
+`2026-10-26-typing-assessment-data/validation/integration/`.
+
 ## Historical measured scope
 
 This slice changes test execution, not library declarations, typing templates,
