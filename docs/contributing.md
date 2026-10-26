@@ -40,6 +40,21 @@ Use equivalent environments and repeated measurements before claiming a speedup.
 The [artifact-ownership verification](test-suite-reviews/2026-10-26-artifact-ownership.md)
 records successful-run cleanup, explicit error retention, and its validation limits.
 
+## Focused typing checks
+
+```sh
+uv run snektest tests/test_typing_compatibility.py tests/test_typing_guarantees.py
+uv run snektest 'tests/test_typing_guarantees.py::public_typing_contract_has_exact_diagnostic[select-all]'
+uv run python scripts/check_typing_compatibility.py --case select-all --backend sqlite
+```
+
+Compatible static tests share one real all-case assessment per runner execution,
+while keeping independently named diagnostic assertions. A cold named test
+prepares that report; the direct CLI retains narrow case/backend execution.
+Source-mutation, special-configuration and distinct expression-variant tests
+remain isolated. The [static typing assessment review](test-suite-reviews/2026-10-26-static-typing-assessments.md)
+records measured savings, the small cold-start tradeoff, and coverage accounting.
+
 ## Find the code
 
 | Area | Start here |

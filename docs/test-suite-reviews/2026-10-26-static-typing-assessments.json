@@ -1,0 +1,492 @@
+{
+  "recorded_at": "2026-10-26T10:53:32.381269+00:00",
+  "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "packages": {
+    "snekql": "0.9.0",
+    "snektest": "0.16.0",
+    "anyio": "4.15.1",
+    "pydantic": "2.14.0",
+    "ty": "0.0.84",
+    "ruff": "0.16.9"
+  },
+  "uv": "uv 0.13.4 (x86_64-unknown-linux-gnu)",
+  "typing_timing_tmpdir": "/tmp",
+  "context_aware_warnings": "1",
+  "before": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_guarantees.py",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 44.569437616999494,
+      "passed": 171,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": []
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_guarantees.py",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 49.018393204998574,
+      "passed": 171,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": []
+    }
+  ],
+  "after": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_guarantees.py",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 31.920857580997108,
+      "passed": 171,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": []
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_guarantees.py",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 32.763225139002316,
+      "passed": 171,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": []
+    }
+  ],
+  "before_sources": {
+    "revision": "2f442c8b77a53f74cb98ad68e324230f65870579",
+    "sha256": {
+      "tests/test_typing_compatibility.py": "60946d90b159ea0e341d89a53e5fd42d7bc8b378b88f7fbe23c6360a63653ae4",
+      "tests/test_typing_guarantees.py": "f9c4173f33a48bff7dbbc39433367827dfae5b58187ddc0f55f0864771c63962",
+      "tests/test_nested_expression_families.py": "529a40914afb595116c691deb1af5d1c6434ef53c15b69293bdedab68277e969",
+      "tests/test_temporal_typing.py": "826b953cd6494274a03f9a201700917e37b5d2f4fae69dedbf61b5d41a7de2f7",
+      "scripts/check_typing_compatibility.py": "824b3c21cf4c429e814bacbfd6f5f8ae878a49bb01f3e67a399ec47c4f2100af"
+    }
+  },
+  "after_sources": {
+    "revision": "2f442c8b77a53f74cb98ad68e324230f65870579",
+    "sha256": {
+      "tests/test_typing_compatibility.py": "a6c3b81e142d7460caca8ad22c6d1b25d13d45e70502ff4f27e4863fa21f63e0",
+      "tests/test_typing_guarantees.py": "424e620f777bdf19ae36950a14cd1caf57cb37fa8d3d1d59e310356fe491fb6f",
+      "tests/test_nested_expression_families.py": "529a40914afb595116c691deb1af5d1c6434ef53c15b69293bdedab68277e969",
+      "tests/test_temporal_typing.py": "826b953cd6494274a03f9a201700917e37b5d2f4fae69dedbf61b5d41a7de2f7",
+      "scripts/check_typing_compatibility.py": "824b3c21cf4c429e814bacbfd6f5f8ae878a49bb01f3e67a399ec47c4f2100af",
+      "tests/typing_assessment.py": "6303d5ba4e910f41a9acc9d55bfbbf23ee1ad70de9bdb09b94c90fc561a9e0d5",
+      "tests/test_typing_assessment.py": "0a8601bf87820d0e0bfb476f8abca58bcb255273f80860c27f33bfc1b5a506e3"
+    }
+  },
+  "grouped_timings": [
+    {
+      "mode": "before",
+      "run": 1,
+      "cases": {
+        "tests/test_typing_compatibility.py": 52,
+        "tests/test_typing_guarantees.py": 17,
+        "tests/test_nested_expression_families.py": 80,
+        "tests/test_temporal_typing.py": 22
+      },
+      "reported_duration_sums": {
+        "tests/test_typing_compatibility.py": 11.383256487992185,
+        "tests/test_typing_guarantees.py": 3.8410655560001032,
+        "tests/test_nested_expression_families.py": 22.992359077979927,
+        "tests/test_temporal_typing.py": 6.134104695011047
+      },
+      "raw_sha256": "91cc94541f0c4840578e7b199806de0dbe01bf38a38c4d71076bf2e3e87631ff"
+    },
+    {
+      "mode": "before",
+      "run": 2,
+      "cases": {
+        "tests/test_typing_compatibility.py": 52,
+        "tests/test_typing_guarantees.py": 17,
+        "tests/test_nested_expression_families.py": 80,
+        "tests/test_temporal_typing.py": 22
+      },
+      "reported_duration_sums": {
+        "tests/test_typing_compatibility.py": 12.616995331023645,
+        "tests/test_typing_guarantees.py": 4.2695960130222375,
+        "tests/test_nested_expression_families.py": 25.60500110602152,
+        "tests/test_temporal_typing.py": 6.296950975985965
+      },
+      "raw_sha256": "33a108cb2ba054e2be2fabfa418e1b1288514b4c4b41e43c5c249d2da79cb0f9"
+    },
+    {
+      "mode": "after",
+      "run": 1,
+      "cases": {
+        "tests/test_typing_compatibility.py": 52,
+        "tests/test_typing_guarantees.py": 17,
+        "tests/test_nested_expression_families.py": 80,
+        "tests/test_temporal_typing.py": 22
+      },
+      "reported_duration_sums": {
+        "tests/test_typing_compatibility.py": 2.2427347859702422,
+        "tests/test_typing_guarantees.py": 0.0002430099921184592,
+        "tests/test_nested_expression_families.py": 23.438446693013248,
+        "tests/test_temporal_typing.py": 6.0273054010176565
+      },
+      "raw_sha256": "01405f1e493384f3d9e780fcf190f0f2020bf19cdd3f924d7abb3e46f37fd281"
+    },
+    {
+      "mode": "after",
+      "run": 2,
+      "cases": {
+        "tests/test_typing_compatibility.py": 52,
+        "tests/test_typing_guarantees.py": 17,
+        "tests/test_nested_expression_families.py": 80,
+        "tests/test_temporal_typing.py": 22
+      },
+      "reported_duration_sums": {
+        "tests/test_typing_compatibility.py": 2.4500271409997367,
+        "tests/test_typing_guarantees.py": 0.00024834999203449115,
+        "tests/test_nested_expression_families.py": 23.995907094977156,
+        "tests/test_temporal_typing.py": 6.101415930999792
+      },
+      "raw_sha256": "f0779910a088e7b7053e697bb450b15db417a2ef071fc87dcc16b0606705cf4a"
+    }
+  ],
+  "focused": [
+    {
+      "mode": "before",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_typing_guarantees.py::public_typing_contract_has_exact_diagnostic[select-all]",
+        "--json-output"
+      ],
+      "wall_seconds": 0.42885550999926636,
+      "test_duration": 0.25493526100035524
+    },
+    {
+      "mode": "before",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_typing_guarantees.py::public_typing_contract_has_exact_diagnostic[select-all]",
+        "--json-output"
+      ],
+      "wall_seconds": 0.4423489319960936,
+      "test_duration": 0.2638576320023276
+    },
+    {
+      "mode": "after",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_typing_guarantees.py::public_typing_contract_has_exact_diagnostic[select-all]",
+        "--json-output"
+      ],
+      "wall_seconds": 0.5311549800026114,
+      "test_duration": 0.35482931800652295
+    },
+    {
+      "mode": "after",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_typing_guarantees.py::public_typing_contract_has_exact_diagnostic[select-all]",
+        "--json-output"
+      ],
+      "wall_seconds": 0.5485575380007504,
+      "test_duration": 0.37090038300084416
+    }
+  ],
+  "coverage": {
+    "same_171_case_inventory_in_all_four_timing_runs": true,
+    "input_and_checker_sources_unchanged": true,
+    "dynamic_modules_unchanged": true,
+    "static_test_declarations_and_parameterization_preserved": true,
+    "normalized_assertions_preserved_except_explicit_mappings": [
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "provide_probe_checkout",
+        "aggregate_exit_assertion_moved": 0,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "lifecycle_report_requires_positive_control",
+        "aggregate_exit_assertion_moved": 0,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "unrelated_errors_cannot_certify_rejection",
+        "aggregate_exit_assertion_moved": 0,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "missing_probe_is_infrastructure_failure",
+        "aggregate_exit_assertion_moved": 0,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "readiness_report_retains_checker_limits",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "backend_identity_probe_rejects_cross_family_execution",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "positional_probe_rejects_ninth_projection",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "named_probe_preserves_nine_field_result",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "join_probe_retains_nullable_right_model",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "raw_probe_rejects_consumption_time_validation_override",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "full_report_certifies_supported_ty_contracts",
+        "aggregate_exit_assertion_moved": 0,
+        "hardcoded_completeness_assertion_strengthened": 1
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "report_identifies_environment_and_rendered_sources",
+        "aggregate_exit_assertion_moved": 0,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "ty_probe_uses_declared_configuration",
+        "aggregate_exit_assertion_moved": 0,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "defaulted_fk_probe_preserves_target",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "row_constructor_requires_valid_pending_control",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "explicit_batch_contract_requires_clean_control",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "read_helper_contract_requires_clean_control",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "comparison_or_freezing_requires_clean_control",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "query_source_contract_requires_clean_control",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "single_insert_contract_requires_clean_control",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_compatibility.py",
+        "function": "assessment_cli_has_no_checker_selection",
+        "aggregate_exit_assertion_moved": 0,
+        "hardcoded_completeness_assertion_strengthened": 0
+      },
+      {
+        "file": "tests/test_typing_guarantees.py",
+        "function": "public_typing_contract_has_exact_diagnostic",
+        "aggregate_exit_assertion_moved": 1,
+        "hardcoded_completeness_assertion_strengthened": 0
+      }
+    ]
+  },
+  "mean_before_wall_seconds": 46.793915410999034,
+  "mean_after_wall_seconds": 32.34204135999971,
+  "performance_scope": "Only the identical 171-case typing command; not a full-suite speedup estimate. Nonexclusive host, two sequential before then two after runs, not interleaved.",
+  "observed_mean_wall_reduction_fraction": 0.3088408807868719,
+  "full_validation": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 389.2144172890039,
+      "tmpdir": "/dev/shm/sqt-sFGNwG",
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "directory": false,
+          "bytes": 0
+        }
+      ],
+      "passed": 4173,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "raw_sha256": "19c47f4f8dbb00c2a2ed3723cda5aafead839724daf8909b72c50e286c14a676"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 399.0625466260026,
+      "tmpdir": "/dev/shm/sqt-sFGNwG",
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "directory": false,
+          "bytes": 0
+        }
+      ],
+      "passed": 4173,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "raw_sha256": "d8b91ed4b6c9c6e626b1852dccc2ad5331118dd7c7b24736f6a602a50329bd48"
+    }
+  ],
+  "full_sources": {
+    "base_revision": "74c4216032e55bfbfb45cab551926b1b96388179",
+    "sha256": {
+      "tests/test_typing_compatibility.py": "a6c3b81e142d7460caca8ad22c6d1b25d13d45e70502ff4f27e4863fa21f63e0",
+      "tests/test_typing_guarantees.py": "424e620f777bdf19ae36950a14cd1caf57cb37fa8d3d1d59e310356fe491fb6f",
+      "tests/typing_assessment.py": "6303d5ba4e910f41a9acc9d55bfbbf23ee1ad70de9bdb09b94c90fc561a9e0d5",
+      "tests/test_typing_assessment.py": "0a8601bf87820d0e0bfb476f8abca58bcb255273f80860c27f33bfc1b5a506e3"
+    }
+  },
+  "full_inventory_equal": true,
+  "full_root_removed_between_runs": false,
+  "full_sqlite": "3.53.1",
+  "full_mariadb": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+  "github_actions": "Disabled by maintainer; local validation only.",
+  "local_evidence_directory": "/home/crpier/.cache/sq-typing-19X8N5",
+  "evidence_sha256": {
+    "before-1.json": "91cc94541f0c4840578e7b199806de0dbe01bf38a38c4d71076bf2e3e87631ff",
+    "before-2.json": "33a108cb2ba054e2be2fabfa418e1b1288514b4c4b41e43c5c249d2da79cb0f9",
+    "before-records.json": "6555299919d963cde04f88a6de89cbc56427fdfa03e5868c60d2682fd2b69ddc",
+    "before-source.json": "137189cbc7e80d81f2f1bdcd056f0dae8e17268c9951a4e25407ee96ddac4f5f",
+    "red-lookup.json": "696414cfcb03ec72e2356be762cd6c096bf5bdab3a574a7a6a7c061bd6f51eec",
+    "red-missing.json": "fe875330eb69ca12a63d2323ae6ebb382a35ddbdef6467154853c13438d82f6d",
+    "red-duplicate.json": "00d23f3f696ae2fa91b7dbf110939fbbdb82a85e34353a02662b9353e0820cb3",
+    "red-isolation.json": "683e537d63dd38129d988d83e2753010bf0822772904259fa0645a07014c038d",
+    "red-attribution.json": "b17307c4f4517e3db413f3b84680cdf7a049ce2fe5a29d7935fcce5dbe1c3512",
+    "red-infrastructure.json": "e83263165f413aa9af6e733460c0477fc304a504f1519e3b620d8a4cffc5174c",
+    "red-shared-fixture.json": "0cc45a3b0dcb1f69e1070b5bcd1f89cd42a2c3c03cea7348f942fe747f949556",
+    "static-first-green.json": "969a9172814d5387cc04f288209502c164239867a91524b50f6ab1406ff6a908",
+    "count-only-mutant.json": "cb25fbd0622f5521ae355bec903fba21d535cc82c4717c82bd194550708a93fe",
+    "red-completeness-mutant.json": "29b63c19b9a8e6779daa5aa89b68019ea543d4e2634ceac2965e71ff52007285",
+    "red-unmapped.json": "d149f45ae7e413953f2ea6fb7c1bdcc53db05931b9acdbcca0b0d89d116af64b",
+    "final-completeness-mutant.json": "733b3f0a6fbe7c4a4711122174cc3343164465edd698aef69845c86ca3c1a177",
+    "after-1.json": "01405f1e493384f3d9e780fcf190f0f2020bf19cdd3f924d7abb3e46f37fd281",
+    "after-2.json": "f0779910a088e7b7053e697bb450b15db417a2ef071fc87dcc16b0606705cf4a",
+    "after-records.json": "55870b694d6a751999c889fa8f2ca6922e8e2d8d8c70fa815823dd55c481ec09",
+    "after-source.json": "5530a8263d2687bcf35931f54fc2ad37aa3ee51567a86b9d8a34343d8c08a23d",
+    "focused-before-1.json": "83206957df4b4c56b817093715b5563c4bde624275eaf75a7a08e8be68cccdfc",
+    "focused-before-2.json": "42630bcc2afddc5d578fd776163aad76145684b04117f9ea5bd35400305a3a4c",
+    "focused-after-1.json": "993a7246fa87759a00594c88fa6f48fb09719d5562c9f3a59523bb87e058392b",
+    "focused-after-2.json": "7b661e2fd71f0c75939cbafbc891a9d9d05ced0b39035afdd88fd54ea3667616",
+    "focused-records.json": "1b634f1cd78e8032be5ed4468308082ff4ebef9e6caccb80f219e37d66da8546",
+    "static-forced-lazy.json": "7cbf08d73d2557ed500f52703fb037dda54649d47460e424f4b887d63451b627",
+    "full-source.json": "a4875d501e4e9d8def59d0a0d91e709efaa607cb7951fd10b222c0400ffbbad4",
+    "full-1.json": "19c47f4f8dbb00c2a2ed3723cda5aafead839724daf8909b72c50e286c14a676",
+    "full-records.json": "4b2c8241cb18da5b24e1a2e12ff055bd726a9e1be16d42b10e2497950d23b4fb",
+    "full-2.json": "d8b91ed4b6c9c6e626b1852dccc2ad5331118dd7c7b24736f6a602a50329bd48",
+    "coverage-audit.json": "52ff728f51c5d82295aa5a518ff053ce096579341c793ea25379c03a6b29a5be"
+  },
+  "validation_root_removed_after_measurement": true
+}
