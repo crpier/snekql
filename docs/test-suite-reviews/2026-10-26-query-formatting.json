@@ -1,0 +1,2951 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "issue": 571,
+  "scope": "Fourth bounded query-formatting oracle slice, not completion of #571",
+  "base": "65c553f3773935ee36c733cccb27edab421e98e3",
+  "raw_evidence_directory": "/home/crpier/.cache/sq571-format-3i2BJ2Md",
+  "approved_seams": [
+    "Public Query Builder construction/compile()",
+    "Public repr()/str()/inspect() explicitly approved by maintainer",
+    "Focused snektest selections"
+  ],
+  "not_claimed": [
+    "Product defect",
+    "Runtime speedup",
+    "Full forced-lazy suite run",
+    "Direct forced-lazy native/Core children",
+    "Remote Actions validation",
+    "Completion of #571"
+  ],
+  "coverage_audit": {
+    "base": "65c553f3773935ee36c733cccb27edab421e98e3",
+    "changed_existing_files": [
+      "tests/query/test_sql_repr.py"
+    ],
+    "model_class_ast_identical": true,
+    "contracts": [
+      {
+        "name": "repr_renders_parameterized_select_sql",
+        "decorators_identical": true,
+        "original_query_assignments_identical": true,
+        "original_assertions": [
+          "assert_eq(repr(query), f'<SelectModelQuery: {sql} | params=<redacted:{len(params)}>>')",
+          "assert_eq(params, (18,))"
+        ],
+        "independent_expected_assertions": [
+          {
+            "actual": "compiled.sql",
+            "expected": "SELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"age\" > ?)"
+          },
+          {
+            "actual": "compiled.params",
+            "expected": [
+              18
+            ]
+          },
+          {
+            "actual": "repr(query)",
+            "expected": "<SelectModelQuery: SELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"age\" > ?) | params=<redacted:1>>"
+          }
+        ],
+        "private_compilation_calls_before": 1,
+        "public_compilation_calls_after": 1,
+        "compiled_query_inputs_identical": true
+      },
+      {
+        "name": "explicit_inspection_includes_inlined_form",
+        "decorators_identical": true,
+        "original_query_assignments_identical": true,
+        "original_assertions": [
+          "assert_eq('-- parameterized (executes):' in rendered, True)",
+          "assert_eq('(\"email\" = ?)' in rendered, True)",
+          "assert_eq('-- inlined literals (approximate, not executed):' in rendered, True)",
+          "assert_eq('(\"email\" = \\'a@b.com\\')' in rendered, True)",
+          "assert_eq('(\"age\" > 18)' in rendered, True)"
+        ],
+        "independent_expected_assertions": [
+          {
+            "actual": "rendered",
+            "expected": "-- parameterized (executes):\nSELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"email\" = ?) AND (\"age\" > ?)\n-- params: ('a@b.com', 18)\n\n-- inlined literals (approximate, not executed):\nSELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"email\" = 'a@b.com') AND (\"age\" > 18)"
+          }
+        ],
+        "private_compilation_calls_before": 0,
+        "public_compilation_calls_after": 0,
+        "compiled_query_inputs_identical": true
+      },
+      {
+        "name": "composed_query_repr_reflects_final_state",
+        "decorators_identical": true,
+        "original_query_assignments_identical": true,
+        "original_assertions": [
+          "assert_eq('(\"age\" > ?)' in sql, True)",
+          "assert_eq('(\"email\" = ?)' in sql, True)",
+          "assert_eq(sql in repr(query), True)"
+        ],
+        "independent_expected_assertions": [
+          {
+            "actual": "compiled.sql",
+            "expected": "SELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"age\" > ?) AND (\"email\" = ?)"
+          },
+          {
+            "actual": "compiled.params",
+            "expected": [
+              18,
+              "a@b.com"
+            ]
+          },
+          {
+            "actual": "repr(query)",
+            "expected": "<SelectModelQuery: SELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"age\" > ?) AND (\"email\" = ?) | params=<redacted:2>>"
+          }
+        ],
+        "private_compilation_calls_before": 1,
+        "public_compilation_calls_after": 1,
+        "compiled_query_inputs_identical": true
+      },
+      {
+        "name": "bare_select_repr_renders_sql",
+        "decorators_identical": true,
+        "original_query_assignments_identical": true,
+        "original_assertions": [
+          "assert_eq(rendered, repr(select(User)))",
+          "assert_eq(str(select(User)), str(select(User)))",
+          "assert_eq('SELECT' in rendered, True)"
+        ],
+        "independent_expected_assertions": [
+          {
+            "actual": "repr(query)",
+            "expected": "<SelectModelQuery: SELECT \"id\", \"email\", \"age\" FROM \"user\" | params=<redacted:0>>"
+          },
+          {
+            "actual": "str(query)",
+            "expected": "-- parameterized (executes):\nSELECT \"id\", \"email\", \"age\" FROM \"user\"\n-- params: <redacted:0>"
+          },
+          {
+            "actual": "query.inspect()",
+            "expected": "-- parameterized (executes):\nSELECT \"id\", \"email\", \"age\" FROM \"user\"\n-- params: <redacted:0>"
+          }
+        ],
+        "private_compilation_calls_before": 0,
+        "public_compilation_calls_after": 0,
+        "compiled_query_inputs_identical": true
+      },
+      {
+        "name": "update_and_delete_repr_render_write_sql",
+        "decorators_identical": true,
+        "original_query_assignments_identical": true,
+        "original_assertions": [
+          "assert_eq(repr(update_query), f'<UpdateQuery: {update_sql} | params=<redacted:{len(update_params)}>>')",
+          "assert_eq(repr(delete_query), f'<DeleteQuery: {delete_sql} | params=<redacted:{len(delete_params)}>>')"
+        ],
+        "independent_expected_assertions": [
+          {
+            "actual": "compiled_update.sql",
+            "expected": "UPDATE \"user\" SET \"age\" = ? WHERE (\"id\" = ?)"
+          },
+          {
+            "actual": "compiled_update.params",
+            "expected": [
+              21,
+              1
+            ]
+          },
+          {
+            "actual": "repr(update_query)",
+            "expected": "<UpdateQuery: UPDATE \"user\" SET \"age\" = ? WHERE (\"id\" = ?) | params=<redacted:2>>"
+          },
+          {
+            "actual": "compiled_delete.sql",
+            "expected": "DELETE FROM \"user\" WHERE (\"id\" = ?)"
+          },
+          {
+            "actual": "compiled_delete.params",
+            "expected": [
+              1
+            ]
+          },
+          {
+            "actual": "repr(delete_query)",
+            "expected": "<DeleteQuery: DELETE FROM \"user\" WHERE (\"id\" = ?) | params=<redacted:1>>"
+          }
+        ],
+        "private_compilation_calls_before": 2,
+        "public_compilation_calls_after": 2,
+        "compiled_query_inputs_identical": true
+      },
+      {
+        "name": "insert_repr_renders_values_sql",
+        "decorators_identical": true,
+        "original_query_assignments_identical": true,
+        "original_assertions": [
+          "assert_eq(repr(insert_query), f'<InsertQuery: {sql} | params=<redacted:{len(params)}>>')"
+        ],
+        "independent_expected_assertions": [
+          {
+            "actual": "compiled.sql",
+            "expected": "INSERT INTO \"user\" (\"email\", \"age\") VALUES (?, ?)"
+          },
+          {
+            "actual": "compiled.params",
+            "expected": [
+              "a@b.com",
+              18
+            ]
+          },
+          {
+            "actual": "repr(insert_query)",
+            "expected": "<InsertQuery: INSERT INTO \"user\" (\"email\", \"age\") VALUES (?, ?) | params=<redacted:2>>"
+          }
+        ],
+        "private_compilation_calls_before": 1,
+        "public_compilation_calls_after": 1,
+        "compiled_query_inputs_identical": true
+      }
+    ],
+    "all_new_expected_values_are_literal_only": true,
+    "all_original_explicit_inspection_substrings_implied": [
+      "-- parameterized (executes):",
+      "(\"email\" = ?)",
+      "-- inlined literals (approximate, not executed):",
+      "(\"email\" = 'a@b.com')",
+      "(\"age\" > 18)"
+    ],
+    "bare_case_mapping": {
+      "before": "Two repr calls and two str calls on equivalent fresh queries check consistency plus SELECT presence",
+      "after": "Two fresh queries each checked against independent repr/str/default-inspect literals; retains two repr and two str evaluations and adds two default inspections"
+    },
+    "original_explicit_compilation_calls": 5,
+    "retained_public_compilation_calls": 5,
+    "sdk_tracked_files_unchanged": 117,
+    "all_other_preexisting_tracked_files_unchanged": true,
+    "changed_source_sha256": {
+      "tests/query/test_sql_repr.py": "7faf5b1b99b04101a88a314c72f500e8567d8f055c91f016e54bf25e63d96221"
+    },
+    "group_inventory": {
+      "before": 50,
+      "after": 50,
+      "names_and_markers_identical": true
+    },
+    "query_inventory": {
+      "before": 673,
+      "after": 673,
+      "names_and_markers_identical": true
+    },
+    "normal_and_lazy_query_inventories_identical": true
+  },
+  "runs": [
+    {
+      "label": "before-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py",
+        "tests/query/test_compiled_query.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2589475419954397,
+      "revision": "65c553f3773935ee36c733cccb27edab421e98e3",
+      "tmpdir": "/tmp/sq571-wk4aagrv",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-wk4aagrv"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 50,
+      "passed": 50,
+      "failed": [],
+      "totals": {
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "after-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py",
+        "tests/query/test_compiled_query.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2652370480063837,
+      "revision": "65c553f3773935ee36c733cccb27edab421e98e3",
+      "tmpdir": "/tmp/sq571-x9moi3xr",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-x9moi3xr"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 50,
+      "passed": 50,
+      "failed": [],
+      "totals": {
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "before-query",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.0404853359941626,
+      "revision": "65c553f3773935ee36c733cccb27edab421e98e3",
+      "tmpdir": "/tmp/sq571-fjql5461",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-fjql5461"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 673,
+      "passed": 673,
+      "failed": [],
+      "totals": {
+        "passed": 673,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "after-query",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.144591827003751,
+      "revision": "65c553f3773935ee36c733cccb27edab421e98e3",
+      "tmpdir": "/tmp/sq571-hubosvcm",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-hubosvcm"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 673,
+      "passed": 673,
+      "failed": [],
+      "totals": {
+        "passed": 673,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "lazy-query",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.0059279069973854,
+      "revision": "65c553f3773935ee36c733cccb27edab421e98e3",
+      "tmpdir": "/tmp/sq571-uic6rr1z",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-uic6rr1z"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 673,
+      "passed": 673,
+      "failed": [],
+      "totals": {
+        "passed": 673,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    }
+  ],
+  "red_green_tracers": {
+    "bare": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::bare_select_repr_renders_sql",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/bare",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/query.py",
+          "case": "bare_select_repr_renders_sql",
+          "old": "return f\"<{name}: {compiled.sql} | params={format_bound_params(compiled.params, 'redacted')}>\"",
+          "new": "return f\"<{name}: SELECT unavailable | params=<redacted:0>>\" if not compiled.params else f\"<{name}: {compiled.sql} | params={format_bound_params(compiled.params, 'redacted')}>\""
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::bare_select_repr_renders_sql",
+            "duration": 0.010691217001294717,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'<SelectModelQuery: SELECT unavailable | params=<redacted:0>>' != '<SelectModelQuery: SELECT \"id\", \"email\", \"age\" FROM \"user\" | params=<redacted:0>>'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::bare_select_repr_renders_sql",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/bare",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::bare_select_repr_renders_sql",
+            "duration": 0.010160884994547814,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "select": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::repr_renders_parameterized_select_sql",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/select",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "case": "repr_renders_parameterized_select_sql",
+          "old": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}\"",
+          "new": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}_wrong\""
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::repr_renders_parameterized_select_sql",
+            "duration": 0.011865590000525117,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'SELECT \"id\", \"email\", \"age\" FROM \"user\"_wrong WHERE (\"age\" > ?)' != 'SELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"age\" > ?)'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::repr_renders_parameterized_select_sql",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/select",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::repr_renders_parameterized_select_sql",
+            "duration": 0.010642828987329267,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "values": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::explicit_inspection_includes_inlined_form",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/values",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/query.py",
+          "case": "explicit_inspection_includes_inlined_form",
+          "old": "f\"-- params: {inspected.params!r}\\n\"",
+          "new": "\"-- params: ()\\n\""
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::explicit_inspection_includes_inlined_form",
+            "duration": 0.013091225002426654,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'-- parameterized (executes):\\nSELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"email\" = ?) AND (\"age\" > ?)\\n-- params: ()\\n\\n-- inlined literals (approximate, not executed):\\nSELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"email\" = \\'a@b.com\\') AND (\"age\" > 18)' != '-- parameterized (executes):\\nSELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"email\" = ?) AND (\"age\" > ?)\\n-- params: (\\'a@b.com\\', 18)\\n\\n-- inlined literals (approximate, not executed):\\nSELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"email\" = \\'a@b.com\\') AND (\"age\" > 18)'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::explicit_inspection_includes_inlined_form",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/values",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::explicit_inspection_includes_inlined_form",
+            "duration": 0.01056280400371179,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "composed": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::composed_query_repr_reflects_final_state",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/composed",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "case": "composed_query_repr_reflects_final_state",
+          "old": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}\"",
+          "new": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}_wrong\""
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::composed_query_repr_reflects_final_state",
+            "duration": 0.011116177003714256,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'SELECT \"id\", \"email\", \"age\" FROM \"user\"_wrong WHERE (\"age\" > ?) AND (\"email\" = ?)' != 'SELECT \"id\", \"email\", \"age\" FROM \"user\" WHERE (\"age\" > ?) AND (\"email\" = ?)'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::composed_query_repr_reflects_final_state",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/composed",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::composed_query_repr_reflects_final_state",
+            "duration": 0.010955352001474239,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "write": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::update_and_delete_repr_render_write_sql",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/write",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "case": "update_and_delete_repr_render_write_sql",
+          "old": "return _compile_update_sql(state, dialect)",
+          "new": "sql, params = _compile_update_sql(state, dialect)\n        return sql, tuple(reversed(params))"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::update_and_delete_repr_render_write_sql",
+            "duration": 0.010058406012831256,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "(1, 21) != (21, 1)"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::update_and_delete_repr_render_write_sql",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/write",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::update_and_delete_repr_render_write_sql",
+            "duration": 0.00996094300353434,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "insert": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::insert_repr_renders_values_sql",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/insert",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "case": "insert_repr_renders_values_sql",
+          "old": "return _compile_insert_sql(state, dialect)",
+          "new": "sql, params = _compile_insert_sql(state, dialect)\n        return sql, tuple(reversed(params))"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::insert_repr_renders_values_sql",
+            "duration": 0.00873490200319793,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "(18, 'a@b.com') != ('a@b.com', 18)"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_sql_repr.py::insert_repr_renders_values_sql",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-format-3i2BJ2Md/tracers/insert",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_sql_repr.py::insert_repr_renders_values_sql",
+            "duration": 0.00812678100191988,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ]
+  },
+  "calibrations": [
+    {
+      "snapshot": "faults/before-bare-repr",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2946793239971157,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "return f\"<{name}: {compiled.sql} | params={format_bound_params(compiled.params, 'redacted')}>\"",
+        "new": "return f\"<{name}: SELECT unavailable | params=<redacted:0>>\" if not compiled.params else f\"<{name}: {compiled.sql} | params={format_bound_params(compiled.params, 'redacted')}>\"",
+        "sha256": "149868135103dfe39e12af73ebf3caaa8b653a69a55f5d3c958146bd117bfde6"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-bare-repr",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2858203420037171,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-bare-str",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28895583799749147,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "f\"{compiled.sql}\\n\"",
+        "new": "f\"{compiled.sql if compiled.params else 'SELECT unavailable'}\\n\"",
+        "sha256": "af2567efe1a141b4c06b6a2311d3cabcf6d4183521137e72a686a8ab33c0b4b2"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-bare-str",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2841679220000515,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-common-select",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.29415558600157965,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}\"",
+        "new": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}_wrong\"",
+        "sha256": "d42068449d0c812fc11db3cc98e60f08de19166e8b70ca4b9edf50b7bd85a2dd"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-common-select",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2830160230078036,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-explicit-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28483697299088817,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "f\"-- params: {inspected.params!r}\\n\"",
+        "new": "\"-- params: ()\\n\"",
+        "sha256": "562a7f5c6cd52848c68bbc2fd71178496166921b94e42ceffb45464053a01063"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-explicit-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28938183600257616,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-explicit-junk",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2806972649996169,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "f\"{inspected.inlined_sql}\"",
+        "new": "f\"{inspected.inlined_sql} BROKEN\"",
+        "sha256": "57a8208cda7d56e371aeb34549a5ca14058f8f14ecc78449b6693fa8fd1b9214"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-explicit-junk",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.27776143500523176,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-common-update-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.29050161500344984,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return _compile_update_sql(state, dialect)",
+        "new": "sql, params = _compile_update_sql(state, dialect)\n        return sql, tuple(reversed(params))",
+        "sha256": "a8ce37f738f854f7120f4ae90b00755d97c9b2a79b757dd87d7648121c8a37b5"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-common-update-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.286295408004662,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-common-insert-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2829203739966033,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return _compile_insert_sql(state, dialect)",
+        "new": "sql, params = _compile_insert_sql(state, dialect)\n        return sql, tuple(reversed(params))",
+        "sha256": "9998ca709ae46c0cffd4b429a340edc11da4c8d36874e78201b68ed137551069"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-common-insert-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2865920659969561,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-redaction-count",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.31480125201051123,
+      "mutation": {
+        "file": "snekql/_telemetry.py",
+        "old": "return f\"<redacted:{len(params)}>\"",
+        "new": "return f\"<redacted:{len(params) + 1}>\"",
+        "sha256": "d4de106c08f510fd7a050636b7f22bfed1e496cf90c867cbdd1eef6a722bb82c"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 3,
+        "failed": 3,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::insert_repr_renders_values_sql",
+        "tests/query/test_sql_repr.py::repr_renders_parameterized_select_sql",
+        "tests/query/test_sql_repr.py::update_and_delete_repr_render_write_sql"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 3
+    },
+    {
+      "snapshot": "faults/before-redaction-count",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.29850544400687795,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-fallback-secret",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py::compilation_failure_does_not_render_exception",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.31007396600034554,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "except Exception:\n            return f\"<{name} inspection unavailable>\"",
+        "new": "except Exception as error:\n            return f\"<{name} inspection unavailable: {error}>\"",
+        "sha256": "0a49cb4d3d7562695a18b8f1719d4ee666d389b1c9fcb4b506503b36f40ab216"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_safe_inspection.py::compilation_failure_does_not_render_exception"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-fallback-secret",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py::compilation_failure_does_not_render_exception",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3073113430000376,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 7,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 7
+    },
+    {
+      "snapshot": "faults/before-swallowed-explicit-error",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py::explicit_inspection_keeps_compilation_errors",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2934633330005454,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "        inspected = inspect_query_sql(self)",
+        "new": "        try:\n            inspected = inspect_query_sql(self)\n        except Exception:\n            return \"<inspection unavailable>\"",
+        "sha256": "b433d5ba95f84492c6860a0afd849e190668aa31f538dcd1021ebb91c3a50bd4"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_safe_inspection.py::explicit_inspection_keeps_compilation_errors"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/before-swallowed-explicit-error",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py::explicit_inspection_keeps_compilation_errors",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2932342330022948,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 7,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 7
+    },
+    {
+      "snapshot": "faults/after-bare-repr",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2644697040086612,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "return f\"<{name}: {compiled.sql} | params={format_bound_params(compiled.params, 'redacted')}>\"",
+        "new": "return f\"<{name}: SELECT unavailable | params=<redacted:0>>\" if not compiled.params else f\"<{name}: {compiled.sql} | params={format_bound_params(compiled.params, 'redacted')}>\"",
+        "sha256": "149868135103dfe39e12af73ebf3caaa8b653a69a55f5d3c958146bd117bfde6"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 5,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::bare_select_repr_renders_sql"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 5
+    },
+    {
+      "snapshot": "faults/after-bare-repr",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.25855456899444107,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-bare-str",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.269314568999107,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "f\"{compiled.sql}\\n\"",
+        "new": "f\"{compiled.sql if compiled.params else 'SELECT unavailable'}\\n\"",
+        "sha256": "af2567efe1a141b4c06b6a2311d3cabcf6d4183521137e72a686a8ab33c0b4b2"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 5,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::bare_select_repr_renders_sql"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 5
+    },
+    {
+      "snapshot": "faults/after-bare-str",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2734229899942875,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-common-select",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2931803910032613,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}\"",
+        "new": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}_wrong\"",
+        "sha256": "d42068449d0c812fc11db3cc98e60f08de19166e8b70ca4b9edf50b7bd85a2dd"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 2,
+        "failed": 4,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::bare_select_repr_renders_sql",
+        "tests/query/test_sql_repr.py::composed_query_repr_reflects_final_state",
+        "tests/query/test_sql_repr.py::explicit_inspection_includes_inlined_form",
+        "tests/query/test_sql_repr.py::repr_renders_parameterized_select_sql"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 2
+    },
+    {
+      "snapshot": "faults/after-common-select",
+      "label": "focused-healthy",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py::insert_repr_renders_values_sql",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2686099010024918,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}\"",
+        "new": "f\"{select_keyword} {quoted_columns} FROM {quoted_table}_wrong\"",
+        "sha256": "d42068449d0c812fc11db3cc98e60f08de19166e8b70ca4b9edf50b7bd85a2dd"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 1
+    },
+    {
+      "snapshot": "faults/after-common-select",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.26998981600627303,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-explicit-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.26192555399029516,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "f\"-- params: {inspected.params!r}\\n\"",
+        "new": "\"-- params: ()\\n\"",
+        "sha256": "562a7f5c6cd52848c68bbc2fd71178496166921b94e42ceffb45464053a01063"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 5,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::explicit_inspection_includes_inlined_form"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 5
+    },
+    {
+      "snapshot": "faults/after-explicit-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.26387159099977,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-explicit-junk",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2702780260005966,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "f\"{inspected.inlined_sql}\"",
+        "new": "f\"{inspected.inlined_sql} BROKEN\"",
+        "sha256": "57a8208cda7d56e371aeb34549a5ca14058f8f14ecc78449b6693fa8fd1b9214"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 5,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::explicit_inspection_includes_inlined_form"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 5
+    },
+    {
+      "snapshot": "faults/after-explicit-junk",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2649534859956475,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-common-update-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.26888911800051574,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return _compile_update_sql(state, dialect)",
+        "new": "sql, params = _compile_update_sql(state, dialect)\n        return sql, tuple(reversed(params))",
+        "sha256": "a8ce37f738f854f7120f4ae90b00755d97c9b2a79b757dd87d7648121c8a37b5"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 5,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::update_and_delete_repr_render_write_sql"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 5
+    },
+    {
+      "snapshot": "faults/after-common-update-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.27387822298624087,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-common-insert-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.26454761500644963,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return _compile_insert_sql(state, dialect)",
+        "new": "sql, params = _compile_insert_sql(state, dialect)\n        return sql, tuple(reversed(params))",
+        "sha256": "9998ca709ae46c0cffd4b429a340edc11da4c8d36874e78201b68ed137551069"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 5,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::insert_repr_renders_values_sql"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 5
+    },
+    {
+      "snapshot": "faults/after-common-insert-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.27126171300187707,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-redaction-count",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.27388210299250204,
+      "mutation": {
+        "file": "snekql/_telemetry.py",
+        "old": "return f\"<redacted:{len(params)}>\"",
+        "new": "return f\"<redacted:{len(params) + 1}>\"",
+        "sha256": "d4de106c08f510fd7a050636b7f22bfed1e496cf90c867cbdd1eef6a722bb82c"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 1,
+        "failed": 5,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_sql_repr.py::bare_select_repr_renders_sql",
+        "tests/query/test_sql_repr.py::composed_query_repr_reflects_final_state",
+        "tests/query/test_sql_repr.py::insert_repr_renders_values_sql",
+        "tests/query/test_sql_repr.py::repr_renders_parameterized_select_sql",
+        "tests/query/test_sql_repr.py::update_and_delete_repr_render_write_sql"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 1
+    },
+    {
+      "snapshot": "faults/after-redaction-count",
+      "label": "focused-healthy",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py::explicit_inspection_includes_inlined_form",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.26457049799500965,
+      "mutation": {
+        "file": "snekql/_telemetry.py",
+        "old": "return f\"<redacted:{len(params)}>\"",
+        "new": "return f\"<redacted:{len(params) + 1}>\"",
+        "sha256": "d4de106c08f510fd7a050636b7f22bfed1e496cf90c867cbdd1eef6a722bb82c"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 1
+    },
+    {
+      "snapshot": "faults/after-redaction-count",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.25958995400287677,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-fallback-secret",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py::compilation_failure_does_not_render_exception",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.27740002299833577,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "except Exception:\n            return f\"<{name} inspection unavailable>\"",
+        "new": "except Exception as error:\n            return f\"<{name} inspection unavailable: {error}>\"",
+        "sha256": "0a49cb4d3d7562695a18b8f1719d4ee666d389b1c9fcb4b506503b36f40ab216"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_safe_inspection.py::compilation_failure_does_not_render_exception"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-fallback-secret",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py::compilation_failure_does_not_render_exception",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2707696909928927,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 7,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 7
+    },
+    {
+      "snapshot": "faults/after-swallowed-explicit-error",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py::explicit_inspection_keeps_compilation_errors",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2896076560136862,
+      "mutation": {
+        "file": "snekql/query.py",
+        "old": "        inspected = inspect_query_sql(self)",
+        "new": "        try:\n            inspected = inspect_query_sql(self)\n        except Exception:\n            return \"<inspection unavailable>\"",
+        "sha256": "b433d5ba95f84492c6860a0afd849e190668aa31f538dcd1021ebb91c3a50bd4"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 6,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_safe_inspection.py::explicit_inspection_keeps_compilation_errors"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 6
+    },
+    {
+      "snapshot": "faults/after-swallowed-explicit-error",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py::explicit_inspection_keeps_compilation_errors",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2837395060050767,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 7,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 7
+    },
+    {
+      "snapshot": "faults/after-empty-path",
+      "label": "no-binaries",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_sql_repr.py",
+        "tests/query/test_safe_inspection.py",
+        "tests/query/test_compiled_query.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3446763620013371,
+      "mutation": null,
+      "empty_path": true,
+      "totals": {
+        "passed": 50,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 50
+    }
+  ],
+  "full_normal": {
+    "label": "full-normal",
+    "command": [
+      "uv",
+      "run",
+      "snektest",
+      "tests",
+      "--json-output"
+    ],
+    "returncode": 0,
+    "wall_seconds": 399.81479547200433,
+    "totals": {
+      "passed": 4267,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": []
+    },
+    "signals": {
+      "SIGINT": "<built-in function default_int_handler>",
+      "SIGTERM": "0",
+      "SIGQUIT": "0"
+    },
+    "tmpdir": "/dev/shm/sqa-y4ilkmkk",
+    "failed_tests": [],
+    "remaining": [
+      {
+        "path": "uv-d1196c17db265703.lock",
+        "size": 0,
+        "directory": false
+      }
+    ],
+    "source_unchanged": true
+  },
+  "full_inventory_comparison": {
+    "comparison_revision": "ec354abcc5c288744c71c77ce52a5686fe2eb9d2 (validated #582, identical merged tree at base)",
+    "cases": 4267,
+    "all_case_names_and_markers_identical": true,
+    "fresh_run_used": true
+  },
+  "full_cleanup": {
+    "owned_tmpdir": "/dev/shm/sqa-y4ilkmkk",
+    "user_processes_checked": 151,
+    "live_owned_processes": [],
+    "unreadable_environments": [
+      {
+        "pid": 1582,
+        "cmdline": "/usr/lib/systemd/systemd --user ",
+        "started_before_validation": true
+      },
+      {
+        "pid": 1590,
+        "cmdline": "(sd-pam) ",
+        "started_before_validation": true
+      },
+      {
+        "pid": 24690,
+        "cmdline": "/opt/1Password/1Password-BrowserSupport chrome-extension://aeblfdkhhhdcdjpifhhbdiojplfjncoa/ ",
+        "started_before_validation": true
+      }
+    ],
+    "environment_audit_limit": "Inaccessible environments are recorded; every such process predates validation and its readable command line contains no owned root.",
+    "remaining": [
+      {
+        "path": "uv-d1196c17db265703.lock",
+        "size": 0,
+        "directory": false
+      }
+    ],
+    "reusable_mariadb_data": "Caller-owned .snektest/mariadb-data was left untouched.",
+    "removed": true
+  },
+  "static_checks": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "ty",
+        "check"
+      ],
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": "",
+      "wall_seconds": 0.6450312409870094
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": "",
+      "wall_seconds": 0.02015546399343293
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "returncode": 0,
+      "stdout": "634 files already formatted\n",
+      "stderr": "",
+      "wall_seconds": 0.01903231100004632
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "scripts/generate_query_overloads.py",
+        "--check"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.046046547999139875
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.0026655840047169477
+    }
+  ],
+  "environment": {
+    "python": "3.15.0",
+    "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+    "uv": "uv 0.13.4 (x86_64-unknown-linux-gnu)",
+    "host_exclusive": false,
+    "session_suites_parallel": false
+  },
+  "raw_artifacts": {
+    "after-group-record.json": {
+      "sha256": "692d033d639e23ec399c390e3497642adb8cc6bba647f6bf26296fe3bb5c70a9",
+      "bytes": 953
+    },
+    "after-group.json": {
+      "sha256": "550ce158a3fac335e65167a7c9fc119e060463dfbc3fc560d35bd2db31ef28bd",
+      "bytes": 8516
+    },
+    "after-group.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "after-query-record.json": {
+      "sha256": "4116bc09a6a4cea73a3a4cdc5e12b1f91749fd958818c3faedcb42975bdcdaa6",
+      "bytes": 853
+    },
+    "after-query.json": {
+      "sha256": "49c6c898f21b128a45eda50742d296b3fafe3c23d9fc2b2e047b54b9b3290bd3",
+      "bytes": 117229
+    },
+    "after-query.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "audit.py": {
+      "sha256": "1391a7519027194ca7f3fa757c01ecbb256d650808231fc6adbf35d2d5ad5773",
+      "bytes": 4830
+    },
+    "bare-tracer.json": {
+      "sha256": "7ecf860963a89347ccf4c362b0063792cfc09eef2a73c314436709d13858da4b",
+      "bytes": 2189
+    },
+    "before-group-record.json": {
+      "sha256": "c580ab4307c2301893125aa77ab62050582635dc90bc6ea11c9b35a026110626",
+      "bytes": 954
+    },
+    "before-group.json": {
+      "sha256": "6bca9c6596e6877e628aee83eee4a184a96f36c4ab511dcb6d0a1b2bc8b106c7",
+      "bytes": 8522
+    },
+    "before-group.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "before-query-record.json": {
+      "sha256": "ee75248d5e0aa537ac36ec17d042f4630f777ecf64864f23e4dcaf097282fd4b",
+      "bytes": 855
+    },
+    "before-query.json": {
+      "sha256": "eafa944b9eba74ee18853ba9df5b0f18e47f24e95c03e189767446cdce7353bb",
+      "bytes": 117274
+    },
+    "before-query.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "before-source.json": {
+      "sha256": "1c49c60bdb465c8407ff2d0a0f64223543eeb6230740e7cd99aaf227162a8c1b",
+      "bytes": 229559
+    },
+    "before-test_sql_repr.py": {
+      "sha256": "e0e8f9cc37d52fe217f70dbb3c4b6bed3f44c895a901705ab07b6e2d4dd67462",
+      "bytes": 3848
+    },
+    "calibrate.py": {
+      "sha256": "9dcb5fcd835b2c8a622b039dc740f41f1c10bb6c95f6add598d84daf4ba0fb5a",
+      "bytes": 4326
+    },
+    "cleanup-full.py": {
+      "sha256": "bf8cc5fd026b4aa6eaa765b08f1b54ed563c36f8a449ecfef8ab6c19a6443f18",
+      "bytes": 2301
+    },
+    "composed-tracer.json": {
+      "sha256": "d8d7aa05424bcf051e9851395a1aa5b1ca4c003194d3168287e718548cf0b13d",
+      "bytes": 2143
+    },
+    "coverage-audit.json": {
+      "sha256": "6096fe258acc18add03ec2f6173d3ab8a20612bb802d806390639f8b58a9180e",
+      "bytes": 7945
+    },
+    "fault-records.json": {
+      "sha256": "01eef37ada4c9e90f42931d924d05dae909828fdcd0f142db9e951c6062fda03",
+      "bytes": 66901
+    },
+    "faults/after-bare-repr/mutant.json": {
+      "sha256": "d206d570b6eea1d7f28997d6f58b743a02d68c26362e01a0d56b4575be4b7afc",
+      "bytes": 1294
+    },
+    "faults/after-bare-repr/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-bare-repr/restored.json": {
+      "sha256": "3f832d865e64500dcc69aba35fb705ab98c306aee9dcc8af3f0121c2e4aaa8b4",
+      "bytes": 1079
+    },
+    "faults/after-bare-repr/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-bare-str/mutant.json": {
+      "sha256": "f9d40c59bc25a066c7fd464aceeb5dd8cd6e9b8e40cfb2236445467682abc757",
+      "bytes": 1323
+    },
+    "faults/after-bare-str/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-bare-str/restored.json": {
+      "sha256": "dbc015da2894002333369728b0557062b7378752c39f18727c9738bfa99e132d",
+      "bytes": 1078
+    },
+    "faults/after-bare-str/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-common-insert-params/mutant.json": {
+      "sha256": "7894e47490dde14fb079edcd846df9740c441293d4f4d937999254ee83246165",
+      "bytes": 1170
+    },
+    "faults/after-common-insert-params/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-common-insert-params/restored.json": {
+      "sha256": "d9c3fcac348c5750b5319b1b30c4cd0480afb259d7b600e0bbb4f71e539b16c8",
+      "bytes": 1078
+    },
+    "faults/after-common-insert-params/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-common-select/focused-healthy.json": {
+      "sha256": "51195c092249b2ce021ab49bcf00b66664382e7d6ab1346ada7c51bc2847e432",
+      "bytes": 293
+    },
+    "faults/after-common-select/focused-healthy.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-common-select/mutant.json": {
+      "sha256": "c8fc6ef614b0a8923bfa97443012e52f82f9a6e85c50398698cbee94f42289d3",
+      "bytes": 2474
+    },
+    "faults/after-common-select/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-common-select/restored.json": {
+      "sha256": "e39d8666e8cfc8d4fc368a0125db0cce404ff4a4dcabc33c11def362bf734709",
+      "bytes": 1078
+    },
+    "faults/after-common-select/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-common-update-params/mutant.json": {
+      "sha256": "304a2911f91d7a1c79d4c991d2ccee1d1c08ac089319f2d88c86067779ae72a6",
+      "bytes": 1154
+    },
+    "faults/after-common-update-params/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-common-update-params/restored.json": {
+      "sha256": "cf7e0836782282116cf557a757c7e7d6c99abb945f8433c1f88e1cb6b528f0ae",
+      "bytes": 1078
+    },
+    "faults/after-common-update-params/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-empty-path/no-binaries.json": {
+      "sha256": "4a1db3598b317fb59d5706b6a57e6df81fb4f288c92b7488b4e0e767070675ef",
+      "bytes": 8517
+    },
+    "faults/after-empty-path/no-binaries.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-explicit-junk/mutant.json": {
+      "sha256": "c450dace1dd44f887ccc5fdc575609b7fca921c12631f114eb1b8dd4a623f655",
+      "bytes": 1766
+    },
+    "faults/after-explicit-junk/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-explicit-junk/restored.json": {
+      "sha256": "5d56ad6f46a970a5161c67a1983784953093b6e16f81e809a08baed473137dd4",
+      "bytes": 1078
+    },
+    "faults/after-explicit-junk/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-explicit-params/mutant.json": {
+      "sha256": "76d2634f8450df7c4195d542624e0a4d20f3f8c55f448e4c03466ce72465907a",
+      "bytes": 1743
+    },
+    "faults/after-explicit-params/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-explicit-params/restored.json": {
+      "sha256": "012784eef68b574e44e354dbca9aac8f431b5895b89543d4737a2e2302b3dd79",
+      "bytes": 1079
+    },
+    "faults/after-explicit-params/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-fallback-secret/mutant.json": {
+      "sha256": "6d4ec220b6650f1a9aa3d342400c5603bc8da298b0f460bb8ca7c708ddc1b331",
+      "bytes": 1433
+    },
+    "faults/after-fallback-secret/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-fallback-secret/restored.json": {
+      "sha256": "c5f974de7471a62935d1cea42fc93089880841143d5efa118dd893ef117f3be4",
+      "bytes": 1249
+    },
+    "faults/after-fallback-secret/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-redaction-count/focused-healthy.json": {
+      "sha256": "107d5c2ec59242619d5d6ce9f455ad236f9ea8e86f74c112f459c799e5994446",
+      "bytes": 303
+    },
+    "faults/after-redaction-count/focused-healthy.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-redaction-count/mutant.json": {
+      "sha256": "3a9e4658eabedc9c5ad55d379bb33388f2d564378d9ae485c2f6feebf08757c4",
+      "bytes": 2423
+    },
+    "faults/after-redaction-count/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-redaction-count/restored.json": {
+      "sha256": "7ff448ece6fa1f849323d0d0663599f0456a5f7b1ffb6f6638167e06d69a07b7",
+      "bytes": 1077
+    },
+    "faults/after-redaction-count/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-swallowed-explicit-error/mutant.json": {
+      "sha256": "ca5f3aaa5183433b20263d9a157ba7ec2b14ba8b6d7b66a9c207930d97c107dd",
+      "bytes": 1365
+    },
+    "faults/after-swallowed-explicit-error/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-swallowed-explicit-error/restored.json": {
+      "sha256": "fb653579114b0efadbe2ac492ef077d3aeb5a17cdfe0f01850b3af19e01d1e79",
+      "bytes": 1251
+    },
+    "faults/after-swallowed-explicit-error/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-bare-repr/mutant.json": {
+      "sha256": "de9913f4fb381c92a25ba3a4824b1deef17d55d2e7fa2175d1155fcd0f02c62d",
+      "bytes": 1079
+    },
+    "faults/before-bare-repr/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-bare-repr/restored.json": {
+      "sha256": "f3bfa1ac5f2f82c6000a0d5a4d557c78fd956007943d22a16e965f27f65fada4",
+      "bytes": 1079
+    },
+    "faults/before-bare-repr/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-bare-str/mutant.json": {
+      "sha256": "fff890472ecf4a26417f07a907c834382aeb79007b78bd7d6065638ccf01a616",
+      "bytes": 1079
+    },
+    "faults/before-bare-str/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-bare-str/restored.json": {
+      "sha256": "a9dc5f007d54980ce5756caa3d6c12454b66d3f20b82c9a250bbb71b6c2fc9ad",
+      "bytes": 1078
+    },
+    "faults/before-bare-str/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-common-insert-params/mutant.json": {
+      "sha256": "552be68aa943741817d536096c29d43bc0567904fda23052b777d58bae650ab6",
+      "bytes": 1080
+    },
+    "faults/before-common-insert-params/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-common-insert-params/restored.json": {
+      "sha256": "4063b426d5440e239cfb89da131e8b4939c7296cee6cdc786042db338c56dc45",
+      "bytes": 1078
+    },
+    "faults/before-common-insert-params/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-common-select/mutant.json": {
+      "sha256": "107394617c01984f2dfc8859d70defd07488f6fb6f72a52e608f5a4f981c5001",
+      "bytes": 1080
+    },
+    "faults/before-common-select/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-common-select/restored.json": {
+      "sha256": "7ff0080b4719b46d5db78e11116090cf2b28a4d9ec604e7f369a0d766dc9a2a6",
+      "bytes": 1079
+    },
+    "faults/before-common-select/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-common-update-params/mutant.json": {
+      "sha256": "9bd4abce0683cc92085831371fe459ff10cb0e172f3dbeeef5908ad4a260c5ce",
+      "bytes": 1079
+    },
+    "faults/before-common-update-params/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-common-update-params/restored.json": {
+      "sha256": "f84e8cbac5b3ae54f23b2ca36dc6dd5ab22e88b182b05174a9429063b3892fa7",
+      "bytes": 1080
+    },
+    "faults/before-common-update-params/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-explicit-junk/mutant.json": {
+      "sha256": "a41cc321525ddf28f74abf49239e2a13eab7484362772765fbd05897b874cedc",
+      "bytes": 1080
+    },
+    "faults/before-explicit-junk/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-explicit-junk/restored.json": {
+      "sha256": "50e86ffa2d787e3f2458b95037c617c31a5e2e2d02894adb0c39a61fb6356d24",
+      "bytes": 1074
+    },
+    "faults/before-explicit-junk/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-explicit-params/mutant.json": {
+      "sha256": "3377e492dfec0a061bb222234e97fb3282be82b1e63db9f7e2e8f08fbc8c3236",
+      "bytes": 1079
+    },
+    "faults/before-explicit-params/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-explicit-params/restored.json": {
+      "sha256": "dfc8bb739d464781584d5f9ab37843807221c03d7d8ce6ba1f8c65ada094ebd9",
+      "bytes": 1077
+    },
+    "faults/before-explicit-params/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-fallback-secret/mutant.json": {
+      "sha256": "67226e41a23948199e8c0dca63b49b40c083bf70573fb28150dcff3330576214",
+      "bytes": 1434
+    },
+    "faults/before-fallback-secret/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-fallback-secret/restored.json": {
+      "sha256": "a862501ff2d35a62ce987580481ef934ccf54db55d5bb46804ab1c1f17fa487f",
+      "bytes": 1250
+    },
+    "faults/before-fallback-secret/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-redaction-count/mutant.json": {
+      "sha256": "e952dcd7d6517145427ce7c556cec8bc8e66358ddd3606e7172ecaf821de3c11",
+      "bytes": 1854
+    },
+    "faults/before-redaction-count/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-redaction-count/restored.json": {
+      "sha256": "cff515294077dda92dea3219574b48c540248df91691e074d077b15382675409",
+      "bytes": 1079
+    },
+    "faults/before-redaction-count/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-swallowed-explicit-error/mutant.json": {
+      "sha256": "2a04b00fbc6467df9e4cd6454bbbc4150495f3d728c1195a09d0a56fc40ce4bb",
+      "bytes": 1366
+    },
+    "faults/before-swallowed-explicit-error/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-swallowed-explicit-error/restored.json": {
+      "sha256": "74692682e47124c5a026eec49d2c3ed310683b449c6e89dd19e2ecd8eac200d6",
+      "bytes": 1250
+    },
+    "faults/before-swallowed-explicit-error/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "full-cleanup.json": {
+      "sha256": "dbbc161980e7c9cb3027ae1611e4746084180db99be8ee1869304c8784f3b4f5",
+      "bytes": 946
+    },
+    "full-exit-code": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    "full-launch.log": {
+      "sha256": "6aaa3066d3173f309c176c822a80807dc75dbfa33edd1c58556ce9c5d6097c53",
+      "bytes": 674
+    },
+    "full-normal.json": {
+      "sha256": "a92653d4d8bf48c321fcf49884f4bbdfa006ceeabc48c56b1abeae751c55f1bf",
+      "bytes": 763909
+    },
+    "full-normal.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "full-records.json": {
+      "sha256": "f2dcba294b3890ec1b6cf58e2b28afde687eda19c2ef077cbf5b1aa453509208",
+      "bytes": 748
+    },
+    "full-source.json": {
+      "sha256": "74c3f7116baf5484eeaed4265628ea9164585cf6fd899012b479587d2b4c70e1",
+      "bytes": 49617
+    },
+    "full-tmpdir": {
+      "sha256": "21cd80b66a2a43da0364bf168382c65ee30e61b23837be55c85b5406f0c775b3",
+      "bytes": 22
+    },
+    "insert-tracer.json": {
+      "sha256": "5a8c392e740e696c91f10fcae1dcc1ebc4bc76eee9db35e8014badd799eb951d",
+      "bytes": 1947
+    },
+    "lazy-query-record.json": {
+      "sha256": "95a4ec85aeec6ba4a38c2ee41c23d55e76c9f0f3d6c54fb1aedf60608c0e2c70",
+      "bytes": 918
+    },
+    "lazy-query.json": {
+      "sha256": "9de9e7ded8dc37f8356705c8162438ba5e5176be5f75e73ef23fbbcbd13ee88b",
+      "bytes": 117268
+    },
+    "lazy-query.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "run.py": {
+      "sha256": "fb755afe46623517c029b402ea5651a3aed2f74680788f3fce1bcc275ea51fe8",
+      "bytes": 1611
+    },
+    "select-tracer.json": {
+      "sha256": "1b982ade92db4e2c910135b1af0ff69dee1a43b9c5cebbc9c3b121e298206b9d",
+      "bytes": 2084
+    },
+    "snektest-METADATA.txt": {
+      "sha256": "9dafa685c8132c98119aa571000e8051495f2bb446f2290960d62002cabf4880",
+      "bytes": 15056
+    },
+    "static.json": {
+      "sha256": "6c667ec85e352e861fed2e54d70c7c4447be9ba84220ececdbcce7bbaf2f36a6",
+      "bytes": 1066
+    },
+    "tracer-specs.json": {
+      "sha256": "1936c05f6ce08ceb6ba634c979e1afd7ed3b9ac375d1f80205b538d61d0ff5a1",
+      "bytes": 1674
+    },
+    "tracer.py": {
+      "sha256": "de579ba0a4a72d179643738b35ba8223f663613a6adbeca3be119858e3384b9b",
+      "bytes": 1335
+    },
+    "tracers/bare/green.json": {
+      "sha256": "a086e00aa8264a341811c480a02321b446c3ee1c43a123f89b2cea256fa8b557",
+      "bytes": 291
+    },
+    "tracers/bare/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/bare/red.json": {
+      "sha256": "a74dab4c2b960a4983d308c117305161d8ac7c1b4b1703f56ee68d5226819569",
+      "bytes": 506
+    },
+    "tracers/bare/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/composed/green.json": {
+      "sha256": "118cf3c5cc14c145c7eb058668e06b3942a5839e2c01415fce4e3fa291532a79",
+      "bytes": 303
+    },
+    "tracers/composed/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/composed/red.json": {
+      "sha256": "819eb5495d8640836c08e2c3275da6046c857d28912afd513d75adb9dc2bbab0",
+      "bytes": 549
+    },
+    "tracers/composed/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/insert/green.json": {
+      "sha256": "dc188ed312808ea0087748f7eb2b0e59f31780e9694f37733b0c148fbb614149",
+      "bytes": 292
+    },
+    "tracers/insert/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/insert/red.json": {
+      "sha256": "b308682c0a9e93a6e10fb207e6216ed3bd072542ccef831d70cc2a8fef339447",
+      "bytes": 384
+    },
+    "tracers/insert/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/select/green.json": {
+      "sha256": "8ecd1a9f955b642e67f849e86c932a6b863ed20bbcfe9ddf73f6291c3b922ff2",
+      "bytes": 300
+    },
+    "tracers/select/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/select/red.json": {
+      "sha256": "5be19476c3c881fa4dfcf5cc20436ff53b0681ee21662299e5df29fcfc1f0595",
+      "bytes": 506
+    },
+    "tracers/select/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/values/green.json": {
+      "sha256": "40e00eabd1721bccb9eba8e80d1815a9a7fb713325152afa797a87e4fc43ac40",
+      "bytes": 303
+    },
+    "tracers/values/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/values/red.json": {
+      "sha256": "104139963a43e15d59c4778a7a4a0ed084e59d9361943531f6d7729b944d11d0",
+      "bytes": 969
+    },
+    "tracers/values/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/write/green.json": {
+      "sha256": "ded1a9222e0dad59f12bedcb6555ec00fc75e8764caf5be6fef48ab5074ea553",
+      "bytes": 301
+    },
+    "tracers/write/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/write/red.json": {
+      "sha256": "67311686652aabea43ca11fd86f5440aea76a0bfb390ffedbd75c00509f69c46",
+      "bytes": 378
+    },
+    "tracers/write/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validate-full.py": {
+      "sha256": "a3b26d8c1cdc56086e248c38dedb68ef64471571ac4cd8e154ea6c5a2384aabf",
+      "bytes": 2021
+    },
+    "values-tracer.json": {
+      "sha256": "8f6f82186f6c03496028e47f317a98062409ea67a7108ec52825191e0ef2cf1f",
+      "bytes": 2490
+    },
+    "write-evidence.py": {
+      "sha256": "765b48c60e08f7b02cc6a85d7576556a7a7eae2ec679bed2aa25a5fdff9a5a5a",
+      "bytes": 5774
+    },
+    "write-tracer.json": {
+      "sha256": "13f0de77f7f40b33dcebc43813b2f4e32f52f6523af0a31a578427fd71018d14",
+      "bytes": 1975
+    }
+  }
+}
