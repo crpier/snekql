@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Require positive native migration metadata coverage from direct global/exact-database SELECT,
+  SHOW VIEW, TRIGGER and EXECUTE grants (or observed unrestricted server grant bypass) before
+  admission. Privilege-filtered absence, role-only
+  or per-table/column grants cannot certify a complete catalog; no automatic grant/role repair
+  or full DDL/readiness audit (#477).
+
 - Stop migration admission at context exit, drain the active caller operation under a fresh
   acquisition budget, then close. Failed/cancelled drain discards without cancelling caller
   tasks or inferring rollback; retain primary body failures and original recovery evidence

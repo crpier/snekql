@@ -17,6 +17,7 @@ lazy import aiosqlite
 
 from snekql.errors import (
     DatabaseOperationTimeoutError,
+    DatabaseRuntimeError,
     MigrationLockError,
     MigrationLockTimeoutError,
     PoolTimeoutError,
@@ -457,6 +458,37 @@ class Target:
         if self._closed:
             msg = "migration target is closed"
             raise PackageError(msg)
+
+    async def _require_metadata_coverage(self) -> None:
+        """Require known full metadata authority, not privilege-filtered negative facts."""
+        if await self._query("SELECT @@GLOBAL.skip_grant_tables") == [(1,)]:
+            # Actual server grant bypass exposes all metadata, not an inferred role.
+            return
+        principal = (await self._query("SELECT CURRENT_USER()"))[0][0]
+        if not isinstance(principal, str) or "@" not in principal:
+            msg = "cannot identify MariaDB migration metadata authority"
+            raise DatabaseRuntimeError(msg)
+        user, _, host = principal.rpartition("@")
+        grantee = f"'{user}'@'{host}'"
+        grants = await self._query(
+            "SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES "
+            "WHERE BINARY GRANTEE=BINARY %s UNION "
+            "SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES "
+            "WHERE BINARY GRANTEE=BINARY %s "
+            "AND BINARY TABLE_SCHEMA=BINARY DATABASE()",
+            (grantee, grantee),
+        )
+        missing = {"SELECT", "SHOW VIEW", "TRIGGER", "EXECUTE"} - {
+            row[0] for row in grants
+        }
+        if missing:
+            msg = (
+                "MariaDB migration metadata coverage requires direct global or "
+                "exact-database grants for "
+                + ", ".join(sorted(missing))
+                + "; role/table/column grants alone are not supported"
+            )
+            raise DatabaseRuntimeError(msg)
 
     async def _catalog(self) -> list[tuple[Any, ...]]:
         if not self._sqlite:
@@ -1643,6 +1675,11 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
     Context exit stops admission and drains the active operation under a fresh
     acquisition budget before physical close. Failed/cancelled drain discards the
     connection, not the caller's task; return does not prove physical quiescence.
+    Native metadata requires direct global or exact-database SELECT, SHOW VIEW,
+    TRIGGER and EXECUTE grants, or the server's explicit unrestricted grant-bypass
+    profile. Role/table/column grants alone are not admitted. Caller keeps
+    authorization stable through preparation/recovery. This is not
+    an audit of every DDL/DML privilege or a database-readiness certificate.
     """
     if isinstance(config, SQLiteConfig):
         connection = await _open_sqlite(config)
@@ -1693,6 +1730,7 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
                 )
         else:
             await verify_mariadb_version(_SessionSettingsProbe(target))
+            await target._require_metadata_coverage()  # noqa: SLF001 - module owns native admission
             await apply_connection_settings(
                 _SessionSettingsProbe(target),
                 (

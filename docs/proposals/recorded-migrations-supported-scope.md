@@ -248,10 +248,18 @@ context timer; caller pauses do not consume later seam budgets. Outer caller can
 physical-stop/rollback evidence. G5 approval remains necessary, but the engineering choice is no
 longer unspecified. No new timeout knob/facade, unsafe cleanup SQL or data replay.
 
-Remaining acceptance: establish metadata/other prerequisite policy, retain acknowledged COMMIT
-evidence vs unknown unacknowledged outcomes, and settle remaining detached-cleanup/global
-shutdown/live-loop limits. Full metadata visibility and incompatible writer exclusion remain
-caller operational prerequisites, NOT privilege audits/fencing supplied by this library.
+The [metadata prerequisite checkpoint](recorded-migrations-native-metadata-review.md) now
+requires direct global/exact-schema SELECT/SHOW VIEW/TRIGGER/EXECUTE coverage before native yield,
+with byte-exact authenticated principal/schema matching, or explicitly observed server grant
+bypass/unrestricted metadata. This does not enable bypass or approve its security posture.
+Roles/table/column grants alone refuse.
+Candidate prerequisite decision: finite admission plus stable caller-owned authorization/writer
+exclusion, NOT a general DDL/engine/storage/readiness audit, privilege repair or revocation fencing.
+Actual hidden routine/MyISAM objects refuse before original role work; proper authority reveals
+existing obstacles and preserves original recovery rather than certifies readiness.
+
+Remaining acceptance: retain acknowledged COMMIT evidence vs unknown unacknowledged outcomes,
+and settle remaining detached-cleanup/global shutdown/live-loop limits.
 Qualification stays finite through public journeys/independent real observations, consistent
 with [ADR0017](../adr/0017-per-operation-deadlines-fail-closed.md); not all failure permutations.
 

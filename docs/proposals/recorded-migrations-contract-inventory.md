@@ -1178,3 +1178,14 @@ cancelled drain discards connection without cancelling caller tasks or erasing t
 error; actual blocked native/SQLite original-role journeys retain own evidence and explicit
 recovery. Separate phase budgets are the candidate decision, not a cumulative package/context
 timer. Remaining metadata/outcome/detached-cleanup/global shutdown and G4/G5 stay open.
+
+## Positive native metadata follow-through
+
+The [metadata checkpoint](recorded-migrations-native-metadata-review.md) requires a finite direct
+global/exact-database SELECT/SHOW VIEW/TRIGGER/EXECUTE profile (or explicitly observed server
+grant bypass) before yield. Actual hidden routine/
+MyISAM objects refuse before original role work; proper metadata coverage reveals existing
+obstacles, not readiness. Authenticated principal/schema matching is byte-exact; role/table/column
+coverage alone refuses without grant repair. Candidate prerequisite policy is finite admission
+plus stable caller-owned authorization, not a general privilege/engine/storage audit. Broader
+outcome/retained-cleanup/global shutdown and G4/G5 remain open; ordinary query mapping unchanged.
