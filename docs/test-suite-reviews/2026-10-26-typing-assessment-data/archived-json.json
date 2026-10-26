@@ -1,0 +1,12 @@
+[
+  {
+    "source": "failed-tmpfs-full.json",
+    "archive": "validation/failed-tmpfs-full.json.gz",
+    "uncompressed_sha256": "0e88b2c8325342fb51d267cf78b8b24d6fc11a5afa708784fa51e4bf01a0a3fb"
+  },
+  {
+    "source": "full.json",
+    "archive": "validation/disk-full.json.gz",
+    "uncompressed_sha256": "2130d2a82895967935e7539e38bb2d6ebfdc1d1b2206cdec877724a35be28a23"
+  }
+]

@@ -40,6 +40,20 @@ Use equivalent environments and repeated measurements before claiming a speedup.
 The [artifact-ownership verification](test-suite-reviews/2026-10-26-artifact-ownership.md)
 records successful-run cleanup, explicit error retention, and its validation limits.
 
+The [typing-assessment reuse review](test-suite-reviews/2026-10-26-typing-assessment.md)
+records unchanged case/diagnostic coverage and matched focused timings. Immutable
+contracts share one native report per test session; copied-input challenges and
+representative CLI checks remain independent. A focused named test still works:
+
+```sh
+PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest \
+  'tests/test_typing_guarantees.py::public_typing_contract_has_exact_diagnostic[temporal-domains]'
+```
+
+That selector collects one test and initializes the shared full assessment once.
+For a narrower native assessment, use the unchanged CLI's `--case` and `--backend`
+options. The full suite still includes all checks by default.
+
 ## Find the code
 
 | Area | Start here |

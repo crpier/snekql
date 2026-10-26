@@ -1,0 +1,13 @@
+{
+  "revision": "94220e1eabb52a98e220f71bac17fed5efc08f79",
+  "status": "",
+  "tmpdir": "/home/crpier/.cache/sqf.1pACmJW9/tmp",
+  "command": [
+    "uv",
+    "run",
+    "snektest",
+    "tests",
+    "--json-output"
+  ],
+  "warning_context": "1"
+}
