@@ -1,0 +1,81 @@
+{
+  "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+  "runs": [
+    {
+      "name": "full-normal",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/v0",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "exit_code": 0,
+      "wall_seconds": 1145.5376770496368,
+      "counts": {
+        "passed": 4245,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "921c7d3053b7c2964bb9822eb514f4ea7c8531171d84c0a093b0d33e21162493",
+      "remaining_tmp_entries": []
+    },
+    {
+      "name": "native-forced-lazy",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests/testing/mariadb",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/v1",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "exit_code": 0,
+      "wall_seconds": 303.8736960887909,
+      "counts": {
+        "passed": 87,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "c36a4d4d69baed572b40beec648152fc2c8e12b6507ac8fb81241827ca16d912",
+      "remaining_tmp_entries": []
+    },
+    {
+      "name": "copied-restored",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_data_copy.py",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sqn.TCLuPteb/copy-calibration-src",
+      "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/v2",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "exit_code": 0,
+      "wall_seconds": 22.70258331298828,
+      "counts": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "8a36ae9fab725389801100367b2c5addbae58f76e09c4b85e2c251d9952df660",
+      "remaining_tmp_entries": []
+    }
+  ]
+}

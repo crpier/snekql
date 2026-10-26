@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/crpier/.cache/sqn.TCLuPteb/compare-copy.py", line 4, in <module>
+    r=Path(__file__).parent;after=Path.cwd();before=r/'before-copy-src';file='tests/testing/mariadb/test_password_literals.py';baseline=json.loads((r/'before-1-password.json').read_text());single=next(t['name'] for t in baseline['tests'] if 'password_authenticates[' in t['name'] and 'cli_environment' not in t['name'] and 'worker_mixed' in t['name']);metadata={'before_revision':subprocess.check_output(['git','rev-parse','HEAD'],cwd=before,text=True).strip(),'after_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'single':single,'runs':[],'interpreter':sys.executable}
+                                                                                                                                                                                                    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StopIteration

@@ -9,10 +9,12 @@ from pathlib import Path
 from signal import SIGINT
 from tempfile import TemporaryDirectory
 
-from snektest import Param, assert_eq, assert_in, assert_not_in, test
+from snektest import Param, assert_eq, assert_in, assert_not_in, load_fixture, test
 
+from benchmarks._artifacts import mariadb_artifacts
 from snekql import mariadb
 from snekql.testing.mariadb import temporary_mariadb_server
+from tests.testing.mariadb.data import provide_mariadb_data_copy
 
 
 @test(
@@ -33,13 +35,16 @@ from snekql.testing.mariadb import temporary_mariadb_server
 )
 async def password_authenticates(mode: str, user: str, password: str) -> None:
     """The caller's exact password works with ordinary backslash SQL escaping."""
-    with TemporaryDirectory() as directory:
+    copy_data = await load_fixture(provide_mariadb_data_copy())
+    async with mariadb_artifacts() as root:
+        data = root / "data"
+        copy_data(data)
         async with temporary_mariadb_server(
             auth="password",
             password=password,
             user=user,
-            runtime_base_directory=Path(directory),
-            data_directory=Path(directory) / "data",
+            runtime_base_directory=root,
+            data_directory=data,
             server_args=(f"--sql-mode={mode}",),
         ) as server:
             result = await server.run_sql("SELECT 1")

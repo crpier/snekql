@@ -1,0 +1,1 @@
+{"passed": 1, "failed": 0, "errors": 0, "fixture_teardown_failed": 0, "session_teardown_failed": 0, "session_teardown_failures": [], "tests": [{"name": "tests/testing/mariadb/test_data_copy.py::data_copies_isolate_schema_history_and_accounts", "duration": 8.43301143500139, "markers": ["slow"], "status": "passed"}]}

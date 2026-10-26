@@ -1,0 +1,2188 @@
+{
+  "revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+  "source_status": "",
+  "diagnostic": "instrumented representative public workflows, not uninstrumented test timings or speedup evidence",
+  "script_sha256": "4150db763bc1f6ff44cebd3f7e42d574d852cbe281c55f353cb67f4a3f46b978",
+  "migration_chain": {
+    "001_create_probe": "CREATE TABLE setup_phase_value (id INTEGER PRIMARY KEY, value VARCHAR(16) NOT NULL)",
+    "002_seed_probe": "INSERT INTO setup_phase_value (id, value) VALUES (1, 'ready')"
+  },
+  "samples": [
+    {
+      "label": "1-fresh-insecure",
+      "auth": "insecure",
+      "transports": [
+        "tcp"
+      ],
+      "entry_seconds": 9.038300469997921,
+      "body_seconds": 0.943856418991345,
+      "shutdown_seconds": 0.19976528100960422,
+      "total_seconds": 10.18192216999887,
+      "events": [
+        {
+          "executable": "mariadb-install-db",
+          "category": "process",
+          "spawn_before": 79378.54201782,
+          "pid": 1884505,
+          "spawn_after": 79378.542487531,
+          "signals": [],
+          "exit_at": 79387.019923278,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadbd",
+          "category": "process",
+          "spawn_before": 79387.020296727,
+          "pid": 1884809,
+          "spawn_after": 79387.020666946,
+          "signals": [
+            {
+              "signal": 15,
+              "at": 79388.511957064
+            }
+          ],
+          "exit_at": 79388.711646195,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79387.021585066,
+          "pid": 1884810,
+          "spawn_after": 79387.021921292,
+          "signals": [],
+          "exit_at": 79387.025392073,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79387.276015035,
+          "pid": 1884831,
+          "spawn_after": 79387.276604303,
+          "signals": [],
+          "exit_at": 79387.279198332,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79387.52980375,
+          "pid": 1884834,
+          "spawn_after": 79387.530328941,
+          "signals": [],
+          "exit_at": 79387.542375128,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "create-database",
+          "spawn_before": 79387.542525782,
+          "pid": 1884836,
+          "spawn_after": 79387.542893702,
+          "signals": [],
+          "exit_at": 79387.555331655,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79387.555454814,
+          "pid": 1884837,
+          "spawn_after": 79387.555812964,
+          "signals": [],
+          "exit_at": 79387.567924623,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79387.568114493,
+          "pid": 1884838,
+          "spawn_after": 79387.568449293,
+          "signals": [],
+          "exit_at": 79387.578740785,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79387.578853553,
+          "pid": 1884839,
+          "spawn_after": 79387.579162734,
+          "signals": [],
+          "exit_at": 79387.590517465,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79387.590675516,
+          "pid": 1884840,
+          "spawn_after": 79387.591007505,
+          "signals": [],
+          "exit_at": 79387.602966171,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79387.809008421,
+          "pid": 1884841,
+          "spawn_after": 79387.809509905,
+          "signals": [],
+          "exit_at": 79387.821466778,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79387.821736204,
+          "pid": 1884843,
+          "spawn_after": 79387.822014505,
+          "signals": [],
+          "exit_at": 79387.940147815,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79387.940286655,
+          "pid": 1884851,
+          "spawn_after": 79387.940682994,
+          "signals": [],
+          "exit_at": 79387.952398201,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79387.952514682,
+          "pid": 1884852,
+          "spawn_after": 79387.95289846,
+          "signals": [],
+          "exit_at": 79387.963520483,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79388.146609115,
+          "pid": 1884853,
+          "spawn_after": 79388.147015126,
+          "signals": [],
+          "exit_at": 79388.158813359,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79388.159024336,
+          "pid": 1884854,
+          "spawn_after": 79388.159377873,
+          "signals": [],
+          "exit_at": 79388.27598119,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79388.276115197,
+          "pid": 1884855,
+          "spawn_after": 79388.276498717,
+          "signals": [],
+          "exit_at": 79388.287860161,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79388.287985017,
+          "pid": 1884856,
+          "spawn_after": 79388.288313631,
+          "signals": [],
+          "exit_at": 79388.300502858,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79388.499260861,
+          "pid": 1884859,
+          "spawn_after": 79388.499594374,
+          "signals": [],
+          "exit_at": 79388.51175361,
+          "returncode": 0
+        }
+      ],
+      "public_reset_intervals": [
+        {
+          "start": 79387.555427865,
+          "end": 79387.568077956
+        },
+        {
+          "start": 79387.568081519,
+          "end": 79387.5788196
+        },
+        {
+          "start": 79387.821699893,
+          "end": 79387.940248949
+        },
+        {
+          "start": 79388.158989318,
+          "end": 79388.276081126
+        }
+      ],
+      "phases": [
+        {
+          "phase": "reset",
+          "iteration": 1,
+          "seconds": 0.010740906000137329
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 1,
+          "seconds": 0.02427447700756602
+        },
+        {
+          "phase": "connect",
+          "iteration": 1,
+          "seconds": 0.011679137009195983
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 1,
+          "seconds": 0.1932795669999905
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 1,
+          "seconds": 0.0009068130020750687
+        },
+        {
+          "phase": "data-check",
+          "iteration": 1,
+          "seconds": 0.012622000009287149
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 1,
+          "seconds": 0.00010984299296978861
+        },
+        {
+          "phase": "reset",
+          "iteration": 2,
+          "seconds": 0.11855236999690533
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 2,
+          "seconds": 0.023363049986073747
+        },
+        {
+          "phase": "connect",
+          "iteration": 2,
+          "seconds": 0.0008649380033602938
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 2,
+          "seconds": 0.18122963698988315
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 2,
+          "seconds": 0.0008594670071033761
+        },
+        {
+          "phase": "data-check",
+          "iteration": 2,
+          "seconds": 0.01233363599749282
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 2,
+          "seconds": 8.313299622386694e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 3,
+          "seconds": 0.11709340500237886
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 3,
+          "seconds": 0.02456424999400042
+        },
+        {
+          "phase": "connect",
+          "iteration": 3,
+          "seconds": 0.0015367239975603297
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 3,
+          "seconds": 0.19608302200504113
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 3,
+          "seconds": 0.0009555559954605997
+        },
+        {
+          "phase": "data-check",
+          "iteration": 3,
+          "seconds": 0.012631108009372838
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 3,
+          "seconds": 7.945200195536017e-05
+        }
+      ],
+      "all_children_reaped": true,
+      "top_level_data_entries": [
+        "aria_log.00000001",
+        "aria_log_control",
+        "ib_buffer_pool",
+        "ib_logfile0",
+        "ibdata1",
+        "mariadb_upgrade_info",
+        "multi-master.info",
+        "mysql",
+        "performance_schema",
+        "sys",
+        "test",
+        "undo001",
+        "undo002",
+        "undo003"
+      ],
+      "allocated_bytes": 149786624
+    },
+    {
+      "label": "1-retained-insecure",
+      "auth": "insecure",
+      "transports": [
+        "tcp"
+      ],
+      "entry_seconds": 0.6662864519894356,
+      "body_seconds": 0.9830877220083494,
+      "shutdown_seconds": 0.18949886100017466,
+      "total_seconds": 1.8388730349979596,
+      "events": [
+        {
+          "executable": "mariadbd",
+          "category": "process",
+          "spawn_before": 79388.713615788,
+          "pid": 1884871,
+          "spawn_after": 79388.713954982,
+          "signals": [
+            {
+              "signal": 15,
+              "at": 79390.362311042
+            }
+          ],
+          "exit_at": 79390.551728518,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79388.714028592,
+          "pid": 1884872,
+          "spawn_after": 79388.714415087,
+          "signals": [],
+          "exit_at": 79388.717926444,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79388.968388272,
+          "pid": 1884891,
+          "spawn_after": 79388.96881665,
+          "signals": [],
+          "exit_at": 79388.971813843,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79389.222133198,
+          "pid": 1884894,
+          "spawn_after": 79389.22255778,
+          "signals": [],
+          "exit_at": 79389.235584978,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "create-database",
+          "spawn_before": 79389.235707384,
+          "pid": 1884896,
+          "spawn_after": 79389.236066682,
+          "signals": [],
+          "exit_at": 79389.246934399,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79389.247086359,
+          "pid": 1884897,
+          "spawn_after": 79389.247421118,
+          "signals": [],
+          "exit_at": 79389.379101622,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79389.379236071,
+          "pid": 1884898,
+          "spawn_after": 79389.379634094,
+          "signals": [],
+          "exit_at": 79389.391970895,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79389.392170279,
+          "pid": 1884899,
+          "spawn_after": 79389.392725124,
+          "signals": [],
+          "exit_at": 79389.403508265,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79389.403643433,
+          "pid": 1884900,
+          "spawn_after": 79389.404003491,
+          "signals": [],
+          "exit_at": 79389.415318151,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79389.637603565,
+          "pid": 1884904,
+          "spawn_after": 79389.638014084,
+          "signals": [],
+          "exit_at": 79389.650794718,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79389.650985589,
+          "pid": 1884906,
+          "spawn_after": 79389.651303614,
+          "signals": [],
+          "exit_at": 79389.781636188,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79389.781767407,
+          "pid": 1884908,
+          "spawn_after": 79389.782143312,
+          "signals": [],
+          "exit_at": 79389.794322453,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79389.794412923,
+          "pid": 1884909,
+          "spawn_after": 79389.794735185,
+          "signals": [],
+          "exit_at": 79389.806155391,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79390.002320467,
+          "pid": 1884910,
+          "spawn_after": 79390.002722634,
+          "signals": [],
+          "exit_at": 79390.014163501,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79390.014378798,
+          "pid": 1884911,
+          "spawn_after": 79390.01475239,
+          "signals": [],
+          "exit_at": 79390.129814337,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79390.129955441,
+          "pid": 1884912,
+          "spawn_after": 79390.130357247,
+          "signals": [],
+          "exit_at": 79390.142774847,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79390.142967881,
+          "pid": 1884913,
+          "spawn_after": 79390.143367146,
+          "signals": [],
+          "exit_at": 79390.15401862,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79390.349442081,
+          "pid": 1884914,
+          "spawn_after": 79390.349810382,
+          "signals": [],
+          "exit_at": 79390.362122452,
+          "returncode": 0
+        }
+      ],
+      "public_reset_intervals": [
+        {
+          "start": 79389.247050419,
+          "end": 79389.379197672
+        },
+        {
+          "start": 79389.379200896,
+          "end": 79389.392119239
+        },
+        {
+          "start": 79389.650954109,
+          "end": 79389.781732852
+        },
+        {
+          "start": 79390.014342769,
+          "end": 79390.129918593
+        }
+      ],
+      "phases": [
+        {
+          "phase": "reset",
+          "iteration": 1,
+          "seconds": 0.012920031003886834
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 1,
+          "seconds": 0.023293452002690174
+        },
+        {
+          "phase": "connect",
+          "iteration": 1,
+          "seconds": 0.0008282899943878874
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 1,
+          "seconds": 0.2203746889863396
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 1,
+          "seconds": 0.0009441180009162053
+        },
+        {
+          "phase": "data-check",
+          "iteration": 1,
+          "seconds": 0.013310565991559997
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 1,
+          "seconds": 7.868600368965417e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 2,
+          "seconds": 0.13078034699719865
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 2,
+          "seconds": 0.02450630698876921
+        },
+        {
+          "phase": "connect",
+          "iteration": 2,
+          "seconds": 0.000767335994169116
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 2,
+          "seconds": 0.1944338909961516
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 2,
+          "seconds": 0.0008389379945583642
+        },
+        {
+          "phase": "data-check",
+          "iteration": 2,
+          "seconds": 0.01197641399630811
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 2,
+          "seconds": 8.201900345738977e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 3,
+          "seconds": 0.1155779149994487
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 3,
+          "seconds": 0.024201852997066453
+        },
+        {
+          "phase": "connect",
+          "iteration": 3,
+          "seconds": 0.0007506029942305759
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 3,
+          "seconds": 0.19369169299898203
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 3,
+          "seconds": 0.0008371149888262153
+        },
+        {
+          "phase": "data-check",
+          "iteration": 3,
+          "seconds": 0.01281111899879761
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 3,
+          "seconds": 7.201000698842108e-05
+        }
+      ],
+      "all_children_reaped": true,
+      "top_level_data_entries": [
+        "aria_log.00000001",
+        "aria_log_control",
+        "ib_buffer_pool",
+        "ib_logfile0",
+        "ibdata1",
+        "mariadb_upgrade_info",
+        "multi-master.info",
+        "mysql",
+        "performance_schema",
+        "sys",
+        "test",
+        "undo001",
+        "undo002",
+        "undo003"
+      ],
+      "allocated_bytes": 149786624
+    },
+    {
+      "label": "1-fresh-password",
+      "auth": "password",
+      "transports": [
+        "unix_socket"
+      ],
+      "entry_seconds": 10.329592873007641,
+      "body_seconds": 0.9472898520034505,
+      "shutdown_seconds": 0.15988006099360064,
+      "total_seconds": 11.436762786004692,
+      "events": [
+        {
+          "executable": "mariadb-install-db",
+          "category": "process",
+          "spawn_before": 79390.553380278,
+          "pid": 1884924,
+          "spawn_after": 79390.553902289,
+          "signals": [],
+          "exit_at": 79399.471781871,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadbd",
+          "category": "process",
+          "spawn_before": 79399.472044881,
+          "pid": 1885114,
+          "spawn_after": 79399.472403264,
+          "signals": [
+            {
+              "signal": 15,
+              "at": 79400.269144064
+            }
+          ],
+          "exit_at": 79400.35076221,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79399.472461263,
+          "pid": 1885115,
+          "spawn_after": 79399.472722307,
+          "signals": [],
+          "exit_at": 79399.476417748,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79399.72704373,
+          "pid": 1885138,
+          "spawn_after": 79399.727736745,
+          "signals": [],
+          "exit_at": 79399.731423497,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79399.982075736,
+          "pid": 1885145,
+          "spawn_after": 79399.982723889,
+          "signals": [],
+          "exit_at": 79399.985675359,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79400.236139763,
+          "pid": 1885150,
+          "spawn_after": 79400.236492931,
+          "signals": [],
+          "exit_at": 79400.249633586,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "bootstrap-stdin",
+          "spawn_before": 79400.249773476,
+          "pid": 1885152,
+          "spawn_after": 79400.250106728,
+          "signals": [],
+          "exit_at": 79400.269020933,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadbd",
+          "category": "process",
+          "spawn_before": 79400.350867082,
+          "pid": 1885154,
+          "spawn_after": 79400.351159667,
+          "signals": [
+            {
+              "signal": 15,
+              "at": 79401.829694192
+            }
+          ],
+          "exit_at": 79401.989494421,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79400.351285058,
+          "pid": 1885155,
+          "spawn_after": 79400.351612969,
+          "signals": [],
+          "exit_at": 79400.35393691,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79400.604517246,
+          "pid": 1885171,
+          "spawn_after": 79400.605020018,
+          "signals": [],
+          "exit_at": 79400.607483782,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79400.858023631,
+          "pid": 1885174,
+          "spawn_after": 79400.858506265,
+          "signals": [],
+          "exit_at": 79400.870648243,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79400.870840933,
+          "pid": 1885176,
+          "spawn_after": 79400.87126552,
+          "signals": [],
+          "exit_at": 79400.88231471,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79400.882485483,
+          "pid": 1885177,
+          "spawn_after": 79400.882820104,
+          "signals": [],
+          "exit_at": 79400.895011881,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79400.895162574,
+          "pid": 1885178,
+          "spawn_after": 79400.895539043,
+          "signals": [],
+          "exit_at": 79400.905963773,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79400.906104752,
+          "pid": 1885179,
+          "spawn_after": 79400.906437253,
+          "signals": [],
+          "exit_at": 79400.91667722,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79401.112214982,
+          "pid": 1885180,
+          "spawn_after": 79401.11268247,
+          "signals": [],
+          "exit_at": 79401.12470592,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79401.124969233,
+          "pid": 1885182,
+          "spawn_after": 79401.1253676,
+          "signals": [],
+          "exit_at": 79401.238721314,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79401.238926173,
+          "pid": 1885183,
+          "spawn_after": 79401.239396081,
+          "signals": [],
+          "exit_at": 79401.251154931,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79401.251342168,
+          "pid": 1885184,
+          "spawn_after": 79401.25175321,
+          "signals": [],
+          "exit_at": 79401.262787679,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79401.475942317,
+          "pid": 1885185,
+          "spawn_after": 79401.476406868,
+          "signals": [],
+          "exit_at": 79401.48837183,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79401.488651814,
+          "pid": 1885186,
+          "spawn_after": 79401.489094629,
+          "signals": [],
+          "exit_at": 79401.601667054,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79401.601915945,
+          "pid": 1885190,
+          "spawn_after": 79401.602345593,
+          "signals": [],
+          "exit_at": 79401.61433924,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79401.614547202,
+          "pid": 1885191,
+          "spawn_after": 79401.614891446,
+          "signals": [],
+          "exit_at": 79401.625208129,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79401.818203426,
+          "pid": 1885192,
+          "spawn_after": 79401.818911733,
+          "signals": [],
+          "exit_at": 79401.829534099,
+          "returncode": 0
+        }
+      ],
+      "public_reset_intervals": [
+        {
+          "start": 79400.870744954,
+          "end": 79400.882389315
+        },
+        {
+          "start": 79400.882391504,
+          "end": 79400.895082735
+        },
+        {
+          "start": 79401.124868472,
+          "end": 79401.238824037
+        },
+        {
+          "start": 79401.488549064,
+          "end": 79401.601801413
+        }
+      ],
+      "phases": [
+        {
+          "phase": "reset",
+          "iteration": 1,
+          "seconds": 0.012692571006482467
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 1,
+          "seconds": 0.021656751006958075
+        },
+        {
+          "phase": "connect",
+          "iteration": 1,
+          "seconds": 0.0007751240045763552
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 1,
+          "seconds": 0.19372265999845695
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 1,
+          "seconds": 0.0008653449913254008
+        },
+        {
+          "phase": "data-check",
+          "iteration": 1,
+          "seconds": 0.012693778000539169
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 1,
+          "seconds": 6.7050990764983e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 2,
+          "seconds": 0.11395744798937812
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 2,
+          "seconds": 0.024065899997367524
+        },
+        {
+          "phase": "connect",
+          "iteration": 2,
+          "seconds": 0.0007010599947534502
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 2,
+          "seconds": 0.21148613801051397
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 2,
+          "seconds": 0.000759296992328018
+        },
+        {
+          "phase": "data-check",
+          "iteration": 2,
+          "seconds": 0.012636602012207732
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 2,
+          "seconds": 7.122999522835016e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 3,
+          "seconds": 0.11325426500116009
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 3,
+          "seconds": 0.02349860499089118
+        },
+        {
+          "phase": "connect",
+          "iteration": 3,
+          "seconds": 0.0006598220061277971
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 3,
+          "seconds": 0.1911439849936869
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 3,
+          "seconds": 0.0009880370052997023
+        },
+        {
+          "phase": "data-check",
+          "iteration": 3,
+          "seconds": 0.011524867994012311
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 3,
+          "seconds": 5.994300590828061e-05
+        }
+      ],
+      "all_children_reaped": true,
+      "top_level_data_entries": [
+        "aria_log.00000001",
+        "aria_log_control",
+        "ib_buffer_pool",
+        "ib_logfile0",
+        "ibdata1",
+        "mariadb_upgrade_info",
+        "multi-master.info",
+        "mysql",
+        "performance_schema",
+        "sys",
+        "test",
+        "undo001",
+        "undo002",
+        "undo003"
+      ],
+      "allocated_bytes": 149786624
+    },
+    {
+      "label": "2-fresh-insecure",
+      "auth": "insecure",
+      "transports": [
+        "tcp"
+      ],
+      "entry_seconds": 8.80739452499256,
+      "body_seconds": 0.9486176110076485,
+      "shutdown_seconds": 0.19037658898741938,
+      "total_seconds": 9.946388724987628,
+      "events": [
+        {
+          "executable": "mariadb-install-db",
+          "category": "process",
+          "spawn_before": 79402.006323811,
+          "pid": 1885208,
+          "spawn_after": 79402.006764508,
+          "signals": [],
+          "exit_at": 79410.268297378,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadbd",
+          "category": "process",
+          "spawn_before": 79410.2685724,
+          "pid": 1885386,
+          "spawn_after": 79410.26892434,
+          "signals": [
+            {
+              "signal": 15,
+              "at": 79411.761745988
+            }
+          ],
+          "exit_at": 79411.952053959,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79410.268987714,
+          "pid": 1885387,
+          "spawn_after": 79410.269263786,
+          "signals": [],
+          "exit_at": 79410.272225148,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79410.522580798,
+          "pid": 1885417,
+          "spawn_after": 79410.523056635,
+          "signals": [],
+          "exit_at": 79410.526671833,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79410.777151159,
+          "pid": 1885423,
+          "spawn_after": 79410.777548663,
+          "signals": [],
+          "exit_at": 79410.789821887,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "create-database",
+          "spawn_before": 79410.789954779,
+          "pid": 1885425,
+          "spawn_after": 79410.790276189,
+          "signals": [],
+          "exit_at": 79410.801590304,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79410.801702997,
+          "pid": 1885426,
+          "spawn_after": 79410.80204067,
+          "signals": [],
+          "exit_at": 79410.813040315,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79410.813145435,
+          "pid": 1885427,
+          "spawn_after": 79410.813410657,
+          "signals": [],
+          "exit_at": 79410.825424504,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79410.825609872,
+          "pid": 1885428,
+          "spawn_after": 79410.825984548,
+          "signals": [],
+          "exit_at": 79410.83685952,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79410.836954861,
+          "pid": 1885429,
+          "spawn_after": 79410.837230126,
+          "signals": [],
+          "exit_at": 79410.847577549,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79411.043129786,
+          "pid": 1885431,
+          "spawn_after": 79411.043535443,
+          "signals": [],
+          "exit_at": 79411.057973468,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79411.058163468,
+          "pid": 1885433,
+          "spawn_after": 79411.058508944,
+          "signals": [],
+          "exit_at": 79411.175610268,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79411.175824175,
+          "pid": 1885434,
+          "spawn_after": 79411.176476382,
+          "signals": [],
+          "exit_at": 79411.188123905,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79411.188325874,
+          "pid": 1885435,
+          "spawn_after": 79411.188765869,
+          "signals": [],
+          "exit_at": 79411.199273722,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79411.396854479,
+          "pid": 1885437,
+          "spawn_after": 79411.397190565,
+          "signals": [],
+          "exit_at": 79411.409105498,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79411.40929231,
+          "pid": 1885438,
+          "spawn_after": 79411.409571551,
+          "signals": [],
+          "exit_at": 79411.529616504,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79411.529822464,
+          "pid": 1885439,
+          "spawn_after": 79411.530431686,
+          "signals": [],
+          "exit_at": 79411.54282233,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79411.542968839,
+          "pid": 1885440,
+          "spawn_after": 79411.54339874,
+          "signals": [],
+          "exit_at": 79411.55467168,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79411.749876508,
+          "pid": 1885442,
+          "spawn_after": 79411.750277008,
+          "signals": [],
+          "exit_at": 79411.761567154,
+          "returncode": 0
+        }
+      ],
+      "public_reset_intervals": [
+        {
+          "start": 79410.801675026,
+          "end": 79410.813112367
+        },
+        {
+          "start": 79410.813118458,
+          "end": 79410.825560193
+        },
+        {
+          "start": 79411.058127399,
+          "end": 79411.175768978
+        },
+        {
+          "start": 79411.409261305,
+          "end": 79411.529769749
+        }
+      ],
+      "phases": [
+        {
+          "phase": "reset",
+          "iteration": 1,
+          "seconds": 0.012447209999663755
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 1,
+          "seconds": 0.022084934011218138
+        },
+        {
+          "phase": "connect",
+          "iteration": 1,
+          "seconds": 0.0007530650036642328
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 1,
+          "seconds": 0.19385402101033833
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 1,
+          "seconds": 0.0008351230062544346
+        },
+        {
+          "phase": "data-check",
+          "iteration": 1,
+          "seconds": 0.01496628399763722
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 1,
+          "seconds": 6.900099106132984e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 2,
+          "seconds": 0.1176436560053844
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 2,
+          "seconds": 0.023577632993692532
+        },
+        {
+          "phase": "connect",
+          "iteration": 2,
+          "seconds": 0.0007607519946759567
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 2,
+          "seconds": 0.1958890940004494
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 2,
+          "seconds": 0.0008164049941115081
+        },
+        {
+          "phase": "data-check",
+          "iteration": 2,
+          "seconds": 0.01237520900031086
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 2,
+          "seconds": 6.804599252063781e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 3,
+          "seconds": 0.12051055699703284
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 3,
+          "seconds": 0.024972821993287653
+        },
+        {
+          "phase": "connect",
+          "iteration": 3,
+          "seconds": 0.0007391980034299195
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 3,
+          "seconds": 0.1934456989984028
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 3,
+          "seconds": 0.0009073870023712516
+        },
+        {
+          "phase": "data-check",
+          "iteration": 3,
+          "seconds": 0.011815874997409992
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 3,
+          "seconds": 7.603599806316197e-05
+        }
+      ],
+      "all_children_reaped": true,
+      "top_level_data_entries": [
+        "aria_log.00000001",
+        "aria_log_control",
+        "ib_buffer_pool",
+        "ib_logfile0",
+        "ibdata1",
+        "mariadb_upgrade_info",
+        "multi-master.info",
+        "mysql",
+        "performance_schema",
+        "sys",
+        "test",
+        "undo001",
+        "undo002",
+        "undo003"
+      ],
+      "allocated_bytes": 149786624
+    },
+    {
+      "label": "2-retained-insecure",
+      "auth": "insecure",
+      "transports": [
+        "tcp"
+      ],
+      "entry_seconds": 0.6529084079957101,
+      "body_seconds": 0.6623225340008503,
+      "shutdown_seconds": 0.11976199899800122,
+      "total_seconds": 1.4349929409945616,
+      "events": [
+        {
+          "executable": "mariadbd",
+          "category": "process",
+          "spawn_before": 79411.953863241,
+          "pid": 1885451,
+          "spawn_after": 79411.954246629,
+          "signals": [
+            {
+              "signal": 15,
+              "at": 79413.268406644
+            }
+          ],
+          "exit_at": 79413.388064045,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79411.954311939,
+          "pid": 1885452,
+          "spawn_after": 79411.954668148,
+          "signals": [],
+          "exit_at": 79411.958250933,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79412.208797402,
+          "pid": 1885475,
+          "spawn_after": 79412.209303678,
+          "signals": [],
+          "exit_at": 79412.213192639,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79412.463743996,
+          "pid": 1885482,
+          "spawn_after": 79412.464228271,
+          "signals": [],
+          "exit_at": 79412.477875883,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "create-database",
+          "spawn_before": 79412.477983119,
+          "pid": 1885484,
+          "spawn_after": 79412.478329523,
+          "signals": [],
+          "exit_at": 79412.49017383,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79412.490297638,
+          "pid": 1885498,
+          "spawn_after": 79412.490591846,
+          "signals": [],
+          "exit_at": 79412.605899097,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79412.606114452,
+          "pid": 1885501,
+          "spawn_after": 79412.606540611,
+          "signals": [],
+          "exit_at": 79412.618822651,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79412.61891613,
+          "pid": 1885504,
+          "spawn_after": 79412.6191825,
+          "signals": [],
+          "exit_at": 79412.632642411,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79412.632841496,
+          "pid": 1885506,
+          "spawn_after": 79412.63326448,
+          "signals": [],
+          "exit_at": 79412.644924273,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79412.757516978,
+          "pid": 1885523,
+          "spawn_after": 79412.757907476,
+          "signals": [],
+          "exit_at": 79412.771596976,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79412.77179314,
+          "pid": 1885526,
+          "spawn_after": 79412.772161548,
+          "signals": [],
+          "exit_at": 79412.845295894,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79412.845502432,
+          "pid": 1885528,
+          "spawn_after": 79412.845921269,
+          "signals": [],
+          "exit_at": 79412.857657247,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79412.857758963,
+          "pid": 1885529,
+          "spawn_after": 79412.858061298,
+          "signals": [],
+          "exit_at": 79412.870551132,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79413.027550545,
+          "pid": 1885541,
+          "spawn_after": 79413.027876164,
+          "signals": [],
+          "exit_at": 79413.040310793,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79413.04051099,
+          "pid": 1885555,
+          "spawn_after": 79413.040811892,
+          "signals": [],
+          "exit_at": 79413.119396624,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79413.119583269,
+          "pid": 1885558,
+          "spawn_after": 79413.11996444,
+          "signals": [],
+          "exit_at": 79413.133033234,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79413.133197526,
+          "pid": 1885559,
+          "spawn_after": 79413.133586797,
+          "signals": [],
+          "exit_at": 79413.14733981,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79413.256073717,
+          "pid": 1885564,
+          "spawn_after": 79413.25644328,
+          "signals": [],
+          "exit_at": 79413.26814253,
+          "returncode": 0
+        }
+      ],
+      "public_reset_intervals": [
+        {
+          "start": 79412.490266912,
+          "end": 79412.606058873
+        },
+        {
+          "start": 79412.606062705,
+          "end": 79412.618892188
+        },
+        {
+          "start": 79412.771756486,
+          "end": 79412.845450488
+        },
+        {
+          "start": 79413.040479341,
+          "end": 79413.119534491
+        }
+      ],
+      "phases": [
+        {
+          "phase": "reset",
+          "iteration": 1,
+          "seconds": 0.012831136002205312
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 1,
+          "seconds": 0.026102942996658385
+        },
+        {
+          "phase": "connect",
+          "iteration": 1,
+          "seconds": 0.0007889279950177297
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 1,
+          "seconds": 0.11065033500199206
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 1,
+          "seconds": 0.0010404760105302557
+        },
+        {
+          "phase": "data-check",
+          "iteration": 1,
+          "seconds": 0.014201966987457126
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 1,
+          "seconds": 7.509998977184296e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 2,
+          "seconds": 0.07369629599270411
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 2,
+          "seconds": 0.02524052000080701
+        },
+        {
+          "phase": "connect",
+          "iteration": 2,
+          "seconds": 0.001382603993988596
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 2,
+          "seconds": 0.15458630298962817
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 2,
+          "seconds": 0.0008481719996780157
+        },
+        {
+          "phase": "data-check",
+          "iteration": 2,
+          "seconds": 0.01288836999447085
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 2,
+          "seconds": 7.748301140964031e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 3,
+          "seconds": 0.07905717199901119
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 3,
+          "seconds": 0.027928324998356402
+        },
+        {
+          "phase": "connect",
+          "iteration": 3,
+          "seconds": 0.001017650996800512
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 3,
+          "seconds": 0.10586042399518192
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 3,
+          "seconds": 0.0016750340000726283
+        },
+        {
+          "phase": "data-check",
+          "iteration": 3,
+          "seconds": 0.012251185005879961
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 3,
+          "seconds": 0.0001119130029110238
+        }
+      ],
+      "all_children_reaped": true,
+      "top_level_data_entries": [
+        "aria_log.00000001",
+        "aria_log_control",
+        "ib_buffer_pool",
+        "ib_logfile0",
+        "ibdata1",
+        "mariadb_upgrade_info",
+        "multi-master.info",
+        "mysql",
+        "performance_schema",
+        "sys",
+        "test",
+        "undo001",
+        "undo002",
+        "undo003"
+      ],
+      "allocated_bytes": 149786624
+    },
+    {
+      "label": "2-fresh-password",
+      "auth": "password",
+      "transports": [
+        "unix_socket"
+      ],
+      "entry_seconds": 10.038338603000739,
+      "body_seconds": 0.6034824119997211,
+      "shutdown_seconds": 0.12039710600220133,
+      "total_seconds": 10.762218121002661,
+      "events": [
+        {
+          "executable": "mariadb-install-db",
+          "category": "process",
+          "spawn_before": 79413.390596567,
+          "pid": 1885576,
+          "spawn_after": 79413.390977335,
+          "signals": [],
+          "exit_at": 79422.777794298,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadbd",
+          "category": "process",
+          "spawn_before": 79422.778039202,
+          "pid": 1886078,
+          "spawn_after": 79422.778493604,
+          "signals": [
+            {
+              "signal": 15,
+              "at": 79423.065477779
+            }
+          ],
+          "exit_at": 79423.138162935,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79422.778556049,
+          "pid": 1886079,
+          "spawn_after": 79422.778873286,
+          "signals": [],
+          "exit_at": 79422.781131901,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79423.031576069,
+          "pid": 1886109,
+          "spawn_after": 79423.032053612,
+          "signals": [],
+          "exit_at": 79423.04804413,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "bootstrap-stdin",
+          "spawn_before": 79423.048167943,
+          "pid": 1886111,
+          "spawn_after": 79423.048513619,
+          "signals": [],
+          "exit_at": 79423.065382575,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadbd",
+          "category": "process",
+          "spawn_before": 79423.138279088,
+          "pid": 1886113,
+          "spawn_after": 79423.13861074,
+          "signals": [
+            {
+              "signal": 15,
+              "at": 79424.031954515
+            }
+          ],
+          "exit_at": 79424.152279798,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79423.13873804,
+          "pid": 1886114,
+          "spawn_after": 79423.139077693,
+          "signals": [],
+          "exit_at": 79423.142766798,
+          "returncode": 1
+        },
+        {
+          "executable": "mariadb",
+          "category": "readiness",
+          "spawn_before": 79423.393198815,
+          "pid": 1886161,
+          "spawn_after": 79423.393604131,
+          "signals": [],
+          "exit_at": 79423.416156038,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79423.416357687,
+          "pid": 1886163,
+          "spawn_after": 79423.416781929,
+          "signals": [],
+          "exit_at": 79423.428368612,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79423.428552535,
+          "pid": 1886164,
+          "spawn_after": 79423.428943756,
+          "signals": [],
+          "exit_at": 79423.440788886,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79423.440978085,
+          "pid": 1886165,
+          "spawn_after": 79423.441434546,
+          "signals": [],
+          "exit_at": 79423.453229758,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79423.4534108,
+          "pid": 1886166,
+          "spawn_after": 79423.453795747,
+          "signals": [],
+          "exit_at": 79423.465175952,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79423.57004369,
+          "pid": 1886168,
+          "spawn_after": 79423.570495914,
+          "signals": [],
+          "exit_at": 79423.582858668,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79423.583108736,
+          "pid": 1886170,
+          "spawn_after": 79423.583517446,
+          "signals": [],
+          "exit_at": 79423.650456702,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79423.650649511,
+          "pid": 1886172,
+          "spawn_after": 79423.651087243,
+          "signals": [],
+          "exit_at": 79423.662940086,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79423.663134422,
+          "pid": 1886173,
+          "spawn_after": 79423.663548627,
+          "signals": [],
+          "exit_at": 79423.674759178,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79423.778166618,
+          "pid": 1886176,
+          "spawn_after": 79423.77864433,
+          "signals": [],
+          "exit_at": 79423.789582125,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "reset",
+          "spawn_before": 79423.789826905,
+          "pid": 1886179,
+          "spawn_after": 79423.790171962,
+          "signals": [],
+          "exit_at": 79423.881520341,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79423.881712513,
+          "pid": 1886181,
+          "spawn_after": 79423.88213882,
+          "signals": [],
+          "exit_at": 79423.892351734,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79423.892595146,
+          "pid": 1886182,
+          "spawn_after": 79423.892985916,
+          "signals": [],
+          "exit_at": 79423.905718038,
+          "returncode": 0
+        },
+        {
+          "executable": "mariadb",
+          "category": "sql",
+          "spawn_before": 79424.01931124,
+          "pid": 1886200,
+          "spawn_after": 79424.019794693,
+          "signals": [],
+          "exit_at": 79424.031773342,
+          "returncode": 0
+        }
+      ],
+      "public_reset_intervals": [
+        {
+          "start": 79423.416259183,
+          "end": 79423.428455548
+        },
+        {
+          "start": 79423.428457921,
+          "end": 79423.44088003
+        },
+        {
+          "start": 79423.583015808,
+          "end": 79423.650552716
+        },
+        {
+          "start": 79423.789733528,
+          "end": 79423.881616591
+        }
+      ],
+      "phases": [
+        {
+          "phase": "reset",
+          "iteration": 1,
+          "seconds": 0.01242376999289263
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 1,
+          "seconds": 0.02438261300267186
+        },
+        {
+          "phase": "connect",
+          "iteration": 1,
+          "seconds": 0.0006297270010691136
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 1,
+          "seconds": 0.10328404500614852
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 1,
+          "seconds": 0.0007601880060974509
+        },
+        {
+          "phase": "data-check",
+          "iteration": 1,
+          "seconds": 0.013007357003516518
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 1,
+          "seconds": 6.718200165778399e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 2,
+          "seconds": 0.06753869500244036
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 2,
+          "seconds": 0.02432216099987272
+        },
+        {
+          "phase": "connect",
+          "iteration": 2,
+          "seconds": 0.000712707987986505
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 2,
+          "seconds": 0.10168233700096607
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 2,
+          "seconds": 0.0007895390008343384
+        },
+        {
+          "phase": "data-check",
+          "iteration": 2,
+          "seconds": 0.011606334010139108
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 2,
+          "seconds": 6.305400165729225e-05
+        },
+        {
+          "phase": "reset",
+          "iteration": 3,
+          "seconds": 0.09188500299933366
+        },
+        {
+          "phase": "pre-replay-checks",
+          "iteration": 3,
+          "seconds": 0.02418565799598582
+        },
+        {
+          "phase": "connect",
+          "iteration": 3,
+          "seconds": 0.0006324429996311665
+        },
+        {
+          "phase": "real-migration-replay",
+          "iteration": 3,
+          "seconds": 0.11182619200553745
+        },
+        {
+          "phase": "verify-history",
+          "iteration": 3,
+          "seconds": 0.0009334659989690408
+        },
+        {
+          "phase": "data-check",
+          "iteration": 3,
+          "seconds": 0.012673956007347442
+        },
+        {
+          "phase": "close-runtime",
+          "iteration": 3,
+          "seconds": 6.752200715709478e-05
+        }
+      ],
+      "all_children_reaped": true,
+      "top_level_data_entries": [
+        "aria_log.00000001",
+        "aria_log_control",
+        "ib_buffer_pool",
+        "ib_logfile0",
+        "ibdata1",
+        "mariadb_upgrade_info",
+        "multi-master.info",
+        "mysql",
+        "performance_schema",
+        "sys",
+        "test",
+        "undo001",
+        "undo002",
+        "undo003"
+      ],
+      "allocated_bytes": 149786624
+    }
+  ],
+  "cleanup": [
+    {
+      "owner": "/home/crpier/.cache/sqn.TCLuPteb/p0",
+      "seconds": 0.00607625900011044
+    },
+    {
+      "owner": "/home/crpier/.cache/sqn.TCLuPteb/p1",
+      "seconds": 0.007374208013061434
+    }
+  ]
+}

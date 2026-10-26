@@ -1,0 +1,24 @@
+[
+  {
+    "original": "copy-static-lock.stderr",
+    "gzip": "copy-static-lock.stderr.gz",
+    "original_sha256": "d3c75fa17f7f8da84253a7264f102ac160830840aa5706b20c4cf1a93b2f4a5e",
+    "original_bytes": 31,
+    "gzip_sha256": "74002407174cb4a2b5268787826e5f9de92a82b41d1de46e83cc71a344ddac42"
+  },
+  {
+    "original": "full-normal.json",
+    "gzip": "full-normal.json.gz",
+    "original_sha256": "921c7d3053b7c2964bb9822eb514f4ea7c8531171d84c0a093b0d33e21162493",
+    "original_bytes": 759683,
+    "gzip_sha256": "94906b229cf27b6604bdcc4a1eab43ec3fc6cd5a987d9c7ea8cba1bbf4a17753"
+  },
+  {
+    "original": "red-data-copy.json",
+    "scope": "Raw CLI stdout collection-error transcript, not JSON; preserve trailing whitespace byte-for-byte.",
+    "gzip": "red-data-copy.stdout.gz",
+    "original_sha256": "1a38b4595d9e4a024e5843354715052994cb7abeb6fefe12af43cc1c79afe9e6",
+    "original_bytes": 2643,
+    "gzip_sha256": "ee0e6b6ec0280a4646c1d3d7cce7b07893ce2a147a2b22b9ef9d19d9dfc69622"
+  }
+]

@@ -1,0 +1,15 @@
+import hashlib,json,os,shutil,signal,subprocess,sys,time
+from pathlib import Path
+for s in (signal.SIGINT,signal.SIGQUIT,signal.SIGHUP):signal.signal(s,signal.SIG_DFL)
+r=Path(__file__).parent;checkout=Path.cwd();revision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip();assert subprocess.check_output(['git','status','--porcelain'],text=True)=='';assert (r/'copy-matched.status').read_text().strip()=='0';metadata={'revision':revision,'runs':[]}
+shared=str(checkout/'.snektest/mariadb-data');assert not [l for l in subprocess.check_output(['ps','-eo','pid,args'],text=True).splitlines() if shared in l]
+commands=[('full-normal',[sys.executable,'-m','snektest','tests','--json-output'],checkout),('native-forced-lazy',[sys.executable,'-X','lazy_imports=all','scripts/run_lazy_tests.py','tests/testing/mariadb','--json-output'],checkout),('copied-restored',[sys.executable,'-m','snektest','tests/testing/mariadb/test_data_copy.py','--json-output'],r/'copy-calibration-src')]
+for index,(name,cmd,cwd) in enumerate(commands):
+ tmp=r/f'v{index}';tmp.mkdir();start=time.time()
+ with (r/f'{name}.json').open('wb') as out,(r/f'{name}.stderr').open('wb') as err:result=subprocess.run(cmd,cwd=cwd,env={**os.environ,'TMPDIR':str(tmp),'PYTHON_CONTEXT_AWARE_WARNINGS':'1'},stdout=out,stderr=err,check=False)
+ d=json.loads((r/f'{name}.json').read_text());entry={'name':name,'command':cmd,'cwd':str(cwd),'revision':revision,'TMPDIR':str(tmp),'PYTHON_CONTEXT_AWARE_WARNINGS':'1','exit_code':result.returncode,'wall_seconds':time.time()-start,'counts':{k:d[k] for k in ('passed','failed','errors','fixture_teardown_failed','session_teardown_failed')},'report_sha256':hashlib.sha256((r/f'{name}.json').read_bytes()).hexdigest(),'remaining_tmp_entries':[str(p.relative_to(tmp)) for p in tmp.rglob('*')]};metadata['runs'].append(entry);(r/'copy-validation.json').write_text(json.dumps(metadata,indent=2)+'\n');(r/f'{name}.status').write_text(str(result.returncode)+'\n');print(name,entry['wall_seconds'],entry['counts'],flush=True)
+ assert result.returncode==0 and not any(d[k] for k in ('failed','errors','fixture_teardown_failed','session_teardown_failed'));assert not (r/f'{name}.stderr').stat().st_size;assert subprocess.check_output(['git','status','--porcelain'],cwd=checkout,text=True)==''
+ if name=='full-normal':
+  names={t['name'] for t in d['tests']};original=json.loads((r/'before-1-password.json').read_text());assert all(t['name'] in names for t in original['tests']);assert len([n for n in names if n.startswith('tests/testing/mariadb/test_data_copy.py::')])==3
+ assert not [l for l in subprocess.check_output(['ps','-eo','pid,args'],text=True).splitlines() if str(tmp) in l];assert not list(tmp.iterdir()),entry['remaining_tmp_entries'];tmp.rmdir()
+(r/'copy-validation.status').write_text('0\n')
