@@ -9,6 +9,8 @@
 
 - Use the `gh` CLI for GitHub interactions: issues, PRs, comments, labels, and repo metadata.
 - Do not hand-edit GitHub URLs or assume issue state; query with `gh issue view/list` when needed.
+- Before starting a new issue, query its live assignees with `gh issue view <number> --json assignees`. If `crpier` is already assigned, do not work on it; choose another issue unless the maintainer explicitly authorizes a handoff. Continuing this session's own recorded claim is allowed.
+- Otherwise, assign `crpier` with `gh issue edit <number> --add-assignee crpier` and verify the assignment before investigation, baseline runs, or implementation. Record a claim comment identifying this session and branch; re-read claims before starting and stop if another session also claimed it. Assignment is not atomic; never remove an existing assignment to bypass this rule.
 - Implementation work should reference the relevant GitHub issue.
 - When starting a new unit of work, stash any uncommitted changes, run `git fetch`, then create a new branch from the latest `origin/main`.
 - All work should be done in a branch, and when a unit of work is complete, open a PR against `main`. Only merge the PR if explicitly told to do so.
