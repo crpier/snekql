@@ -13,7 +13,7 @@ import anyio
 lazy import aiomysql
 lazy import aiosqlite
 
-from snekql.errors import DatabaseOperationTimeoutError, SchemaError
+from snekql.errors import DatabaseOperationTimeoutError, PoolTimeoutError, SchemaError
 from snekql.experimental._migration_checks import removed_check_obstacle
 from snekql.experimental._migration_indexes import removed_indexes
 from snekql.experimental._migration_mariadb import (
@@ -69,6 +69,7 @@ from snekql.experimental.migrations import (
 from snekql.mariadb.config import Config as MariaDBConfig
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.sqlite.config import Config as SQLiteConfig
+lazy from snekql.mariadb._pool import connect_owned
 
 logger = logging.getLogger(__name__)
 
@@ -1485,23 +1486,34 @@ class Target:
 
 @asynccontextmanager
 async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]:
-    """Open a dedicated migration connection; importing the module opens nothing."""
+    """Open a dedicated migration connection; importing the module opens nothing.
+
+    Native physical opening uses the acquisition budget and the shared owned/TLS
+    connector. Checked-out I/O has separate per-operation budgets; neither budget
+    limits the caller's time inside the yielded context.
+    """
     if isinstance(config, SQLiteConfig):
         connection = await aiosqlite.connect(
             str(config.database), isolation_level=None, timeout=config.acquire_timeout
         )
     else:
-        connection = await aiomysql.connect(
-            host=config.host,
-            port=config.port,
-            user=config.user,
-            password=config.password,
-            db=config.database,
-            charset=config.charset,
-            unix_socket=str(config.unix_socket) if config.unix_socket else None,
-            ssl=config.tls._create_ssl_context() if config.tls else None,  # noqa: SLF001 - same library TLS implementation
-            autocommit=True,
-        )
+        try:
+            with anyio.fail_after(config.acquire_timeout):
+                connection = await connect_owned(
+                    require_tls=config.tls is not None,
+                    host=config.host,
+                    port=config.port,
+                    user=config.user,
+                    password=config.password,
+                    db=config.database,
+                    charset=config.charset,
+                    unix_socket=str(config.unix_socket) if config.unix_socket else None,
+                    ssl=config.tls._create_ssl_context() if config.tls else None,  # noqa: SLF001 - same library TLS implementation
+                    autocommit=True,
+                )
+        except TimeoutError as error:
+            msg = "timed out opening migration connection"
+            raise PoolTimeoutError(msg) from error
     target = Target(connection, config)
     failed = False
     try:

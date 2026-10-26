@@ -47,6 +47,12 @@ and retains SQLite physical cleanup independently. Actual late COMMIT requires f
 native partial-backfill expiry requires original-plan recovery. Opening/acquisition, session/
 durability and remaining G3/release policy are still incomplete.
 
+The later [native-opening checkpoint](recorded-migrations-native-opening-review.md) bounds
+native opening/authentication with the acquisition budget and shares partial-socket ownership/
+mandatory TLS with ordinary runtime pool filling. Actual peer EOF/cancellation and frozen role
+application over verified TLS are exercised; configured TLS no longer silently accepts a
+non-TLS greeting. SQLite opening, coordination acquisition and the other G3 gates remain open.
+
 ## Workflow-first checkpoint
 
 The [authoring-to-application review](recorded-migrations-workflow-review.md) exercises the

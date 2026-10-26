@@ -111,9 +111,10 @@ audit corrections, not extra runtime defects. Only completed reports/exits suppo
 
 ## Remaining G3 and qualification work
 
-- Connection opening/partial-open ownership and acquisition deadlines, including local guard/
-  coordination wait semantics versus per-I/O budgets, still need an explicit integrated contract.
-  Existing acquire_timeout settings are not redefined as a universal physical-stop guarantee.
+- The subsequent [native-opening checkpoint](recorded-migrations-native-opening-review.md)
+  adds a native acquisition budget, partial ownership and shared mandatory TLS. SQLite opening/
+  partial-open ownership and local guard/coordination wait semantics still need an explicit
+  contract. Acquire_timeout is not redefined as a universal physical-stop guarantee.
 - SQLite journal/durability policy and native session/config/admission/visibility policy are not
   completed merely by accepting the shared Config. This change does not switch migration targets
   to WAL or claim all ordinary runtime settings are honored.

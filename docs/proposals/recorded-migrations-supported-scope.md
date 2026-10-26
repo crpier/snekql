@@ -42,6 +42,16 @@ rollback assumption. Native partial-backfill expiry retained original-plan uncer
 Opening/acquisition policy, session/config/durability integration and other G3 outcome/shutdown
 questions remain; this is not completion of G3 or finite environment qualification.
 
+## Native opening follow-through
+
+The [native-opening checkpoint](recorded-migrations-native-opening-review.md) adds a bounded
+acquisition scope around native connection establishment/authentication, with partial ownership
+and the existing mandatory-TLS policy shared with ordinary runtime pool filling. Actual TCP
+peer EOF/zero bytes, both caller-cancellation styles, plaintext refusal despite configured TLS,
+and unchanged frozen-role deployment/current typed use over verified TLS are exercised. SQLite
+opening, local guard/server coordination acquisition, session/durability and remaining outcome/
+shutdown rules are still open. No universal physical-stop or completed G3 claim follows.
+
 ## Recommendation
 
 Retain the opt-in experimental interface until the five gates below are satisfied. The first
@@ -139,7 +149,7 @@ prepared evidence is a missing capability, not a reason to expose private loweri
 | Native acknowledged work followed by transactional failure | Retain acknowledged progress; inspect original evidence and resume only proven remaining work. | Selected operation tests and real blocked-backfill death demonstrate this; no blanket DDL atomicity. |
 | Native restart after client rollback | Durable uncertainty survives; ordinary prepare/apply refuses, explicit inspection/resume is required. | Actual private-server kill/restart and competing resumers demonstrated; loser reassesses status. |
 | Native DDL/COMMIT effect with a missing acknowledgement | Do not infer success or authorize data replay from a matching endpoint. Prove a supported structural reconciliation explicitly, otherwise remain ambiguous. | Selected lost-receipt/refusal tests exist. The role server kill was AFTER rollback, not during COMMIT/DDL; a real selected receipt-loss window remains a qualification gate. |
-| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Checked-out I/O and normal close now have deadlines; actual late SQLite COMMIT and native partial-backfill expiry are observed. Opening/acquisition, session/durability and remaining outcome/cleanup policy are still incomplete. |
+| I/O timeout/cancellation | Preserve known versus unknown outcome evidence and discard unsafe connections; bounded cleanup cannot manufacture rollback or completion. | Checked-out I/O and normal close now have deadlines; actual late SQLite COMMIT and native partial-backfill expiry are observed. Native opening now has an acquisition budget and shared owned/TLS admission. SQLite opening, coordination acquisition, session/durability and remaining outcome/cleanup policy are still incomplete. |
 | Missing/incompatible original plan or ledger | Refuse without receipt rewriting, reconstruction from current models, or endpoint stamping. | Actual old nine-column ledger refusal demonstrated. Original raw Prepared JSON was not versioned; the later version-one envelope is not a ledger backup or cross-version conversion policy. |
 
 [Workflow](recorded-migrations-workflow-review.md),
@@ -192,8 +202,10 @@ necessary; original evidence is not a backup or a compiler-compatibility registr
 
 The dedicated connector uses direct driver calls. The bounded follow-through now honors
 `operation_timeout` for checked-out driver/control/cleanup waits and invalidates interrupted
-targets without declaring physical quiescence. It does not complete connection opening/acquisition,
-application session admission, SQLite journal/durability policy or all outcome/shutdown rules.
+targets without declaring physical quiescence. The subsequent native-opening follow-through
+bounds acquisition and shares owned/TLS admission. SQLite opening/partial-open ownership,
+local guard/server coordination acquisition, application session admission, SQLite journal/
+durability policy and other outcome/shutdown rules are still incomplete.
 Resolve these explicitly rather than adding a second generic runtime facade or documenting
 ignored shared Config settings as implemented behavior.
 

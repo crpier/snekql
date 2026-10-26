@@ -34,6 +34,11 @@ checked-out/control/cleanup budgets and interrupted-target disposal without trea
 awaiter timeout as rollback or physical stop. Actual native original-plan recovery is retained;
 connection opening/acquisition, session/durability and remaining outcome policy stay open.
 
+The later [native-opening checkpoint](recorded-migrations-native-opening-review.md) adds a
+native acquisition deadline and shares owned partial-connection/mandatory-TLS admission with
+ordinary pool filling. It observes actual TCP EOF/cancellation and frozen-role/current-app use
+over verified TLS; SQLite opening, coordination acquisition and remaining G3 policy stay open.
+
 ## Objective and evidence rules
 
 The first production proposal should cover a deliberately bounded set of physical

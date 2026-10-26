@@ -25,6 +25,29 @@ class _RequiredTLSConnection(Connection):
         await super()._request_authentication()
 
 
+async def connect_owned(*, require_tls: bool, **kwargs: Any) -> Connection:
+    """Own a physical connection before any opening await, including cancellation.
+
+    Both pooled query connections and dedicated migration connections require
+    this same partial-socket cleanup and mandatory-TLS admission policy.
+    """
+    connection_type = _RequiredTLSConnection if require_tls else Connection
+    connection = connection_type(**kwargs)
+    try:
+        await connection._connect()  # noqa: SLF001 - owned aiomysql 0.3.x adaptation
+    except BaseException as error:
+        connection.close()
+        if (
+            require_tls
+            and isinstance(error, Exception)
+            and not isinstance(error, DatabaseRuntimeError)
+        ):
+            msg = "MariaDB required TLS connection failed"
+            raise DatabaseRuntimeError(msg) from error
+        raise
+    return connection
+
+
 class _OwnedPool(Pool):
     """Own every socket before awaiting authentication or session initialization."""
 
@@ -76,24 +99,12 @@ class _OwnedPool(Pool):
         ):
             self._acquiring += 1
             try:
-                connection_type = (
-                    _RequiredTLSConnection if self._require_tls else Connection
+                connection = await connect_owned(
+                    require_tls=self._require_tls,
+                    echo=self._echo,
+                    loop=self._loop,
+                    **self._conn_kwargs,
                 )
-                connection = connection_type(
-                    echo=self._echo, loop=self._loop, **self._conn_kwargs
-                )
-                try:
-                    await connection._connect()  # noqa: SLF001
-                except BaseException as error:
-                    connection.close()
-                    if (
-                        self._require_tls
-                        and isinstance(error, Exception)
-                        and not isinstance(error, DatabaseRuntimeError)
-                    ):
-                        msg = "MariaDB required TLS connection failed"
-                        raise DatabaseRuntimeError(msg) from error
-                    raise
                 self._free.append(connection)
                 self._cond.notify()
             finally:

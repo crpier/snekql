@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Bound native migration connection opening with the acquisition budget, retain partial socket
+  ownership through cancellation, and require configured TLS rather than opportunistic plaintext
+  fallback. Share the existing owned connector with ordinary runtime pool filling; exercise actual
+  peer EOF, required-TLS refusal and frozen role deployment/current typed use over verified TLS.
+  SQLite opening, coordination acquisition and remaining session/durability/outcome policy stay open.
+
 - Apply configured per-I/O deadlines to checked-out migration driver/control/cleanup waits;
   invalidate interrupted targets and retain independent SQLite physical cleanup. Real late
   SQLite COMMIT and native partial-backfill timeout require fresh/original-plan evidence, not
