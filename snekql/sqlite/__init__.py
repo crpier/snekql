@@ -85,6 +85,7 @@ lazy from snekql._common import (
 lazy from snekql._common import (
     Write as _RuntimeWrite,
 )
+lazy from snekql._explain_types import SQLitePlanStep, SQLiteQueryPlan
 lazy from snekql._query_dialect import register_query_dialect
 lazy from snekql._runtime_selection import register_default_backend_factory
 lazy from snekql.expressions import Aggregate as _AggregateType
@@ -232,6 +233,8 @@ __all__ = [
     "Real",
     "ResultCardinalityError",
     "Row",
+    "SQLitePlanStep",
+    "SQLiteQueryPlan",
     "Scalar",
     "SchemaDriftIssue",
     "SchemaError",

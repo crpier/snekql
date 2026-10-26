@@ -38,7 +38,7 @@ connection requirements and [tested environments](failure-matrix.md) for evidenc
 | Recursive CTE/window/INTERSECT/EXCEPT builders | Not implemented | Not implemented |
 | Raw CTE/window/set SQL | Explicit validated consumption contracts, subject to engine capabilities | Same, with dialect-specific SQL |
 | Streaming | Explicit stream lifetime and bounded delivered partitions | Same, using an unbuffered cursor; not a native-memory guarantee |
-| EXPLAIN | EXPLAIN QUERY PLAN for SELECT/INSERT/UPDATE/DELETE; no `explain_analyze` | EXPLAIN/ANALYZE for SELECT/UPDATE/DELETE without RETURNING; ANALYZE executes the query |
+| EXPLAIN | EXPLAIN QUERY PLAN with typed steps for SELECT/INSERT/UPDATE/DELETE; no JSON or `explain_analyze` | EXPLAIN/ANALYZE for SELECT/UPDATE/DELETE without RETURNING; `format="json"` adds typed structural evidence; ANALYZE executes the query |
 | Durability | File-backed WAL, configurable NORMAL/FULL policy; storage limits still apply | Server durability and storage configuration remain operator-owned |
 | Verified TCP TLS | Not applicable to the embedded database | `TLSConfig`, with certificate and hostname verification |
 | Production pool ownership | One Database per owning process/event loop; memory databases have special capacity rules | One Database per owning process/event loop |

@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add immutable, typed query-plan evidence to `ExplainResult.plan`: SQLite
+  native steps and MariaDB `format="json"` plans with structural traversal,
+  selected access/estimate/actual metrics, and preserved native output. Existing
+  tabular results remain the default; executing analysis remains explicit.
+  Addresses #577.
+
 - Extend comparative benchmarks with real bounded pool capacity, validated narrow/
   wide payloads, balanced adapter permutations and optional counting observation,
   with versioned provenance and logical setup/write budgets. Addresses #548.

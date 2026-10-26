@@ -1,7 +1,8 @@
 """Public plan inspection results and private EXPLAIN compilation."""
 
-lazy from dataclasses import dataclass
+lazy from dataclasses import dataclass, field
 
+lazy from snekql._explain_types import ExplainFormat, MariaDBQueryPlan, SQLiteQueryPlan
 lazy from snekql._query_compile import compile_query_sql
 lazy from snekql._query_dialect import query_dialect_for_backend
 lazy from snekql._query_state import DeleteState, InsertState, SelectState, UpdateState
@@ -20,6 +21,11 @@ class ExplainResult:
     Native cells can contain sensitive values. Text formatting shows counts
     only; accessing `rows` or `columns` is deliberate inspection.
 
+    `plan` adds immutable backend-specific evidence for SQLite native plans
+    and MariaDB JSON plans; MariaDB tabular output leaves it None. `format`
+    records the requested output format. `analyzed` records whether the
+    executing analysis method was used, not whether any rows were modified.
+
     >>> plan = ExplainResult(backend="sqlite", columns=("detail",), rows=())
     >>> plan.rows
     ()
@@ -30,6 +36,9 @@ class ExplainResult:
     backend: BackendFamily
     columns: tuple[str, ...]
     rows: tuple[tuple[object, ...], ...]
+    plan: SQLiteQueryPlan | MariaDBQueryPlan | None = field(default=None, kw_only=True)
+    format: ExplainFormat = field(default="native", kw_only=True)
+    analyzed: bool = field(default=False, kw_only=True)
 
     def __repr__(self) -> str:
         return (
@@ -43,9 +52,13 @@ def compile_explain_plan(
     *,
     backend: BackendFamily,
     analyze: bool,
+    plan_format: ExplainFormat = "native",
 ) -> RawPlan:
     """Use native cursor metadata while keeping optimizer output out of logs."""
 
+    if plan_format not in ("native", "json"):
+        msg = "unsupported query-plan format"
+        raise QueryCompilationError(msg)
     compiled = compile_query_sql(query)
     if compiled.backend != backend:
         msg = (
@@ -70,6 +83,26 @@ def compile_explain_plan(
         requires_write_transaction=isinstance(state, SelectState)
         and state.lock_wait is not None,
         sql=dialect.explain_sql(
-            state, compiled.sql, "analyze" if analyze else "explain"
+            state, compiled.sql, "analyze" if analyze else "explain", plan_format
         ),
+    )
+
+
+def materialize_explain(
+    *,
+    backend: BackendFamily,
+    columns: tuple[str, ...],
+    rows: tuple[tuple[object, ...], ...],
+    plan_format: ExplainFormat = "native",
+    analyzed: bool = False,
+) -> ExplainResult:
+    """Attach backend-owned structured evidence without discarding native cells."""
+    decoder = query_dialect_for_backend(backend).decode_explain
+    return ExplainResult(
+        backend=backend,
+        columns=columns,
+        rows=rows,
+        plan=None if decoder is None else decoder(columns, rows, plan_format),
+        format=plan_format,
+        analyzed=analyzed,
     )

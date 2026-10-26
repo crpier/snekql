@@ -37,8 +37,8 @@ application code inside a transaction.
 | `await execute(insert_query)` | `None` without RETURNING; projected result(s) with supported RETURNING |
 | `await execute(update_or_delete)` | Affected-row count without RETURNING; returned projections when supported |
 | `await execute(raw_statement)` | Execute a raw non-fetch operation using its declared contract |
-| `await explain(query)` | Backend-specific plan inspection; see supported statement kinds |
-| `await explain_analyze(query)` | Executes the supported query; can have effects, unlike ordinary plan inspection |
+| `await explain(query, format="native")` | Native columns/rows plus typed SQLite steps; MariaDB `format="json"` adds a typed structural plan |
+| `await explain_analyze(query, format="native")` | Executes supported MariaDB queries; `format="json"` adds typed actual rows, loops and timings; can have effects |
 
 [Typing](typing.md) defines scalar, tuple, Row Model and named Pydantic result
 shapes. [Raw SQL](raw-sql.md) defines construction-time validation and raw consumer
@@ -191,6 +191,8 @@ against both namespaces' `__all__` lists.
 | `LexicalDurationWarning` | yes | yes |
 | `LiteralDefault` | yes | yes |
 | `LongText` | no | yes |
+| `MariaDBPlanNode` | no | yes |
+| `MariaDBQueryPlan` | no | yes |
 | `MigrationDeclarationError` | yes | yes |
 | `MigrationError` | yes | yes |
 | `MigrationHistoryError` | yes | yes |
@@ -226,6 +228,8 @@ against both namespaces' `__all__` lists.
 | `ReadType` | yes | yes |
 | `ResultCardinalityError` | yes | yes |
 | `Row` | yes | yes |
+| `SQLitePlanStep` | yes | no |
+| `SQLiteQueryPlan` | yes | no |
 | `Scalar` | yes | yes |
 | `SchemaDriftIssue` | yes | yes |
 | `SchemaError` | yes | yes |
