@@ -1,0 +1,16 @@
+import hashlib,json,os,subprocess,sys,time
+from pathlib import Path
+r=Path(__file__).parent;copy=r/'calibration-src';probe=copy/'tests/testing/mariadb/shutdown_probe.py';parent=copy/'tests/testing/mariadb/test_process_cleanup.py';original_probe=probe.read_bytes();original_parent=parent.read_bytes();tmp=r/'fault-tmp';metadata={'fault':'Owned copy withholds probe OS-group KILL delivery; real-time watchdog must rescue and fail, not launder reaping evidence.','runs':[]}
+def run(name,cmd,expected):
+ tmp.mkdir();start=time.time()
+ with (r/f'{name}.json').open('wb') as stdout,(r/f'{name}.stderr').open('wb') as stderr:result=subprocess.run(cmd,cwd=copy,env={**os.environ,'TMPDIR':str(tmp),'PYTHON_CONTEXT_AWARE_WARNINGS':'1'},stdout=stdout,stderr=stderr,check=False)
+ assert result.returncode==expected,(name,result.returncode);assert not [line for line in subprocess.check_output(['ps','-eo','pid,args'],text=True).splitlines() if str(tmp) in line];assert not list(tmp.iterdir());tmp.rmdir();metadata['runs'].append({'name':name,'command':cmd,'exit_code':result.returncode,'wall_seconds':time.time()-start,'sha256':hashlib.sha256((r/f'{name}.json').read_bytes()).hexdigest()});return json.loads((r/f'{name}.json').read_text())
+command=[sys.executable,'-m','snektest','tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed','--json-output']
+try:
+ before='        self.original_signal(pid, signum)';after='        if signum != signal.SIGKILL:\n            self.original_signal(pid, signum)';assert original_probe.decode().count(before)==1;probe.write_text(original_probe.decode().replace(before,after));metadata['probe_mutation']={'before':before,'after':after}
+ d=run('watchdog-direct-observation',[sys.executable,'-m','tests.testing.mariadb.shutdown_probe'],0);assert d=={'term_received':True,'server_returncode':-9,'all_reaped':True,'kill_times':[11.0],'alive_at_nine':True,'watchdog_fired':True};print('Actual rescued outcome:',d,flush=True)
+ d=run('watchdog-rescue-rejected',command,1);assert d['failed']==1 and d['errors']==0;print('Guard rejects:',d['tests'][0]['exception'],flush=True)
+ before='    assert_eq(report["watchdog_fired"], False)\n';assert original_parent.decode().count(before)==1;parent.write_text(original_parent.decode().replace(before,''));metadata['guard_mutation']={'before':before,'after':''}
+ d=run('watchdog-guard-omitted',command,0);assert d['passed']==1;print('Omitted guard would incorrectly accept rescue (calibration only)',flush=True)
+finally:probe.write_bytes(original_probe);parent.write_bytes(original_parent)
+d=run('watchdog-restored-green',command,0);assert d['passed']==1;(r/'watchdog-calibration.json').write_text(json.dumps(metadata,indent=2)+'\n');print('Restored all copies: green')

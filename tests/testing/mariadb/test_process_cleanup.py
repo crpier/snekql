@@ -6,6 +6,7 @@ import asyncio
 import os
 import sys
 from collections.abc import Awaitable, Callable
+from json import loads
 from pathlib import Path
 from shutil import which
 from tempfile import TemporaryDirectory
@@ -285,45 +286,23 @@ async def readiness_error_remains_primary(policy: str) -> None:
                 await process.wait()
 
 
-@test(mark="medium")
+@test(mark="slow")
 async def terminate_resistant_server_is_killed() -> None:
-    """A real child ignoring SIGTERM is killed after the unchanged ten-second grace."""
+    """Real TERM resistance, grace, KILL and reaping use an isolated logical clock."""
 
-    spawn = asyncio.create_subprocess_exec
-    processes: list[asyncio.subprocess.Process] = []
-    with TemporaryDirectory() as directory:
-        ready = Path(directory) / "ready"
-        data_directory = Path(directory) / "data"
-        await asyncio.to_thread((data_directory / "mysql").mkdir, parents=True)
-
-        async def record(*args: str, **kwargs: Any) -> asyncio.subprocess.Process:
-            """Use executable stand-ins; exercise real kernel signals and waitpid."""
-            script = (
-                f"import signal, time; from pathlib import Path; signal.signal(signal.SIGTERM, signal.SIG_IGN); Path({str(ready)!r}).touch(); time.sleep(60)"
-                if args[0] == "mariadbd"
-                else "pass"
-            )
-            process = await spawn(sys.executable, "-c", script, **kwargs)
-            processes.append(process)
-            return process
-
-        try:
-            with patch("asyncio.create_subprocess_exec", record):
-                async with temporary_mariadb_server(
-                    runtime_base_directory=data_directory.parent,
-                    data_directory=data_directory,
-                ):
-                    with anyio.fail_after(5):
-                        # Readiness comes from another process, not an asyncio task.
-                        while not await asyncio.to_thread(ready.exists):  # noqa: ASYNC110
-                            await asyncio.sleep(0.01)
-            assert_eq(processes[0].returncode, -9)
-            assert_true(all(process.returncode is not None for process in processes))
-        finally:
-            for process in processes:
-                if process.returncode is None:
-                    process.kill()
-                await process.wait()
+    with anyio.fail_after(30):
+        completed = await anyio.run_process(
+            [sys.executable, "-m", "tests.testing.mariadb.shutdown_probe"],
+            check=False,
+        )
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    report = loads(completed.stdout)
+    assert_eq(report["term_received"], True)
+    assert_eq(report["alive_at_nine"], True)
+    assert_eq(report["kill_times"], [11.0])
+    assert_eq(report["server_returncode"], -9)
+    assert_eq(report["all_reaped"], True)
+    assert_eq(report["watchdog_fired"], False)
 
 
 @test(mark="fast")

@@ -1,0 +1,20 @@
+{
+  "unchanged_named_definitions": [
+    "reset_failure_reaps_server_before_entry_raises",
+    "_CancellationGate",
+    "cancellation_reaps_owned_children",
+    "_ReadinessError",
+    "readiness_error_remains_primary",
+    "server_spawn_failure_is_a_domain_error"
+  ],
+  "changed_definition": [
+    "terminate_resistant_server_is_killed"
+  ],
+  "baseline_revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+  "candidate_revision": "9422d1206508c6ea1f57de5aa70946282482871e",
+  "changed_case_marker": {
+    "before": "medium",
+    "after": "slow"
+  },
+  "library_diff": ""
+}

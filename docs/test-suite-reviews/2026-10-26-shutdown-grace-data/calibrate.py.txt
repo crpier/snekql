@@ -1,0 +1,27 @@
+import hashlib,json,os,shutil,subprocess,sys,time
+from pathlib import Path
+r=Path(__file__).parent;copy=r/'calibration-src';copy.mkdir(exist_ok=True)
+files=subprocess.check_output(['git','ls-files','snekql','tests/__init__.py','tests/testing/__init__.py','tests/testing/mariadb/__init__.py','tests/helpers.py'],text=True).splitlines()+['tests/testing/mariadb/test_process_cleanup.py','tests/testing/mariadb/shutdown_probe.py']
+for name in files:
+ src=Path(name)
+ if src.is_file():dst=copy/name;dst.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(src,dst)
+p=copy/'snekql/testing/mariadb/_process.py';original=p.read_bytes();metadata={'baseline_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'library_process_sha256':hashlib.sha256(original).hexdigest(),'candidate_sources':{f:hashlib.sha256(Path(f).read_bytes()).hexdigest() for f in files[-2:]},'mutants':[]}
+mutants=[('premature-kill','            await asyncio.wait_for(asyncio.shield(waiter), _SHUTDOWN_TIMEOUT)\n        except TimeoutError, OSError:', '            await asyncio.wait_for(asyncio.shield(waiter), 1.0)\n        except TimeoutError, OSError:'),('missing-kill','            _signal_process(process, kill=True)','            pass  # deliberate missing KILL'),('missing-stop-reap','    waiter = asyncio.create_task(process.communicate() if capture else process.wait())','    return  # deliberate early ownership release\n    waiter = asyncio.create_task(process.communicate() if capture else process.wait())')]
+cmd=[sys.executable,'-m','snektest','tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed','--json-output']
+tmp=r/'fault-tmp'
+for name,before,after in mutants:
+ tmp.mkdir()
+ assert original.decode().count(before)==1
+ try:
+  p.write_text(original.decode().replace(before,after));started=time.time()
+  with (r/f'mutant-{name}.json').open('wb') as stdout,(r/f'mutant-{name}.stderr').open('wb') as stderr:result=subprocess.run(cmd,cwd=copy,env={**os.environ,'PYTHON_CONTEXT_AWARE_WARNINGS':'1','TMPDIR':str(tmp)},stdout=stdout,stderr=stderr,check=False)
+  d=json.loads((r/f'mutant-{name}.json').read_text());assert result.returncode==1 and d['failed']==1 and d['errors']==0,(name,d);metadata['mutants'].append({'name':name,'before':before,'after':after,'command':cmd,'cwd':str(copy),'exit_code':result.returncode,'wall_seconds':time.time()-started,'report_sha256':hashlib.sha256((r/f'mutant-{name}.json').read_bytes()).hexdigest()});print(name,d['tests'][0]['exception'],flush=True)
+ finally:p.write_bytes(original)
+ assert p.read_bytes()==original
+ active=[line for line in subprocess.check_output(['ps','-eo','pid,args'],text=True).splitlines() if str(tmp) in line];assert not active,active
+ assert not list(tmp.iterdir());tmp.rmdir()
+tmp.mkdir()
+with (r/'restored-green.json').open('wb') as stdout,(r/'restored-green.stderr').open('wb') as stderr:result=subprocess.run(cmd,cwd=copy,env={**os.environ,'PYTHON_CONTEXT_AWARE_WARNINGS':'1','TMPDIR':str(tmp)},stdout=stdout,stderr=stderr,check=False)
+d=json.loads((r/'restored-green.json').read_text());assert result.returncode==0 and d['passed']==1;metadata['restored_command']=cmd;metadata['restored_exit_code']=result.returncode;(r/'calibration.json').write_text(json.dumps(metadata,indent=2)+'\n');print('Restored: green');assert not list(tmp.iterdir());tmp.rmdir()
+# All stand-ins carry this private path in their program; none may survive.
+active=[line for line in subprocess.check_output(['ps','-eo','pid,args'],text=True).splitlines() if str(copy) in line];assert not active,active
