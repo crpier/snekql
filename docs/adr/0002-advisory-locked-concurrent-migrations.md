@@ -68,3 +68,13 @@ a later failure preserves earlier progress.
 
 MariaDB also commits transactional InnoDB DML and its history row together.
 MariaDB DDL continues to have an implicit-commit crash window.
+
+
+## Recorded-state scope amendment (#477)
+
+[ADR0023](0023-recorded-migration-ownership-and-execution.md) retains coordination/history
+rechecks for recorded work, with SQLite package atomicity and native durable unit/recovery
+outcomes. Recorded and released runners use different ledgers/advisory names; no shared lock
+or cross-family ordering is promised. First promotion uses separate deployment targets, with
+caller-owned writer exclusion and stable authorization. Coordination is not fencing or physical
+quiescence. G5 engineering acceptance is recorded in the ADR's decision review.

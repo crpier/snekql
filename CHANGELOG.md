@@ -4,6 +4,16 @@
 
 ### Experimental
 
+- Make recorded-migration `connect(config)` return an unopened, single-use `Connection` lifetime
+  before acquisition. Preserve `async with` Target use; after failed opening or context exit,
+  `wait_closed()` joins that lifetime's retained cleanup under a fresh operation budget.
+  Timeout/cancellation does not cancel the producer or another waiter. No global drain,
+  unsafe cleanup SQL, automatic replay or failed-close repair (#477, G5 choice B).
+- Accept bounded G5 recorded-state architecture/first-promotion scope and ADR0023 with explicit
+  older ADR amendments. Keep the experimental namespace and released raw-SQL interface; no
+  cross-history conversion, stable replacement or publication approval is implied (#477).
+
+
 - Add finite recorded-migration qualification selection for SQLite3.45.1/3.53.1 and MariaDB
   LTS10.11/11.4/11.8/12.3, normal/forced-lazy workflow, ownership/refusal/codec and real COMMIT/
   DDL-loss journeys. Lost real ALTER OK requires explicit original structural reconciliation,

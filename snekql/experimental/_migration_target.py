@@ -7,6 +7,7 @@ import logging
 import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from types import TracebackType
 from typing import Any, Literal
 lazy import sqlite3
 lazy from dataclasses import replace
@@ -97,6 +98,16 @@ _sqlite_opening_closes: set[asyncio.Task[None]] = set()
 """Own abandoned openings until their eventual connection has physically closed."""
 
 
+async def _join_physical_close(task: asyncio.Task[None], seconds: float) -> None:
+    """Observe this owned close under a fresh budget without cancelling its producer."""
+    try:
+        with anyio.fail_after(seconds):
+            await asyncio.shield(task)
+    except TimeoutError as error:
+        operation = "migration close"
+        raise DatabaseOperationTimeoutError(operation, seconds) from error
+
+
 async def _close_sqlite_opening(opening: asyncio.Future[aiosqlite.Connection]) -> None:
     """Do not cancel the driver or close before its pending open produced a handle."""
     try:
@@ -116,14 +127,19 @@ def _sqlite_opening_closed(task: asyncio.Task[None]) -> None:
         logger.warning("migration SQLite opening cleanup failed", exc_info=True)
 
 
-def _abandon_sqlite_opening(opening: asyncio.Future[aiosqlite.Connection]) -> None:
+def _abandon_sqlite_opening(
+    opening: asyncio.Future[aiosqlite.Connection],
+) -> asyncio.Task[None]:
     """Transfer ownership rather than queue close against a still-unopened driver."""
     task = asyncio.create_task(_close_sqlite_opening(opening))
     _sqlite_opening_closes.add(task)
     task.add_done_callback(_sqlite_opening_closed)
+    return task
 
 
-async def _open_sqlite(config: SQLiteConfig) -> aiosqlite.Connection:
+async def _open_sqlite(
+    config: SQLiteConfig, lifetime: Connection
+) -> aiosqlite.Connection:
     """Bound caller acquisition without cancelling the worker's pending physical open."""
     opening = asyncio.ensure_future(
         aiosqlite.connect(
@@ -136,11 +152,11 @@ async def _open_sqlite(config: SQLiteConfig) -> aiosqlite.Connection:
         with anyio.fail_after(config.acquire_timeout):
             return await asyncio.shield(opening)
     except TimeoutError as error:
-        _abandon_sqlite_opening(opening)
+        lifetime._cleanup = _abandon_sqlite_opening(opening)  # noqa: SLF001 - module owns opening handoff
         msg = "timed out opening migration connection"
         raise PoolTimeoutError(msg) from error
     except anyio.get_cancelled_exc_class():
-        _abandon_sqlite_opening(opening)
+        lifetime._cleanup = _abandon_sqlite_opening(opening)  # noqa: SLF001 - module owns opening handoff
         raise
 
 
@@ -391,22 +407,13 @@ class Target:
         except BaseException:
             logger.warning("migration SQLite physical close failed", exc_info=True)
 
-    async def _join_close(self, task: asyncio.Task[None]) -> None:
-        """Bound a fresh physical-close wait without cancelling its retained owner."""
-        try:
-            with anyio.fail_after(self._config.operation_timeout):
-                await asyncio.shield(task)
-        except TimeoutError as error:
-            operation = "migration close"
-            raise DatabaseOperationTimeoutError(
-                operation, self._config.operation_timeout
-            ) from error
-
     async def _close(self) -> None:
         """Drain this lifetime's owner/known cleanup, never unsafe policy SQL."""
         if self._closed:
             if self._close_task is not None:
-                await self._join_close(self._close_task)
+                await _join_physical_close(
+                    self._close_task, self._config.operation_timeout
+                )
             return
         self._closing = True
         try:
@@ -423,13 +430,17 @@ class Target:
             # The active owner may have discarded the connection while we waited.
             if self._closed:  # ty: ignore[redundant-condition-strict]
                 if self._close_task is not None:
-                    await self._join_close(self._close_task)
+                    await _join_physical_close(
+                        self._close_task, self._config.operation_timeout
+                    )
                 return
             self._closed = True
             if not self._sqlite:
                 self._connection.close()
                 return
-            await self._join_close(self._start_close(interrupt=False))
+            await _join_physical_close(
+                self._start_close(interrupt=False), self._config.operation_timeout
+            )
         finally:
             self._guard.release()
 
@@ -1668,8 +1679,78 @@ class _SessionSettingsProbe:
         return rows[0][0] if rows else None
 
 
+class Connection:
+    """Single-use migration lifetime, retained before opening and after context exit.
+
+    Use ``async with`` to obtain a Target. After failed entry or context exit,
+    ``wait_closed`` joins this lifetime's retained cleanup, not other connections.
+    """
+
+    def __init__(self, config: SQLiteConfig | MariaDBConfig) -> None:
+        self._config = config
+        self._cleanup: asyncio.Task[None] | None = None
+        self._cleanup_error: BaseException | None = None
+        self._entered = False
+        self._finished = False
+        self._context = _connect(config, self)
+
+    async def __aenter__(self) -> Target:
+        """Open once; retain cleanup ownership even if no Target can be yielded."""
+        if self._entered:
+            msg = "migration connection lifetime is single-use"
+            raise PackageError(msg)
+        self._entered = True
+        try:
+            return await self._context.__aenter__()
+        except BaseException:
+            self._finished = True
+            raise
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        """Keep existing context-exit deadlines and primary-error precedence."""
+        if not self._entered or self._finished:
+            msg = "migration connection lifetime is not active"
+            raise PackageError(msg)
+        try:
+            return await self._context.__aexit__(exc_type, exc, traceback)
+        finally:
+            self._finished = True
+
+    async def wait_closed(self) -> None:
+        """Join retained cleanup under a fresh operation budget without cancelling it.
+
+        Call after failed entry or context exit. Timeout/cancellation is not physical
+        stop; retry this wait while keeping the owning loop alive. Success observes
+        local disposal, not native server quiescence or application readiness.
+        """
+        if not self._finished:
+            msg = "exit migration connection before waiting for cleanup"
+            raise PackageError(msg)
+        if self._cleanup is not None:
+            await _join_physical_close(self._cleanup, self._config.operation_timeout)
+        elif self._cleanup_error is not None:
+            raise self._cleanup_error
+
+
+def connect(config: SQLiteConfig | MariaDBConfig) -> Connection:
+    """Construct an unopened lifetime; async entry yields its dedicated Target.
+
+    Retain the returned object to await ``wait_closed()`` after failed entry/exit.
+    Construction opens nothing; the existing ``async with connect(config)`` form
+    remains valid. No global drain, automatic replay or cumulative timer is added.
+    """
+    return Connection(config)
+
+
 @asynccontextmanager
-async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]:
+async def _connect(
+    config: SQLiteConfig | MariaDBConfig, lifetime: Connection
+) -> AsyncIterator[Target]:
     """Open a dedicated migration connection; importing the module opens nothing.
 
     Physical opening uses the acquisition budget; abandoned SQLite opens retain
@@ -1691,7 +1772,7 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
     an audit of every DDL/DML privilege or a database-readiness certificate.
     """
     if isinstance(config, SQLiteConfig):
-        connection = await _open_sqlite(config)
+        connection = await _open_sqlite(config, lifetime)
     else:
         try:
             with anyio.fail_after(config.acquire_timeout):
@@ -1765,10 +1846,14 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
         failed = True
         raise
     finally:
-        with anyio.CancelScope(shield=True):
-            try:
-                await target._close()  # noqa: SLF001 - module owns connection lifecycle
-            except BaseException:
-                if not failed:
-                    raise
-                logger.warning("migration connection cleanup failed", exc_info=True)
+        try:
+            with anyio.CancelScope(shield=True):
+                try:
+                    await target._close()  # noqa: SLF001 - module owns connection lifecycle
+                except BaseException as error:
+                    lifetime._cleanup_error = error  # noqa: SLF001 - preserve observed cleanup failure, not the body error
+                    if not failed:
+                        raise
+                    logger.warning("migration connection cleanup failed", exc_info=True)
+        finally:
+            lifetime._cleanup = target._close_task  # noqa: SLF001 - retain this lifetime's physical owner

@@ -59,8 +59,10 @@ async def native_opening_uses_acquisition_budget_and_closes_unanswered_handshake
         operation_timeout=5,
     )
 
+    lifetime = m.connect(config)
+
     async def open_target() -> None:
-        async with m.connect(config):
+        async with lifetime:
             fail("target yielded without database handshake")
 
     opening = asyncio.create_task(open_target())
@@ -72,6 +74,7 @@ async def native_opening_uses_acquisition_budget_and_closes_unanswered_handshake
         with assert_raises(mariadb.PoolTimeoutError) as error:
             await opening
         assert "opening migration connection" in str(error.exception)
+        await lifetime.wait_closed()
         # Real peer EOF, not an internal connection/task flag. No greeting was
         # sent, so the client must send zero authentication or SQL bytes.
         assert_eq(await asyncio.wait_for(reader.read(), timeout=1), b"")
@@ -125,10 +128,11 @@ async def cancelled_native_opening_keeps_the_partial_socket_owned(
         operation_timeout=0.01,
     )
     scope = CancelScope()
+    lifetime = m.connect(config)
 
     async def open_target() -> None:
         with scope:
-            async with m.connect(config):
+            async with lifetime:
                 fail("target yielded without database handshake")
 
     opening = asyncio.create_task(open_target())
@@ -146,6 +150,7 @@ async def cancelled_native_opening_keeps_the_partial_socket_owned(
             scope.cancel()
             await opening
             assert scope.cancelled_caught
+        await lifetime.wait_closed()
         assert_eq(await asyncio.wait_for(reader.read(), timeout=1), b"")
     finally:
         if not opening.done():

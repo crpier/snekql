@@ -25,7 +25,10 @@ async def sqlite_abandoned_opening_reaps_late_connection_before_fresh_role_deplo
     """A deadline is not physical stop; explicit late close must not rely on GC."""
     fixtures = Path(__file__).parent / "fixtures"
     flags = ["-X", "lazy_imports=all"] if sys.get_lazy_imports() == "all" else []
-    env = dict(os.environ, PYTHONPATH=str(Path(__file__).parents[2]))
+    search = [str(Path(__file__).parents[2])]
+    if inherited := os.environ.get("PYTHONPATH"):
+        search.append(inherited)
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(search))
     async with TemporaryDirectory() as directory:
         path = Path(directory) / "app.db"
         lease = await asyncio.create_subprocess_exec(
@@ -61,7 +64,7 @@ async def sqlite_abandoned_opening_reaps_late_connection_before_fresh_role_deplo
             assert_eq(await asyncio.wait_for(lease.stdout.readline(), 3), b"breaking\n")
             if mode != "deadline":
                 # Deliberately exceed the checked-out I/O budget before cancelling.
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(0.2)
                 assert operator.stdin is not None
                 operator.stdin.write(b"cancel\n")
                 await operator.stdin.drain()
@@ -90,6 +93,8 @@ async def sqlite_abandoned_opening_reaps_late_connection_before_fresh_role_deplo
                 assert (await asyncio.to_thread(channel.read_text)).endswith(
                     "break_lease"
                 )
+            joined = json.loads(await asyncio.wait_for(operator.stdout.readline(), 3))
+            assert_eq(joined, {"join_expired": True, "other_lifetime_closed": True})
             assert lease.stdin is not None and operator.stdin is not None
             lease.stdin.close()
             _, lease_error = await asyncio.wait_for(lease.communicate(), 3)
@@ -106,6 +111,7 @@ async def sqlite_abandoned_opening_reaps_late_connection_before_fresh_role_deplo
             )
             disposed, deployed = [json.loads(line) for line in stdout.splitlines()]
             assert_eq(disposed["disposed"], True)
+            assert_eq(disposed["joined"], True)
             assert_eq(disposed["database_descriptors"], [])
             assert_eq(deployed["rows"], [[1, "admin"], [2, "user"], [3, "user"]])
             assert_eq(deployed["originals_unchanged"], True)

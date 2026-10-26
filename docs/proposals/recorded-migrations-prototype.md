@@ -1,6 +1,6 @@
 # Recorded-state migration prototype (#477)
 
-Status: **experimental, incomplete, not ready for production or merge**.
+Status: **experimental; bounded G5 engineering contract accepted, not release/publish approval**.
 
 This implements the first vertical slices of the design discussed in #475,
 replacing the function-only direction in draft #476. The prototype lives in
@@ -13,6 +13,17 @@ removes/replaces them.
 Unchanged operation sets retain their existing format. Format 1 remains
 unsupported, and old experimental ledgers have no automatic upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
+
+## G5 explicit lifetime follow-through
+
+The [G5 decision review](recorded-migrations-g5-decision-review.md) records the maintainer's
+B choice: retain `Connection = connect(config)` before opening; `async with` still yields Target,
+and post-failure/exit `wait_closed()` joins only that lifetime's owned cleanup under a fresh
+operation budget. This removes the need for private/OS probes in ordinary in-process lifetime
+supervision, not the need for a live loop or separate native server-outcome assessment.
+Current-source216-case matrix/956+956experimental/1784fast/160+160focused/negative1+1 now pass;
+G5 is accepted for bounded opt-in experimental promotion. No merge/publication or stable-
+namespace replacement is authorized; consumer/release documentation and packaging follow.
 
 ## Proposed promotion scope
 

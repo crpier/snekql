@@ -1228,3 +1228,12 @@ process death. `tests/experimental/qualification-matrix.json` keeps that set exp
 select only verified external installations, with no production environment selector/download.
 Only completed stable-source matrix/broad reports discharge G4; G5 approval/consumer guides/
 merge/release remain separate. See that record for current completion counts and exclusions.
+
+## G5 explicit connection lifetime follow-through
+
+The [G5 decision review](recorded-migrations-g5-decision-review.md) records the maintainer's B
+choice: a public Connection owner before opening, bounded own-cleanup joins after failed entry/
+exit, cancellation isolation and unchanged original-plan execution. Names/ADR/coexistence and
+first-promotion scope are now accepted together after completed new-source qualification.
+Earlier audit/checkpoint limitations remain historical evidence, not a demand for speculative
+parser work or a current G5 blocker. Consumer/release follow-through remains before publication.

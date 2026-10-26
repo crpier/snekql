@@ -1,10 +1,11 @@
-# Recorded migrations: proposed supported scope (#477)
+# Recorded migrations: bounded promotion scope (#477)
 
-Status: **proposed engineering decision; not an accepted release contract**.
-Baseline: `fa45f57`, draft PR #482. No runtime change, new support promise, ADR
-supersession or release approval follows from this document. Consumer guides remain deferred.
+Status: **G5 engineering contract accepted for bounded opt-in first promotion**, not publication.
+Original proposal baseline: `fa45f57`, draft PR #482. Current G5 acceptance and explicit ADR
+amendments are recorded below; this is not publication or a general support promise. Consumer
+and release documentation must follow before publication.
 
-This consolidates the completed workflow evidence into a finite candidate contract. Earlier
+This consolidates completed workflow evidence into the bounded first-promotion contract. Earlier
 reviews are evidence for their own checkpoints, not an ever-growing release checklist.
 [ADR 0023](../adr/0023-recorded-migration-ownership-and-execution.md) records the architectural
 trade-off; the [glossary](../../GLOSSARY.md) distinguishes ownership, mapping and readiness.
@@ -14,7 +15,19 @@ Current lifecycle policy is summarized under **G3** below and the
 follow-through entries record their checkpoint's limits, not today's remaining checklist.
 Candidate G3 decisions are recorded; local WAL active-backfill process death is now exercised.
 The finite G4 matrix and selected WAL/COMMIT/DDL windows are now exercised; completed broad
-validation is recorded in the G4 review. G5 approval remains outstanding.
+validation for that checkpoint is recorded in the G4 review. The G5 change is separately
+requalified below; architectural acceptance does not authorize merge or publication.
+
+## G5 explicit lifetime review
+
+The maintainer selected B: a public connection lifetime retained BEFORE opening, with bounded
+`wait_closed()` after failed entry/exit. The [G5 decision review](recorded-migrations-g5-decision-review.md)
+records names, in-process lifetime adequacy, raw/recorded coexistence and the intended ADR
+amendments. New frozen source now passes216 matrix cases/12rows,956+956experimental/1784fast/
+160+160focused/negative1+1. G5 is accepted for that bounded opt-in experimental contract.
+Prior G4 completion is historical evidence, not validation of the interface change; full new
+qualification is recorded in the G5 review. Consumer/release documentation follows before
+publication. No stable replacement/namespace move, merge/tag/version/publication is authorized.
 
 ## Versioned original-evidence follow-through
 
@@ -310,26 +323,33 @@ Real DDL OK withholding/EOF proves uncertain2→explicit original structural rec
 without DDL/data replay. This validates honest stopped outcomes, not every crash permutation,
 automatic repair or a general upgrade/host-loss certificate. The maintained selection and exact
 builds are in `tests/experimental/qualification-matrix.json`; repeat it when maintaining that set.
-Final-source953+953 experimental/1784fast/157+157focused/old-floor1+1 also pass. G5 remains OPEN.
+At26c61c7,953+953 experimental/1784fast/157+157focused/old-floor1+1 also passed. The later
+G5 lifetime source is separately requalified and accepted in the linked G5 review.
 
 Keep isolated owned processes, real models/generated historical source and unchanged committed
 artifacts. Normal/lazy modes, exact environment records, completed reports and cleanup evidence
 are required. Neither pending CI nor the existing released SQLite environment jobs discharge
 this gate. Do not expand unrelated parsers unless a selected supported journey requires it.
 
-### G5 — Approve interface, ADR and release scope together
+### G5 — Interface, ADR and first-promotion scope accepted
 
-Decide promotion, names and coexistence/cutover policy for released raw-SQL versus recorded
-histories; do not imply seamless mixing or conversion. Accept/amend ADR 0023 and the affected
-older decisions explicitly. Keep query mapping independent, initialization non-mutating and
-readiness separate. The separately approved explicit model-construction direction is not
-implemented or rescinded by this migration proposal; reconcile its construction policy
-separately without stamping a migration chain.
+The [G5 decision](recorded-migrations-g5-decision-review.md) accepts the existing opt-in
+`snekql.experimental.migrations` names plus explicit `Connection.wait_closed` lifetime access,
+ADR0023 and the affected older amendments, finite qualification and raw/recorded coexistence.
+The released raw-SQL interface stays supported/unchanged; first promotion uses separate targets,
+not mixed ledgers/locks, conversion or automatic cutover. Mapping stays independent, initialization
+schema-free, readiness separate. Existing explicit model-construction approval remains separate,
+not implemented or rescinded and never reconciled through stamping.
 
-Historical-source/import lifecycle, repeated declarations, explicit build freshness and
-object-specific preservation diagnostics remain measured ergonomics to review along the
-selected journey, not grounds for a new CLI. Consumer guides follow an approved contract,
-not speculative experimental examples. No merge, tag, publication or version is authorized.
+Measured repeated declarations/historical-source lifecycle and explicit build freshness are
+accepted costs of this finite workflow; Draft.advance already removes manual lineage stitching.
+No new CLI, generic supervisor or speculative parser expansion. The previously unobservable
+abandoned-opening limitation is NOT accepted as the public interface: B supplies a handle BEFORE
+opening and bounded own-cleanup joins after failure/exit, on a live owning loop.
+
+G5 is GO for a bounded opt-in experimental first promotion, NOT a stable raw-runner replacement,
+future namespace move or approval to merge/tag/publish. Consumer/release guides and packaging
+follow this accepted contract before publication; choose a version only in an explicit release.
 
 ## Deliberately outside this candidate
 
@@ -341,10 +361,9 @@ whole-program memory/CPU/I/O budgets and general resumable jobs. Existing bounde
 SQL and expression limits stay enforced, but are not total-work guarantees.
 
 Security/dependency alerts are separate maintenance work. These exclusions do not weaken
-existing safety checks or justify claiming an unverified supported fact. The next engineering
-slice should build on the bounded G1/G2 follow-through through the approved seams, prioritizing
-G3 runtime integration rather than unsupported future epochs, and must not resume
-attribute-by-attribute verifier expansion. The proposal remains draft and not merge-ready.
+existing safety checks or justify claiming an unverified supported fact. Next follow-through is consumer/release documentation and packaging against the accepted
+contract, not unsupported future epochs or attribute-by-attribute verifier expansion. Release
+execution remains separately authorized; chronological checkpoints below retain their own limits.
 
 ## SQLite writer coordination follow-through
 

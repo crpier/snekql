@@ -29,7 +29,7 @@ from tests.experimental.test_migration_sqlite_coordination import (
     ],
     mark="medium",
 )
-async def context_exit_joins_retained_sqlite_close_after_io_timeout(  # noqa: C901, PLR0915 - real worker/receipt/lifetime ordering
+async def context_exit_joins_retained_sqlite_close_after_io_timeout(  # noqa: C901, PLR0912, PLR0915 - real worker/receipt/lifetime ordering
     mode: Literal["finish", "deadline", "primary", "task", "scope"],
 ) -> None:
     """Successful exit must not silently leave this Target's known close unobserved."""
@@ -73,11 +73,12 @@ async def context_exit_joins_retained_sqlite_close_after_io_timeout(  # noqa: C9
             leave = asyncio.Event()
 
             scope = anyio.CancelScope()
+            lifetime = m.connect(config)
 
             async def context() -> None:
                 """Caller chooses error handling; lifetime joins cleanup, not policy SQL."""
                 with scope:
-                    async with m.connect(config) as target:
+                    async with lifetime as target:
                         opened.set_result(target)
                         try:
                             await target.apply(m.Prepared.load(wire))
@@ -132,7 +133,33 @@ async def context_exit_joins_retained_sqlite_close_after_io_timeout(  # noqa: C9
                 if mode != "finish":
                     # Caller return/cleanup expiry is NOT physical worker quiescence.
                     await _wait_busy_worker(worker)
+                    with assert_raises(sqlite.DatabaseOperationTimeoutError) as joined:
+                        await lifetime.wait_closed()
+                    assert_eq(
+                        (joined.exception.operation, joined.exception.timeout),
+                        ("migration close", 0.15),
+                    )
+                    await _wait_busy_worker(worker)
+                waiting: asyncio.Task[None] | None = None
+                if mode != "finish":
+                    waiting = asyncio.create_task(lifetime.wait_closed())
+                    cancelled = asyncio.create_task(lifetime.wait_closed())
+                    await asyncio.wait({waiting, cancelled}, timeout=0.02)
+                    assert not waiting.done() and not cancelled.done()
+                    cancelled.cancel()
+                    with assert_raises(asyncio.CancelledError):
+                        await cancelled
+                    if mode == "scope":
+                        with anyio.CancelScope() as cancelled_wait:
+                            cancelled_wait.cancel()
+                            await lifetime.wait_closed()
+                        assert cancelled_wait.cancelled_caught
+                    assert not waiting.done(), "one waiter cancelled another's cleanup"
                 await writer.rollback()
+                if waiting is not None:
+                    await waiting
+                await lifetime.wait_closed()
+                await lifetime.wait_closed()
                 # Physical worker disappearance, not logical Target.closed or a sleep.
                 async with asyncio.timeout(3):
                     while await asyncio.to_thread(  # noqa: ASYNC110 - observe external OS worker, no asyncio event exists

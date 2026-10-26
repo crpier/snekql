@@ -145,3 +145,13 @@ This qualifies a selected database outcome after client death, NOT library-manag
 global graceful shutdown under abrupt termination; those G3 exclusions remain. Pinned WAL readers keep their old snapshot without blocking the fresh writer. Production code
 unchanged; no fabricated runtime RED/fix or power-loss inference. G4 maintained environment
 matrix/native DDL lost ACK and G5 interface/lifecycle/ADR/coexistence/release approval remain.
+
+## G5 observable lifetime follow-through
+
+The [G5 decision review](recorded-migrations-g5-decision-review.md) rejects the unobservable
+abandoned-opening restriction as the promoted in-process interface. `connect` now returns a
+retained public `Connection` before opening; after failed entry/exit its bounded `wait_closed`
+joins only its owned eventual-opening/known-close work. Waiter cancellation does not cancel
+that producer or another waiter. The old context-exit policy and primary-error precedence
+remain; no global supervisor, unsafe SQL, replay or failed-close repair. This checkpoint's948
+counts above remain historical. New-source qualification/admission is recorded in the G5 review.

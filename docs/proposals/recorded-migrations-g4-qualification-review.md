@@ -1,6 +1,6 @@
 # Recorded migrations: finite G4 environment and failure-window qualification (#477)
 
-Status: engineering qualification record; **G5 remains unapproved**. Completion counts below
+Status: engineering qualification record for26c61c7; **G5 was unapproved at this checkpoint**. Counts below
 are recorded only after finished final-source runs. No merge/tag/publication or Actions work.
 
 ## Finite maintained set
@@ -151,3 +151,11 @@ Remaining promotion work is **G5**: names/interface, lifecycle adequacy within s
 proposed ADR0023 acceptance/amendment, released/recorded coexistence/cutover and release scope.
 No global-loop shutdown, failed physical-close recovery, power/host/volume loss, every patch or
 all transports/capabilities is inferred from this bounded G4 completion.
+
+## Subsequent G5 lifetime change
+
+The [G5 decision review](recorded-migrations-g5-decision-review.md) adds the approved observable
+Connection lifetime. This changes production source after26c61c7, so the completed G4 counts
+above are NOT its validation. The expanded finite matrix/broad suites are rerun on frozen new
+source, with explicit lifetime/failed-entry/retained-close cases. That216-case matrix and broad
+validation now pass; final bounded G5 engineering acceptance belongs there, not to these old runs.

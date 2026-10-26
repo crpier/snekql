@@ -98,6 +98,7 @@ lazy from snekql.experimental._migration_storage import (
     validate_storage_claims,
 )
 lazy from snekql.experimental._migration_target import (
+    Connection,
     Prepared,
     Progress,
     Reconciliation,
@@ -1248,6 +1249,7 @@ __all__ = [
     "ChangeDefault",
     "Checkpoint",
     "ColumnState",
+    "Connection",
     "Contraction",
     "CreateIndex",
     "CreateTable",

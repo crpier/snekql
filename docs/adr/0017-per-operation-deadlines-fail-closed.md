@@ -33,3 +33,14 @@ SQLite detaches an unsafe connection from reusable pool state immediately and
 closes it asynchronously. Its pool capacity remains occupied until physical
 close finishes, so no replacement can exceed the configured bound. MariaDB
 closes the socket before releasing the driver's pool slot.
+
+
+## Recorded-state scope amendment (#477)
+
+[ADR0023](0023-recorded-migration-ownership-and-execution.md) applies owned opening, per-I/O/
+control, guard/coordination and close budgets to dedicated recorded migration lifetimes.
+`Connection.wait_closed()` makes retained opening/close disposal observable after failed entry
+or exit under a fresh operation budget. One cancelled waiter cannot cancel its producer or
+another waiter. It is neither a global drain nor proof that the native server stopped or rolled
+back; the owning loop must stay live. No cumulative package timer or generic failed-close repair.
+G5 engineering acceptance is recorded in the ADR's decision review.

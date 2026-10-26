@@ -2,7 +2,9 @@
 
 import asyncio
 import json
+import os
 import sys
+import tempfile
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -61,7 +63,25 @@ def emit(record: dict[str, object]) -> None:
     print(json.dumps(record), flush=True)
 
 
-async def main() -> None:
+def save_original(path: Path, wire: str) -> None:
+    """Persist the original BEFORE execution, including file and directory fsync."""
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as handle:
+        handle.write(wire)
+        handle.flush()
+        os.fsync(handle.fileno())
+        temporary = handle.name
+    try:
+        Path(temporary).replace(path)
+        descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+async def main() -> None:  # noqa: C901, PLR0912, PLR0915 - visible real opening/disposal/deployment journey
     """Never infer physical disposal from the opening deadline alone."""
     path, fixed = Path(sys.argv[1]), Path(sys.argv[2])
     expected_lazy = sys.argv[3]
@@ -69,9 +89,10 @@ async def main() -> None:
     mode = sys.argv[4]
     config = sqlite.Config(
         database=path,
-        acquire_timeout=0.15 if mode == "deadline" else 3,
-        operation_timeout=5 if mode == "deadline" else 0.01,
+        acquire_timeout=0.3 if mode == "deadline" else 3,
+        operation_timeout=0.15,
     )
+    lifetime = m.connect(config)
     yielded = False
     scope = CancelScope()
 
@@ -79,7 +100,7 @@ async def main() -> None:
         """No package work is admitted on this interrupted acquisition."""
         nonlocal yielded
         with scope:
-            async with m.connect(config):
+            async with lifetime:
                 yielded = True
 
     start = time.perf_counter()
@@ -121,22 +142,70 @@ async def main() -> None:
         }
     )
 
+    # A public join has its OWN fresh budget and cannot finish while open(2) waits.
+    try:
+        await lifetime.wait_closed()
+    except sqlite.DatabaseOperationTimeoutError as error:
+        assert (error.operation, error.timeout) == (
+            "migration close",
+            config.operation_timeout,
+        )
+    else:
+        msg = "wait_closed reported success with a physically blocked opening"
+        raise AssertionError(msg)
+    if mode == "task":
+        joining = asyncio.create_task(lifetime.wait_closed())
+        await asyncio.sleep(0)
+        joining.cancel()
+        try:
+            await joining
+        except asyncio.CancelledError:
+            pass
+        else:
+            msg = "cleanup waiter swallowed task cancellation"
+            raise AssertionError(msg)
+    elif mode == "scope":
+        with CancelScope() as cancelled_wait:
+            cancelled_wait.cancel()
+            await lifetime.wait_closed()
+        assert cancelled_wait.cancelled_caught
+    # Another connection's successful exit/join cannot drain this abandoned open.
+    other = m.connect(
+        replace(config, database=path.with_name("unrelated.db"), operation_timeout=1)
+    )
+    async with other as target:
+        assert await target.status() == ()
+    await other.wait_closed()
+    assert await asyncio.to_thread(lease_waiters)
+    emit({"join_expired": True, "other_lifetime_closed": True})
+
     # The caller has stopped waiting while the real worker is still in open(2).
     # Stay alive until the controller releases the actual kernel lease.
     assert await asyncio.to_thread(sys.stdin.readline) == "released\n"
+    await lifetime.wait_closed()
     async with asyncio.timeout(5):
-        while await asyncio.to_thread(lease_waiters):
+        while await asyncio.to_thread(lease_waiters):  # noqa: ASYNC110 - observe actual OS state, no event exists
             await asyncio.sleep(0.02)
     # Verify all formerly blocked worker TIDs exited, not just left the wait.
     # The controller supplies its independent observation of those same TIDs.
     tids = json.loads(await asyncio.to_thread(sys.stdin.readline))
     async with asyncio.timeout(5):
-        while any(Path(f"/proc/self/task/{tid}").exists() for tid in tids):
+        while await asyncio.to_thread(  # noqa: ASYNC110 - independent OS thread disappearance
+            lambda: any(Path(f"/proc/self/task/{tid}").exists() for tid in tids)
+        ):
             await asyncio.sleep(0.02)
     async with asyncio.timeout(5):
-        while await asyncio.to_thread(database_descriptors, path):
+        while await asyncio.to_thread(database_descriptors, path):  # noqa: ASYNC110 - independent OS descriptor disappearance
             await asyncio.sleep(0.02)
-    emit({"disposed": True, "worker_tids": tids, "database_descriptors": []})
+    await lifetime.wait_closed()
+    emit(
+        {
+            "disposed": True,
+            "joined": True,
+            "worker_tids": tids,
+            "database_descriptors": [],
+        }
+    )
 
     # Explicit fresh acquisition is a new caller decision, not late admission.
     fresh = replace(config, acquire_timeout=3, operation_timeout=1)
@@ -161,7 +230,9 @@ async def main() -> None:
         assert await target.apply(await target.prepare(second)) == "applied"
         original = await target.prepare(roles)
         wire = original.dump()
-        path.with_name("original-plan.json").write_text(wire)
+        await asyncio.to_thread(
+            save_original, path.with_name("original-plan.json"), wire
+        )
         assert await target.apply(m.Prepared.load(wire)) == "applied"
         assert original.dump() == wire
         assert await target.apply(await target.prepare(roles)) == "already_applied"
