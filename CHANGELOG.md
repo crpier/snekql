@@ -4,6 +4,10 @@
 
 ### Experimental
 
+- Apply the shared MariaDB identity/minimum10.11 guard before dedicated migration policy/yield,
+  through owned deadline-aware I/O. Actual10.10.7 refuses before schema/data/history work;
+  existing supported-server role workflow and version observations remain unchanged (#477).
+
 - Verify inherited native STRICT_ALL_TABLES or STRICT_TRANS_TABLES before yielding a recorded
   migration target, retaining exact SQL-mode/rendering evidence and the live required-column
   check. Refuse weak sessions without original role execution, mode repair or receipt rewriting;

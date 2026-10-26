@@ -111,3 +111,12 @@ owned-server audit empty. Default asyncio/GIL CPython3.15.0/Linux/SQLite3.53.1/M
 not maintained LTS qualification. Actions disabled/no CI requested/polled/awaited/claimed.
 No general privilege/version/SQL-mode/readiness certification, failed-close/shutdown/all
 cleanup/cancellation/native lost-ack/WAL active-death/power-loss qualification or release action.
+
+## Shared native version follow-through
+
+The [version checkpoint](recorded-migrations-native-version-review.md) uses the existing
+ordinary MariaDB identity/minimum10.11 verifier through owned target I/O BEFORE policy/yield.
+Actual10.10.7 refuses without schema/data/history mutation; installed positive server retains
+original-role/current typed use/exact VERSION observations and unowned data. No fake server,
+new parser, minimum change, old receipt conversion or positive LTS/matrix/upgrade qualification.
+Remaining G3 metadata/other prerequisites/admission/outcome/shutdown policy and G4/G5 stay open.

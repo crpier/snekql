@@ -83,6 +83,7 @@ lazy from snekql.mariadb.settings import (
     _INNODB_STRICT_MODE_SETTING,
     _UTC_TIME_ZONE_SETTING,
     MARIADB_SESSION_SETTINGS,
+    verify_mariadb_version,
 )
 lazy from snekql.sqlite.settings import (
     SQLITE_CONNECTION_SETTINGS,
@@ -1662,6 +1663,7 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
                     backend="sqlite",
                 )
         else:
+            await verify_mariadb_version(_SessionSettingsProbe(target))
             await apply_connection_settings(
                 _SessionSettingsProbe(target),
                 (

@@ -2392,3 +2392,12 @@ weak sessions refuse BEFORE yield/original-role execution, and NO_BACKSLASH_ESCA
 actual execution evidence. Ordinary all-table normalization is unchanged. No old receipt/data
 repair or new artifact/epoch/layout. Remaining native version/metadata/other prerequisites,
 admission/outcome/shutdown policy and G4/G5 remain open.
+
+## Shared native version follow-through
+
+The [version checkpoint](recorded-migrations-native-version-review.md) uses the existing
+ordinary MariaDB identity/minimum10.11 verifier through owned target I/O BEFORE policy/yield.
+Actual10.10.7 refuses without schema/data/history mutation; installed positive server retains
+original-role/current typed use/exact VERSION observations and unowned data. No fake server,
+new parser, minimum change, old receipt conversion or positive LTS/matrix/upgrade qualification.
+Remaining G3 metadata/other prerequisites/admission/outcome/shutdown policy and G4/G5 stay open.
