@@ -1,0 +1,132 @@
+[
+  {
+    "original": "development/budgets-green.log",
+    "archive": "development/budgets-green.log.gz",
+    "uncompressed_sha256": "ce42d19ab5a1ad794a511ad97ec242d9e8c38279bd4cffec9ba4b7bde06c8bf4"
+  },
+  {
+    "original": "development/budgets-red.log",
+    "archive": "development/budgets-red.log.gz",
+    "uncompressed_sha256": "dfee4b37b52b17dfbccaa8ecd37fd717cfec95e3faf5fbf1d9af3ab56a6cc4d8"
+  },
+  {
+    "original": "development/capacity-green.log",
+    "archive": "development/capacity-green.log.gz",
+    "uncompressed_sha256": "1b7002e4dff4d4ce63257f6cca6dcc350be81087a09516e78ed9cb14b678a13a"
+  },
+  {
+    "original": "development/capacity-red.log",
+    "archive": "development/capacity-red.log.gz",
+    "uncompressed_sha256": "0bd36184935b18dbe174451dc4d621649032817a77eedb6ad5fa8fc0cd09abd7"
+  },
+  {
+    "original": "development/capacity-regressions.log",
+    "archive": "development/capacity-regressions.log.gz",
+    "uncompressed_sha256": "6bd747ab1a3a0e7d17e328c4df36cd7c4508295d118f119a33e59baac9026f09"
+  },
+  {
+    "original": "development/order-green.log",
+    "archive": "development/order-green.log.gz",
+    "uncompressed_sha256": "dd0564eb8fc8fca07e3e207e2878736e0f1c50b59f84ad834c00ef9b76bbeb25"
+  },
+  {
+    "original": "development/order-red.log",
+    "archive": "development/order-red.log.gz",
+    "uncompressed_sha256": "ce7211ec8871dab7ab111ebcb590efe2613d22ca3ffea769a18a6fe2971f5b96"
+  },
+  {
+    "original": "development/provenance-green.log",
+    "archive": "development/provenance-green.log.gz",
+    "uncompressed_sha256": "7c1aab3d1b2074388d4f96d7476abc7ac1aba876d09cec48cdf89a6658795cca"
+  },
+  {
+    "original": "development/provenance-red.log",
+    "archive": "development/provenance-red.log.gz",
+    "uncompressed_sha256": "bff1eac6a45cb36ac9373af74e81dc29c507e9a89feabc752915ed1b5f20e29c"
+  },
+  {
+    "original": "development/service-floor-green.log",
+    "archive": "development/service-floor-green.log.gz",
+    "uncompressed_sha256": "71caa7b769dd734b5356c168a2ee9f796139cae7a22f886609ad4a3b4d1bc844"
+  },
+  {
+    "original": "development/service-floor-red.log",
+    "archive": "development/service-floor-red.log.gz",
+    "uncompressed_sha256": "701353247115e3ae7c61f461a53e76552c07f9511b013cb97bef89f67953831c"
+  },
+  {
+    "original": "development/service-old-admission-counted-1.log",
+    "archive": "development/service-old-admission-counted-1.log.gz",
+    "uncompressed_sha256": "7a572fc89cc3747f2398d6814a073d0836bf69557a61d4358c7a5fa0e078b507"
+  },
+  {
+    "original": "development/service-old-admission-counted-2.log",
+    "archive": "development/service-old-admission-counted-2.log.gz",
+    "uncompressed_sha256": "68b00d81a9e4378e1f65c2041e0f218a6cf5b293bbaf0d420c8c159ba010d200"
+  },
+  {
+    "original": "development/service-old-admission-counted-3.log",
+    "archive": "development/service-old-admission-counted-3.log.gz",
+    "uncompressed_sha256": "f67c132224f65990d97843c32365dfb34d8ddd97d6bb14e052824f85333b1971"
+  },
+  {
+    "original": "development/service-old-admission-counted-4.log",
+    "archive": "development/service-old-admission-counted-4.log.gz",
+    "uncompressed_sha256": "0facf198403d80310129571b1754a0b0ac44e3b56bd30d6f2c1e527540b26f2b"
+  },
+  {
+    "original": "development/service-old-admission-counted-5.log",
+    "archive": "development/service-old-admission-counted-5.log.gz",
+    "uncompressed_sha256": "b1e0bce5d0f93aa9893ae562eaa33c290ac88e149e565a07e5faf40f5cdbd3a0"
+  },
+  {
+    "original": "development/service-old-admission-red.log",
+    "archive": "development/service-old-admission-red.log.gz",
+    "uncompressed_sha256": "3139cb7110a5cd5c01bd987bf851f710bb7ec0ba7eed36995d801b7d3c9dda7b"
+  },
+  {
+    "original": "development/service-work-count-green.log",
+    "archive": "development/service-work-count-green.log.gz",
+    "uncompressed_sha256": "84b90d44531690e6821cb042343ddf3dc264b69900d2addee4e154ad3757077d"
+  },
+  {
+    "original": "development/service-work-count-red.log",
+    "archive": "development/service-work-count-red.log.gz",
+    "uncompressed_sha256": "b66712fe6e5a093eb4f1fedb7be70ca9d86cdde719ec17178171f47d98305b93"
+  },
+  {
+    "original": "development/telemetry-green.log",
+    "archive": "development/telemetry-green.log.gz",
+    "uncompressed_sha256": "356bb5842bd01e1eda564e70696349452aa81e4b33d585adef7b3b5ad08b6cc9"
+  },
+  {
+    "original": "development/telemetry-red.log",
+    "archive": "development/telemetry-red.log.gz",
+    "uncompressed_sha256": "56cf9c64659ff0c9efb0336546d80a82edf3d68b2a1c5ce44528b4865a9d841c"
+  },
+  {
+    "original": "development/width-fixed.log",
+    "archive": "development/width-fixed.log.gz",
+    "uncompressed_sha256": "ac6f3e97fcf5d40832694de8abdd232bc910506ef1aff998657f660c4a7024a4"
+  },
+  {
+    "original": "development/width-green.log",
+    "archive": "development/width-green.log.gz",
+    "uncompressed_sha256": "850c31a55dff7c3ce022fc568db0fddbf87166a81d21a91d42202f861c8b8595"
+  },
+  {
+    "original": "development/width-mariadb-fixed.log",
+    "archive": "development/width-mariadb-fixed.log.gz",
+    "uncompressed_sha256": "2e089438169bd54a90f5c565b19a37c337a2f258b2885cc702bb7f3aa7153862"
+  },
+  {
+    "original": "development/width-red.log",
+    "archive": "development/width-red.log.gz",
+    "uncompressed_sha256": "0e16863ff85a264c674818a8f9c0835375629c47fff15ad98e24d5ebacc0d090"
+  },
+  {
+    "original": "storage.txt",
+    "archive": "storage.txt.gz",
+    "uncompressed_sha256": "73bd1d111b51fdba5e29ec51e20861599ff2e96d5d83cdfd9cff15b5d4e48c0d"
+  }
+]

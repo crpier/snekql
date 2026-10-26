@@ -22,7 +22,7 @@ dependency versions and native engine settings.
   per-trial p99/max/peak statistics are not pooled percentiles or confidence bounds.
   Acquisition p99 is queue admission for raw/snekql, checkout for Core; not the
   same interval. Memory/diagnostic timing is not primary timing.
-- `host-start.json`, `host-end.json`, `host-initial-matrix-end.json`, `storage.txt`:
+- `host-start.json`, `host-end.json`, `host-initial-matrix-end.json`, `storage.txt.gz`:
   uncontrolled-host context, not evidence of workload/host isolation. This agent
   did not run a local suite/build concurrently; unrelated host/worktree activity
   was not isolated or exhaustively audited.
@@ -53,7 +53,9 @@ From this directory:
 sha256sum -c SHA256SUMS
 ```
 
-`SHA256SUMS` covers every retained evidence file except itself. The parent findings
+`SHA256SUMS` covers every retained evidence file except itself. Raw terminal
+transcripts with trailing whitespace are gzip-compressed without editing their
+bytes; `archived-transcripts.json` records their uncompressed SHA-256 digests. The parent findings
 report is outside this manifest; the Git commit records that document separately.
 
 ## Reproduce accepted commands

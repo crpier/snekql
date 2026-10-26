@@ -1,2 +1,0 @@
-tests/test_soak_runner.py::service_soak_sustained_multislot_saturation_does_not_stall ... OK (10.80s)
-────────────────────────────── 1 passed in 10.80s ──────────────────────────────
