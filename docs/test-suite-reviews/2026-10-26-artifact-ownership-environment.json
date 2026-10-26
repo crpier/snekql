@@ -1,0 +1,183 @@
+{
+  "recorded_at": "2026-10-26T00:18:01.009834+00:00",
+  "base_revision": "2238a462ed3c26fa122e393de126e840e21fc3f4",
+  "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "sqlite": "3.53.1",
+  "mariadb": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+  "uv": "uv 0.13.4 (x86_64-unknown-linux-gnu)",
+  "packages": {
+    "anyio": "4.15.1",
+    "snektest": "0.16.0",
+    "pydantic": "2.14.0",
+    "ty": "0.0.84",
+    "ruff": "0.16.9",
+    "aiomysql": "0.3.2",
+    "PyMySQL": "1.2.0"
+  },
+  "temporary_storage": "/dev/shm rw,nosuid,nodev,inode64,huge=advise,usrquota",
+  "runs": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 416.67681722999987,
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "bytes": 0,
+          "directory": false
+        }
+      ],
+      "tmpdir": "/dev/shm/sqv-Gnj6WW",
+      "passed": 4137,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "raw_sha256": "9b34fbf1368b19c6fd1f919e3f06cf24677e2ed164f007cb64fb259b92ad1d73",
+      "base_revision": "5d16b4ee93c9e1d0791d2446fd4678440bbb499a"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 463.1720531109986,
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "bytes": 0,
+          "directory": false
+        }
+      ],
+      "tmpdir": "/dev/shm/sqv-Gnj6WW",
+      "passed": 4137,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "raw_sha256": "ff9a34c78af9abe19475aafdb0b7f5569dd9f524c07ee70432d4dcdb0eb3c152",
+      "base_revision": "5d16b4ee93c9e1d0791d2446fd4678440bbb499a"
+    },
+    {
+      "returncode": 0,
+      "wall_seconds": 465.71739334000085,
+      "tmpdir": "/dev/shm/sqv-17eOCF",
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "bytes": 0,
+          "directory": false
+        }
+      ],
+      "passed": 4139,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "base_revision": "2238a462ed3c26fa122e393de126e840e21fc3f4",
+      "raw_sha256": "b95b4d226e9320253f22b5cc6cd303b158e96c68540fa8b648b658692fd37b74"
+    }
+  ],
+  "owned_mariadb_processes_after_validation": [],
+  "changed_source_sha256": {
+    "CHANGELOG.md": "a5ad54875eaeb2a43e6167fc38851e0b34791a48a60993970b318996e970cc27",
+    "benchmarks/_fixtures.py": "e1970dd5472e6fde811d39e87506a8f1c46f698c1f0728a089cb24df3d0a6d51",
+    "benchmarks/compare.py": "2d4082c919e7527d04fd3f7dd5198f7a937081ee997cd9251dd608301a03c2c2",
+    "benchmarks/comparison.md": "165630544f2b1104602af3b8267d93a3eab506ae58d4d793c9bfdec2eb3af060",
+    "docs/testing-mariadb.md": "a04422493851a544b1a57366531970efbbb235609426055e00a5de9f1ac3f72d",
+    "snekql/testing/mariadb/cli.py": "76f0943fdac6815ecad70722cfed72f670803bc23306d9cd50520af202081750",
+    "snekql/testing/mariadb/server.py": "a10a382ab85f70dede6dd052978a41de6d6d22cf179161ead1cc3f37f2ce6a87",
+    "soak/_fault_restart.py": "de8230e4b9ddbc52a973e37e97aa066792c724972a38399240d32251e88455b1",
+    "soak/faults.py": "7ea831b953c4f01c40267532ba59bd93fa01e08efe14d9284325b78dc5adbcbb",
+    "soak/lifecycle.py": "1f01c25a8e419c45efe807803fa3525f563409540e75f0431c16c7dc2d958404",
+    "soak/service.py": "cc3f4386574e9162b19694ee3d96ef6995c90cb1403039425d749b700d6ef73d",
+    "tests/helpers.py": "76729d730592cde986bf63a4bdbc06ff063b293d53191bf51eba2c2bf685fd45",
+    "tests/mariadb/test_config.py": "e9fafc29b5ec96f4524c9cc11e79081681bf5a72e737d0e485a820faf24dda25",
+    "tests/mariadb/test_connection_policy.py": "697d6e6faeb66acb0f904a7562348ee230f36ca88ddb6b75a64fa2106e0d09c4",
+    "tests/mariadb/test_credential_rotation.py": "5c61bf3f805da51c36522c6acf7ef02f84488e0156e34bf0111bb3b933c0e2a4",
+    "tests/mariadb/test_installed_driver.py": "e080f825feed897efe1f38146117453fbfb4d7bc2963f23d778ddc7111b77223",
+    "tests/mariadb/test_required_tls.py": "b86bfc70078da4d9a5167a9211ab51fb595d8cfafb843743a02fd16b28ed111e",
+    "tests/runtime/test_migration_baseline_example.py": "6811e9b18086fca017f58c2fde7da08b24326117c5fc7534373d0193fb19a9cd",
+    "tests/test_comparative_benchmarks.py": "4b105c69a775d0dd9c6ce3ebb3a6207fd4a2539ddc60f86f5d2ba3e2ec5fc766",
+    "tests/testing/mariadb/test_cli.py": "c356603a6accc4b6a62e799b612b2d896015950981e6024015b1045cc8470619",
+    "tests/testing/mariadb/test_password_confidentiality.py": "26abfbd2d13f70eaa8dff4046367a9c5713c2ec45a9628c793ac1be0f7faf45c",
+    "tests/testing/mariadb/test_password_literals.py": "5ac95eef7ae9591d3edd10fdf0b82c366d7a154bd90d658e8e51bfc8dbc6937a",
+    "tests/testing/mariadb/test_process_cleanup.py": "26222390d75d819d9d5cdee93ba7431cfe3768e32ea2120907a31557809cb314",
+    "tests/testing/mariadb/test_public_api.py": "95420722868141bab1de1b7c39e8ce777e07cad517029c277d8451380a8e1a30",
+    "tests/testing/mariadb/test_readiness_deadlines.py": "2f51a1f5adaec598a87cd09b40fdc454b1260372bb45be63db9ce4d9f7b60d8d",
+    "benchmarks/_artifacts.py": "cef12b5b7c979a249d6a449ef3ace61b5ed0ed979f1fe4d81b82155770e47ff0",
+    "tests/testing/mariadb/test_artifact_ownership.py": "f09b99b44c5882d48f1b06d7d10eb77e8badec17e945aab91b3b642c51bd6579"
+  },
+  "wheel_sha256": {
+    ".gitignore": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+    "snekql-0.9.0.tar.gz": "532831a951b32c11dd76a936d6ad617d7bed4f850e3dfb97937d575aaf971a14",
+    "snekql-0.9.0-py3-none-any.whl": "3c75dc25acad2bc9413a64f4f1949e1ae5a54a843f21b65fd1bfa0ea0cffa037"
+  },
+  "isolated_wheel_cases_passed": 2,
+  "isolated_wheel_retained_entries": 0,
+  "performance_claim": "None: storage and codebase differ from the earlier baseline.",
+  "outer_roots_removed_after_measurement": true,
+  "initial_pair_base_revision": "5d16b4ee93c9e1d0791d2446fd4678440bbb499a",
+  "initial_pair_changed_source_sha256": {
+    "CHANGELOG.md": "a5ad54875eaeb2a43e6167fc38851e0b34791a48a60993970b318996e970cc27",
+    "benchmarks/_fixtures.py": "e1970dd5472e6fde811d39e87506a8f1c46f698c1f0728a089cb24df3d0a6d51",
+    "benchmarks/compare.py": "2d4082c919e7527d04fd3f7dd5198f7a937081ee997cd9251dd608301a03c2c2",
+    "benchmarks/comparison.md": "165630544f2b1104602af3b8267d93a3eab506ae58d4d793c9bfdec2eb3af060",
+    "docs/testing-mariadb.md": "f7e92ed5abed241d1d69815c04eb65c1f627c2c4e3514472550c0a0f6081ede8",
+    "snekql/testing/mariadb/cli.py": "2db3e9e3dc32b6aa89eb0bc780c91bed3406eae3f4c4e9cd4782f9b13cc6723a",
+    "snekql/testing/mariadb/server.py": "a10a382ab85f70dede6dd052978a41de6d6d22cf179161ead1cc3f37f2ce6a87",
+    "soak/_fault_restart.py": "de8230e4b9ddbc52a973e37e97aa066792c724972a38399240d32251e88455b1",
+    "soak/faults.py": "7ea831b953c4f01c40267532ba59bd93fa01e08efe14d9284325b78dc5adbcbb",
+    "soak/lifecycle.py": "1f01c25a8e419c45efe807803fa3525f563409540e75f0431c16c7dc2d958404",
+    "soak/service.py": "cc3f4386574e9162b19694ee3d96ef6995c90cb1403039425d749b700d6ef73d",
+    "tests/helpers.py": "76729d730592cde986bf63a4bdbc06ff063b293d53191bf51eba2c2bf685fd45",
+    "tests/mariadb/test_config.py": "e9fafc29b5ec96f4524c9cc11e79081681bf5a72e737d0e485a820faf24dda25",
+    "tests/mariadb/test_connection_policy.py": "697d6e6faeb66acb0f904a7562348ee230f36ca88ddb6b75a64fa2106e0d09c4",
+    "tests/mariadb/test_credential_rotation.py": "5c61bf3f805da51c36522c6acf7ef02f84488e0156e34bf0111bb3b933c0e2a4",
+    "tests/mariadb/test_installed_driver.py": "e080f825feed897efe1f38146117453fbfb4d7bc2963f23d778ddc7111b77223",
+    "tests/mariadb/test_required_tls.py": "b86bfc70078da4d9a5167a9211ab51fb595d8cfafb843743a02fd16b28ed111e",
+    "tests/runtime/test_migration_baseline_example.py": "6811e9b18086fca017f58c2fde7da08b24326117c5fc7534373d0193fb19a9cd",
+    "tests/test_comparative_benchmarks.py": "4b105c69a775d0dd9c6ce3ebb3a6207fd4a2539ddc60f86f5d2ba3e2ec5fc766",
+    "tests/testing/mariadb/test_password_confidentiality.py": "26abfbd2d13f70eaa8dff4046367a9c5713c2ec45a9628c793ac1be0f7faf45c",
+    "tests/testing/mariadb/test_password_literals.py": "9ea3db5846ff17f2e83e6290d91ed26e23390218ce14e7b95f65712a0162966d",
+    "tests/testing/mariadb/test_process_cleanup.py": "26222390d75d819d9d5cdee93ba7431cfe3768e32ea2120907a31557809cb314",
+    "tests/testing/mariadb/test_public_api.py": "95420722868141bab1de1b7c39e8ce777e07cad517029c277d8451380a8e1a30",
+    "tests/testing/mariadb/test_readiness_deadlines.py": "2f51a1f5adaec598a87cd09b40fdc454b1260372bb45be63db9ce4d9f7b60d8d",
+    "benchmarks/_artifacts.py": "cef12b5b7c979a249d6a449ef3ace61b5ed0ed979f1fe4d81b82155770e47ff0",
+    "tests/testing/mariadb/test_artifact_ownership.py": "f09b99b44c5882d48f1b06d7d10eb77e8badec17e945aab91b3b642c51bd6579"
+  },
+  "initial_pair_identical_case_inventory": true,
+  "outer_root_removed_between_initial_pair": false,
+  "cases_added_by_latest_main": [
+    "tests/testing/mariadb/test_cli.py::generated_password_is_hidden_in_cli_output[empty-environment-password]",
+    "tests/testing/mariadb/test_cli.py::generated_password_is_hidden_in_cli_output[no-environment-password]"
+  ],
+  "isolated_wheel_base_revision": "2238a462ed3c26fa122e393de126e840e21fc3f4",
+  "post_integration_cli_cases_passed": 84,
+  "final_cli_help_and_generated_password_cases_passed": 3,
+  "existing_modified_file_tests_parameterizations_and_assertions_preserved": true
+}

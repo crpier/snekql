@@ -2,9 +2,9 @@
 
 import sys
 from json import loads
-from os import environ
+from os import environ, pathsep
 
-from anyio import run_process
+from anyio import Path, TemporaryDirectory, run_process
 from snektest import Param, assert_eq, assert_in, test
 
 
@@ -19,32 +19,35 @@ from snektest import Param, assert_eq, assert_in, test
 )
 async def comparison_reports_observed_work(adapter: str, backend: str) -> None:
     """Three point reads must actually return the three seeded identities."""
-    result = await run_process(
-        [
-            sys.executable,
-            "-m",
-            "benchmarks.compare",
-            "--backend",
-            backend,
-            "--adapter",
-            adapter,
-            "--operations",
-            "3",
-            "--rows",
-            "3",
-            "--trials",
-            "1",
-            "--warmup",
-            "1",
-        ],
-        check=False,
-    )
-    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
-    report = loads(result.stdout)
-    assert_eq(report["schema_version"], 1)
-    assert_eq(report["backend"], backend)
-    assert_eq(report["trials"][0]["observed"], {"rows": 3, "identity_sum": 6})
-    assert_eq(report["trials"][0]["latency"]["count"], 3)
+    async with TemporaryDirectory(prefix="sq-") as directory:
+        result = await run_process(
+            [
+                sys.executable,
+                "-m",
+                "benchmarks.compare",
+                "--backend",
+                backend,
+                "--adapter",
+                adapter,
+                "--operations",
+                "3",
+                "--rows",
+                "3",
+                "--trials",
+                "1",
+                "--warmup",
+                "1",
+            ],
+            check=False,
+            env={**environ, "TMPDIR": directory},
+        )
+        assert_eq((result.returncode, result.stderr.decode()), (0, ""))
+        report = loads(result.stdout)
+        assert_eq(report["schema_version"], 1)
+        assert_eq(report["backend"], backend)
+        assert_eq(report["trials"][0]["observed"], {"rows": 3, "identity_sum": 6})
+        assert_eq(report["trials"][0]["latency"]["count"], 3)
+        assert_eq([path async for path in Path(directory).iterdir()], [])
 
 
 @test(
@@ -244,58 +247,63 @@ async def execute(self, query, args=None):
 Cursor.execute = execute
 runpy.run_module("benchmarks.compare", run_name="__main__")
 """
-    result = await run_process(
-        [
-            sys.executable,
-            "-c",
-            driver_fault,
-            "--backend",
-            "mariadb",
-            "--adapter",
-            "raw",
-            "--operations",
-            "1",
-            "--rows",
-            "1",
-            "--trials",
-            "1",
-            "--warmup",
-            "0",
-        ],
-        check=False,
-    )
-    assert_eq(result.returncode, 1)
-    assert_eq(result.stdout, b"")
-    assert_in(b"connection policy differs from the declared contract", result.stderr)
+    async with TemporaryDirectory(prefix="sq-") as directory:
+        result = await run_process(
+            [
+                sys.executable,
+                "-c",
+                driver_fault,
+                "--backend",
+                "mariadb",
+                "--adapter",
+                "raw",
+                "--operations",
+                "1",
+                "--rows",
+                "1",
+                "--trials",
+                "1",
+                "--warmup",
+                "0",
+            ],
+            check=False,
+            env={**environ, "TMPDIR": directory},
+        )
+        assert_eq(result.returncode, 1)
+        assert_eq(result.stdout, b"")
+        assert_in(
+            b"connection policy differs from the declared contract", result.stderr
+        )
 
 
 @test(mark="slow")
 async def unavailable_mariadb_does_not_become_a_successful_skip() -> None:
     """An explicitly requested backend must be measured or fail."""
-    result = await run_process(
-        [
-            sys.executable,
-            "-m",
-            "benchmarks.compare",
-            "--backend",
-            "mariadb",
-            "--adapter",
-            "raw",
-            "--operations",
-            "1",
-            "--rows",
-            "1",
-            "--trials",
-            "1",
-            "--warmup",
-            "0",
-        ],
-        env={**environ, "PATH": ""},
-        check=False,
-    )
-    assert_eq(result.returncode, 1)
-    assert_eq(result.stdout, b"")
-    assert_in(b"mariadb-install-db", result.stderr)
+    async with TemporaryDirectory(prefix="sq-") as directory:
+        result = await run_process(
+            [
+                sys.executable,
+                "-m",
+                "benchmarks.compare",
+                "--backend",
+                "mariadb",
+                "--adapter",
+                "raw",
+                "--operations",
+                "1",
+                "--rows",
+                "1",
+                "--trials",
+                "1",
+                "--warmup",
+                "0",
+            ],
+            env={**environ, "PATH": "", "TMPDIR": directory},
+            check=False,
+        )
+        assert_eq(result.returncode, 1)
+        assert_eq(result.stdout, b"")
+        assert_in(b"mariadb-install-db", result.stderr)
 
 
 @test(
@@ -797,3 +805,52 @@ async def comparison_reports_hardware_provenance() -> None:
         assert hardware["cpu_model"]
         assert hardware["memory_total_bytes"] > 0
         assert hardware["affinity"]
+
+
+@test(mark="slow")
+async def comparison_startup_failure_retains_owned_diagnostics() -> None:
+    """A failed subprocess reports its private evidence root without a success report."""
+
+    async with TemporaryDirectory(prefix="sq-") as directory:
+        base = Path(directory)
+        binary = base / "bin"
+        temporary = base / "tmp"
+        await binary.mkdir()
+        await temporary.mkdir()
+        installer = binary / "mariadb-install-db"
+        await installer.write_text(
+            '#!/bin/sh\necho "controlled installer failure" >&2\nexit 7\n'
+        )
+        await installer.chmod(0o700)
+        result = await run_process(
+            [
+                sys.executable,
+                "-m",
+                "benchmarks.compare",
+                "--backend",
+                "mariadb",
+                "--adapter",
+                "raw",
+                "--operations",
+                "1",
+                "--rows",
+                "1",
+                "--trials",
+                "1",
+                "--warmup",
+                "0",
+            ],
+            env={
+                **environ,
+                "TMPDIR": str(temporary),
+                "PATH": f"{binary}{pathsep}{environ['PATH']}",
+            },
+            check=False,
+        )
+        assert_eq(result.returncode, 1)
+        assert_eq(result.stdout, b"")
+        assert_in(b"controlled installer failure", result.stderr)
+        owners = [path async for path in temporary.iterdir()]
+        assert_eq(len(owners), 1)
+        assert_in(str(owners[0]).encode(), result.stderr)
+        assert_eq(len([path async for path in owners[0].iterdir()]), 1)

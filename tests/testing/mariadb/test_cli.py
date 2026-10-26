@@ -50,6 +50,8 @@ async def generated_password_is_hidden_in_cli_output(password_env: str | None) -
             "snekql.testing.mariadb.cli",
             "--auth",
             "password",
+            "--runtime-base-directory",
+            directory,
             "--data-directory",
             str(Path(directory) / "data"),
             "--socket-path",

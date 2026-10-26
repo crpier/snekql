@@ -13,6 +13,7 @@ from typing import Any
 
 from anyio import TemporaryDirectory
 
+from benchmarks._artifacts import mariadb_artifacts
 from snekql import mariadb, sqlite
 from snekql.testing.mariadb import temporary_mariadb_server
 from soak._service_evidence import Histogram, emit, environment, resources
@@ -185,8 +186,11 @@ async def run(config: Config) -> None:
     await environment(asdict(config))
     async with AsyncExitStack() as owned:
         if config.backend == "mariadb":
+            root = await owned.enter_async_context(mariadb_artifacts())
             server = await owned.enter_async_context(
-                temporary_mariadb_server(transports={"tcp"})
+                temporary_mariadb_server(
+                    transports={"tcp"}, runtime_base_directory=root
+                )
             )
             database: Any = await mariadb.Database.initialize(
                 server.config(pool_size=config.pool_size)

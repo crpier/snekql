@@ -37,6 +37,8 @@ The fast group does not replace the full SQLite/MariaDB suite.
 For measured suite costs, timing limitations, and safe temporary-artifact ownership,
 see the [2026-10-25 test-suite baseline](test-suite-reviews/2026-10-25-baseline.md).
 Use equivalent environments and repeated measurements before claiming a speedup.
+The [artifact-ownership verification](test-suite-reviews/2026-10-26-artifact-ownership.md)
+records successful-run cleanup, explicit error retention, and its validation limits.
 
 ## Find the code
 

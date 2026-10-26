@@ -26,6 +26,7 @@ from time import perf_counter
 from anyio import TemporaryDirectory, run_process
 
 from benchmarks import _comparison_mariadb, _comparison_sqlite
+from benchmarks._artifacts import mariadb_artifacts
 from benchmarks._comparison_contract import (
     ComparisonError,
     ReadSession,
@@ -260,8 +261,11 @@ async def _run(run: _RunConfig) -> dict[str, object]:
             await _comparison_sqlite.seed(path, run.rows)
             open_reader = partial(_comparison_sqlite.open_reader, path)
         else:
+            root = await resources.enter_async_context(mariadb_artifacts())
             server = await resources.enter_async_context(
-                temporary_mariadb_server(transports={"tcp"})
+                temporary_mariadb_server(
+                    transports={"tcp"}, runtime_base_directory=root
+                )
             )
             config = server.config(pool_size=1)
             server_metadata = await _comparison_mariadb.seed(config, run.rows)

@@ -145,6 +145,7 @@ async def tls_peer(
         async with temporary_mariadb_server(
             auth="password",
             client=Path(client),
+            runtime_base_directory=Path(directory),
             data_directory=Path(directory) / "data",
             transports={"tcp"},
             server_args=(
@@ -186,6 +187,7 @@ async def required_tls_rejects_plaintext_server() -> None:
         async with temporary_mariadb_server(
             auth="password",
             client=Path(client),
+            runtime_base_directory=Path(directory),
             data_directory=Path(directory) / "data",
             server_args=("--skip-ssl",),
             transports={"tcp"},

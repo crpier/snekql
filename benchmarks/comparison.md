@@ -198,3 +198,13 @@ work, argument bounds, trial ordering and report configuration. An injected
 50 ms driver callback block checks the heartbeat, not machine throughput.
 See [the published baseline](findings.md) for repeated results and noise-aware
 regression review.
+
+## Temporary MariaDB artifacts
+
+Comparative runs own a unique private temporary root, stop the server before
+removing that root on success, and do not leave a database per completed command.
+On an error the root is retained conservatively, with its path in an exception
+note on stderr; no successful JSON report is emitted. Logs can contain sensitive
+information: paths are reported, not their contents. Failed/interrupted roots
+need explicit inspection and cleanup after confirming no owned process is live.
+This changes benchmark ownership, not the public server helper's retention policy.

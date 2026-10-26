@@ -117,6 +117,7 @@ async def readiness_probe_obeys_remaining_budget(
     started = monotonic()
     with anyio.fail_after(5), assert_raises(TemporaryMariaDBServerError) as error:
         async with temporary_mariadb_server(
+            runtime_base_directory=adapters.data_directory.parent,
             data_directory=adapters.data_directory,
             mariadbd=adapters.server,
             client=adapters.client,
@@ -143,6 +144,7 @@ async def prompt_readiness_succeeds(auth: Literal["insecure", "password"]) -> No
     adapters = await load_fixture(readiness_adapters(0.0, 0, "prompt"))
 
     async with temporary_mariadb_server(
+        runtime_base_directory=adapters.data_directory.parent,
         data_directory=adapters.data_directory,
         mariadbd=adapters.server,
         client=adapters.client,
@@ -164,6 +166,7 @@ async def cancelled_readiness_reaps_children(mode: str) -> None:
     async def start_server() -> None:
         with scope:
             async with temporary_mariadb_server(
+                runtime_base_directory=adapters.data_directory.parent,
                 data_directory=adapters.data_directory,
                 mariadbd=adapters.server,
                 client=adapters.client,
