@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Apply configured per-I/O deadlines to checked-out migration driver/control/cleanup waits;
+  invalidate interrupted targets and retain independent SQLite physical cleanup. Real late
+  SQLite COMMIT and native partial-backfill timeout require fresh/original-plan evidence, not
+  inferred rollback or automatic replay. Opening/acquisition and session/durability integration
+  remain incomplete; validation diagnostics no longer predeclare rollback acknowledgement.
+
 - Define epoch-one canonical execution and deferred target lowering for legacy migration
   formats2–8, independently of current public authoring compilation. Keep historical bytes
   unchanged and current safety gates live; refuse incompatible future interpretation rather

@@ -29,6 +29,11 @@ It preserves legacy bytes and live safety gates; an actual changed grouping cand
 refused rather than silently replacing historical interpretation. This is one supported legacy
 interpreter, not a general future compiler/codec/dependency ABI or automatic conversion.
 
+The later [bounded I/O deadline checkpoint](recorded-migrations-io-deadline-review.md) implements
+checked-out/control/cleanup budgets and interrupted-target disposal without treating SQLite
+awaiter timeout as rollback or physical stop. Actual native original-plan recovery is retained;
+connection opening/acquisition, session/durability and remaining outcome policy stay open.
+
 ## Objective and evidence rules
 
 The first production proposal should cover a deliberately bounded set of physical

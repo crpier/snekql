@@ -41,6 +41,12 @@ authoring. Original bytes and live safety checks remain; different candidate con
 grouping is stale/refused instead of reinterpreting history. Only one historical interpreter,
 not a general future-epoch registry or automatic conversion, is supported.
 
+The subsequent [checked-out I/O deadline checkpoint](recorded-migrations-io-deadline-review.md)
+now honors operation budgets after connection opening, invalidates timed-out/cancelled targets,
+and retains SQLite physical cleanup independently. Actual late COMMIT requires fresh evidence;
+native partial-backfill expiry requires original-plan recovery. Opening/acquisition, session/
+durability and remaining G3/release policy are still incomplete.
+
 ## Workflow-first checkpoint
 
 The [authoring-to-application review](recorded-migrations-workflow-review.md) exercises the

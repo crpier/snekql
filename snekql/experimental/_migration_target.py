@@ -1,9 +1,11 @@
 """Explicit target preparation and execution for experimental migration packages."""
 
+import asyncio
 import hashlib
 import json
+import logging
 import secrets
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any, Literal
 
@@ -11,7 +13,7 @@ import anyio
 lazy import aiomysql
 lazy import aiosqlite
 
-from snekql.errors import SchemaError
+from snekql.errors import DatabaseOperationTimeoutError, SchemaError
 from snekql.experimental._migration_checks import removed_check_obstacle
 from snekql.experimental._migration_indexes import removed_indexes
 from snekql.experimental._migration_mariadb import (
@@ -67,6 +69,8 @@ from snekql.experimental.migrations import (
 from snekql.mariadb.config import Config as MariaDBConfig
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.sqlite.config import Config as SQLiteConfig
+
+logger = logging.getLogger(__name__)
 
 _HISTORY = "snekql_experimental_migrations"
 _MARIADB_NO_SUCH_TABLE = 1146
@@ -219,6 +223,7 @@ class Target:
         self._config = config
         self._guard = anyio.Lock()
         self._closed = False
+        self._close_task: asyncio.Task[None] | None = None
         self._sqlite = isinstance(config, SQLiteConfig)
         identity = (
             (
@@ -241,21 +246,101 @@ class Target:
             + hashlib.sha256(str(config.database).encode()).hexdigest()[:40]
         )
 
+    async def _io[T](self, operation: str, call: Callable[[], Awaitable[T]]) -> T:
+        """Give each driver interaction a fresh budget; abandon unsafe sessions."""
+        self._require_open()
+        try:
+            with anyio.fail_after(self._config.operation_timeout):
+                return await call()
+        except TimeoutError as error:
+            self._discard()
+            raise DatabaseOperationTimeoutError(
+                operation, self._config.operation_timeout
+            ) from error
+        except anyio.get_cancelled_exc_class():
+            self._discard()
+            raise
+
+    def _discard(self) -> None:
+        """Stop admitting work immediately; physical SQLite close may finish later."""
+        self._closed = True
+        if self._sqlite:
+            self._start_close(interrupt=True)
+        else:
+            self._connection.close()
+
+    def _start_close(self, *, interrupt: bool) -> asyncio.Task[None]:
+        """Retain one owned SQLite close even after its caller has stopped waiting."""
+        if self._close_task is None:
+            self._close_task = asyncio.create_task(
+                self._physical_close(interrupt=interrupt)
+            )
+            self._close_task.add_done_callback(self._close_finished)
+        return self._close_task
+
+    async def _physical_close(self, *, interrupt: bool) -> None:
+        """Own the queued close independently of the interrupted operation's caller."""
+        if interrupt:
+            try:
+                await self._connection.interrupt()
+            except Exception:
+                logger.warning("migration SQLite interrupt failed", exc_info=True)
+        await self._connection.close()
+
+    @staticmethod
+    def _close_finished(task: asyncio.Task[None]) -> None:
+        """Observe detached cleanup failures without claiming physical disposal."""
+        try:
+            task.result()
+        except BaseException:
+            logger.warning("migration SQLite physical close failed", exc_info=True)
+
+    async def _close(self) -> None:
+        """Bound normal close; unsafe connections already have independent cleanup."""
+        if self._closed:
+            # An unsafe connection is already detached. Do not join its worker
+            # behind the operation deadline, and never queue rollback/policy SQL.
+            return
+        self._closed = True
+        if not self._sqlite:
+            self._connection.close()
+            return
+        task = self._start_close(interrupt=False)
+        try:
+            with anyio.fail_after(self._config.operation_timeout):
+                await asyncio.shield(task)
+        except TimeoutError as error:
+            operation = "migration close"
+            raise DatabaseOperationTimeoutError(
+                operation, self._config.operation_timeout
+            ) from error
+
     async def _query(
         self, sql: str, params: tuple[object, ...] = ()
     ) -> list[tuple[Any, ...]]:
-        cursor = await self._connection.cursor()
+        cursor = await self._io("migration cursor", self._connection.cursor)
+        failed = False
         try:
-            await cursor.execute(sql, params if self._sqlite else params or None)
-            return [tuple(row) for row in await cursor.fetchall()]
-        except anyio.get_cancelled_exc_class():
-            if not self._sqlite:
-                # Inspection also performs protocol reads outside _coordinated.
-                self._closed = True
-                self._connection.close()
+            await self._io(
+                "migration execute",
+                lambda: cursor.execute(sql, params if self._sqlite else params or None),
+            )
+            return [
+                tuple(row) for row in await self._io("migration fetch", cursor.fetchall)
+            ]
+        except BaseException:
+            failed = True
             raise
         finally:
-            await cursor.close()
+            if not self._closed:
+                with anyio.CancelScope(shield=True):
+                    try:
+                        await self._io("migration cursor close", cursor.close)
+                    except BaseException:
+                        self._discard()
+                        if not failed:
+                            raise
+                        logger.warning("migration cursor cleanup failed", exc_info=True)
 
     def _require_open(self) -> None:
         if self._closed:
@@ -497,7 +582,7 @@ class Target:
                 if await self._transactional_obstacles():
                     msg = "transactional data changes require InnoDB tables without triggers or stored routines"
                     raise PackageError(msg)
-                await self._connection.begin()
+                await self._io("migration begin", self._connection.begin)
             await self._execute_step(step)
             observation = await self._catalog()
             await self._query(
@@ -517,13 +602,13 @@ class Target:
                 ),
             )
             if step.transactional and not self._sqlite:
-                await self._connection.commit()
+                await self._io("migration commit", self._connection.commit)
         if (
             self._sqlite
             and any(step.rebuild for step in prepared.steps)
             and await self._query("PRAGMA foreign_key_check")
         ):
-            msg_0 = "rebuild failed foreign-key validation; transaction rolled back"
+            msg_0 = "rebuild failed foreign-key validation; completion not recorded"
             raise PackageError(msg_0)
         await self._check_addition_environment(package)
         completed_catalog = await self._catalog()
@@ -540,7 +625,7 @@ class Target:
             + marker,
             (_digest(completed_catalog), package.digest),
         )
-        await self._connection.commit()
+        await self._io("migration commit", self._connection.commit)
 
     async def _check_removal_authority(
         self, package: Package, *, step: int | None = None
@@ -1051,7 +1136,7 @@ class Target:
                 f"EXCEPT SELECT {projection} FROM {quote_identifier(destination)}) LIMIT 1"
             )
             if mismatch:
-                msg = "rebuild did not preserve copied values; transaction rolled back"
+                msg = "rebuild did not preserve copied values; completion not recorded"
                 raise PackageError(msg)
 
     async def _execute_step(self, step: ExecutionStep) -> None:
@@ -1282,7 +1367,7 @@ class Target:
                     rendering_profile=current.observed_profile,
                 )
                 audit = [*json.loads(row[10]), acceptance.model_dump(mode="json")]
-                await self._connection.begin()
+                await self._io("migration begin", self._connection.begin)
                 await self._query(
                     "UPDATE `snekql_experimental_migrations` SET acknowledged=%s,catalog=%s,observation=%s,reconciliations=%s WHERE digest=%s",
                     (
@@ -1293,7 +1378,7 @@ class Target:
                         recovery.prepared.package.digest,
                     ),
                 )
-                await self._connection.commit()
+                await self._io("migration commit", self._connection.commit)
                 return await self._assess_recovery(recovery.prepared)
 
     async def resume(
@@ -1321,28 +1406,41 @@ class Target:
     @asynccontextmanager
     async def _coordinated(self, *, rebuild: bool = False) -> AsyncIterator[None]:
         """Restore connection policy even if acquisition or execution is cancelled."""
+        failed = False
         try:
             if rebuild:
                 await self._query("PRAGMA foreign_keys=OFF")
             await self._begin()
             yield
         except BaseException as error:
-            if not self._sqlite and isinstance(error, anyio.get_cancelled_exc_class()):
-                # A cancelled protocol read may already have closed the socket.
-                # Do not mask cancellation with rollback/release on that session,
-                # or reuse a stream whose response boundaries are uncertain.
-                self._closed = True
-                self._connection.close()
-            else:
+            failed = True
+            if isinstance(error, anyio.get_cancelled_exc_class()):
+                self._discard()
+            if not self._closed:
                 with anyio.CancelScope(shield=True):
-                    await self._connection.rollback()
+                    try:
+                        await self._io("migration rollback", self._connection.rollback)
+                    except BaseException:
+                        self._discard()
+                        logger.warning("migration rollback failed", exc_info=True)
             raise
         finally:
-            with anyio.CancelScope(shield=True):
-                if rebuild:
-                    await self._query("PRAGMA foreign_keys=ON")
-                if not self._sqlite and not self._closed:
-                    await self._query("SELECT RELEASE_LOCK(%s)", (self._lock_name,))
+            if not self._closed:
+                with anyio.CancelScope(shield=True):
+                    try:
+                        await self._restore_policy(rebuild=rebuild)
+                    except BaseException:
+                        self._discard()
+                        if not failed:
+                            raise
+                        logger.warning("migration policy cleanup failed", exc_info=True)
+
+    async def _restore_policy(self, *, rebuild: bool) -> None:
+        """Restore policy only on a known-safe, still-admitted connection."""
+        if rebuild:
+            await self._query("PRAGMA foreign_keys=ON")
+        if not self._sqlite:
+            await self._query("SELECT RELEASE_LOCK(%s)", (self._lock_name,))
 
     async def apply(self, prepared: Prepared) -> Literal["applied", "already_applied"]:
         """Recheck observations under coordination; never replay uncertain progress."""
@@ -1367,7 +1465,7 @@ class Target:
                 else:
                     self._check_catalog_history(rows, catalog)
                 if already_applied:
-                    await self._connection.rollback()
+                    await self._io("migration rollback", self._connection.rollback)
                     return "already_applied"
                 await self._index_removal_environment(package)
                 await self._check_addition_environment(package)
@@ -1405,14 +1503,19 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
             autocommit=True,
         )
     target = Target(connection, config)
+    failed = False
     try:
         if isinstance(config, SQLiteConfig):
             await target._query("PRAGMA foreign_keys=ON")  # noqa: SLF001 - module owns connection lifecycle
         yield target
+    except BaseException:
+        failed = True
+        raise
     finally:
-        target._closed = True  # noqa: SLF001 - module owns connection lifecycle
         with anyio.CancelScope(shield=True):
-            if isinstance(config, SQLiteConfig):
-                await connection.close()
-            else:
-                connection.close()
+            try:
+                await target._close()  # noqa: SLF001 - module owns connection lifecycle
+            except BaseException:
+                if not failed:
+                    raise
+                logger.warning("migration connection cleanup failed", exc_info=True)

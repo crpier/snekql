@@ -102,6 +102,11 @@ qualification, WAL/native receipt-loss windows, historical authoring ergonomics 
 interface/ADR/release approval remain. Strict SQLite adoption and mapping/ownership separation
 are unchanged. Prototype remains incomplete/not production- or merge-ready.
 
+The subsequent [checked-out I/O deadline follow-through](recorded-migrations-io-deadline-review.md)
+implements a bounded part of the remaining G3 work without changing this execution interpretation
+or any historical package/Prepared bytes. Opening/acquisition and session/durability policy,
+remaining outcome reporting, qualification and release decisions are not discharged by it.
+
 ## Completed local validation
 
 - **876 normal +876 forced-lazy experimental**, **1,784 fast**, **19 focused normal +19
