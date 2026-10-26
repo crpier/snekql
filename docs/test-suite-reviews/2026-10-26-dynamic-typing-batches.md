@@ -131,3 +131,15 @@ source/report hashes, environment, input/assertion mappings, focused timings and
 full results. Raw reports are retained at
 `/home/crpier/.cache/sq-dynamic-typing-V2hURzpc` (pointer:
 `/tmp/snekql-dynamic-typing-latest`).
+
+
+## Main integration before merge
+
+Main subsequently merged #563 (`6891bfc`), adding two end-to-end attribution and
+focused-selection proofs. Its only conflict was contributor prose; both guides
+and all new tests were retained. The feature's five code/test source hashes are
+unchanged. All **196 affected typing/support cases passed normally and with
+forced lazy imports**, including both new proofs; strict typing, lint, formatting,
+generated-interface and whitespace checks passed. The earlier 4,187-case full
+runs remain pinned to the pre-integration tree; no fresh 4,189-case full run is
+claimed. Integration reports and hashes are retained with the existing evidence.

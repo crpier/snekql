@@ -54,6 +54,9 @@ prepares that report; the direct CLI retains narrow case/backend execution.
 Source-mutation and special-configuration tests remain independent. The
 [static typing assessment review](test-suite-reviews/2026-10-26-static-typing-assessments.md)
 records measured savings and coverage accounting.
+The complementary [end-to-end fault proofs](test-suite-reviews/2026-10-26-typing-assessment.md)
+exercise independently named diagnostic failures and focused selection through
+real copied-checkout runner commands; historical measurements remain revision-pinned.
 
 The 80 nested-expression and 22 temporal checks keep their distinct inputs,
 markers and independently named diagnostic assertions, but now share one real

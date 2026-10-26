@@ -339,5 +339,16 @@
     "direct-lazy-manifest.json": "e97f5f7bca1ce30520eb9e59b18ece28f911f49c999037c3defa884420301a1d",
     "nested-helper-family-report.json": "8d1fd929000e74d0239d0bd25ad9efdb8d5fcc8273c50dacde166b78698e8678",
     "temporal-domains-report.json": "93cf819398bae30e19836d622b1ec271831e6a23b931eaaee9f4108eadb8561a"
+  },
+  "main_integration": {
+    "main_revision": "6891bfcf39810bfe06df5b61c021f419ada1ad8d",
+    "original_feature_code_hashes_unchanged": true,
+    "focused_normal_passed": 196,
+    "focused_forced_lazy_passed": 196,
+    "raw_sha256": {
+      "integrated-typing-normal.json": "4ee8e604b956cd565986869644440f03bf2cffc4f3283abb9e95d626ad569668",
+      "integrated-typing-lazy.json": "a91b1a1a2afb8bd88629bdd724f1e301f0d3d3a652bf9bdc21c4ca6a23968d99"
+    },
+    "scope": "All affected typing modules, including main's two end-to-end proofs. No fresh 4189-case full-suite run claimed."
   }
 }
