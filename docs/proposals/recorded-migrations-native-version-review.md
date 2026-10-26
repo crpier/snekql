@@ -122,3 +122,12 @@ archive runners finished, owned-server audit empty. Local Linux/GIL CPython3.15.
 asyncio/SQLite3.53.1/MariaDB13.0.2 plus selected negative10.10.7, NOT maintained LTS/upgrade/
 MySQL/all-versions/every-feature/privilege/failed-close/shutdown/power-loss qualification.
 Actions disabled/no CI requested/polled/awaited/claimed; no merge/tag/publication/release action.
+
+## Bounded context-exit follow-through
+
+The [context-exit checkpoint](recorded-migrations-context-exit-review.md) stops new/queued
+admission, drains the active owner under a fresh acquisition budget, then closes. Failed or
+cancelled drain discards connection without cancelling caller tasks or erasing the primary
+error; actual blocked native/SQLite original-role journeys retain own evidence and explicit
+recovery. Separate phase budgets are the candidate decision, not a cumulative package/context
+timer. Remaining metadata/outcome/detached-cleanup/global shutdown and G4/G5 stay open.

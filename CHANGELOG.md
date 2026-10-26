@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Stop migration admission at context exit, drain the active caller operation under a fresh
+  acquisition budget, then close. Failed/cancelled drain discards without cancelling caller
+  tasks or inferring rollback; retain primary body failures and original recovery evidence
+  (#477). Keep separate phase budgets, not an implicit whole-package/context timer.
+
 - Apply the shared MariaDB identity/minimum10.11 guard before dedicated migration policy/yield,
   through owned deadline-aware I/O. Actual10.10.7 refuses before schema/data/history work;
   existing supported-server role workflow and version observations remain unchanged (#477).

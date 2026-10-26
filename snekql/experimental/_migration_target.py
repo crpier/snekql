@@ -294,6 +294,7 @@ class Target:
         self._config = config
         self._guard = anyio.Lock()
         self._closed = False
+        self._closing = False
         self._close_task: asyncio.Task[None] | None = None
         self._sqlite = isinstance(config, SQLiteConfig)
         identity = (
@@ -320,6 +321,7 @@ class Target:
     @asynccontextmanager
     async def _admitted(self) -> AsyncIterator[None]:
         """Bound only this caller's guard wait; do not disturb the active owner."""
+        self._require_accepting()
         try:
             with anyio.fail_after(self._config.acquire_timeout):
                 await self._guard.acquire()
@@ -327,9 +329,17 @@ class Target:
             msg = "timed out acquiring migration target guard"
             raise PoolTimeoutError(msg) from error
         try:
+            self._require_accepting()
             yield
         finally:
             self._guard.release()
+
+    def _require_accepting(self) -> None:
+        """Refuse new public work while an existing owner drains for context exit."""
+        self._require_open()
+        if self._closing:
+            msg = "migration target is closing"
+            raise PackageError(msg)
 
     async def _io[T](self, operation: str, call: Callable[[], Awaitable[T]]) -> T:
         """Give driver/control operations fresh budgets; abandon unsafe sessions."""
@@ -381,24 +391,40 @@ class Target:
             logger.warning("migration SQLite physical close failed", exc_info=True)
 
     async def _close(self) -> None:
-        """Bound normal close; unsafe connections already have independent cleanup."""
+        """Stop admission, drain the active owner, then close its physical connection."""
         if self._closed:
-            # An unsafe connection is already detached. Do not join its worker
-            # behind the operation deadline, and never queue rollback/policy SQL.
+            # Unsafe work already owns detached cleanup, not more policy SQL.
             return
-        self._closed = True
-        if not self._sqlite:
-            self._connection.close()
-            return
-        task = self._start_close(interrupt=False)
+        self._closing = True
         try:
-            with anyio.fail_after(self._config.operation_timeout):
-                await asyncio.shield(task)
+            with anyio.fail_after(self._config.acquire_timeout):
+                await self._guard.acquire()
         except TimeoutError as error:
-            operation = "migration close"
-            raise DatabaseOperationTimeoutError(
-                operation, self._config.operation_timeout
-            ) from error
+            self._discard()
+            msg = "timed out acquiring migration target shutdown guard"
+            raise PoolTimeoutError(msg) from error
+        except BaseException:
+            self._discard()
+            raise
+        try:
+            # The active owner may have discarded the connection while we waited.
+            if self._closed:  # ty: ignore[redundant-condition-strict]
+                return
+            self._closed = True
+            if not self._sqlite:
+                self._connection.close()
+                return
+            task = self._start_close(interrupt=False)
+            try:
+                with anyio.fail_after(self._config.operation_timeout):
+                    await asyncio.shield(task)
+            except TimeoutError as error:
+                operation = "migration close"
+                raise DatabaseOperationTimeoutError(
+                    operation, self._config.operation_timeout
+                ) from error
+        finally:
+            self._guard.release()
 
     async def _query(
         self, sql: str, params: tuple[object, ...] = ()
@@ -1614,6 +1640,9 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
     limits the caller's time inside the yielded context. File-backed SQLite
     preserves DELETE/WAL rather than selecting WAL, and applies Config.durability
     synchronization for this connection. In-memory targets retain native policy.
+    Context exit stops admission and drains the active operation under a fresh
+    acquisition budget before physical close. Failed/cancelled drain discards the
+    connection, not the caller's task; return does not prove physical quiescence.
     """
     if isinstance(config, SQLiteConfig):
         connection = await _open_sqlite(config)

@@ -1169,3 +1169,12 @@ Actual10.10.7 refuses without schema/data/history mutation; installed positive s
 original-role/current typed use/exact VERSION observations and unowned data. No fake server,
 new parser, minimum change, old receipt conversion or positive LTS/matrix/upgrade qualification.
 Remaining G3 metadata/other prerequisites/admission/outcome/shutdown policy and G4/G5 stay open.
+
+## Bounded context-exit follow-through
+
+The [context-exit checkpoint](recorded-migrations-context-exit-review.md) stops new/queued
+admission, drains the active owner under a fresh acquisition budget, then closes. Failed or
+cancelled drain discards connection without cancelling caller tasks or erasing the primary
+error; actual blocked native/SQLite original-role journeys retain own evidence and explicit
+recovery. Separate phase budgets are the candidate decision, not a cumulative package/context
+timer. Remaining metadata/outcome/detached-cleanup/global shutdown and G4/G5 stay open.

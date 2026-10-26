@@ -231,24 +231,29 @@ necessary; original evidence is not a backup or a compiler-compatibility registr
 
 ### G3 — Reconcile migration I/O with runtime policy
 
-The dedicated connector uses direct driver calls. The bounded follow-through now honors
-`operation_timeout` for checked-out driver/control/cleanup waits and invalidates interrupted
-targets without declaring physical quiescence. The subsequent native-opening follow-through
-bounds native acquisition and shares owned/TLS admission. SQLite physical opening now also
-has an acquisition budget and retained explicit late cleanup, not a physical-stop guarantee.
-Local guard waiting now has a separate acquisition budget and leaves an active owner intact.
-Server coordination acquisition, application session admission, SQLite journal/durability
-policy and other outcome/shutdown rules are still incomplete.
-Resolve these explicitly rather than adding a second generic runtime facade or documenting
-ignored shared Config settings as implemented behavior.
+Implemented bounded checkpoints share owned/TLS opening, per-I/O/control deadlines, local and
+backend coordination, positive native release, native version/strictness/UTC/integrity and
+SQLite FK/UTF-8/DELETE-WAL/synchronization admission. Current safety/catalog/recovery gates
+remain live; no full ordinary initializer or parallel generic runtime is imported.
 
-Acceptance: acquisition versus per-I/O deadlines, cancellation, cursor/transaction cleanup
-and unsafe physical-connection disposal satisfy [ADR 0017](../adr/0017-per-operation-deadlines-fail-closed.md).
-Retain acknowledged commit evidence while reporting unknown unacknowledged outcomes honestly.
-Test actual blocked public operations and fresh-connection observations; an outer task timeout
-is not proof that queued SQLite driver work stopped. Establish required native/session/catalog
-prerequisites and refusal diagnostics. Full metadata visibility and writer exclusion remain
-operational prerequisites, not privilege audits or locks supplied by this library.
+The [context-exit policy](recorded-migrations-context-exit-review.md) now stops admission,
+drains the active owner under a fresh acquisition budget and closes afterward; expired or
+cancelled drain discards and preserves primary errors without cancelling caller tasks. Native
+uncertainty is inspected only after actual physical state is observed, using ORIGINAL evidence.
+Retained SQLite cleanup still requires a live loop and does not certify process-wide shutdown.
+
+**Candidate budget decision:** retain SEPARATE physical opening, local guard, backend coordination,
+per-I/O/control, context drain and physical-close budgets. No implicit cumulative acquire/package/
+context timer; caller pauses do not consume later seam budgets. Outer caller cancellation is not
+physical-stop/rollback evidence. G5 approval remains necessary, but the engineering choice is no
+longer unspecified. No new timeout knob/facade, unsafe cleanup SQL or data replay.
+
+Remaining acceptance: establish metadata/other prerequisite policy, retain acknowledged COMMIT
+evidence vs unknown unacknowledged outcomes, and settle remaining detached-cleanup/global
+shutdown/live-loop limits. Full metadata visibility and incompatible writer exclusion remain
+caller operational prerequisites, NOT privilege audits/fencing supplied by this library.
+Qualification stays finite through public journeys/independent real observations, consistent
+with [ADR0017](../adr/0017-per-operation-deadlines-fail-closed.md); not all failure permutations.
 
 ### G4 — Qualify the finite environment/recovery matrix
 
