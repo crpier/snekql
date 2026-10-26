@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
+from tests.query.subquery_models import Order, User
 from tests.query.test_ctes import ActiveRole, FilteredRole, Identifier, Person
-from tests.query.test_subqueries import Order, User
 
 
 class OptionalIdentifier(BaseModel):

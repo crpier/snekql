@@ -14,52 +14,20 @@ aligned on both SQLite and MariaDB.
 
 from __future__ import annotations
 
-from typing import ClassVar
-
 from snektest import assert_eq, assert_raises, test
 
-from snekql import sqlite
+from snekql import mariadb
 from snekql.sqlite import (
-    PENDING_GENERATION,
-    Pending,
     QueryCompilationError,
     QueryConstructionError,
-    Row,
     exists,
     insert,
     not_exists,
     scalar,
     select,
 )
-from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
-
-
-class User[S = Pending](sqlite.Model[S]):
-    """Outer table for subquery tests."""
-
-    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
-
-    id: User.GenCol[int] = sqlite.Integer(
-        primary_key=True,
-        auto_increment=True,
-        default=PENDING_GENERATION,
-    )
-    country: User.Col[str] = sqlite.Text(nullable=False)
-
-
-class Order[S = Pending](sqlite.Model[S]):
-    """Inner table with a foreign key back to ``User``."""
-
-    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
-
-    id: Order.GenCol[int] = sqlite.Integer(
-        primary_key=True,
-        auto_increment=True,
-        default=PENDING_GENERATION,
-    )
-    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
-    amount: Order.Col[int] = sqlite.Integer(nullable=False)
-
+from tests.helpers import initialized_database
+from tests.query.subquery_models import MariaOrder, MariaUser, Order, User
 
 # --- Slice 1: column-to-column comparison -----------------------------------
 
@@ -68,10 +36,11 @@ class Order[S = Pending](sqlite.Model[S]):
 def column_comparison_renders_both_columns() -> None:
     """``eq_col`` compares two columns instead of a column against a value."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(Order.id)
         .join(User, on=Order.user_id.references(User.id))
-        .where(Order.amount.gt_col(User.id)),
+        .where(Order.amount.gt_col(User.id))
+        .compile()
     )
 
     expected = " ".join(
@@ -81,8 +50,8 @@ def column_comparison_renders_both_columns() -> None:
             'WHERE ("order"."amount" > "user"."id")',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, ())
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ())
 
 
 @test(mark="fast")
@@ -91,7 +60,7 @@ def column_comparison_against_unscoped_table_is_a_compilation_error() -> None:
 
     query = select(Order.id).where(Order.amount.eq_col(User.id))
     with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_select_sql(query)
+        _ = query.compile()
 
 
 # --- Slice 2: IN / NOT IN subquery ------------------------------------------
@@ -101,10 +70,12 @@ def column_comparison_against_unscoped_table_is_a_compilation_error() -> None:
 def in_subquery_renders_nested_select() -> None:
     """``in_subquery`` nests a single-column select as the membership set."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User.id).where(
+    compiled = (
+        select(User.id)
+        .where(
             User.id.in_subquery(select(Order.user_id).where(Order.amount.gt(100))),
-        ),
+        )
+        .compile()
     )
 
     expected = " ".join(
@@ -114,22 +85,24 @@ def in_subquery_renders_nested_select() -> None:
             'WHERE ("order"."amount" > ?)))',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, (100,))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, (100,))
 
 
 @test(mark="fast")
 def not_in_subquery_renders_negated_membership() -> None:
     """``not_in_subquery`` emits ``NOT IN`` against the nested select."""
 
-    sql, _params = SQLITE_CODEC.compile_select_sql(
-        select(User.id).where(
+    compiled = (
+        select(User.id)
+        .where(
             User.id.not_in_subquery(select(Order.user_id)),
-        ),
+        )
+        .compile()
     )
 
     assert_eq(
-        sql,
+        compiled.sql,
         'SELECT "id" FROM "user" WHERE ("id" NOT IN (SELECT "order"."user_id" FROM "order"))',
     )
 
@@ -153,14 +126,16 @@ def in_subquery_requires_single_column_select() -> None:
 def correlated_exists_threads_outer_column() -> None:
     """A correlated EXISTS references the outer row via a column comparison."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User.id).where(
+    compiled = (
+        select(User.id)
+        .where(
             exists(
                 select(Order.id)
                 .where(Order.user_id.eq_col(User.id))
                 .where(Order.amount.gt(10)),
             ),
-        ),
+        )
+        .compile()
     )
 
     expected = " ".join(
@@ -170,18 +145,20 @@ def correlated_exists_threads_outer_column() -> None:
             'AND ("order"."amount" > ?)))',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, (10,))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, (10,))
 
 
 @test(mark="fast")
 def not_exists_negates_the_subquery() -> None:
     """``not_exists`` emits ``NOT EXISTS`` around the nested select."""
 
-    sql, _params = SQLITE_CODEC.compile_select_sql(
-        select(User.id).where(
+    compiled = (
+        select(User.id)
+        .where(
             not_exists(select(Order.id).where(Order.user_id.eq_col(User.id))),
-        ),
+        )
+        .compile()
     )
 
     expected = " ".join(
@@ -190,7 +167,7 @@ def not_exists_negates_the_subquery() -> None:
             'FROM "order" WHERE ("order"."user_id" = "user"."id")))',
         ],
     )
-    assert_eq(sql, expected)
+    assert_eq(compiled.sql, expected)
 
 
 @test(mark="fast")
@@ -201,7 +178,7 @@ def exists_correlation_to_unscoped_table_is_a_compilation_error() -> None:
         exists(select(Order.id).where(Order.user_id.eq_col(User.id))),
     )
     with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_select_sql(query)
+        _ = query.compile()
 
 
 # --- Slice 4: scalar subqueries ---------------------------------------------
@@ -211,14 +188,12 @@ def exists_correlation_to_unscoped_table_is_a_compilation_error() -> None:
 def scalar_subquery_in_projection_renders_parenthesized_select() -> None:
     """A scalar subquery projects a single value alongside ordinary columns."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(
-            User.id,
-            scalar(
-                select(Order.amount.sum()).where(Order.user_id.eq_col(User.id)),
-            ),
+    compiled = select(
+        User.id,
+        scalar(
+            select(Order.amount.sum()).where(Order.user_id.eq_col(User.id)),
         ),
-    )
+    ).compile()
 
     expected = " ".join(
         [
@@ -226,8 +201,8 @@ def scalar_subquery_in_projection_renders_parenthesized_select() -> None:
             'WHERE ("order"."user_id" = "user"."id")) FROM "user"',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, ())
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ())
 
 
 @test(mark="fast")
@@ -252,10 +227,12 @@ def scalar_subquery_cannot_anchor_projection() -> None:
 def scalar_subquery_as_comparison_operand() -> None:
     """A scalar subquery can stand in as a comparison operand."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(Order.id).where(
+    compiled = (
+        select(Order.id)
+        .where(
             Order.amount.gt_col(scalar(select(Order.amount.avg()))),
-        ),
+        )
+        .compile()
     )
 
     expected = " ".join(
@@ -264,8 +241,8 @@ def scalar_subquery_as_comparison_operand() -> None:
             '("amount" > (SELECT AVG("order"."amount") FROM "order"))',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, ())
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ())
 
 
 @test(mark="fast")
@@ -276,17 +253,44 @@ def scalar_requires_single_column_select() -> None:
         _ = scalar(select(User))  # ty: ignore[invalid-argument-type]
 
 
+@test(mark="fast")
+def in_subquery_preserves_outer_and_inner_parameter_order() -> None:
+    """Bindings before, inside, and after an IN subquery follow textual SQL."""
+    compiled = (
+        select(User.id)
+        .where(
+            User.id.gt(1),
+            User.id.in_subquery(select(Order.user_id).where(Order.amount.gt(100))),
+            User.country.eq("ca"),
+        )
+        .compile()
+    )
+
+    assert_eq(
+        compiled.sql,
+        'SELECT "id" FROM "user" WHERE ("id" > ?) '
+        'AND ("id" IN (SELECT "order"."user_id" FROM "order" '
+        'WHERE ("order"."amount" > ?))) AND ("country" = ?)',
+    )
+    assert_eq(compiled.params, (1, 100, "ca"))
+    assert_eq(compiled.backend, "sqlite")
+
+
 # --- Backend portability ----------------------------------------------------
 
 
 @test(mark="fast")
 def subqueries_are_backend_portable() -> None:
-    """Nested SQL matches MariaDB save for quoting and placeholders."""
+    """MariaDB-owned outer and inner queries use their owning dialect."""
 
-    sql, params = MARIADB_CODEC.compile_select_sql(
-        select(User.id).where(
-            User.id.in_subquery(select(Order.user_id).where(Order.amount.gt(100))),
-        ),
+    compiled = (
+        mariadb.select(MariaUser.id)
+        .where(
+            MariaUser.id.in_subquery(
+                mariadb.select(MariaOrder.user_id).where(MariaOrder.amount.gt(100)),
+            ),
+        )
+        .compile()
     )
 
     expected = " ".join(
@@ -296,8 +300,34 @@ def subqueries_are_backend_portable() -> None:
             "WHERE (`order`.`amount` > %s)))",
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, (100,))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, (100,))
+    assert_eq(compiled.backend, "mariadb")
+
+
+@test(mark="fast")
+def mariadb_in_subquery_preserves_outer_and_inner_parameter_order() -> None:
+    """MariaDB binds outer and inner values in their textual placeholder order."""
+    compiled = (
+        mariadb.select(MariaUser.id)
+        .where(
+            MariaUser.id.gt(1),
+            MariaUser.id.in_subquery(
+                mariadb.select(MariaOrder.user_id).where(MariaOrder.amount.gt(100)),
+            ),
+            MariaUser.country.eq("ca"),
+        )
+        .compile()
+    )
+
+    assert_eq(
+        compiled.sql,
+        "SELECT `id` FROM `user` WHERE (`id` > %s) "
+        "AND (`id` IN (SELECT `order`.`user_id` FROM `order` "
+        "WHERE (`order`.`amount` > %s))) AND (`country` = %s)",
+    )
+    assert_eq(compiled.params, (1, 100, "ca"))
+    assert_eq(compiled.backend, "mariadb")
 
 
 # --- Runtime ----------------------------------------------------------------
