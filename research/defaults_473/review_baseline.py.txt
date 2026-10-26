@@ -34,7 +34,12 @@ assert_type(pending.server_null, str | None | database.PENDING_GENERATION)
 assert_type(pending.identity, int | database.PENDING_GENERATION)
 Review(required="Ada", required_nullable="x", python_value=3, python_none="value", python_nullable=None, python_factory=uuid4(), server_value=True, server_nullable=None, server_null="override", identity=42)
 Review(required="Ada", required_nullable=None, server_value=database.PENDING_GENERATION)
+Review(required="Ada", required_nullable=None, python_none=None, server_null=None)
 write: database.Write[Review[database.Row]] = database.insert(pending).returning()
+
+
+def explicit_clock(value: database.UtcDatetime) -> None:
+    Review(required="Ada", required_nullable=None, server_clock=value)
 
 
 def fetched(row: Review[database.Row]) -> None:
@@ -53,6 +58,11 @@ def fetched(row: Review[database.Row]) -> None:
 
 Review(required_nullable=None)  # error: missing-argument
 Review(required="Ada")  # error: missing-argument
+Review(required=None, required_nullable=None)  # error: invalid-argument-type
+Review(required="Ada", required_nullable=42)  # error: invalid-argument-type
+Review(required="Ada", required_nullable=None, python_factory=None)  # error: invalid-argument-type
+Review(required="Ada", required_nullable=None, server_clock=None)  # error: invalid-argument-type
+Review(required="Ada", required_nullable=None, identity=None)  # error: invalid-argument-type
 Review(required="Ada", required_nullable=None, python_value=None)  # error: invalid-argument-type
 Review(required="Ada", required_nullable=None, python_factory="wrong")  # error: invalid-argument-type
 Review(required="Ada", required_nullable=None, server_value=None)  # error: invalid-argument-type

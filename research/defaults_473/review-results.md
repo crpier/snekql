@@ -3,6 +3,11 @@
 2026-10-26. CPython 3.15.0, ty 0.0.84, snekql 0.9.0.
 Continuing from `6718fe5`; this round changes research and static tests only.
 
+**Historical investigation:** the [current shortlist comparison](shortlist-comparison.md)
+adds keeping the implemented interface as an equal candidate and supersedes the
+ranking below. The maintainer is not enthusiastic about prefixes; stop proposing
+new variants. The technical evidence below remains historical, not a decision.
+
 Read this with the [agreed review sheet](review-sheet.md). The maintainer's
 shortlist has **three families**, none selected. This round tests those three,
 an explicit-Python variant within the prefix family, and a policy-wrapper

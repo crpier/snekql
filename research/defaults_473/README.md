@@ -6,23 +6,23 @@ or authorization for a breaking change. Names below are experimental.
 
 ## Latest direction
 
-The maintainer's [review sheet](review-sheet.md) fixes eleven core scenarios,
-contrast cases, exact constructor/Pending/Row expectations and an explicit
-nonsense audit. **Three design families remain shortlisted**, none selected:
+**Stop expanding the design space.** The maintainer requests a comparison using
+[the same review sheet](review-sheet.md), with **keeping the current interface**
+as a fully valid choice alongside the shortlisted families:
 
 1. Separate Python `default` / SQL `server_default` parameters.
 2. A `default_on="python"` / `default_on="server"` selector.
-3. Prefixed server constructors such as `ServerInteger`.
+3. Prefixed server constructors such as `ServerInteger` (lower preference).
 
-[The review-sheet results](review-results.md) exercise all three, a new
-symmetric Python/Server prefix variation, and the earlier policy-wrapper
-challenger. The prefix variation is not a fourth approved shortlist item.
-The latest report includes full declarations, validated rejections, accepted
-typing gaps, runtime-only obligations and a reasoned comparison.
+[The current shortlist comparison](shortlist-comparison.md) reviews all eleven
+scenarios, contrast cases, precise types, nonsense, original-mistake prevention,
+and compatibility/change cost for all four choices. It uses actual current
+constructors/models for the no-change option. **No design is selected.**
 
-The [left/right split](left-python-right-sql.md) and its generated-typing route
-are abandoned. Earlier reports below are historical rounds, not the current
-shortlist or accepted decisions. Validate locally; do not wait for GitHub Actions.
+The [preceding investigation](review-results.md) and its extra variants are
+historical evidence, not the current ranking. The annotation-left / SQL-right
+split and its generated-typing route are abandoned. Validate locally; do not
+wait for GitHub Actions.
 
 ## Follow-up
 

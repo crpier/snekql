@@ -2,16 +2,24 @@
 
 Agreed with the maintainer, 2026-10-26. No design is selected.
 
-## Shortlist
+## Options under the same review
 
+0. **Keep the current interface unchanged:** Python values/factories, SQL
+   `LiteralDefault`/`CurrentTimestamp` markers, and explicit pending for identity.
 1. Separate `default` (Python) and `server_default` (SQL).
 2. `default_on="python"` / `default_on="server"` selector.
 3. Prefixed server constructors, previously called `ServerInteger`/`ServerText`.
 
+Keeping current is a valid outcome, not merely a baseline that must lose.
+The maintainer confirms separate parameters are shortlist-worthy, is unsure
+about the selector, and is not enthusiastic about prefixes. Retain prefixes in
+the comparison at lower preference; stop expanding the design space.
+
 Names remain provisional. The annotation-left / SQL-right split and its typing
-generator are abandoned. Symmetric policy wrappers are a research challenger,
-not a fourth maintainer-approved shortlist item. The outer wrapper remains
-lower-ranked for verbosity; a server namespace ranks below prefixes.
+generator are abandoned. Symmetric prefixes, policy wrappers, outer wrappers
+and server namespaces remain historical research, not additional contenders.
+The [current comparison](shortlist-comparison.md) applies this sheet to all four
+options and supersedes the preceding investigation's ranking. No design selected.
 
 ## Core scenarios
 

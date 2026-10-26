@@ -10,7 +10,24 @@ async def review_source(backend: str, candidate: str, consumer: str) -> str:
     declarations = await Path(
         "research/defaults_473/review_declarations.py.txt"
     ).read_text()
-    if candidate == "split":
+    if candidate == "current":
+        declarations = (
+            "from snekql import __BACKEND__ as database\nReviewModel = database.Model\n"
+        )
+        expressions = (
+            "database.Text()",
+            "database.Text()",
+            "database.Integer(default=7)",
+            "database.Text(default=None)",
+            'database.Text(default="guest")',
+            "database.Text(default_factory=uuid4)",
+            "database.Integer(default=database.LiteralDefault(False))",
+            "database.Text(default=database.CurrentTimestamp)",
+            'database.Text(default=database.LiteralDefault("fallback"))',
+            "database.Text(default=database.LiteralDefault(None))",
+            "database.Integer(default=database.PENDING_GENERATION, primary_key=True, auto_increment=True)",
+        )
+    elif candidate == "split":
         expressions = (
             "TwinText()",
             "TwinText()",
@@ -117,7 +134,14 @@ async def review_source(backend: str, candidate: str, consumer: str) -> str:
     [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
     [
         Param(candidate, name=candidate)
-        for candidate in ("split", "selector", "prefix", "explicit_prefix", "policies")
+        for candidate in (
+            "current",
+            "split",
+            "selector",
+            "prefix",
+            "explicit_prefix",
+            "policies",
+        )
     ],
     mark="slow",
 )
@@ -207,7 +231,14 @@ class BadClock[S = database.Pending](ReviewModel[S]):
     [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
     [
         Param(candidate, name=candidate)
-        for candidate in ("split", "selector", "prefix", "explicit_prefix", "policies")
+        for candidate in (
+            "current",
+            "split",
+            "selector",
+            "prefix",
+            "explicit_prefix",
+            "policies",
+        )
     ],
     mark="slow",
 )
@@ -242,7 +273,14 @@ Review(required="Ada", required_nullable=None, server_value="wrong")  # error: i
     [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
     [
         Param(candidate, name=candidate)
-        for candidate in ("split", "selector", "prefix", "explicit_prefix", "policies")
+        for candidate in (
+            "current",
+            "split",
+            "selector",
+            "prefix",
+            "explicit_prefix",
+            "policies",
+        )
     ],
     mark="slow",
 )
@@ -259,7 +297,7 @@ class BadFactory[S = database.Pending](ReviewModel[S]):
     __row_type__: ClassVar[database.ReadType[BadFactory[database.Row]]]
     value: database.Col[str] = __PYTHON_FACTORY__  # error: invalid-argument-type
 """
-    if candidate == "prefix":
+    if candidate in ("current", "prefix"):
         consumer = consumer.replace(
             "# error: invalid-argument-type", "# error: no-matching-overload"
         )
@@ -273,7 +311,14 @@ class BadFactory[S = database.Pending](ReviewModel[S]):
     [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
     [
         Param(candidate, name=candidate)
-        for candidate in ("split", "selector", "prefix", "explicit_prefix", "policies")
+        for candidate in (
+            "current",
+            "split",
+            "selector",
+            "prefix",
+            "explicit_prefix",
+            "policies",
+        )
     ],
     mark="slow",
 )
@@ -316,3 +361,111 @@ PythonText()  # error: no-matching-overload
 PythonText("value", factory=lambda: "value")  # error: no-matching-overload
 """
     await assert_paired_typing(await review_source(backend, "selector", consumer))
+
+
+@test(
+    [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
+    mark="slow",
+)
+async def current_declarations_reject_mistakes_but_accept_a_wrong_clock_type(
+    backend: str,
+) -> None:
+    consumer = await Path("research/defaults_473/review_misuse.py.txt").read_text()
+    consumer = consumer.replace(
+        "__SERVER_CLOCK__  # error: invalid-assignment",
+        "__SERVER_CLOCK__  # accepted gap: logical str with SQL clock",
+    )
+    await assert_paired_typing(await review_source(backend, "current", consumer))
+
+
+@test(
+    [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
+    mark="slow",
+)
+async def current_nullable_clocks_keep_input_types_but_do_not_validate_sql_clock_results(
+    backend: str,
+) -> None:
+    consumer = """
+from typing import ClassVar, assert_type
+
+class Clock[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[Clock[database.Row]]]
+    value: database.GenCol[database.UtcDatetime | None] = __SERVER_CLOCK__
+
+class WrongClock[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[WrongClock[database.Row]]]
+    value: database.GenCol[str] = __SERVER_CLOCK__
+
+class NullOnlyClock[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[NullOnlyClock[database.Row]]]
+    value: database.GenCol[None] = __SERVER_CLOCK__
+
+assert_type(Clock().value, database.UtcDatetime | None | database.PENDING_GENERATION)
+Clock(value=None)
+WrongClock(value="not a timestamp")
+NullOnlyClock(value=None)
+
+def rows(wrong: WrongClock[database.Row], null_only: NullOnlyClock[database.Row]) -> None:
+    assert_type(wrong.value, str)
+    assert_type(null_only.value, None)
+
+Clock(value="wrong")  # error: invalid-argument-type
+WrongClock(value=42)  # error: invalid-argument-type
+NullOnlyClock(value="timestamp")  # error: invalid-argument-type
+"""
+    await assert_paired_typing(await review_source(backend, "current", consumer))
+
+
+@test(
+    [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
+    mark="slow",
+)
+async def current_source_less_generation_is_accepted_but_value_factory_mixes_are_rejected(
+    backend: str,
+) -> None:
+    consumer = """
+from typing import ClassVar, assert_type
+
+class Source[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[Source[database.Row]]]
+    absent: database.GenCol[int] = database.Integer(default=database.PENDING_GENERATION)
+    disabled: database.GenCol[int] = database.Integer(default=database.PENDING_GENERATION, auto_increment=False)
+
+assert_type(Source().absent, int | database.PENDING_GENERATION)
+Source(absent=42, disabled=43)
+Source(absent="wrong")  # error: invalid-argument-type
+
+database.Text(default="value", default_factory=lambda: "value")  # error: no-matching-overload
+database.Integer(default=database.LiteralDefault(False), default_factory=lambda: False)  # error: no-matching-overload
+database.Integer(server_default=False)  # error: no-matching-overload
+"""
+    await assert_paired_typing(await review_source(backend, "current", consumer))
+
+
+@test(
+    [Param(backend, name=backend) for backend in ("sqlite", "mariadb")],
+    [
+        Param(candidate, name=candidate)
+        for candidate in ("current", "split", "selector", "prefix")
+    ],
+    mark="slow",
+)
+async def plain_python_bool_defaults_keep_concrete_pending_types_in_every_shortlisted_option(
+    backend: str, candidate: str
+) -> None:
+    consumer = """
+from typing import ClassVar, assert_type
+
+class Boolean[S = database.Pending](ReviewModel[S]):
+    __row_type__: ClassVar[database.ReadType[Boolean[database.Row]]]
+    value: database.Col[bool] = __PYTHON_VALUE__
+
+assert_type(Boolean().value, bool)
+Boolean(value=True)
+Boolean(value=None)  # error: invalid-argument-type
+Boolean(value=database.PENDING_GENERATION)  # error: invalid-argument-type
+"""
+    source = (await review_source(backend, candidate, consumer)).replace(
+        "default=7", "default=False"
+    )
+    await assert_paired_typing(source)
