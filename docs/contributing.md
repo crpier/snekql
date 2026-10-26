@@ -51,9 +51,70 @@ uv run python scripts/check_typing_compatibility.py --case select-all --backend 
 Compatible static tests share one real all-case assessment per runner execution,
 while keeping independently named diagnostic assertions. A cold named test
 prepares that report; the direct CLI retains narrow case/backend execution.
-Source-mutation, special-configuration and distinct expression-variant tests
-remain isolated. The [static typing assessment review](test-suite-reviews/2026-10-26-static-typing-assessments.md)
-records measured savings, the small cold-start tradeoff, and coverage accounting.
+Source-mutation and special-configuration tests remain independent. The
+[static typing assessment review](test-suite-reviews/2026-10-26-static-typing-assessments.md)
+records measured savings and coverage accounting.
+
+The 80 nested-expression and 22 temporal checks keep their distinct inputs,
+markers and independently named diagnostic assertions, but now share one real
+batch assessment per immutable group:
+
+```sh
+uv run snektest tests/test_nested_expression_families.py tests/test_temporal_typing.py
+uv run snektest 'tests/test_nested_expression_families.py::nested_expression_rejects_foreign_family[sqlite, eq_col]'
+```
+
+A cold named check prepares its group's report, not the other groups' reports.
+The [dynamic typing batch review](test-suite-reviews/2026-10-26-dynamic-typing-batches.md)
+records group savings and the small additional focused setup cost. Challenge
+names, expression strings and expected rules live in `tests/typing_variants.py`.
+
+### Explicit checker batches
+
+The repository-only checker script also accepts a JSON manifest, for example
+`requests.json`:
+
+```json
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "assignment",
+      "backend": "sqlite",
+      "positive": "value: int = 1\n",
+      "negative": "wrong: str = value  # expect-error\n"
+    }
+  ]
+}
+```
+
+```sh
+uv run python scripts/check_typing_compatibility.py --manifest requests.json
+uv run python scripts/check_typing_compatibility.py --manifest requests.json --name assignment --backend sqlite
+```
+
+`positive` is a complete positive-control template; `negative` is a fragment
+appended to its rendered contents in a separate file, not a second standalone
+module. Positive templates may use `__BACKEND__` and `__OTHER_BACKEND__`, as in
+the static probes. The combined negative source must contain exactly one
+`# expect-error` marker. Every request gets independent paired files and source
+hashes; source modules are type-checked, never executed.
+
+The manifest must have schema version 1 and a nonempty `cases` list. Each request
+requires a nonempty name, one explicit `sqlite` or `mariadb` backend, and both
+source strings; unknown fields are rejected. Duplicate name/backend keys are
+invalid even when outside a requested filter. Labels do not become filesystem
+paths. `--case` and `--manifest` are mutually exclusive; `--name` requires a
+manifest. `--backend` filters manifest requests, and an empty selection is an
+error rather than a vacuous pass.
+
+Exit 0 means every selected positive control is clean and every selected
+negative has errors only on its marked line. It does **not** replace callers'
+exact diagnostic count/rule assertions. Exit 1 emits a complete nonconforming
+report, retaining independently attributable observations and unmapped errors.
+Exit 2 reports usage, malformed/missing input, timeout or checker-infrastructure
+failure on stderr without a success report. The existing 90-second assessment
+deadline, checker configuration and normal static selectors are unchanged.
 
 ## Find the code
 
