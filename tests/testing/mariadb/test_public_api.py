@@ -156,6 +156,7 @@ async def temporary_mariadb_server_resolves_relative_data_directories() -> None:
         try:
             with assert_raises(TemporaryMariaDBServerError) as error:
                 async with temporary_mariadb_server(
+                    runtime_base_directory=base_directory,
                     data_directory=relative_data_directory,
                     install_db=install_db,
                 ):
@@ -191,6 +192,7 @@ async def temporary_mariadb_server_explains_quota_limited_install_failures() -> 
 
         with assert_raises(TemporaryMariaDBServerError) as error:
             async with temporary_mariadb_server(
+                runtime_base_directory=data_directory.parent,
                 data_directory=data_directory,
                 install_db=install_db,
             ):
@@ -206,9 +208,10 @@ async def temporary_mariadb_server_explains_quota_limited_install_failures() -> 
 async def temporary_mariadb_server_starts_with_default_unix_socket() -> None:
     """The public helper starts a queryable Unix-socket server by default."""
 
-    data_directory: Path | None = None
+    runtime_directory: Path | None = None
     try:
         async with temporary_mariadb_server() as server:
+            runtime_directory = server.error_log_path.parent
             result = await server.run_sql("SELECT 1")
             config = server.config()
             data_directory = server.data_directory
@@ -222,8 +225,10 @@ async def temporary_mariadb_server_starts_with_default_unix_socket() -> None:
         assert_true(data_directory.exists())
     finally:
         # Server startup or run_sql can fail before the path is captured.
-        if data_directory is not None:  # ty: ignore[redundant-condition-strict]
-            await asyncio.to_thread(shutil.rmtree, data_directory, ignore_errors=True)
+        if runtime_directory is not None:  # ty: ignore[redundant-condition-strict]
+            await asyncio.to_thread(
+                shutil.rmtree, runtime_directory, ignore_errors=True
+            )
 
 
 @test(mark="medium")
@@ -232,13 +237,17 @@ async def temporary_mariadb_server_reset_database_drops_reused_objects() -> None
 
     with TemporaryDirectory() as temporary_directory:
         data_directory = Path(temporary_directory) / "data"
-        async with temporary_mariadb_server(data_directory=data_directory) as server:
+        async with temporary_mariadb_server(
+            runtime_base_directory=data_directory.parent, data_directory=data_directory
+        ) as server:
             _ = await server.run_sql("CREATE TABLE stale_public_table (`id` INT)")
             _ = await server.run_sql(
                 "CREATE VIEW stale_public_view AS SELECT 1 AS value"
             )
 
-        async with temporary_mariadb_server(data_directory=data_directory) as server:
+        async with temporary_mariadb_server(
+            runtime_base_directory=data_directory.parent, data_directory=data_directory
+        ) as server:
             await server.reset_database()
             result = await server.run_sql("SHOW TABLES LIKE 'stale_public_table'")
             view_result = await server.run_sql("SHOW TABLES LIKE 'stale_public_view'")
@@ -253,10 +262,13 @@ async def temporary_mariadb_server_reset_database_option_runs_before_yield() -> 
 
     with TemporaryDirectory() as temporary_directory:
         data_directory = Path(temporary_directory) / "data"
-        async with temporary_mariadb_server(data_directory=data_directory) as server:
+        async with temporary_mariadb_server(
+            runtime_base_directory=data_directory.parent, data_directory=data_directory
+        ) as server:
             _ = await server.run_sql("CREATE TABLE stale_option_table (`id` INT)")
 
         async with temporary_mariadb_server(
+            runtime_base_directory=data_directory.parent,
             data_directory=data_directory,
             reset_database=True,
         ) as server:
@@ -273,6 +285,7 @@ async def temporary_mariadb_server_supports_password_auth() -> None:
         data_directory = Path(temporary_directory) / "data"
         async with temporary_mariadb_server(
             auth="password",
+            runtime_base_directory=data_directory.parent,
             data_directory=data_directory,
         ) as server:
             result = await server.run_sql("SELECT 1")

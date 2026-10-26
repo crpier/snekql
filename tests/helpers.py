@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from snektest import fixture, load_fixture
 
+from benchmarks._artifacts import mariadb_artifacts
 from snekql._query_codec import DialectQueryCodec
 from snekql._runtime_selection import RuntimeConfig
 from snekql.mariadb._dialect_sql import MARIADB_QUERY_DIALECT
@@ -197,11 +198,15 @@ def capture_snekql_logs() -> Generator[SnekqlLogCapture]:
 async def _provide_mariadb_server_session() -> AsyncGenerator[TemporaryMariaDBServer]:
     """Keep one local MariaDB process alive for the integration-test session."""
 
-    async with temporary_mariadb_server(
-        data_directory=Path(".snektest/mariadb-data"),
-        reset_database=True,
-        transports={"tcp"},
-    ) as server:
+    async with (
+        mariadb_artifacts() as root,
+        temporary_mariadb_server(
+            data_directory=Path(".snektest/mariadb-data"),
+            runtime_base_directory=root,
+            reset_database=True,
+            transports={"tcp"},
+        ) as server,
+    ):
         yield server
 
 

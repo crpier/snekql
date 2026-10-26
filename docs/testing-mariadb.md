@@ -99,11 +99,55 @@ passwords are unnecessary.
 
 Data directories are retained after shutdown so failed tests can be inspected.
 
-- If `data_directory` is omitted, snekql creates a retained directory under the system temp directory and exposes it on the yielded server.
+- If `data_directory` is omitted, snekql creates retained data under a unique runtime directory and exposes it on the yielded server. The runtime directory is under the system temp directory unless `runtime_base_directory` is provided.
 - If `data_directory` is provided, snekql initializes it when missing or empty and reuses it when it already looks like a MariaDB data directory.
 - `clean_before_start=True` is valid only with an explicit `data_directory`; it deletes that directory before initialization.
 
 snekql never deletes a data directory when the server stops.
+
+### Explicit artifact ownership
+
+`runtime_base_directory` selects an **existing directory** beneath which the
+helper creates a unique private runtime subdirectory. That subdirectory contains
+the error log, PID file, default sockets, and (unless explicitly overridden) data.
+Paths are expanded/resolved before launching subprocesses. Multiple servers can
+share a base without sharing their runtime files; a missing or unusable base
+raises `TemporaryMariaDBServerError` rather than falling back elsewhere. With
+`clean_before_start=True`, the runtime base must be outside the data directory so
+cleaning data cannot delete the runtime paths.
+
+The helper still retains artifacts after shutdown, including failed startup.
+The base remains caller-owned: no directory is automatically deleted. Explicit
+`data_directory` and `socket_path` overrides remain where the caller placed them
+and are not brought under ownership of the runtime base.
+
+For a test whose owner deliberately cleans up after resource teardown:
+
+```python
+from pathlib import Path
+from anyio import TemporaryDirectory
+from snekql.testing.mariadb import temporary_mariadb_server
+
+async with TemporaryDirectory(prefix="sq-") as directory:
+    async with temporary_mariadb_server(
+        runtime_base_directory=Path(directory),
+    ) as server:
+        result = await server.run_sql("SELECT 1")
+# The server has stopped before the outer owner removes its files.
+```
+
+Keep paths short for Unix-domain socket limits. Choose a retention policy for
+failed work explicitly: the example removes its root on error too, so it is
+unsuitable if child cleanup fails and manual intervention is required. The
+repository's benchmark/test-fixture owner removes successful roots but retains
+roots on propagated errors and reports their private paths as exception notes,
+without printing their potentially sensitive contents. Intentionally retained
+failed roots can still consume space; inspect them and confirm no owned process
+is live before removing them. Abrupt termination cannot guarantee cleanup.
+
+The shared checkout fixtures continue reusing their explicit `.snektest` data
+directories; this does not make concurrent MariaDB suite commands against the
+same checkout safe. Run them sequentially.
 
 Because MariaDB data directories are large, spawning many temporary servers with the default retained system-temp location can fill `/tmp` or hit a filesystem quota. MariaDB may then fail during initialization with InnoDB preallocation errors such as `error 122`. In long-running test workflows, prefer an explicit `data_directory` that the test fixture deletes after shutdown, periodically remove stale retained directories such as `/tmp/snekql-mariadb-*`, or reuse an explicit `data_directory` with `reset_database=True`.
 
@@ -145,6 +189,9 @@ Install the package, then run:
 ```sh
 snekql-mariadb-server
 ```
+
+Use `--runtime-base-directory PATH` to place its unique retained runtime tree
+under an existing caller-owned directory. This flag selects location, not cleanup.
 
 The command starts a foreground Temporary MariaDB Test Server, prints one ready-to-copy `mariadb` command per enabled transport on stdout, and keeps running until Ctrl-C.
 

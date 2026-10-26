@@ -4,9 +4,9 @@ import asyncio
 from contextlib import AsyncExitStack
 from dataclasses import asdict, replace
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any
 
+from benchmarks._artifacts import mariadb_artifacts
 from snekql import mariadb
 from snekql.testing.mariadb import TemporaryMariaDBServer, temporary_mariadb_server
 from soak._service_evidence import emit
@@ -25,11 +25,13 @@ async def _active_queries(server: TemporaryMariaDBServer) -> int:
 
 async def restart_load() -> dict[str, Any]:  # noqa: PLR0915 -- keep the owned restart lifecycle together
     """Preserve durable writes; only explicit fresh read/write work follows restart."""
-    with TemporaryDirectory(prefix="snekql-fault-restart-") as directory:
+    async with mariadb_artifacts() as directory:  # noqa: SIM117 - keep artifact and restartable-server lifetimes distinct
         async with AsyncExitStack() as live_server:
             server = await live_server.enter_async_context(
                 temporary_mariadb_server(
-                    transports={"tcp"}, data_directory=Path(directory) / "data"
+                    runtime_base_directory=directory,
+                    transports={"tcp"},
+                    data_directory=Path(directory) / "data",
                 )
             )
             config = replace(
@@ -124,6 +126,7 @@ async def restart_load() -> dict[str, Any]:  # noqa: PLR0915 -- keep the owned r
                     "restart did not drain pool",
                 )
                 async with temporary_mariadb_server(
+                    runtime_base_directory=directory,
                     transports={"tcp"},
                     data_directory=Path(directory) / "data",
                     port=config.port,

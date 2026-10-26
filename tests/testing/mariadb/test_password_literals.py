@@ -38,6 +38,7 @@ async def password_authenticates(mode: str, user: str, password: str) -> None:
             auth="password",
             password=password,
             user=user,
+            runtime_base_directory=Path(directory),
             data_directory=Path(directory) / "data",
             server_args=(f"--sql-mode={mode}",),
         ) as server:
@@ -73,6 +74,8 @@ async def cli_environment_password_authenticates(mode: str, user: str) -> None:
             "SNEKQL_TEST_PASSWORD",
             "--user",
             user,
+            "--runtime-base-directory",
+            directory,
             "--data-directory",
             str(Path(directory) / "data"),
             "--socket-path",

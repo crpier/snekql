@@ -32,6 +32,7 @@ class _CLIOptions:
     password: str | None
     port: int | None
     reset_database: bool
+    runtime_base_directory: Path | None
     server_args: tuple[str, ...]
     socket_path: Path | None
     startup_timeout: float
@@ -60,6 +61,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="connection transport to expose; repeat for both; default: unix_socket",
     )
     _ = parser.add_argument("--data-directory", type=Path)
+    _ = parser.add_argument("--runtime-base-directory", type=Path)
     _ = parser.add_argument("--clean-before-start", action="store_true")
     _ = parser.add_argument("--reset-database", action="store_true")
     _ = parser.add_argument("--database", default="test")
@@ -109,6 +111,7 @@ def _parse_options(argv: list[str] | None) -> _CLIOptions:
         password=password,
         port=namespace.port,
         reset_database=namespace.reset_database,
+        runtime_base_directory=namespace.runtime_base_directory,
         server_args=tuple(namespace.server_arg),
         socket_path=namespace.socket_path,
         startup_timeout=namespace.startup_timeout,
@@ -175,6 +178,7 @@ async def _run(argv: list[str] | None) -> int:
         password=options.password,
         port=options.port,
         reset_database=options.reset_database,
+        runtime_base_directory=options.runtime_base_directory,
         server_args=options.server_args,
         socket_path=options.socket_path,
         startup_timeout=options.startup_timeout,

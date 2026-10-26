@@ -60,7 +60,10 @@ async def bootstrap_password_uses_stdin() -> None:
         patch("asyncio.create_subprocess_exec", record),
     ):
         async with temporary_mariadb_server(
-            auth="password", password=SENTINEL, data_directory=Path(directory) / "data"
+            auth="password",
+            password=SENTINEL,
+            runtime_base_directory=Path(directory),
+            data_directory=Path(directory) / "data",
         ) as server:
             assert_eq((await server.run_sql("SELECT 1")).returncode, 0)
 
@@ -139,6 +142,7 @@ async def startup_failures_do_not_echo_password(stage: str) -> None:
         async with temporary_mariadb_server(
             auth="password",
             password=SENTINEL,
+            runtime_base_directory=Path(directory),
             data_directory=Path(directory) / "data",
         ):
             assert_true(False, msg="fault must prevent startup")
@@ -197,7 +201,10 @@ async def cancelled_bootstrap_closes_sensitive_client(mode: str) -> None:
         with scope:
             try:
                 async with temporary_mariadb_server(
-                    auth="password", password=SENTINEL, data_directory=data_directory
+                    auth="password",
+                    password=SENTINEL,
+                    runtime_base_directory=data_directory.parent,
+                    data_directory=data_directory,
                 ):
                     assert_true(False)
             except asyncio.CancelledError as error:
@@ -262,6 +269,7 @@ async def bootstrap_credentials_remain_usable(case: tuple[str, str | None]) -> N
             auth="password",
             user=user,
             password=password,
+            runtime_base_directory=Path(directory),
             data_directory=Path(directory) / "data",
         ) as server:
             result = await server.run_sql("SELECT 1")

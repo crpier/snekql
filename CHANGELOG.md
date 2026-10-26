@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add `runtime_base_directory` and CLI `--runtime-base-directory` for explicit
+  Temporary MariaDB Test Server artifact ownership without changing retention.
+  Repository fixtures, benchmarks, and fault/soak commands clean successful
+  owned runtime trees after shutdown and retain propagated-error evidence.
+  Addresses #542.
+
 - Add reproducible owned TCP stream cuts, withheld real COMMIT replies, concurrent
   MariaDB restart and private bounded-tmpfs SQLite ENOSPC drills with explicit
   outcome/reconciliation evidence. Addresses #544.

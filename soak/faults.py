@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from dataclasses import asdict, replace
 from typing import Any
 
+from benchmarks._artifacts import mariadb_artifacts
 from snekql import mariadb
 from snekql.testing.mariadb import temporary_mariadb_server
 from soak._fault_proxy import Proxy, fault_proxy
@@ -142,7 +143,12 @@ async def run(scenario: str) -> None:
         )
         emit("summary", status="passed", scenario=scenario, **report)
         return
-    async with temporary_mariadb_server(transports={"tcp"}) as server:
+    async with (
+        mariadb_artifacts() as root,
+        temporary_mariadb_server(
+            transports={"tcp"}, runtime_base_directory=root
+        ) as server,
+    ):
         config = server.config(pool_size=1, acquire_timeout=5)
         require(config.host is not None, "missing owned TCP host")
         async with fault_proxy(config.host, config.port) as (proxy, port):
