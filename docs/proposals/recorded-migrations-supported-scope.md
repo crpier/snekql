@@ -329,3 +329,14 @@ UTC remains the sole native normalization, preserving actual SQL-mode/rendering/
 facts. Real disabled-default refusals preserve original role plans/earlier receipts/data;
 explicit caller restoration permits original work. Version/strictness/metadata, journal/
 durability, remaining outcome/shutdown policy and G4/G5 remain open, not implicitly qualified.
+
+## SQLite journal/synchronization follow-through
+
+The [SQLite synchronization checkpoint](recorded-migrations-sqlite-durability-review.md)
+admits/preserves DELETE/WAL and applies/readbacks shared Config NORMAL1/FULL2 per connection,
+without importing ordinary fixed busy waits or silently forcing WAL. Real original-role
+backfill triggers independently observe that session's actual sync/journal/busy values;
+original evidence/earlier receipts remain. Prepared/receipts do not certify disk policy or
+power loss; NORMAL now explicitly requests1 rather than coincidentally inheriting2. Ordinary
+runtime still selects WAL. Memory remains native/volatile. Remaining G3 outcome/admission/
+shutdown/native prerequisites and G4 WAL-death/matrix/native lost-ack/G5 approval remain open.

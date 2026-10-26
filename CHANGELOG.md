@@ -4,6 +4,11 @@
 
 ### Experimental
 
+- Admit/preserve existing SQLite DELETE or WAL migration journals and apply/read back shared
+  NORMAL/FULL synchronization from Config.durability before target yield, retaining configured
+  migration busy waits. Real retained-trigger observations verify actual role-backfill policy;
+  ordinary runtime WAL policy stays unchanged. Not power-loss/WAL-death qualification (#477).
+
 - Verify inherited native foreign-key/CHECK/unique enforcement prerequisites before yielding
   a dedicated migration target. Refuse disabled session flags without silently enabling them,
   changing GLOBAL defaults or overwriting SQL-mode/rendering/recovery evidence. Original role

@@ -25,17 +25,27 @@ _SQLITE_WAL_SETTING = ConnectionSetting(
     expected_value="wal",
     expectation="'wal'",
 )
-"""Both supported file-backed durability policies require WAL."""
+"""Both ordinary file-runtime policies use WAL; migrations admit journals separately."""
+
+
+def _sqlite_synchronous_setting(
+    durability: Literal["normal", "full"],
+) -> ConnectionSetting:
+    """Share synchronization policy without choosing journal mode or busy waiting."""
+    level = "FULL" if durability == "full" else "NORMAL"
+    value = 2 if durability == "full" else 1
+    return ConnectionSetting(
+        name="synchronous",
+        apply_statements=(f"PRAGMA synchronous = {level}",),
+        probe_sql="PRAGMA synchronous",
+        expected_value=value,
+        expectation=f"{value} ({level})",
+    )
+
 
 SQLITE_FILE_CONNECTION_SETTINGS: tuple[ConnectionSetting, ...] = (
     _SQLITE_WAL_SETTING,
-    ConnectionSetting(
-        name="synchronous",
-        apply_statements=("PRAGMA synchronous = NORMAL",),
-        probe_sql="PRAGMA synchronous",
-        expected_value=1,
-        expectation="1 (NORMAL)",
-    ),
+    _sqlite_synchronous_setting("normal"),
 )
 
 SQLITE_CONNECTION_SETTINGS: tuple[ConnectionSetting, ...] = (
@@ -93,13 +103,7 @@ async def apply_sqlite_connection_settings(
     if durability == "full":
         file_settings = (
             _SQLITE_WAL_SETTING,
-            ConnectionSetting(
-                name="synchronous",
-                apply_statements=("PRAGMA synchronous = FULL",),
-                probe_sql="PRAGMA synchronous",
-                expected_value=2,
-                expectation="2 (FULL)",
-            ),
+            _sqlite_synchronous_setting(durability),
         )
     await apply_connection_settings(
         _SQLiteSettingsProbe(connection),

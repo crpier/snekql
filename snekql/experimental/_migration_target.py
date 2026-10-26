@@ -76,13 +76,16 @@ from snekql.experimental.migrations import (
 from snekql.mariadb.config import Config as MariaDBConfig
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.sqlite.config import Config as SQLiteConfig
-lazy from snekql._settings import apply_connection_settings
+lazy from snekql._settings import ConnectionSetting, apply_connection_settings
 lazy from snekql.mariadb._pool import connect_owned
 lazy from snekql.mariadb.settings import (
     _UTC_TIME_ZONE_SETTING,
     MARIADB_SESSION_SETTINGS,
 )
-lazy from snekql.sqlite.settings import SQLITE_CONNECTION_SETTINGS
+lazy from snekql.sqlite.settings import (
+    SQLITE_CONNECTION_SETTINGS,
+    _sqlite_synchronous_setting,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1592,7 +1595,9 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
     Physical opening uses the acquisition budget; abandoned SQLite opens retain
     cleanup ownership, and native opens use the shared owned/TLS connector.
     Checked-out I/O has separate per-operation budgets; neither budget
-    limits the caller's time inside the yielded context.
+    limits the caller's time inside the yielded context. File-backed SQLite
+    preserves DELETE/WAL rather than selecting WAL, and applies Config.durability
+    synchronization for this connection. In-memory targets retain native policy.
     """
     if isinstance(config, SQLiteConfig):
         connection = await _open_sqlite(config)
@@ -1627,6 +1632,20 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
                 ),
                 backend="sqlite",
             )
+            if str(config.database) != ":memory:":
+                await apply_connection_settings(
+                    _SessionSettingsProbe(target),
+                    (
+                        ConnectionSetting(
+                            name="journal_mode",
+                            probe_sql="PRAGMA journal_mode",
+                            predicate=lambda value: value in ("delete", "wal"),
+                            expectation="'delete' or 'wal' (preserved)",
+                        ),
+                        _sqlite_synchronous_setting(config.durability),
+                    ),
+                    backend="sqlite",
+                )
         else:
             await apply_connection_settings(
                 _SessionSettingsProbe(target),

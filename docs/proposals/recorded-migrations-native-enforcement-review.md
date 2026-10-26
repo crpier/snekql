@@ -132,3 +132,14 @@ Local GIL CPython3.15.0/default asyncio/Linux/SQLite3.53.1/MariaDB13.0.2, not LT
 Actions remain maintainer-disabled: no CI requested/polled/awaited/claimed. Remaining G3/G4/G5
 limits above hold; no all-admission-failure/metadata-privilege/failed-close/WAL active-death/
 power-loss/native lost-ack/shutdown qualification, consumer guide or merge/tag/publication.
+
+## SQLite journal/synchronization follow-through
+
+The [SQLite synchronization checkpoint](recorded-migrations-sqlite-durability-review.md)
+admits/preserves DELETE/WAL and applies/readbacks shared Config NORMAL1/FULL2 per connection,
+without importing ordinary fixed busy waits or silently forcing WAL. Real original-role
+backfill triggers independently observe that session's actual sync/journal/busy values;
+original evidence/earlier receipts remain. Prepared/receipts do not certify disk policy or
+power loss; NORMAL now explicitly requests1 rather than coincidentally inheriting2. Ordinary
+runtime still selects WAL. Memory remains native/volatile. Remaining G3 outcome/admission/
+shutdown/native prerequisites and G4 WAL-death/matrix/native lost-ack/G5 approval remain open.
