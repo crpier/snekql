@@ -4,6 +4,12 @@
 
 ### Experimental
 
+- Apply/read back shared SQLite foreign-key and UTF-8 admission policy before yielding a
+  dedicated migration target; refuse existing UTF-16 files without changing bytes/data/history.
+  Retain migration-specific busy waits rather than importing the ordinary pool's fixed wait
+  and WAL/synchronous settings. Real original role deployment on an explicitly different UTF-8
+  target remains usable; journal/durability and remaining G3 policy stay open (#477).
+
 - Admit native migration sessions with the ordinary runtime's verified UTC time-zone policy
   before yielding a target. Real original role/clock packages now preserve UTC meaning for
   DATETIME and canonical TEXT CurrentTimestamp backfills under non-UTC server defaults,

@@ -309,3 +309,13 @@ ordinary DATETIME/TEXT UtcDatetime reads/writes; SQL-mode rendering evidence is 
 away and old rows/receipts are never repaired. This is only UTC session admission, not version/
 metadata/strictness/enforcement admission or complete G3. Journal/durability and remaining
 outcome/shutdown policy, G4/G5 and release decisions remain open.
+
+## SQLite encoding/FK admission follow-through
+
+The [SQLite admission checkpoint](recorded-migrations-sqlite-admission-review.md) applies and
+verifies shared foreign_keys/UTF-8 policy before yielding a dedicated target, through owned
+per-I/O deadlines. Real UTF-16 files refuse without byte/schema/data/history conversion; an
+explicitly different UTF-8 target deploys original role packages and normal typed application.
+The ordinary fixed busy wait/WAL/synchronous initializer is deliberately NOT imported, so
+migration acquisition and pending journal/durability policy are not silently changed. This is
+not complete SQLite runtime admission, failure-window qualification or completion of G3/G4/G5.

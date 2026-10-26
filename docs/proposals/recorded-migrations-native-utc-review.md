@@ -108,3 +108,13 @@ finished, owned-server audit empty. Local Linux/default asyncio/GIL CPython3.15.
 is not maintained-version qualification. Actions remain maintainer-disabled: no CI requested,
 polled, awaited or claimed. No full-suite/matrix/all-admission-failure/privilege/WAL/lost-ack/
 shutdown qualification, consumer guide, dependency upgrade or merge/tag/publication follows.
+
+## SQLite encoding/FK admission follow-through
+
+The [SQLite admission checkpoint](recorded-migrations-sqlite-admission-review.md) applies and
+verifies shared foreign_keys/UTF-8 policy before yielding a dedicated target, through owned
+per-I/O deadlines. Real UTF-16 files refuse without byte/schema/data/history conversion; an
+explicitly different UTF-8 target deploys original role packages and normal typed application.
+The ordinary fixed busy wait/WAL/synchronous initializer is deliberately NOT imported, so
+migration acquisition and pending journal/durability policy are not silently changed. This is
+not complete SQLite runtime admission, failure-window qualification or completion of G3/G4/G5.

@@ -78,6 +78,7 @@ from snekql.sqlite.config import Config as SQLiteConfig
 lazy from snekql._settings import apply_connection_settings
 lazy from snekql.mariadb._pool import connect_owned
 lazy from snekql.mariadb.settings import _UTC_TIME_ZONE_SETTING
+lazy from snekql.sqlite.settings import SQLITE_CONNECTION_SETTINGS
 
 logger = logging.getLogger(__name__)
 
@@ -1613,7 +1614,15 @@ async def connect(config: SQLiteConfig | MariaDBConfig) -> AsyncIterator[Target]
     failed = False
     try:
         if isinstance(config, SQLiteConfig):
-            await target._query("PRAGMA foreign_keys=ON")  # noqa: SLF001 - module owns connection lifecycle
+            await apply_connection_settings(
+                _SessionSettingsProbe(target),
+                tuple(
+                    setting
+                    for setting in SQLITE_CONNECTION_SETTINGS
+                    if setting.name in {"foreign_keys", "encoding"}
+                ),
+                backend="sqlite",
+            )
         else:
             await apply_connection_settings(
                 _SessionSettingsProbe(target),
