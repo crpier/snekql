@@ -40,6 +40,26 @@ Use equivalent environments and repeated measurements before claiming a speedup.
 The [artifact-ownership verification](test-suite-reviews/2026-10-26-artifact-ownership.md)
 records successful-run cleanup, explicit error retention, and its validation limits.
 
+## Focused join-compilation checks
+
+```sh
+uv run snektest tests/query/test_join_compilation.py
+uv run snektest tests/query/test_join_predicates.py::compound_on_preserves_sql_binding_order
+```
+
+These checks inspect SQL and bindings through the public Query Builder's
+`compile()` interface; they do not execute a database operation. Keep the full
+SQLite/MariaDB suite for execution and lifecycle coverage.
+
+The related compilation, aggregate-scope, predicate, alias, and physical-name
+checks share the declarations in `tests/query/join_models.py`, rather than
+importing them from a test module. This is one related pair of Table Models,
+not a universal schema: similarly shaped declarations elsewhere can deliberately
+carry different identities. Preserve those distinctions when extracting support.
+The [query-test coupling review](test-suite-reviews/2026-10-26-query-test-coupling.md)
+records the preserved contracts, focused-selection proofs, and remaining audit
+scope under #571.
+
 ## Focused benchmark checks
 
 ```sh

@@ -1,0 +1,3235 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-26",
+  "issue": 571,
+  "status": "First bounded maintenance slice; repository-wide behavioral audit remains open.",
+  "base": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+  "approved_seams": [
+    {
+      "seam": "Public Query Builder construction and query.compile()",
+      "catches": "SQL/binding results and valid/invalid identity/scope behavior",
+      "misses": "Database execution and Materialization"
+    },
+    {
+      "seam": "Existing focused snektest selections",
+      "catches": "Named feedback and discovery independence",
+      "misses": "Remaining default native suite"
+    }
+  ],
+  "performance_claim": false,
+  "performance_limits": "Single focused before/after observations are validation, not repeated equivalent-condition benchmarks. No execution amortization or test-count reduction. Full-suite walls are validation only; host is nonexclusive.",
+  "environment": {
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "executable": "/home/crpier/Projects/second-snekql/.venv/bin/python",
+    "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+    "cpu_count": 28,
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+    ],
+    "packages": {
+      "snekql": "0.9.0",
+      "snektest": "0.16.0",
+      "hypothesis": "6.168.1",
+      "pydantic": "2.14.0",
+      "aiosqlite": "0.22.1",
+      "aiomysql": "0.3.2"
+    },
+    "uv": "uv 0.13.4 (x86_64-unknown-linux-gnu)",
+    "base": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+    "performance_claim": false,
+    "host_exclusivity": "Not guaranteed. No concurrent test-suite runs from this session; fault checks completed before full validation."
+  },
+  "import_inventory_before": {
+    "python_files_scanned": 326,
+    "import_statements": 120,
+    "consumer_files": 72,
+    "target_modules": 42,
+    "hubs": [
+      [
+        "tests.runtime.test_raw_execution",
+        17
+      ],
+      [
+        "tests.runtime.test_named_codecs",
+        10
+      ],
+      [
+        "tests.runtime.test_raw_lifecycle",
+        6
+      ],
+      [
+        "tests.query.test_arithmetic",
+        5
+      ],
+      [
+        "tests.query.test_recursive_ctes",
+        5
+      ],
+      [
+        "tests.query.test_ctes",
+        5
+      ],
+      [
+        "tests.runtime.test_arithmetic",
+        5
+      ],
+      [
+        "tests.runtime.test_nested_transactions",
+        5
+      ],
+      [
+        "tests.query.test_column_protocol_dispatch",
+        5
+      ],
+      [
+        "tests.query.test_join_compilation",
+        4
+      ],
+      [
+        "tests.query.test_value_functions",
+        4
+      ],
+      [
+        "tests.query.test_unions",
+        4
+      ],
+      [
+        "tests.query.test_named_projection",
+        4
+      ],
+      [
+        "tests.runtime.test_joined_row_shape",
+        3
+      ],
+      [
+        "tests.query.test_literals",
+        3
+      ],
+      [
+        "tests.runtime.test_projection_decoder",
+        3
+      ],
+      [
+        "tests.runtime.test_value_functions",
+        2
+      ],
+      [
+        "tests.runtime.test_derived_decoder_policy",
+        2
+      ],
+      [
+        "tests.runtime.test_fixed_aggregate_decoder",
+        2
+      ],
+      [
+        "tests.runtime.test_nested_recovery",
+        2
+      ],
+      [
+        "tests.runtime.test_join_predicates",
+        2
+      ],
+      [
+        "tests.runtime.test_named_projection",
+        2
+      ],
+      [
+        "tests.mariadb.test_required_tls",
+        1
+      ],
+      [
+        "tests.query.test_subqueries",
+        1
+      ],
+      [
+        "tests.query.test_union_contracts",
+        1
+      ],
+      [
+        "tests.query.test_join_validation",
+        1
+      ],
+      [
+        "tests.test_callable_fk_typing_mariadb",
+        1
+      ],
+      [
+        "tests.test_callable_fk_typing_sqlite",
+        1
+      ],
+      [
+        "tests.test_defaulted_fk_typing_mariadb",
+        1
+      ],
+      [
+        "tests.test_defaulted_fk_typing",
+        1
+      ],
+      [
+        "tests.query.test_aggregate_validation",
+        1
+      ],
+      [
+        "tests.runtime.test_literals",
+        1
+      ],
+      [
+        "tests.runtime.test_model_row_materialization",
+        1
+      ],
+      [
+        "tests.runtime.test_raw_failures",
+        1
+      ],
+      [
+        "tests.query.test_row_locking",
+        1
+      ],
+      [
+        "tests.runtime.test_security_lifecycle",
+        1
+      ],
+      [
+        "tests.query.test_select_readiness",
+        1
+      ],
+      [
+        "tests.runtime.test_model_returning_materialization",
+        1
+      ],
+      [
+        "tests.runtime.test_single_field_materialization",
+        1
+      ],
+      [
+        "tests.query.test_table_aliases",
+        1
+      ],
+      [
+        "tests.query.test_cte_annotations",
+        1
+      ],
+      [
+        "tests.runtime.test_recursive_ctes",
+        1
+      ]
+    ],
+    "edges": [
+      {
+        "file": "tests/mariadb/test_connection_policy.py",
+        "line": 24,
+        "module": "tests.mariadb.test_required_tls",
+        "names": [
+          "tls_peer"
+        ]
+      },
+      {
+        "file": "tests/query/test_aggregate_scope.py",
+        "line": 8,
+        "module": "tests.query.test_join_compilation",
+        "names": [
+          "Order",
+          "User"
+        ]
+      },
+      {
+        "file": "tests/query/test_case.py",
+        "line": 8,
+        "module": "tests.query.test_arithmetic",
+        "names": [
+          "Inventory",
+          "NumericValues"
+        ]
+      },
+      {
+        "file": "tests/query/test_case.py",
+        "line": 9,
+        "module": "tests.query.test_value_functions",
+        "names": [
+          "Profile"
+        ]
+      },
+      {
+        "file": "tests/query/test_cte_annotations.py",
+        "line": 8,
+        "module": "tests.query.test_recursive_ctes",
+        "names": [
+          "Category",
+          "Visit",
+          "WalkRole"
+        ]
+      },
+      {
+        "file": "tests/query/test_cte_boundaries.py",
+        "line": 9,
+        "module": "tests.query.test_ctes",
+        "names": [
+          "ActiveRole",
+          "FilteredRole",
+          "Identifier",
+          "Person"
+        ]
+      },
+      {
+        "file": "tests/query/test_cte_boundaries.py",
+        "line": 10,
+        "module": "tests.query.test_subqueries",
+        "names": [
+          "Order",
+          "User"
+        ]
+      },
+      {
+        "file": "tests/query/test_cte_graph_growth.py",
+        "line": 10,
+        "module": "tests.query.test_ctes",
+        "names": [
+          "ActiveRole",
+          "Identifier",
+          "Person"
+        ]
+      },
+      {
+        "file": "tests/query/test_derived_provenance.py",
+        "line": 10,
+        "module": "tests.query.test_ctes",
+        "names": [
+          "ActiveRole",
+          "FilteredRole",
+          "Identifier",
+          "Person"
+        ]
+      },
+      {
+        "file": "tests/query/test_derived_provenance.py",
+        "line": 11,
+        "module": "tests.query.test_union_contracts",
+        "names": [
+          "JsonNumber",
+          "TextNumber"
+        ]
+      },
+      {
+        "file": "tests/query/test_derived_provenance.py",
+        "line": 12,
+        "module": "tests.query.test_unions",
+        "names": [
+          "MariaEvent",
+          "OptionalRow"
+        ]
+      },
+      {
+        "file": "tests/query/test_derived_provenance.py",
+        "line": 13,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "FirstValue",
+          "MariaDocument"
+        ]
+      },
+      {
+        "file": "tests/query/test_join_predicates.py",
+        "line": 9,
+        "module": "tests.query.test_join_compilation",
+        "names": [
+          "Order",
+          "User"
+        ]
+      },
+      {
+        "file": "tests/query/test_join_predicates.py",
+        "line": 10,
+        "module": "tests.query.test_join_validation",
+        "names": [
+          "Item"
+        ]
+      },
+      {
+        "file": "tests/query/test_named_returning.py",
+        "line": 8,
+        "module": "tests.query.test_named_projection",
+        "names": [
+          "Person",
+          "PersonSummary"
+        ]
+      },
+      {
+        "file": "tests/query/test_physical_name_scope.py",
+        "line": 8,
+        "module": "tests.query.test_join_compilation",
+        "names": [
+          "User"
+        ]
+      },
+      {
+        "file": "tests/query/test_table_aliases.py",
+        "line": 10,
+        "module": "tests.query.test_join_compilation",
+        "names": [
+          "Order",
+          "User"
+        ]
+      },
+      {
+        "file": "tests/query/test_union_contracts.py",
+        "line": 10,
+        "module": "tests.query.test_unions",
+        "names": [
+          "Event",
+          "OptionalRow",
+          "Row"
+        ]
+      },
+      {
+        "file": "tests/query/test_union_contracts.py",
+        "line": 11,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "FirstValue",
+          "MariaDocument"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_arithmetic.py",
+        "line": 14,
+        "module": "tests.query.test_arithmetic",
+        "names": [
+          "Inventory",
+          "NumericValues"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_callable_fk_mariadb.py",
+        "line": 12,
+        "module": "tests.test_callable_fk_typing_mariadb",
+        "names": [
+          "Account",
+          "Other"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_callable_fk_sqlite.py",
+        "line": 10,
+        "module": "tests.test_callable_fk_typing_sqlite",
+        "names": [
+          "Account",
+          "Other"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_case.py",
+        "line": 8,
+        "module": "tests.query.test_arithmetic",
+        "names": [
+          "Inventory"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_case.py",
+        "line": 9,
+        "module": "tests.query.test_value_functions",
+        "names": [
+          "Profile"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_case.py",
+        "line": 10,
+        "module": "tests.runtime.test_arithmetic",
+        "names": [
+          "MariaInventory",
+          "provide_mariadb_inventory",
+          "provide_sqlite_inventory"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_case.py",
+        "line": 15,
+        "module": "tests.runtime.test_value_functions",
+        "names": [
+          "MariaProfile",
+          "provide_mariadb_profiles",
+          "provide_sqlite_profiles"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_commit_outcome.py",
+        "line": 16,
+        "module": "tests.runtime.test_nested_transactions",
+        "names": [
+          "provide_nested_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_commit_outcome.py",
+        "line": 17,
+        "module": "tests.runtime.test_raw_lifecycle",
+        "names": [
+          "provide_contended_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_ctes.py",
+        "line": 11,
+        "module": "tests.query.test_ctes",
+        "names": [
+          "ActiveRole",
+          "FilteredRole",
+          "Identifier",
+          "Person"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_ctes.py",
+        "line": 12,
+        "module": "tests.runtime.test_arithmetic",
+        "names": [
+          "MariaInventory",
+          "provide_mariadb_inventory"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_ctes.py",
+        "line": 13,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "DocumentResult",
+          "LocalDocument",
+          "MariaDocument",
+          "provide_mariadb_documents",
+          "provide_sqlite_documents"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_defaulted_fk_mariadb.py",
+        "line": 10,
+        "module": "tests.test_defaulted_fk_typing_mariadb",
+        "names": [
+          "Account",
+          "Defaults"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_defaulted_fk_sqlite.py",
+        "line": 9,
+        "module": "tests.test_defaulted_fk_typing",
+        "names": [
+          "Account",
+          "Defaults"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_derived_decoder_policy.py",
+        "line": 12,
+        "module": "tests.query.test_column_protocol_dispatch",
+        "names": [
+          "PolicyOnlySqlReading",
+          "PolicySqlReading",
+          "SqlReading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_derived_decoder_policy.py",
+        "line": 17,
+        "module": "tests.runtime.test_joined_row_shape",
+        "names": [
+          "Anchor"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_derived_extrema_decoder.py",
+        "line": 11,
+        "module": "tests.query.test_column_protocol_dispatch",
+        "names": [
+          "PolicyOnlySqlReading",
+          "PolicySqlReading",
+          "SqlReading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_derived_extrema_decoder.py",
+        "line": 16,
+        "module": "tests.runtime.test_derived_decoder_policy",
+        "names": [
+          "AliasRole",
+          "InnerRole",
+          "OuterRole"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_derived_extrema_decoder.py",
+        "line": 17,
+        "module": "tests.runtime.test_fixed_aggregate_decoder",
+        "names": [
+          "NativeStatistics",
+          "SqlStatistics"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_derived_provenance.py",
+        "line": 11,
+        "module": "tests.query.test_ctes",
+        "names": [
+          "ActiveRole",
+          "FilteredRole"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_derived_sum_decoder.py",
+        "line": 11,
+        "module": "tests.runtime.test_fixed_aggregate_decoder",
+        "names": [
+          "source_policies"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_descriptor_access.py",
+        "line": 11,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "MariaDocument",
+          "provide_mariadb_documents"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_extrema_decoder_policy.py",
+        "line": 10,
+        "module": "tests.query.test_aggregate_validation",
+        "names": [
+          "Reading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_extrema_decoder_policy.py",
+        "line": 11,
+        "module": "tests.query.test_column_protocol_dispatch",
+        "names": [
+          "PolicyOnlySqlReading",
+          "PolicySqlReading",
+          "SqlReading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_failure_classification.py",
+        "line": 20,
+        "module": "tests.runtime.test_nested_recovery",
+        "names": [
+          "SQLiteEntry",
+          "provide_constraint_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_failure_classification.py",
+        "line": 21,
+        "module": "tests.runtime.test_raw_lifecycle",
+        "names": [
+          "provide_contended_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_group_correlations.py",
+        "line": 6,
+        "module": "tests.runtime.test_join_predicates",
+        "names": [
+          "LocalChild",
+          "LocalParent",
+          "MariaChild",
+          "MariaParent",
+          "provide_mariadb_join_rows",
+          "provide_sqlite_join_rows"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_literal_decoder.py",
+        "line": 10,
+        "module": "tests.query.test_literals",
+        "names": [
+          "NativeSource",
+          "Source"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_literal_decoder.py",
+        "line": 11,
+        "module": "tests.runtime.test_literals",
+        "names": [
+          "provide_literal_source",
+          "provide_native_literal_source"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_literals.py",
+        "line": 10,
+        "module": "tests.query.test_literals",
+        "names": [
+          "Depth",
+          "NativeSource",
+          "SeedRole",
+          "Source"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_migration_baseline_example.py",
+        "line": 20,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "RawCase",
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_migration_compatibility.py",
+        "line": 20,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "RawCase",
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_migration_status.py",
+        "line": 13,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "RawCase",
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_model_returning_materialization.py",
+        "line": 10,
+        "module": "tests.runtime.test_model_row_materialization",
+        "names": [
+          "SetterReading",
+          "ValidatedReading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_multi_field_decoding.py",
+        "line": 13,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "DocumentResult",
+          "LocalDocument",
+          "MariaDocument",
+          "provide_mariadb_documents",
+          "provide_sqlite_documents"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_multi_field_decoding.py",
+        "line": 20,
+        "module": "tests.runtime.test_projection_decoder",
+        "names": [
+          "PolicyColumn"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_named_projection.py",
+        "line": 12,
+        "module": "tests.query.test_named_projection",
+        "names": [
+          "OptionalPersonSummary",
+          "PeerRole",
+          "Person",
+          "PersonSummary",
+          "WidePerson"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_named_returning.py",
+        "line": 8,
+        "module": "tests.query.test_named_projection",
+        "names": [
+          "Person",
+          "PersonSummary",
+          "WidePerson"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_named_returning.py",
+        "line": 9,
+        "module": "tests.runtime.test_named_projection",
+        "names": [
+          "MariaPerson",
+          "provide_maria_people",
+          "provide_people"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_nested_recovery.py",
+        "line": 15,
+        "module": "tests.runtime.test_nested_transactions",
+        "names": [
+          "provide_nested_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_nested_recovery.py",
+        "line": 16,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "RawCase"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_nested_recovery.py",
+        "line": 17,
+        "module": "tests.runtime.test_raw_lifecycle",
+        "names": [
+          "provide_contended_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_nested_transactions.py",
+        "line": 14,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "RawCase"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_nested_transactions.py",
+        "line": 15,
+        "module": "tests.runtime.test_raw_lifecycle",
+        "names": [
+          "provide_contended_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_opentelemetry.py",
+        "line": 22,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_output_labels.py",
+        "line": 10,
+        "module": "tests.query.test_named_projection",
+        "names": [
+          "Person"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_output_labels.py",
+        "line": 11,
+        "module": "tests.runtime.test_arithmetic",
+        "names": [
+          "MariaInventory",
+          "provide_mariadb_inventory"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_output_labels.py",
+        "line": 12,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "DocumentResult",
+          "LocalDocument",
+          "MariaDocument",
+          "provide_mariadb_documents",
+          "provide_sqlite_documents"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_output_labels.py",
+        "line": 19,
+        "module": "tests.runtime.test_named_projection",
+        "names": [
+          "provide_people"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_query_telemetry.py",
+        "line": 18,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_raw_diagnostics.py",
+        "line": 12,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_raw_lifecycle.py",
+        "line": 17,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "RawCase"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_raw_validated_lifecycle.py",
+        "line": 13,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case",
+          "provide_raw_table"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_raw_validated_lifecycle.py",
+        "line": 14,
+        "module": "tests.runtime.test_raw_failures",
+        "names": [
+          "ControlledCursor",
+          "substitute_cursor"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_raw_validation.py",
+        "line": 19,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_raw_validation_diagnostics.py",
+        "line": 18,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_recursive_ctes.py",
+        "line": 12,
+        "module": "tests.query.test_recursive_ctes",
+        "names": [
+          "Category",
+          "Visit",
+          "WalkRole"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_recursive_ctes.py",
+        "line": 13,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "LocalDocument",
+          "MariaDocument",
+          "provide_mariadb_documents",
+          "provide_sqlite_documents"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_reporting_recipes.py",
+        "line": 7,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_rolling_migration_example.py",
+        "line": 34,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "RawCase",
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_row_locking.py",
+        "line": 19,
+        "module": "tests.query.test_row_locking",
+        "names": [
+          "Job",
+          "JobSummary"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_row_locking.py",
+        "line": 20,
+        "module": "tests.runtime.test_nested_recovery",
+        "names": [
+          "SQLiteEntry"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_row_locking.py",
+        "line": 21,
+        "module": "tests.runtime.test_nested_transactions",
+        "names": [
+          "provide_nested_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_scalar_decoder_policy.py",
+        "line": 11,
+        "module": "tests.query.test_column_protocol_dispatch",
+        "names": [
+          "PolicyOnlySqlReading",
+          "PolicySqlReading",
+          "SqlReading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_scalar_decoder_policy.py",
+        "line": 16,
+        "module": "tests.runtime.test_derived_decoder_policy",
+        "names": [
+          "Input"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_scalar_decoder_policy.py",
+        "line": 17,
+        "module": "tests.runtime.test_joined_row_shape",
+        "names": [
+          "Anchor"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_security_composition.py",
+        "line": 11,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "RawCase",
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_security_diagnostics.py",
+        "line": 16,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_security_lifecycle.py",
+        "line": 13,
+        "module": "tests.runtime.test_nested_transactions",
+        "names": [
+          "provide_nested_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_security_migration_cleanup.py",
+        "line": 13,
+        "module": "tests.runtime.test_security_lifecycle",
+        "names": [
+          "single_connection_file"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_security_stored_values.py",
+        "line": 9,
+        "module": "tests.runtime.test_raw_execution",
+        "names": [
+          "provide_raw_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_select_cardinality.py",
+        "line": 11,
+        "module": "tests.query.test_select_readiness",
+        "names": [
+          "EntryRole",
+          "EntrySummary"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_single_field_materialization.py",
+        "line": 11,
+        "module": "tests.runtime.test_joined_row_shape",
+        "names": [
+          "Anchor",
+          "Payload"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_single_field_materialization.py",
+        "line": 12,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "LocalDocument",
+          "MariaDocument",
+          "provide_mariadb_documents",
+          "provide_sqlite_documents"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_single_field_materialization.py",
+        "line": 18,
+        "module": "tests.runtime.test_projection_decoder",
+        "names": [
+          "PolicyReading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_single_field_returning.py",
+        "line": 12,
+        "module": "tests.runtime.test_model_returning_materialization",
+        "names": [
+          "NativeTextNumber",
+          "TextNumber"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_single_field_returning.py",
+        "line": 16,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "LocalDocument",
+          "MariaDocument",
+          "provide_mariadb_documents",
+          "provide_sqlite_documents"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_single_field_returning.py",
+        "line": 22,
+        "module": "tests.runtime.test_projection_decoder",
+        "names": [
+          "PolicyReading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_single_field_returning.py",
+        "line": 23,
+        "module": "tests.runtime.test_single_field_materialization",
+        "names": [
+          "OneCollection",
+          "OnePolicy",
+          "RejectPolicy"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_sum_decoder_policy.py",
+        "line": 11,
+        "module": "tests.query.test_column_protocol_dispatch",
+        "names": [
+          "PolicySqlReading"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_table_aliases.py",
+        "line": 10,
+        "module": "tests.query.test_table_aliases",
+        "names": [
+          "ManagerRole",
+          "ReviewerRole"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_table_aliases.py",
+        "line": 11,
+        "module": "tests.runtime.test_join_predicates",
+        "names": [
+          "LocalParent",
+          "MariaParent",
+          "provide_mariadb_join_rows",
+          "provide_sqlite_join_rows"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_transaction_policy.py",
+        "line": 15,
+        "module": "tests.runtime.test_nested_transactions",
+        "names": [
+          "provide_nested_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_transaction_policy.py",
+        "line": 16,
+        "module": "tests.runtime.test_raw_lifecycle",
+        "names": [
+          "provide_contended_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_transaction_retry_example.py",
+        "line": 11,
+        "module": "tests.runtime.test_raw_lifecycle",
+        "names": [
+          "provide_contended_case"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_unions.py",
+        "line": 12,
+        "module": "tests.query.test_unions",
+        "names": [
+          "CombinedRole",
+          "Event",
+          "MariaEvent",
+          "NullableEvent",
+          "OptionalRow",
+          "Pair",
+          "Row"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_unions.py",
+        "line": 21,
+        "module": "tests.runtime.test_named_codecs",
+        "names": [
+          "DocumentResult",
+          "LocalDocument",
+          "MariaDocument",
+          "provide_mariadb_documents",
+          "provide_sqlite_documents"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_value_expression_decoder.py",
+        "line": 10,
+        "module": "tests.query.test_arithmetic",
+        "names": [
+          "Inventory"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_value_expression_decoder.py",
+        "line": 11,
+        "module": "tests.query.test_value_functions",
+        "names": [
+          "Profile"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_value_expression_decoder.py",
+        "line": 12,
+        "module": "tests.runtime.test_arithmetic",
+        "names": [
+          "provide_sqlite_inventory"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_value_expression_decoder.py",
+        "line": 13,
+        "module": "tests.runtime.test_value_functions",
+        "names": [
+          "MariaProfile",
+          "provide_mariadb_profiles",
+          "provide_sqlite_profiles"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_value_functions.py",
+        "line": 10,
+        "module": "tests.query.test_arithmetic",
+        "names": [
+          "NumericValues"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_value_functions.py",
+        "line": 11,
+        "module": "tests.query.test_value_functions",
+        "names": [
+          "Profile"
+        ]
+      },
+      {
+        "file": "tests/runtime/test_value_functions.py",
+        "line": 12,
+        "module": "tests.runtime.test_arithmetic",
+        "names": [
+          "MariaNumericValues",
+          "provide_mariadb_numeric_values",
+          "provide_sqlite_numeric_values"
+        ]
+      },
+      {
+        "file": "tests/test_cte_annotation_typing_mariadb.py",
+        "line": 8,
+        "module": "tests.query.test_cte_annotations",
+        "names": [
+          "NativeCategory"
+        ]
+      },
+      {
+        "file": "tests/test_cte_annotation_typing_mariadb.py",
+        "line": 9,
+        "module": "tests.query.test_recursive_ctes",
+        "names": [
+          "OptionalVisit",
+          "PeerRole",
+          "Visit",
+          "WalkRole"
+        ]
+      },
+      {
+        "file": "tests/test_cte_annotation_typing_sqlite.py",
+        "line": 8,
+        "module": "tests.query.test_recursive_ctes",
+        "names": [
+          "Category",
+          "OptionalVisit",
+          "PeerRole",
+          "Visit",
+          "WalkRole"
+        ]
+      },
+      {
+        "file": "tests/test_literal_typing.py",
+        "line": 6,
+        "module": "tests.query.test_literals",
+        "names": [
+          "Depth",
+          "NativeSource",
+          "SeedRole",
+          "Source"
+        ]
+      },
+      {
+        "file": "tests/test_recursive_typing.py",
+        "line": 8,
+        "module": "tests.query.test_recursive_ctes",
+        "names": [
+          "Category",
+          "OptionalVisit",
+          "Visit",
+          "WalkRole"
+        ]
+      },
+      {
+        "file": "tests/test_recursive_typing.py",
+        "line": 9,
+        "module": "tests.runtime.test_recursive_ctes",
+        "names": [
+          "NativeCategory"
+        ]
+      },
+      {
+        "file": "tests/test_union_typing.py",
+        "line": 6,
+        "module": "tests.query.test_unions",
+        "names": [
+          "CombinedRole",
+          "Event",
+          "MariaEvent",
+          "NullableEvent",
+          "OptionalRow",
+          "OtherRow",
+          "Row"
+        ]
+      }
+    ]
+  },
+  "import_inventory_after": {
+    "python_files_scanned": 327,
+    "import_statements": 116,
+    "consumer_files": 69,
+    "target_modules": 41,
+    "hubs": [
+      [
+        "tests.runtime.test_raw_execution",
+        17
+      ],
+      [
+        "tests.runtime.test_named_codecs",
+        10
+      ],
+      [
+        "tests.runtime.test_raw_lifecycle",
+        6
+      ],
+      [
+        "tests.query.test_arithmetic",
+        5
+      ],
+      [
+        "tests.query.test_recursive_ctes",
+        5
+      ],
+      [
+        "tests.query.test_ctes",
+        5
+      ],
+      [
+        "tests.runtime.test_arithmetic",
+        5
+      ],
+      [
+        "tests.runtime.test_nested_transactions",
+        5
+      ],
+      [
+        "tests.query.test_column_protocol_dispatch",
+        5
+      ],
+      [
+        "tests.query.test_value_functions",
+        4
+      ],
+      [
+        "tests.query.test_unions",
+        4
+      ],
+      [
+        "tests.query.test_named_projection",
+        4
+      ],
+      [
+        "tests.runtime.test_joined_row_shape",
+        3
+      ],
+      [
+        "tests.query.test_literals",
+        3
+      ],
+      [
+        "tests.runtime.test_projection_decoder",
+        3
+      ],
+      [
+        "tests.runtime.test_value_functions",
+        2
+      ],
+      [
+        "tests.runtime.test_derived_decoder_policy",
+        2
+      ],
+      [
+        "tests.runtime.test_fixed_aggregate_decoder",
+        2
+      ],
+      [
+        "tests.runtime.test_nested_recovery",
+        2
+      ],
+      [
+        "tests.runtime.test_join_predicates",
+        2
+      ],
+      [
+        "tests.runtime.test_named_projection",
+        2
+      ],
+      [
+        "tests.mariadb.test_required_tls",
+        1
+      ],
+      [
+        "tests.query.test_subqueries",
+        1
+      ],
+      [
+        "tests.query.test_union_contracts",
+        1
+      ],
+      [
+        "tests.query.test_join_validation",
+        1
+      ],
+      [
+        "tests.test_callable_fk_typing_mariadb",
+        1
+      ],
+      [
+        "tests.test_callable_fk_typing_sqlite",
+        1
+      ],
+      [
+        "tests.test_defaulted_fk_typing_mariadb",
+        1
+      ],
+      [
+        "tests.test_defaulted_fk_typing",
+        1
+      ],
+      [
+        "tests.query.test_aggregate_validation",
+        1
+      ],
+      [
+        "tests.runtime.test_literals",
+        1
+      ],
+      [
+        "tests.runtime.test_model_row_materialization",
+        1
+      ],
+      [
+        "tests.runtime.test_raw_failures",
+        1
+      ],
+      [
+        "tests.query.test_row_locking",
+        1
+      ],
+      [
+        "tests.runtime.test_security_lifecycle",
+        1
+      ],
+      [
+        "tests.query.test_select_readiness",
+        1
+      ],
+      [
+        "tests.runtime.test_model_returning_materialization",
+        1
+      ],
+      [
+        "tests.runtime.test_single_field_materialization",
+        1
+      ],
+      [
+        "tests.query.test_table_aliases",
+        1
+      ],
+      [
+        "tests.query.test_cte_annotations",
+        1
+      ],
+      [
+        "tests.runtime.test_recursive_ctes",
+        1
+      ]
+    ]
+  },
+  "removed_cross_test_imports": [
+    {
+      "file": "tests/query/test_aggregate_scope.py",
+      "line": 8,
+      "module": "tests.query.test_join_compilation",
+      "names": [
+        "Order",
+        "User"
+      ]
+    },
+    {
+      "file": "tests/query/test_join_predicates.py",
+      "line": 9,
+      "module": "tests.query.test_join_compilation",
+      "names": [
+        "Order",
+        "User"
+      ]
+    },
+    {
+      "file": "tests/query/test_physical_name_scope.py",
+      "line": 8,
+      "module": "tests.query.test_join_compilation",
+      "names": [
+        "User"
+      ]
+    },
+    {
+      "file": "tests/query/test_table_aliases.py",
+      "line": 10,
+      "module": "tests.query.test_join_compilation",
+      "names": [
+        "Order",
+        "User"
+      ]
+    }
+  ],
+  "replacement_support": "tests/query/join_models.py",
+  "contracts": [
+    {
+      "name": "inner_join_renders_qualified_columns_and_on_clause",
+      "builder_expression_ast_identical": true,
+      "assertions_semantically_identical": true,
+      "decorators_identical": true,
+      "assertion_count": 2,
+      "expected_values": [
+        "expected = ' '.join(['SELECT \"user\".\"id\", \"user\".\"email\",', '\"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\"', 'FROM \"user\"', 'INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'])"
+      ],
+      "binding_expectations": [
+        "()"
+      ]
+    },
+    {
+      "name": "left_join_emits_left_join_keyword",
+      "builder_expression_ast_identical": true,
+      "assertions_semantically_identical": true,
+      "decorators_identical": true,
+      "assertion_count": 1,
+      "expected_values": [
+        "on_clause = 'LEFT JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'"
+      ],
+      "binding_expectations": []
+    },
+    {
+      "name": "cross_table_where_and_order_by_are_qualified",
+      "builder_expression_ast_identical": true,
+      "assertions_semantically_identical": true,
+      "decorators_identical": true,
+      "assertion_count": 2,
+      "expected_values": [
+        "expected = ' '.join(['SELECT \"user\".\"id\", \"user\".\"email\",', '\"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\"', 'FROM \"user\"', 'INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"', 'WHERE ((\"user\".\"email\" = ?) AND (\"order\".\"note\" = ?))', 'ORDER BY \"order\".\"note\" ASC'])"
+      ],
+      "binding_expectations": [
+        "('a@b.c', 'x')"
+      ]
+    },
+    {
+      "name": "projection_join_selects_only_the_projected_columns",
+      "builder_expression_ast_identical": true,
+      "assertions_semantically_identical": true,
+      "decorators_identical": true,
+      "assertion_count": 2,
+      "expected_values": [
+        "expected = ' '.join(['SELECT \"user\".\"email\", \"order\".\"note\"', 'FROM \"user\"', 'INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'])"
+      ],
+      "binding_expectations": [
+        "()"
+      ]
+    },
+    {
+      "name": "projection_join_filters_a_joined_but_unprojected_table",
+      "builder_expression_ast_identical": true,
+      "assertions_semantically_identical": true,
+      "decorators_identical": true,
+      "assertion_count": 2,
+      "expected_values": [
+        "expected = ' '.join(['SELECT \"user\".\"email\"', 'FROM \"user\"', 'INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"', 'WHERE (\"order\".\"note\" = ?)'])"
+      ],
+      "binding_expectations": [
+        "('x',)"
+      ]
+    }
+  ],
+  "audits": {
+    "changed_existing_test_files": [
+      "tests/query/test_aggregate_scope.py",
+      "tests/query/test_join_compilation.py",
+      "tests/query/test_join_predicates.py",
+      "tests/query/test_physical_name_scope.py",
+      "tests/query/test_table_aliases.py"
+    ],
+    "new_support_files": [
+      "tests/query/join_models.py"
+    ],
+    "consumer_changes_are_import_only": true,
+    "moved_classes_ast_identical": [
+      "User",
+      "Order"
+    ],
+    "unchanged_validation_models_file": "tests/query/test_join_validation.py",
+    "group_inventory": {
+      "cases": 60,
+      "markers_and_names_identical": true,
+      "names": [
+        "tests/query/test_aggregate_scope.py::deeply_nested_scalar_cannot_capture_ungrouped_outer_values",
+        "tests/query/test_aggregate_scope.py::grouped_json_projection_retains_its_path_binding",
+        "tests/query/test_aggregate_scope.py::grouped_query_rejects_ungrouped_ordering",
+        "tests/query/test_aggregate_scope.py::grouping_allows_aggregate_only_in_having_or_ordering",
+        "tests/query/test_aggregate_scope.py::having_subquery_cannot_read_an_ungrouped_outer_column",
+        "tests/query/test_aggregate_scope.py::hidden_aggregate_rejects_an_ungrouped_projection[having]",
+        "tests/query/test_aggregate_scope.py::hidden_aggregate_rejects_an_ungrouped_projection[ordering]",
+        "tests/query/test_aggregate_scope.py::json_projection_cannot_hide_an_ungrouped_column",
+        "tests/query/test_aggregate_scope.py::native_hidden_aggregate_rejects_an_ungrouped_projection[having]",
+        "tests/query/test_aggregate_scope.py::native_hidden_aggregate_rejects_an_ungrouped_projection[ordering]",
+        "tests/query/test_aggregate_scope.py::scalar_projection_can_read_the_outer_group_key",
+        "tests/query/test_aggregate_scope.py::scalar_projection_cannot_read_an_ungrouped_outer_column",
+        "tests/query/test_aggregate_scope.py::uncorrelated_scalar_does_not_require_outer_group_keys",
+        "tests/query/test_aggregate_scope.py::where_correlation_runs_before_grouping",
+        "tests/query/test_join_compilation.py::cross_table_where_and_order_by_are_qualified",
+        "tests/query/test_join_compilation.py::inner_join_renders_qualified_columns_and_on_clause",
+        "tests/query/test_join_compilation.py::left_join_emits_left_join_keyword",
+        "tests/query/test_join_compilation.py::projection_join_filters_a_joined_but_unprojected_table",
+        "tests/query/test_join_compilation.py::projection_join_selects_only_the_projected_columns",
+        "tests/query/test_join_predicates.py::compound_on_preserves_sql_binding_order",
+        "tests/query/test_join_predicates.py::multiple_on_clauses_bind_in_join_order",
+        "tests/query/test_join_predicates.py::nested_on_can_compare_to_an_enclosing_query",
+        "tests/query/test_join_predicates.py::on_bindings_follow_projection_bindings",
+        "tests/query/test_join_predicates.py::on_can_filter_only_the_joined_table",
+        "tests/query/test_join_predicates.py::on_cannot_reference_a_later_join",
+        "tests/query/test_join_predicates.py::on_rejects_aggregate_filters",
+        "tests/query/test_join_predicates.py::on_rejects_an_unjoined_predicate_owner",
+        "tests/query/test_join_predicates.py::on_rejects_unjoined_owners_in_composed_predicates[and]",
+        "tests/query/test_join_predicates.py::on_rejects_unjoined_owners_in_composed_predicates[not]",
+        "tests/query/test_join_predicates.py::on_rejects_unjoined_owners_in_composed_predicates[or]",
+        "tests/query/test_join_predicates.py::on_subquery_can_correlate_to_the_joined_table",
+        "tests/query/test_join_predicates.py::on_subquery_cannot_correlate_to_a_later_join",
+        "tests/query/test_join_predicates.py::on_values_use_the_column_codec",
+        "tests/query/test_join_validation.py::join_rejects_a_condition_that_does_not_reference_the_joined_table",
+        "tests/query/test_join_validation.py::join_rejects_a_model_from_another_backend_family",
+        "tests/query/test_join_validation.py::join_rejects_joining_a_table_twice",
+        "tests/query/test_join_validation.py::join_rejects_relating_to_a_table_that_is_not_yet_joined",
+        "tests/query/test_join_validation.py::where_rejects_a_plain_column_from_a_table_not_in_scope",
+        "tests/query/test_physical_name_scope.py::correlated_models_cannot_share_a_sql_name[case]",
+        "tests/query/test_physical_name_scope.py::correlated_models_cannot_share_a_sql_name[same]",
+        "tests/query/test_physical_name_scope.py::native_correlated_models_cannot_share_a_sql_name[case]",
+        "tests/query/test_physical_name_scope.py::native_correlated_models_cannot_share_a_sql_name[same]",
+        "tests/query/test_physical_name_scope.py::same_declaration_can_be_reused_in_an_uncorrelated_subquery",
+        "tests/query/test_table_aliases.py::alias_assignment_cannot_target_the_physical_model",
+        "tests/query/test_table_aliases.py::alias_does_not_rebind_the_original_column",
+        "tests/query/test_table_aliases.py::alias_is_not_a_write_target",
+        "tests/query/test_table_aliases.py::alias_metadata_rejects_column_deletion",
+        "tests/query/test_table_aliases.py::alias_rejects_another_models_column",
+        "tests/query/test_table_aliases.py::alias_rejects_invalid_sql_names[empty]",
+        "tests/query/test_table_aliases.py::alias_rejects_invalid_sql_names[space]",
+        "tests/query/test_table_aliases.py::alias_rejects_invalid_sql_names[sql]",
+        "tests/query/test_table_aliases.py::alias_rejects_mixed_backend_models",
+        "tests/query/test_table_aliases.py::alias_requires_a_declared_table",
+        "tests/query/test_table_aliases.py::colliding_alias_names_are_rejected[base-name]",
+        "tests/query/test_table_aliases.py::colliding_alias_names_are_rejected[case-collision]",
+        "tests/query/test_table_aliases.py::colliding_alias_names_are_rejected[same-name]",
+        "tests/query/test_table_aliases.py::nested_alias_cannot_shadow_an_outer_name",
+        "tests/query/test_table_aliases.py::one_role_cannot_name_two_visible_aliases",
+        "tests/query/test_table_aliases.py::self_join_qualifies_roles_independently",
+        "tests/query/test_table_aliases.py::unjoined_alias_on_the_right_is_rejected"
+      ]
+    },
+    "query_inventory": {
+      "cases": 671,
+      "markers_and_names_identical": true,
+      "names": null
+    },
+    "sdk_bytes_unchanged": true,
+    "sdk_tracked_files": 114,
+    "non_target_tracked_files_unchanged": true,
+    "changed_source_sha256": {
+      "tests/query/test_aggregate_scope.py": "9665dfa59add263d8701862d604ea862d8e9bdc617b4fdef83cd0c26278ff2ea",
+      "tests/query/test_join_compilation.py": "cfe2df6f38973679826b0a629c128b67bee381f460e21309debb5da09c4292a1",
+      "tests/query/test_join_predicates.py": "9e94befc57630403e92230d3db145c9e053c81ad3068edfeca041f68bb70e1ca",
+      "tests/query/test_physical_name_scope.py": "642a43b0312e77acea5b19b3b5d1a929feb9ca3e54b31694e421e2070eb654e5",
+      "tests/query/test_table_aliases.py": "f1cc093d48ecca9b78de4e210c5c5c2f8f1c3f7c7161c3c1ed4e9e49feb8e9b1",
+      "tests/query/join_models.py": "887030ccd5d152faf915ee6b8d253dd31559003ef8da3b391ff93845a5219da7"
+    }
+  },
+  "focused_validation": [
+    {
+      "label": "before-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "tests/query/test_aggregate_scope.py",
+        "tests/query/test_join_predicates.py",
+        "tests/query/test_table_aliases.py",
+        "tests/query/test_physical_name_scope.py",
+        "tests/query/test_join_validation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.23103256100148428,
+      "totals": {
+        "passed": 60,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "tmpdir": "/tmp/sq571-mjjug84r",
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "after-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "tests/query/test_aggregate_scope.py",
+        "tests/query/test_join_predicates.py",
+        "tests/query/test_table_aliases.py",
+        "tests/query/test_physical_name_scope.py",
+        "tests/query/test_join_validation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2259450179990381,
+      "totals": {
+        "passed": 60,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "tmpdir": "/tmp/sq571-k9ymnykf",
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "before-query",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.0722049119940493,
+      "totals": {
+        "passed": 671,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "tmpdir": "/tmp/sq571-0b7vx8z_",
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "after-query",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.0647614040062763,
+      "totals": {
+        "passed": 671,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "tmpdir": "/tmp/sq571-hv3p0dry",
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "red-shared-join-model",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_join_compilation.py::inner_join_renders_qualified_columns_and_on_clause",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.21881105699867476,
+      "totals": {
+        "passed": 0,
+        "failed": 0,
+        "errors": 1,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "tmpdir": "/tmp/sq571-645bq6cs",
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "green-shared-join-model",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_join_compilation.py::inner_join_renders_qualified_columns_and_on_clause",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.21655104900128208,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "tmpdir": "/tmp/sq571-vhze9nbk",
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "removed_lock_only_root": true
+    }
+  ],
+  "calibrated_faults": [
+    {
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28532588700181805,
+      "mutation": {
+        "path": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=params, sql=sql.replace('\"user\".', ''))",
+        "sha256": "0ff2b8ec30e6a91bff59b224b5511e30de990f49105c32cb40c78d771e89b494"
+      },
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "473199033a45013c95da09c4cb18f754064ac2626843d13a18458952e06f5780",
+      "snapshot": "faults-v3/before-public-sql",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.280146531003993,
+      "mutation": null,
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "c9e39eae0ccd43ec1ce28041b279fe2ec54e2d1f06d0c9fc1ad116227e3d27eb",
+      "snapshot": "faults-v3/before-public-sql",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28157764198840596,
+      "mutation": {
+        "path": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)",
+        "sha256": "7c00054f92974ce4f06fd9be0db9a66a71ad082238069fe707019acba38772c2"
+      },
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "a5d1670b126358e852c685fb12854204fed6baa9890d635844718691b7c31983",
+      "snapshot": "faults-v3/before-public-bindings",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28060212499985937,
+      "mutation": null,
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "6f3b1214a17ab26728ab6292ab7d857ceeff8c36e26c1fa5607758290b583576",
+      "snapshot": "faults-v3/before-public-bindings",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.28042036699480377,
+      "mutation": {
+        "path": "snekql/_query_compile.py",
+        "old": "return \" \".join(sql_parts), params\n\n\ndef _compile_limit_offset_sql",
+        "new": "return \" \".join(sql_parts).replace('\"user\".', ''), params\n\n\ndef _compile_limit_offset_sql",
+        "sha256": "01e7972ea988f8bc75f497421db71bda1a1cf529bbfb96d96ba0cac43d3fe87f"
+      },
+      "totals": {
+        "passed": 0,
+        "failed": 4,
+        "errors": 1,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "4b646aabbe4c54969feddd2d0dcc62ad6176f3c86efc55b9d627bed182bae2c9",
+      "snapshot": "faults-v3/before-lower-sql",
+      "failed_tests": [
+        {
+          "name": "tests/query/test_join_compilation.py::cross_table_where_and_order_by_are_qualified",
+          "duration": 0.015872048999881372,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"id\", \"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\" WHERE ((\"email\" = ?) AND (\"order\".\"note\" = ?)) ORDER BY \"order\".\"note\" ASC' != 'SELECT \"user\".\"id\", \"user\".\"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\" WHERE ((\"user\".\"email\" = ?) AND (\"order\".\"note\" = ?)) ORDER BY \"order\".\"note\" ASC'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::inner_join_renders_qualified_columns_and_on_clause",
+          "duration": 0.00010982500680256635,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"id\", \"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\"' != 'SELECT \"user\".\"id\", \"user\".\"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::left_join_emits_left_join_keyword",
+          "duration": 8.349699783138931e-05,
+          "markers": [
+            "fast"
+          ],
+          "status": "error",
+          "exception": {
+            "type": "AssertionError",
+            "message": ""
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::projection_join_filters_a_joined_but_unprojected_table",
+          "duration": 0.00011618300050031394,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"email\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\" WHERE (\"order\".\"note\" = ?)' != 'SELECT \"user\".\"email\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\" WHERE (\"order\".\"note\" = ?)'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::projection_join_selects_only_the_projected_columns",
+          "duration": 9.454500104766339e-05,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"email\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\"' != 'SELECT \"user\".\"email\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'"
+          }
+        }
+      ],
+      "passed_cases": 0,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.27195791200210806,
+      "mutation": null,
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "62ce1e31403264481168f10138ecb622f26224eaa0930b0d34090b69a4940933",
+      "snapshot": "faults-v3/before-lower-sql",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "tests/query/test_aggregate_scope.py",
+        "tests/query/test_join_predicates.py",
+        "tests/query/test_table_aliases.py",
+        "tests/query/test_physical_name_scope.py",
+        "tests/query/test_join_validation.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.3064161440124735,
+      "mutation": {
+        "path": "snekql/_query_scope.py",
+        "old": "previous is not model\n                or issubclass(model, (_AliasRelation, _CteRelation))",
+        "new": "False\n                or issubclass(model, (_AliasRelation, _CteRelation))",
+        "sha256": "43291f7d56e393e7eec456a582f194290d48200fddfff0817c573daa8ae07b53"
+      },
+      "totals": {
+        "passed": 56,
+        "failed": 4,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "5726aa071ee80778205e655b4ec8036caa91487b4b6e417db3a1e188f4536d86",
+      "snapshot": "faults-v3/before-identity-collision",
+      "failed_tests": [
+        {
+          "name": "tests/query/test_physical_name_scope.py::correlated_models_cannot_share_a_sql_name[same]",
+          "duration": 0.0006767080049030483,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "Expected to raise an exception but no exception was raised"
+          }
+        },
+        {
+          "name": "tests/query/test_physical_name_scope.py::correlated_models_cannot_share_a_sql_name[case]",
+          "duration": 0.0005874350026715547,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "Expected to raise an exception but no exception was raised"
+          }
+        },
+        {
+          "name": "tests/query/test_physical_name_scope.py::native_correlated_models_cannot_share_a_sql_name[same]",
+          "duration": 0.0027162019978277385,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "Expected to raise an exception but no exception was raised"
+          }
+        },
+        {
+          "name": "tests/query/test_physical_name_scope.py::native_correlated_models_cannot_share_a_sql_name[case]",
+          "duration": 0.000595208999584429,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "Expected to raise an exception but no exception was raised"
+          }
+        }
+      ],
+      "passed_cases": 56,
+      "valid_same_declaration_control_passed": true
+    },
+    {
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "tests/query/test_aggregate_scope.py",
+        "tests/query/test_join_predicates.py",
+        "tests/query/test_table_aliases.py",
+        "tests/query/test_physical_name_scope.py",
+        "tests/query/test_join_validation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2982753969990881,
+      "mutation": null,
+      "totals": {
+        "passed": 60,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "19c15dc19c3d5df3200897ba63e496808779ccf5c664cfcfe899773eafb04dcd",
+      "snapshot": "faults-v3/before-identity-collision",
+      "failed_tests": [],
+      "passed_cases": 60,
+      "valid_same_declaration_control_passed": true
+    },
+    {
+      "label": "consumer-1",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregate_scope.py",
+        "--json-output"
+      ],
+      "returncode": 2,
+      "wall_seconds": 0.24749260599492118,
+      "mutation": {
+        "deleted": "tests/query/test_join_compilation.py"
+      },
+      "totals": {
+        "collection_failed_before_json_report": true
+      },
+      "report_sha256": "5db6129b6529386573ab12873d33b65ef796b0ea70e2cb8737d44b80b80c4ca4",
+      "snapshot": "faults-v3/before-owner-absent",
+      "failed_tests": [],
+      "passed_cases": 0,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "consumer-2",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_predicates.py",
+        "--json-output"
+      ],
+      "returncode": 2,
+      "wall_seconds": 0.241146314991056,
+      "mutation": {
+        "deleted": "tests/query/test_join_compilation.py"
+      },
+      "totals": {
+        "collection_failed_before_json_report": true
+      },
+      "report_sha256": "4f965c7a82d95352a89c4c38a82098c872192965b332488f3c070d90c6e2ed9d",
+      "snapshot": "faults-v3/before-owner-absent",
+      "failed_tests": [],
+      "passed_cases": 0,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "consumer-3",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_table_aliases.py",
+        "--json-output"
+      ],
+      "returncode": 2,
+      "wall_seconds": 0.24976926400267985,
+      "mutation": {
+        "deleted": "tests/query/test_join_compilation.py"
+      },
+      "totals": {
+        "collection_failed_before_json_report": true
+      },
+      "report_sha256": "07b2dd824355d658de963e1abf5010a946e7c4c389a1c5e43f56e19b43c00120",
+      "snapshot": "faults-v3/before-owner-absent",
+      "failed_tests": [],
+      "passed_cases": 0,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "consumer-4",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_physical_name_scope.py",
+        "--json-output"
+      ],
+      "returncode": 2,
+      "wall_seconds": 0.2522492999996757,
+      "mutation": {
+        "deleted": "tests/query/test_join_compilation.py"
+      },
+      "totals": {
+        "collection_failed_before_json_report": true
+      },
+      "report_sha256": "d693a2cc514fee24a0b7d3ffa0ebced6b8974bdc7c26e4f477b616769651a62e",
+      "snapshot": "faults-v3/before-owner-absent",
+      "failed_tests": [],
+      "passed_cases": 0,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2625273269950412,
+      "mutation": {
+        "path": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=params, sql=sql.replace('\"user\".', ''))",
+        "sha256": "0ff2b8ec30e6a91bff59b224b5511e30de990f49105c32cb40c78d771e89b494"
+      },
+      "totals": {
+        "passed": 0,
+        "failed": 4,
+        "errors": 1,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "7f048d9e78e39adf36685f9ae20c1d547f2556099ee5a28d78f947aa8486e982",
+      "snapshot": "faults-v3/after-public-sql",
+      "failed_tests": [
+        {
+          "name": "tests/query/test_join_compilation.py::cross_table_where_and_order_by_are_qualified",
+          "duration": 0.013730513004702516,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"id\", \"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\" WHERE ((\"email\" = ?) AND (\"order\".\"note\" = ?)) ORDER BY \"order\".\"note\" ASC' != 'SELECT \"user\".\"id\", \"user\".\"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\" WHERE ((\"user\".\"email\" = ?) AND (\"order\".\"note\" = ?)) ORDER BY \"order\".\"note\" ASC'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::inner_join_renders_qualified_columns_and_on_clause",
+          "duration": 0.00011791900033131242,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"id\", \"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\"' != 'SELECT \"user\".\"id\", \"user\".\"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::left_join_emits_left_join_keyword",
+          "duration": 8.119299309328198e-05,
+          "markers": [
+            "fast"
+          ],
+          "status": "error",
+          "exception": {
+            "type": "AssertionError",
+            "message": ""
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::projection_join_filters_a_joined_but_unprojected_table",
+          "duration": 0.00012933899415656924,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"email\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\" WHERE (\"order\".\"note\" = ?)' != 'SELECT \"user\".\"email\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\" WHERE (\"order\".\"note\" = ?)'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::projection_join_selects_only_the_projected_columns",
+          "duration": 9.004800813272595e-05,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"email\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\"' != 'SELECT \"user\".\"email\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'"
+          }
+        }
+      ],
+      "passed_cases": 0,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.25854149999213405,
+      "mutation": null,
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "ae9690dfbdff12daf2fc9d0bce0046a7eaa3bdde0c55af45364a9d1eabb1cd8b",
+      "snapshot": "faults-v3/after-public-sql",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2674775790073909,
+      "mutation": {
+        "path": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)",
+        "sha256": "7c00054f92974ce4f06fd9be0db9a66a71ad082238069fe707019acba38772c2"
+      },
+      "totals": {
+        "passed": 4,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "e989a3470ef61734822336dcd19bf275b7dd56cb7219004be3cee99e10aa4410",
+      "snapshot": "faults-v3/after-public-bindings",
+      "failed_tests": [
+        {
+          "name": "tests/query/test_join_compilation.py::cross_table_where_and_order_by_are_qualified",
+          "duration": 0.014770903988392092,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "('x', 'a@b.c') != ('a@b.c', 'x')"
+          }
+        }
+      ],
+      "passed_cases": 4,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "focused-healthy",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py::inner_join_renders_qualified_columns_and_on_clause",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.256832225000835,
+      "mutation": {
+        "path": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)",
+        "sha256": "7c00054f92974ce4f06fd9be0db9a66a71ad082238069fe707019acba38772c2"
+      },
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "cb4f77adf1f947af4518c61f9cf4f9b5940a7fa615c5d683f461288c6e95d9f4",
+      "snapshot": "faults-v3/after-public-bindings",
+      "failed_tests": [],
+      "passed_cases": 1,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.26482533699891064,
+      "mutation": null,
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "29c0f98d395c31e7e34c8341b26ab4e6208354b195f1f7eb9bafe6ed293ed2ba",
+      "snapshot": "faults-v3/after-public-bindings",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2679595910012722,
+      "mutation": {
+        "path": "snekql/_query_compile.py",
+        "old": "return \" \".join(sql_parts), params\n\n\ndef _compile_limit_offset_sql",
+        "new": "return \" \".join(sql_parts).replace('\"user\".', ''), params\n\n\ndef _compile_limit_offset_sql",
+        "sha256": "01e7972ea988f8bc75f497421db71bda1a1cf529bbfb96d96ba0cac43d3fe87f"
+      },
+      "totals": {
+        "passed": 0,
+        "failed": 4,
+        "errors": 1,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "2dd16b7a903e949b9aade87182971a0c3985488eab1daf1c073967250475d3c6",
+      "snapshot": "faults-v3/after-lower-sql",
+      "failed_tests": [
+        {
+          "name": "tests/query/test_join_compilation.py::cross_table_where_and_order_by_are_qualified",
+          "duration": 0.013076811010250822,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"id\", \"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\" WHERE ((\"email\" = ?) AND (\"order\".\"note\" = ?)) ORDER BY \"order\".\"note\" ASC' != 'SELECT \"user\".\"id\", \"user\".\"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\" WHERE ((\"user\".\"email\" = ?) AND (\"order\".\"note\" = ?)) ORDER BY \"order\".\"note\" ASC'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::inner_join_renders_qualified_columns_and_on_clause",
+          "duration": 0.0001233789953403175,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"id\", \"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\"' != 'SELECT \"user\".\"id\", \"user\".\"email\", \"order\".\"id\", \"order\".\"user_id\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::left_join_emits_left_join_keyword",
+          "duration": 8.209999941755086e-05,
+          "markers": [
+            "fast"
+          ],
+          "status": "error",
+          "exception": {
+            "type": "AssertionError",
+            "message": ""
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::projection_join_filters_a_joined_but_unprojected_table",
+          "duration": 0.0001313800021307543,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"email\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\" WHERE (\"order\".\"note\" = ?)' != 'SELECT \"user\".\"email\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\" WHERE (\"order\".\"note\" = ?)'"
+          }
+        },
+        {
+          "name": "tests/query/test_join_compilation.py::projection_join_selects_only_the_projected_columns",
+          "duration": 0.00010134799231309444,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "'SELECT \"email\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"id\"' != 'SELECT \"user\".\"email\", \"order\".\"note\" FROM \"user\" INNER JOIN \"order\" ON \"order\".\"user_id\" = \"user\".\"id\"'"
+          }
+        }
+      ],
+      "passed_cases": 0,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.27100197500840295,
+      "mutation": null,
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "a5d1955a7e936bbee46941abcba36b779abec077b0130545b07856672e066715",
+      "snapshot": "faults-v3/after-lower-sql",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "tests/query/test_aggregate_scope.py",
+        "tests/query/test_join_predicates.py",
+        "tests/query/test_table_aliases.py",
+        "tests/query/test_physical_name_scope.py",
+        "tests/query/test_join_validation.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.29416618500545155,
+      "mutation": {
+        "path": "snekql/_query_scope.py",
+        "old": "previous is not model\n                or issubclass(model, (_AliasRelation, _CteRelation))",
+        "new": "False\n                or issubclass(model, (_AliasRelation, _CteRelation))",
+        "sha256": "43291f7d56e393e7eec456a582f194290d48200fddfff0817c573daa8ae07b53"
+      },
+      "totals": {
+        "passed": 56,
+        "failed": 4,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "52655c10ec3616f6a49a28730597043b9992d08e935f5a2ae3f07ba20aae1539",
+      "snapshot": "faults-v3/after-identity-collision",
+      "failed_tests": [
+        {
+          "name": "tests/query/test_physical_name_scope.py::correlated_models_cannot_share_a_sql_name[same]",
+          "duration": 0.0006077279977034777,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "Expected to raise an exception but no exception was raised"
+          }
+        },
+        {
+          "name": "tests/query/test_physical_name_scope.py::correlated_models_cannot_share_a_sql_name[case]",
+          "duration": 0.0005981379945296794,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "Expected to raise an exception but no exception was raised"
+          }
+        },
+        {
+          "name": "tests/query/test_physical_name_scope.py::native_correlated_models_cannot_share_a_sql_name[same]",
+          "duration": 0.0005775910103693604,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "Expected to raise an exception but no exception was raised"
+          }
+        },
+        {
+          "name": "tests/query/test_physical_name_scope.py::native_correlated_models_cannot_share_a_sql_name[case]",
+          "duration": 0.0009262650128221139,
+          "markers": [
+            "fast"
+          ],
+          "status": "failed",
+          "exception": {
+            "type": "AssertionFailure",
+            "message": "Expected to raise an exception but no exception was raised"
+          }
+        }
+      ],
+      "passed_cases": 56,
+      "valid_same_declaration_control_passed": true
+    },
+    {
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_compilation.py",
+        "tests/query/test_aggregate_scope.py",
+        "tests/query/test_join_predicates.py",
+        "tests/query/test_table_aliases.py",
+        "tests/query/test_physical_name_scope.py",
+        "tests/query/test_join_validation.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.29158282799471635,
+      "mutation": null,
+      "totals": {
+        "passed": 60,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "262e3fb89171245b446daa3c7855aa70632d9b049637836bfcd1574d2a367e2b",
+      "snapshot": "faults-v3/after-identity-collision",
+      "failed_tests": [],
+      "passed_cases": 60,
+      "valid_same_declaration_control_passed": true
+    },
+    {
+      "label": "consumer-1",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_aggregate_scope.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2815692330041202,
+      "mutation": {
+        "deleted": "tests/query/test_join_compilation.py"
+      },
+      "totals": {
+        "passed": 14,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "cc816e7a691fa0a59d9678f11348d3dfd1a714b0bcbc0983990cfbdbb1c4622f",
+      "snapshot": "faults-v3/after-owner-absent",
+      "failed_tests": [],
+      "passed_cases": 14,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "consumer-2",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_join_predicates.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.27708380899275653,
+      "mutation": {
+        "deleted": "tests/query/test_join_compilation.py"
+      },
+      "totals": {
+        "passed": 14,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "41cd8308d0acfb8df92f316ae886c95e6a41e24a0aae49f8d3af62eb350c96f1",
+      "snapshot": "faults-v3/after-owner-absent",
+      "failed_tests": [],
+      "passed_cases": 14,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "consumer-3",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_table_aliases.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2642103749967646,
+      "mutation": {
+        "deleted": "tests/query/test_join_compilation.py"
+      },
+      "totals": {
+        "passed": 17,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "d8619821b21e8f03dfed3442f5a13d863d30fcf022be32dcbab5d891f31b5adb",
+      "snapshot": "faults-v3/after-owner-absent",
+      "failed_tests": [],
+      "passed_cases": 17,
+      "valid_same_declaration_control_passed": null
+    },
+    {
+      "label": "consumer-4",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_physical_name_scope.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.27720791001047473,
+      "mutation": {
+        "deleted": "tests/query/test_join_compilation.py"
+      },
+      "totals": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "report_sha256": "3da320d0479fd8511f37ed7c757da1b9b8fda524e877730d138fdca0f34d8b3f",
+      "snapshot": "faults-v3/after-owner-absent",
+      "failed_tests": [],
+      "passed_cases": 5,
+      "valid_same_declaration_control_passed": null
+    }
+  ],
+  "calibration_capture_corrections": [
+    "First harness expected only framework failure statuses; retained LEFT JOIN bare assert is classified AssertionError/error. Corrected capture verifies all unexpected tests are specifically AssertionFailure or AssertionError.",
+    "Second harness expected valid JSON on collection abort; owner-module-absence intentionally produces a collection diagnostic instead. Corrected capture verifies the exact missing-module cause and records collection failure without fabricating a report.",
+    "Initial baseline record expected summary key; totals repaired from unchanged raw reports with original capture records retained."
+  ],
+  "full_validation": [
+    {
+      "label": "full-normal",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 445.5146047669987,
+      "totals": {
+        "passed": 4242,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "tmpdir": "/dev/shm/sqa-9thh2sbh",
+      "failed_tests": [],
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0,
+          "directory": false
+        }
+      ],
+      "source_unchanged": true
+    },
+    {
+      "label": "full-lazy",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 423.5759552209929,
+      "totals": {
+        "passed": 4242,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "tmpdir": "/dev/shm/sqa-9thh2sbh",
+      "failed_tests": [],
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0,
+          "directory": false
+        }
+      ],
+      "source_unchanged": true
+    }
+  ],
+  "normal_validation_cost_ranking": {
+    "warning": "Durations exclude managed teardown. One nonexclusive validation run, ranking only; not a matched performance comparison.",
+    "largest_files": [
+      {
+        "file": "tests/test_comparative_benchmarks.py",
+        "cases": 88,
+        "summed_case_seconds": 48.48388975900889
+      },
+      {
+        "file": "tests/testing/mariadb/test_password_literals.py",
+        "cases": 16,
+        "summed_case_seconds": 20.20935713801009
+      },
+      {
+        "file": "tests/runtime/test_migration_baseline_example.py",
+        "cases": 28,
+        "summed_case_seconds": 18.424354238042724
+      },
+      {
+        "file": "tests/test_fault_drills.py",
+        "cases": 8,
+        "summed_case_seconds": 14.021707465013606
+      },
+      {
+        "file": "tests/testing/mariadb/test_password_confidentiality.py",
+        "cases": 14,
+        "summed_case_seconds": 12.504707871004939
+      },
+      {
+        "file": "tests/runtime/test_rolling_migration_example.py",
+        "cases": 36,
+        "summed_case_seconds": 11.745034460007446
+      },
+      {
+        "file": "tests/testing/mariadb/test_process_cleanup.py",
+        "cases": 19,
+        "summed_case_seconds": 9.758024273993215
+      },
+      {
+        "file": "tests/test_soak_runner.py",
+        "cases": 19,
+        "summed_case_seconds": 9.757256437980686
+      },
+      {
+        "file": "tests/runtime/test_foreign_key_constraints.py",
+        "cases": 67,
+        "summed_case_seconds": 9.620840761082945
+      },
+      {
+        "file": "tests/mariadb/test_migrations.py",
+        "cases": 28,
+        "summed_case_seconds": 9.289874128982774
+      },
+      {
+        "file": "tests/runtime/test_failure_classification.py",
+        "cases": 42,
+        "summed_case_seconds": 9.252692694964935
+      },
+      {
+        "file": "tests/runtime/test_migration_compatibility.py",
+        "cases": 48,
+        "summed_case_seconds": 8.360537080967333
+      }
+    ],
+    "selected_query_files": [
+      {
+        "file": "tests/query/test_physical_name_scope.py",
+        "cases": 5,
+        "summed_case_seconds": 0.0025987469707615674
+      },
+      {
+        "file": "tests/query/test_aggregate_scope.py",
+        "cases": 14,
+        "summed_case_seconds": 0.0024661709903739393
+      },
+      {
+        "file": "tests/query/test_join_predicates.py",
+        "cases": 14,
+        "summed_case_seconds": 0.002283332039951347
+      },
+      {
+        "file": "tests/query/test_table_aliases.py",
+        "cases": 17,
+        "summed_case_seconds": 0.0009599150507710874
+      },
+      {
+        "file": "tests/query/test_join_compilation.py",
+        "cases": 5,
+        "summed_case_seconds": 0.0008521489799022675
+      }
+    ]
+  },
+  "historical_full_inventory_comparison": {
+    "comparison": "Historical #564 full report versus current #571 normal full report; not a matched performance baseline. Any inventory changes below are from integrated main #573, not this slice, whose decorated test inventory is unchanged.",
+    "historical_only": [],
+    "current_only": []
+  },
+  "full_inventory": {
+    "cases": 4242,
+    "normal_lazy_names_and_markers_identical": true,
+    "no_added_or_removed_decorated_tests_in_this_slice": true
+  },
+  "cleanup": {
+    "owned_tmpdir": "/dev/shm/sqa-9thh2sbh",
+    "user_processes_checked": 152,
+    "live_owned_processes": [],
+    "unreadable_environments": [
+      {
+        "pid": 1582,
+        "started_before_validation": true
+      },
+      {
+        "pid": 1590,
+        "started_before_validation": true
+      },
+      {
+        "pid": 24690,
+        "started_before_validation": true
+      }
+    ],
+    "environment_audit_limit": "Inaccessible environments are recorded; every such process predates validation and its readable command line contains no owned root.",
+    "remaining": [
+      {
+        "path": "uv-d1196c17db265703.lock",
+        "size": 0,
+        "directory": false
+      }
+    ],
+    "reusable_mariadb_data": "Caller-owned .snektest/mariadb-data was left untouched.",
+    "removed": true
+  },
+  "static_validation": [
+    {
+      "name": "ty",
+      "command": [
+        "uv",
+        "run",
+        "ty",
+        "check"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.4148440849967301,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "name": "ruff-check",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.015080797995324247,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "name": "ruff-format",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.01690189799410291,
+      "stdout": "622 files already formatted\n",
+      "stderr": ""
+    },
+    {
+      "name": "generated",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "scripts/generate_query_overloads.py",
+        "--check"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.038058766003814526,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.0026972000050591305,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "evidence": {
+    "local_root": "/home/crpier/.cache/sq571-JQ2jejW6",
+    "local_pointer": "/tmp/snekql-behavioral-audit-latest",
+    "raw_sha256": {
+      "before-group.json": "9ef842cc46bcf4fb194ff1045e124f1bf2bd3d585147d49b3cc1715b80ee5869",
+      "after-group.json": "a548dc7616f204867b5394b898983e42fb0f6d12bf3de86d51c5acf56c1d9643",
+      "before-query.json": "2d57eb13706b2a8d922024b6d70ad06e6616347048b02785729164f8a001f47a",
+      "after-query.json": "56d01cd97b17ed12fb3318db91649e93f146060302f665235b286c915543fea9",
+      "red-shared-join-model.json": "07d825234519d9d09ee55a61bac53f7ca808f6c137a20d47487bbffcc5afc909",
+      "green-shared-join-model.json": "f03ad4a64ad9b1385d050f4dcba21c4b7f1ab36366b3767958a560bc0cb99345",
+      "fault-records.json": "90988441d346ef011e3cb0617f26d93a6c9452d191a53fc7fe1c341bb615d972",
+      "fault-records-initial.json": "1f1f8b007785ea0f929592fe4d8aabe3ef0111e073bdca75285bf3fd8568c7bd",
+      "fault-records-second-attempt.json": "910f468029bf9fa1a313ba9cb7fdef2ad33f670e0157ad1d027332fdfb1b8997",
+      "calibrate.py": "529d5bb2753545cf6c2bdec76eb1ae9d27b68ed0737a93a17d251fd778d375aa",
+      "calibrate-first-attempt.py": "ba0457969f9a489e49801dd5ea25470afe2fa1ddb1e81e5794f57b7cbfe8b3dc",
+      "calibrate-second-attempt.py": "5dd7db1dc72bed6d13ab536a8cbf98e419d65fd326f5a97ca5a78d8a7258c7c3",
+      "audit.py": "9eeb9ce0605a25d13163d582b659a7fb562c0d6e9b391d802a7047884533a89e",
+      "coverage-audit.json": "272a7f513e41976325453d46cde68e1d0c78cf9551b5709222ed009386b39fa4",
+      "full-source.json": "5871ec3a9f3ec0fcd7e33baa854e9d678c3f6ee85630b3f514cfcd4904a682f6",
+      "full-normal.json": "c57720a9ce23f7944d27d1a12559532728d5af77b3d4a44a05d703534dae8245",
+      "full-lazy.json": "5e22f1953850a6ca097a9c40f48da50970d4ece30ab21c9897d6c915ced20b7a",
+      "full-records.json": "5d77db016ab00281de50c418f601e062cd7a4bc6d12e31e0240add805c1769e4",
+      "full-cleanup.json": "bea6ec3dd751e82611982c787ef3895f892559ac76fd39299e52b5d59f404e39",
+      "validate-full.py": "c93f7498135b5528316cc80e2092c30daad793a7e9e97599cedfac9478f3e4a2",
+      "environment.json": "17be5e0279e62ec406af2e0479db7540149a9b06a0f7bdcf2f1c7711224d26d6",
+      "validation.json": "d9865f3fdd987efc8c1b339668c96f97d9e4f1b97a1cdc2183bdd80a2d13d542",
+      "run.py": "fb755afe46623517c029b402ea5651a3aed2f74680788f3fce1bcc275ea51fe8",
+      "before-source.json": "aa64f61a60e9233a77f5fcc69e723396bd7cbf1bd6c202c95ceecc7503b68dcd",
+      "normal-cost-ranking.json": "9de518744270ec2ff9145d9684b348b65114ff4211fa3a8a1e5443acb50de6fc",
+      "historical-full-inventory-delta.json": "67753caa55bd24e0997419b8cd2e05f0762f542060627f42ceb8c5693212a558",
+      "cleanup-full.py": "778d0680761615d7c1d7bf7d08df1714bc794a7dcd4863c43b5c8687e6b1d702",
+      "cleanup-full-first-attempt.py": "12bc3eb9551a885e13e98d9a5c307e4ca9eb76698ca1eb22456a72ed3a712b34",
+      "cleanup-full-first-error.txt": "5e5be4c5917dc5e3764e053435e2e0eaf53e69ff8471c98c400bd7bd9971f732"
+    },
+    "full_source_manifest_sha256": "5871ec3a9f3ec0fcd7e33baa854e9d678c3f6ee85630b3f514cfcd4904a682f6",
+    "sdk_baseline_hash_manifest_sha256": "bb2b6de3a096e2315bc3731b3214dac412a8fb816e5145110f41cdd3e1d27fec"
+  },
+  "remaining_scope": [
+    "116 cross-test-module import statements remain; structural candidates are not duplicate behavior verdicts.",
+    "The existing Item import from test_join_validation remains, with its distinct FK/model declarations unchanged.",
+    "No runtime/database fixture-lifetime changes, broad helper rewrite, property-budget changes, default exclusions or native substitution.",
+    "No direct forced-lazy native child-interpreter certification; Actions is intentionally disabled."
+  ]
+}

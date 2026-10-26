@@ -5,7 +5,7 @@ from typing import ClassVar
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
-from tests.query.test_join_compilation import User
+from tests.query.join_models import User
 
 
 @test([Param("people", name="same"), Param("PEOPLE", name="case")], mark="fast")

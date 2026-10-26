@@ -7,49 +7,17 @@ A joined select renders table-qualified column names, a `FROM` anchor, and one
 
 from __future__ import annotations
 
-from typing import ClassVar
-
 from snektest import assert_eq, test
 
-from snekql import sqlite
-from snekql.sqlite import PENDING_GENERATION, Pending, Row, select
-from tests.helpers import SQLITE_CODEC
-
-
-class User[S = Pending](sqlite.Model[S]):
-    """Referenced table."""
-
-    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
-
-    id: User.GenCol[int] = sqlite.Integer(
-        primary_key=True,
-        auto_increment=True,
-        default=PENDING_GENERATION,
-    )
-    email: User.Col[str] = sqlite.Text(nullable=False)
-
-
-class Order[S = Pending](sqlite.Model[S]):
-    """Table with a foreign key to ``User``."""
-
-    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
-
-    id: Order.GenCol[int] = sqlite.Integer(
-        primary_key=True,
-        auto_increment=True,
-        default=PENDING_GENERATION,
-    )
-    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
-    note: Order.Col[str] = sqlite.Text(nullable=False)
+from snekql.sqlite import select
+from tests.query.join_models import Order, User
 
 
 @test(mark="fast")
 def inner_join_renders_qualified_columns_and_on_clause() -> None:
     """An inner join qualifies every column and emits one ON condition."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User).join(Order, on=Order.user_id.references(User.id)),
-    )
+    compiled = select(User).join(Order, on=Order.user_id.references(User.id)).compile()
 
     expected = " ".join(
         [
@@ -59,31 +27,32 @@ def inner_join_renders_qualified_columns_and_on_clause() -> None:
             'INNER JOIN "order" ON "order"."user_id" = "user"."id"',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, ())
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ())
 
 
 @test(mark="fast")
 def left_join_emits_left_join_keyword() -> None:
     """A left join renders the LEFT JOIN keyword."""
 
-    sql, _params = SQLITE_CODEC.compile_select_sql(
-        select(User).left_join(Order, on=Order.user_id.references(User.id)),
+    compiled = (
+        select(User).left_join(Order, on=Order.user_id.references(User.id)).compile()
     )
 
     on_clause = 'LEFT JOIN "order" ON "order"."user_id" = "user"."id"'
-    assert on_clause in sql
+    assert on_clause in compiled.sql
 
 
 @test(mark="fast")
 def cross_table_where_and_order_by_are_qualified() -> None:
     """Predicate and ordering columns from any joined table are qualified."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User)
         .join(Order, on=Order.user_id.references(User.id))
         .where(User.email.eq("a@b.c") & Order.note.eq("x"))
-        .order_by(Order.note.asc()),
+        .order_by(Order.note.asc())
+        .compile()
     )
 
     expected = " ".join(
@@ -96,8 +65,8 @@ def cross_table_where_and_order_by_are_qualified() -> None:
             'ORDER BY "order"."note" ASC',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, ("a@b.c", "x"))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ("a@b.c", "x"))
 
 
 @test(mark="fast")
@@ -108,10 +77,10 @@ def projection_join_selects_only_the_projected_columns() -> None:
     joined table contributes only to the FROM/JOIN graph, never the result.
     """
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User.email, Order.note).join(
-            Order, on=Order.user_id.references(User.id)
-        ),
+    compiled = (
+        select(User.email, Order.note)
+        .join(Order, on=Order.user_id.references(User.id))
+        .compile()
     )
 
     expected = " ".join(
@@ -121,18 +90,19 @@ def projection_join_selects_only_the_projected_columns() -> None:
             'INNER JOIN "order" ON "order"."user_id" = "user"."id"',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, ())
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ())
 
 
 @test(mark="fast")
 def projection_join_filters_a_joined_but_unprojected_table() -> None:
     """Filtering a joined table you do not project qualifies its predicate."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User.email)
         .join(Order, on=Order.user_id.references(User.id))
-        .where(Order.note.eq("x")),
+        .where(Order.note.eq("x"))
+        .compile()
     )
 
     expected = " ".join(
@@ -143,5 +113,5 @@ def projection_join_filters_a_joined_but_unprojected_table() -> None:
             'WHERE ("order"."note" = ?)',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, ("x",))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ("x",))
