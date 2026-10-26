@@ -1,0 +1,84 @@
+{
+  "code_revision": "9422d1206508c6ea1f57de5aa70946282482871e",
+  "source_status": "",
+  "source_sha256": {
+    "tests/testing/mariadb/test_process_cleanup.py": "ff93f032e81a1f67c3e3d72953d4e7a1b204db58f540e120d820803f52b5c339",
+    "tests/helpers.py": "76729d730592cde986bf63a4bdbc06ff063b293d53191bf51eba2c2bf685fd45",
+    "docs/testing-mariadb.md": "a04422493851a544b1a57366531970efbbb235609426055e00a5de9f1ac3f72d",
+    "pyproject.toml": "05b5af5a737ea1914e70e5ddc883af2c2167fe74901f56de8d6b64cf86e972e6",
+    "uv.lock": "7e622ca52611bcfed193b5d167f2eb1856ccc855ed5133c7fff6c1c9808210bc",
+    "snekql/testing/mariadb/__init__.py": "69dd6bd2ba016438969514124c6b12f86a63cba6785895ca1b158da6b4f84b76",
+    "snekql/testing/mariadb/_commands.py": "9a51c49b8fc034d170c8518b80c6d663db2876b2cc06e6f4c3ef457f3192da98",
+    "snekql/testing/mariadb/_process.py": "367743196ffe06e0c39bd2287951627674971f91490425ec8255b615299258b9",
+    "snekql/testing/mariadb/_types.py": "75070354f2e616b94066400ea4929ad9bba637c478d7a2da24c678dd725c168b",
+    "snekql/testing/mariadb/cli.py": "76f0943fdac6815ecad70722cfed72f670803bc23306d9cd50520af202081750",
+    "snekql/testing/mariadb/server.py": "a10a382ab85f70dede6dd052978a41de6d6d22cf179161ead1cc3f37f2ce6a87"
+  },
+  "new_probe_sha256": "5fbcadb928e78d393060a859ffc5a3e99ff2aef0ac3f208efdb50f0275670c66",
+  "packages": {
+    "snekql": "0.9.0",
+    "snektest": "0.16.0",
+    "anyio": "4.15.1",
+    "ty": "0.0.84",
+    "ruff": "0.16.9",
+    "hypothesis": "6.168.1",
+    "aiomysql": "0.3.2"
+  },
+  "native_versions_observed_after_captures": {
+    "mariadbd": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+    "mariadb": "mariadb from 13.0.2-MariaDB, client 15.2 for Linux (x86_64) using readline 5.1"
+  },
+  "static_commands": [
+    {
+      "name": "ty",
+      "command": [
+        "uv",
+        "run",
+        "ty",
+        "check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "ruff-check",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "ruff-format",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "lock-check",
+      "command": [
+        "uv",
+        "lock",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

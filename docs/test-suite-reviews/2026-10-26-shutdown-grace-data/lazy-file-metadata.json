@@ -1,0 +1,24 @@
+{
+  "revision": "9422d1206508c6ea1f57de5aa70946282482871e",
+  "command": [
+    "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+    "-X",
+    "lazy_imports=all",
+    "scripts/run_lazy_tests.py",
+    "tests/testing/mariadb/test_process_cleanup.py",
+    "--json-output"
+  ],
+  "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/lazy-tmp",
+  "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+  "exit_code": 0,
+  "wall_seconds": 83.85920596122742,
+  "counts": {
+    "passed": 19,
+    "failed": 0,
+    "errors": 0,
+    "fixture_teardown_failed": 0,
+    "session_teardown_failed": 0
+  },
+  "remaining_tmp_entries": [],
+  "report_sha256": "5ef593c7522267268673b8ef89007790ce75ff4c0cb6713519fdd53861f6384f"
+}

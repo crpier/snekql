@@ -1,0 +1,879 @@
+{
+  "before_revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+  "after_revision": "9422d1206508c6ea1f57de5aa70946282482871e",
+  "python": "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+  "runs": [
+    {
+      "variant": "before",
+      "profile": "single",
+      "revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+      "cwd": "/home/crpier/.cache/sqp.k3uZPe3E/before-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/t1",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 10.305608987808228,
+      "load_start": [
+        2.1142578125,
+        1.7470703125,
+        1.8154296875
+      ],
+      "load_end": [
+        2.0029296875,
+        1.7421875,
+        1.81298828125
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+          "duration": 10.036508927994873,
+          "markers": [
+            "medium"
+          ]
+        }
+      ],
+      "report": "matched-1-before-single.json",
+      "report_sha256": "5c5cb658fe4074106ed2ac9ae0435ed73ac5565a76438a4a5c98e966a386a41d",
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "before",
+      "profile": "file",
+      "revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+      "cwd": "/home/crpier/.cache/sqp.k3uZPe3E/before-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/t2",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 136.9800684452057,
+      "load_start": [
+        2.0029296875,
+        1.7421875,
+        1.81298828125
+      ],
+      "load_end": [
+        2.0517578125,
+        1.95751953125,
+        1.896484375
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 19,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[installer_native]",
+          "duration": 0.007370513994828798,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[installer_anyio]",
+          "duration": 0.0011661019962048158,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[readiness_native]",
+          "duration": 8.963708725001197,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[readiness_anyio]",
+          "duration": 8.386530050993315,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[bootstrap_native]",
+          "duration": 10.27159603999462,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[bootstrap_anyio]",
+          "duration": 8.197663218990783,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[reset_native]",
+          "duration": 6.910264507008833,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[reset_anyio]",
+          "duration": 9.621861809006077,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[sql_native]",
+          "duration": 6.380493991993717,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[sql_anyio]",
+          "duration": 8.856613772994024,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[spawn_native]",
+          "duration": 8.870271596009843,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[spawn_anyio]",
+          "duration": 6.995711227005813,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[exit_native]",
+          "duration": 7.919988737994572,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[exit_anyio]",
+          "duration": 6.91268905600009,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::readiness_error_remains_primary[cleanup_ok]",
+          "duration": 8.756288401011261,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::readiness_error_remains_primary[cleanup_denied]",
+          "duration": 9.546447344997432,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::reset_failure_reaps_server_before_entry_raises",
+          "duration": 10.144346708999365,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::server_spawn_failure_is_a_domain_error",
+          "duration": 0.0011779409978771582,
+          "markers": [
+            "fast"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+          "duration": 10.026761867004097,
+          "markers": [
+            "medium"
+          ]
+        }
+      ],
+      "report": "matched-2-before-file.json",
+      "report_sha256": "5d30dea7da1dc7ca057d641493c832e5ab043295f03548614b050042dd1f2bd2",
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "after",
+      "profile": "single",
+      "revision": "9422d1206508c6ea1f57de5aa70946282482871e",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/t3",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 0.29749059677124023,
+      "load_start": [
+        2.0517578125,
+        1.95751953125,
+        1.896484375
+      ],
+      "load_end": [
+        2.0517578125,
+        1.95751953125,
+        1.896484375
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+          "duration": 0.08677080400229897,
+          "markers": [
+            "slow"
+          ]
+        }
+      ],
+      "report": "matched-3-after-single.json",
+      "report_sha256": "7ddb03f6049d5fec93eac2b7e67dde1f5a031f2813874b45d917ae61054f2168",
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "after",
+      "profile": "file",
+      "revision": "9422d1206508c6ea1f57de5aa70946282482871e",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/t4",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 129.6108045578003,
+      "load_start": [
+        2.0517578125,
+        1.95751953125,
+        1.896484375
+      ],
+      "load_end": [
+        2.31787109375,
+        2.1171875,
+        1.97021484375
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 19,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[installer_native]",
+          "duration": 0.00761387099919375,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[installer_anyio]",
+          "duration": 0.0014865739940432832,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[readiness_native]",
+          "duration": 10.196641620001174,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[readiness_anyio]",
+          "duration": 7.162822236001375,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[bootstrap_native]",
+          "duration": 5.427172119001625,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[bootstrap_anyio]",
+          "duration": 6.161559291998856,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[reset_native]",
+          "duration": 8.111145465998561,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[reset_anyio]",
+          "duration": 9.755336170012015,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[sql_native]",
+          "duration": 8.084743210012675,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[sql_anyio]",
+          "duration": 10.201717267002095,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[spawn_native]",
+          "duration": 9.483849199998076,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[spawn_anyio]",
+          "duration": 8.730571302003227,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[exit_native]",
+          "duration": 8.881699147998006,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[exit_anyio]",
+          "duration": 9.557319373998325,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::readiness_error_remains_primary[cleanup_ok]",
+          "duration": 9.016235047994996,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::readiness_error_remains_primary[cleanup_denied]",
+          "duration": 8.917161941993982,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::reset_failure_reaps_server_before_entry_raises",
+          "duration": 9.624536903007538,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::server_spawn_failure_is_a_domain_error",
+          "duration": 0.000997367998934351,
+          "markers": [
+            "fast"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+          "duration": 0.08311247300298419,
+          "markers": [
+            "slow"
+          ]
+        }
+      ],
+      "report": "matched-4-after-file.json",
+      "report_sha256": "0eebe6afe1bdeef9db8939783a43d39d8c550624c6dd8b242e18e8d5120ebe37",
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "after",
+      "profile": "single",
+      "revision": "9422d1206508c6ea1f57de5aa70946282482871e",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/t5",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 0.3036463260650635,
+      "load_start": [
+        2.31787109375,
+        2.1171875,
+        1.97021484375
+      ],
+      "load_end": [
+        2.31787109375,
+        2.1171875,
+        1.97021484375
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+          "duration": 0.09147911900072359,
+          "markers": [
+            "slow"
+          ]
+        }
+      ],
+      "report": "matched-5-after-single.json",
+      "report_sha256": "9f719edac8f6d68d2841466fcba4467287bfc71d8043cf6d9c2eb836801ad8f1",
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "after",
+      "profile": "file",
+      "revision": "9422d1206508c6ea1f57de5aa70946282482871e",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/t6",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 106.56847047805786,
+      "load_start": [
+        2.31787109375,
+        2.1171875,
+        1.97021484375
+      ],
+      "load_end": [
+        1.94384765625,
+        2.08349609375,
+        1.9794921875
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 19,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[installer_native]",
+          "duration": 0.007689197998843156,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[installer_anyio]",
+          "duration": 0.0014486579893855378,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[readiness_native]",
+          "duration": 10.617340270007844,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[readiness_anyio]",
+          "duration": 6.4461737319943495,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[bootstrap_native]",
+          "duration": 9.291331241998705,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[bootstrap_anyio]",
+          "duration": 8.932928170994273,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[reset_native]",
+          "duration": 9.171590347003075,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[reset_anyio]",
+          "duration": 9.179073380000773,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[sql_native]",
+          "duration": 8.578819819987984,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[sql_anyio]",
+          "duration": 5.91990365399397,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[spawn_native]",
+          "duration": 5.163212451006984,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[spawn_anyio]",
+          "duration": 5.1548498240008485,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[exit_native]",
+          "duration": 5.947639353005798,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[exit_anyio]",
+          "duration": 5.424668677995214,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::readiness_error_remains_primary[cleanup_ok]",
+          "duration": 5.088180572987767,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::readiness_error_remains_primary[cleanup_denied]",
+          "duration": 5.0498168419871945,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::reset_failure_reaps_server_before_entry_raises",
+          "duration": 6.2930957909993595,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::server_spawn_failure_is_a_domain_error",
+          "duration": 0.0009889990033116192,
+          "markers": [
+            "fast"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+          "duration": 0.08838420700340066,
+          "markers": [
+            "slow"
+          ]
+        }
+      ],
+      "report": "matched-6-after-file.json",
+      "report_sha256": "a8de70468cd5a8d7e9e88093fd7a65355e76dac5d3ca16fa248b4a2346fbb14b",
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "before",
+      "profile": "single",
+      "revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+      "cwd": "/home/crpier/.cache/sqp.k3uZPe3E/before-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/t7",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 10.254050254821777,
+      "load_start": [
+        1.94384765625,
+        2.08349609375,
+        1.9794921875
+      ],
+      "load_end": [
+        1.80517578125,
+        2.0478515625,
+        1.96923828125
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+          "duration": 10.04132524599845,
+          "markers": [
+            "medium"
+          ]
+        }
+      ],
+      "report": "matched-7-before-single.json",
+      "report_sha256": "20213b1a3f5ba187f4e8f7922a2a64bffd3c74b154b0c9d07371ff901d3f4066",
+      "remaining_tmp_entries": []
+    },
+    {
+      "variant": "before",
+      "profile": "file",
+      "revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+      "cwd": "/home/crpier/.cache/sqp.k3uZPe3E/before-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqp.k3uZPe3E/t8",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "wall_seconds": 93.8606698513031,
+      "load_start": [
+        1.80517578125,
+        2.0478515625,
+        1.96923828125
+      ],
+      "load_end": [
+        1.35595703125,
+        1.83251953125,
+        1.89697265625
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 19,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "cases": [
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[installer_native]",
+          "duration": 0.0071122689987532794,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[installer_anyio]",
+          "duration": 0.0007850449910620227,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[readiness_native]",
+          "duration": 5.078316484010429,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[readiness_anyio]",
+          "duration": 5.089181301009376,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[bootstrap_native]",
+          "duration": 6.154764466002234,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[bootstrap_anyio]",
+          "duration": 5.425244837999344,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[reset_native]",
+          "duration": 5.413333196993335,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[reset_anyio]",
+          "duration": 5.623028596004588,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[sql_native]",
+          "duration": 6.011431797000114,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[sql_anyio]",
+          "duration": 5.659698882998782,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[spawn_native]",
+          "duration": 5.0973486810107715,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[spawn_anyio]",
+          "duration": 5.064639061005437,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[exit_native]",
+          "duration": 5.966266624003765,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::cancellation_reaps_owned_children[exit_anyio]",
+          "duration": 5.5860078139958205,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::readiness_error_remains_primary[cleanup_ok]",
+          "duration": 5.093204478005646,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::readiness_error_remains_primary[cleanup_denied]",
+          "duration": 5.041241908998927,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::reset_failure_reaps_server_before_entry_raises",
+          "duration": 7.310071513988078,
+          "markers": [
+            "medium"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::server_spawn_failure_is_a_domain_error",
+          "duration": 0.000977422998403199,
+          "markers": [
+            "fast"
+          ]
+        },
+        {
+          "name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+          "duration": 10.028613570990274,
+          "markers": [
+            "medium"
+          ]
+        }
+      ],
+      "report": "matched-8-before-file.json",
+      "report_sha256": "524272b4591477eca3878f8f3a1c167213a3c7c1bf88ef6e51fcb1aad491bc27",
+      "remaining_tmp_entries": []
+    }
+  ]
+}

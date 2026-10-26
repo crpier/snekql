@@ -1,0 +1,63 @@
+{
+  "fault": "Owned copy withholds probe OS-group KILL delivery; real-time watchdog must rescue and fail, not launder reaping evidence.",
+  "runs": [
+    {
+      "name": "watchdog-direct-observation",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "tests.testing.mariadb.shutdown_probe"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 10.061578512191772,
+      "sha256": "37ae6b286df76993ffe292f465d4aa2984e1f937c039230d5626d886e910eb4b"
+    },
+    {
+      "name": "watchdog-rescue-rejected",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "exit_code": 1,
+      "wall_seconds": 10.277059078216553,
+      "sha256": "668430b4c05943aa9558e95f2dff68da5c2f0bbc4b06061dc51653d160501333"
+    },
+    {
+      "name": "watchdog-guard-omitted",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 10.275527715682983,
+      "sha256": "87f6bf47f9173f61fddb8be555f994fc2030a74dcf8bc6b014b0d14b58241d63"
+    },
+    {
+      "name": "watchdog-restored-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.317551851272583,
+      "sha256": "767a2a809ec7c6b2ebbbe114431fc724033ffed74bc1ad5bfe912ff27c33f917"
+    }
+  ],
+  "probe_mutation": {
+    "before": "        self.original_signal(pid, signum)",
+    "after": "        if signum != signal.SIGKILL:\n            self.original_signal(pid, signum)"
+  },
+  "guard_mutation": {
+    "before": "    assert_eq(report[\"watchdog_fired\"], False)\n",
+    "after": ""
+  }
+}

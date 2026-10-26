@@ -1,0 +1,66 @@
+{
+  "baseline_revision": "63a6c72f0c66a26b2cb5e0aac534aa07a4a7de7d",
+  "library_process_sha256": "367743196ffe06e0c39bd2287951627674971f91490425ec8255b615299258b9",
+  "candidate_sources": {
+    "tests/testing/mariadb/test_process_cleanup.py": "ff93f032e81a1f67c3e3d72953d4e7a1b204db58f540e120d820803f52b5c339",
+    "tests/testing/mariadb/shutdown_probe.py": "5fbcadb928e78d393060a859ffc5a3e99ff2aef0ac3f208efdb50f0275670c66"
+  },
+  "mutants": [
+    {
+      "name": "premature-kill",
+      "before": "            await asyncio.wait_for(asyncio.shield(waiter), _SHUTDOWN_TIMEOUT)\n        except TimeoutError, OSError:",
+      "after": "            await asyncio.wait_for(asyncio.shield(waiter), 1.0)\n        except TimeoutError, OSError:",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sqp.k3uZPe3E/calibration-src",
+      "exit_code": 1,
+      "wall_seconds": 0.37781858444213867,
+      "report_sha256": "dbbb3e5103e8da56f8836c10749aa355b9b3ebfd78628910ee7ad352e61dd5eb"
+    },
+    {
+      "name": "missing-kill",
+      "before": "            _signal_process(process, kill=True)",
+      "after": "            pass  # deliberate missing KILL",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sqp.k3uZPe3E/calibration-src",
+      "exit_code": 1,
+      "wall_seconds": 10.283505201339722,
+      "report_sha256": "11b4c99a5625720b66c6b588fa5ae91ae5cfbf115479e6761ad74138c7e96a67"
+    },
+    {
+      "name": "missing-stop-reap",
+      "before": "    waiter = asyncio.create_task(process.communicate() if capture else process.wait())",
+      "after": "    return  # deliberate early ownership release\n    waiter = asyncio.create_task(process.communicate() if capture else process.wait())",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sqp.k3uZPe3E/calibration-src",
+      "exit_code": 1,
+      "wall_seconds": 5.3250603675842285,
+      "report_sha256": "8719365feceb76aeae02bdeec09614e79652868451fb89e5f9fc7c3b9e698010"
+    }
+  ],
+  "restored_command": [
+    "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+    "-m",
+    "snektest",
+    "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed",
+    "--json-output"
+  ],
+  "restored_exit_code": 0
+}

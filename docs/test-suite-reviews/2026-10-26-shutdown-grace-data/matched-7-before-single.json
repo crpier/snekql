@@ -1,0 +1,1 @@
+{"passed": 1, "failed": 0, "errors": 0, "fixture_teardown_failed": 0, "session_teardown_failed": 0, "session_teardown_failures": [], "tests": [{"name": "tests/testing/mariadb/test_process_cleanup.py::terminate_resistant_server_is_killed", "duration": 10.04132524599845, "markers": ["medium"], "status": "passed"}]}
