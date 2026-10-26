@@ -8,6 +8,8 @@ from json import loads
 from anyio import Path, TemporaryDirectory, run_process
 from snektest import Param, assert_eq, assert_true, fixture, load_fixture, test
 
+from tests.typing_assessment import provide_typing_assessment
+
 
 @fixture
 async def provide_probe_checkout() -> AsyncGenerator[Path]:
@@ -119,21 +121,10 @@ async def missing_probe_is_infrastructure_failure() -> None:
 @test(mark="fast")
 async def readiness_report_retains_checker_limits() -> None:
     """Only a clean positive control can establish row-scope rejection."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            "readiness",
-            "--backend",
-            "sqlite",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases("readiness", backend="sqlite")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    report = loads(completed.stdout)
-    case = report["cases"][0]
+    case = observations[0]
     assert_eq(case["name"], "readiness")
     assert_eq(case["conforms"], True)
     assert_eq(bool(case["positive_errors"]), False)
@@ -142,105 +133,72 @@ async def readiness_report_retains_checker_limits() -> None:
 @test(mark="fast")
 async def backend_identity_probe_rejects_cross_family_execution() -> None:
     """Each Transaction rejects an otherwise valid query from the other family."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            "backend-identity",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases("backend-identity")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 2)
-    assert_true(all(case["conforms"] for case in report["cases"]))
+    assert_eq(len(observations), 2)
+    assert_true(all(case["conforms"] for case in observations))
 
 
 @test(mark="fast")
 async def positional_probe_rejects_ninth_projection() -> None:
     """Eight positional values retain types; a ninth exceeds the public overloads."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            "positional-width",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases("positional-width")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    assert_true(loads(completed.stdout)["conforms"])
+    assert_true(all(observation["conforms"] for observation in observations))
 
 
 @test(mark="fast")
 async def named_probe_preserves_nine_field_result() -> None:
     """Named rows exceed positional width without erasing the result class."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            "named-result",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases("named-result")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    assert_true(loads(completed.stdout)["conforms"])
+    assert_true(all(observation["conforms"] for observation in observations))
 
 
 @test(mark="fast")
 async def join_probe_retains_nullable_right_model() -> None:
     """Left-join row inference must not silently remove right-side absence."""
-    completed = await run_process(
-        [sys.executable, "scripts/check_typing_compatibility.py", "--case", "joins"],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases("joins")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    assert_true(loads(completed.stdout)["conforms"])
+    assert_true(all(observation["conforms"] for observation in observations))
 
 
 @test(mark="fast")
 async def raw_probe_rejects_consumption_time_validation_override() -> None:
     """A raw statement owns its validated result contract before consumption."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            "raw-contract",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases("raw-contract")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    assert_true(loads(completed.stdout)["conforms"])
+    assert_true(all(observation["conforms"] for observation in observations))
 
 
 @test(mark="fast")
 async def full_report_certifies_supported_ty_contracts() -> None:
     """The supported checker accepts every positive and rejects every negative."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            "all",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    completed = assessment.completed
 
     assert_eq(
         completed.returncode,
         0,
         msg=completed.stderr.decode(),
     )
-    report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 124)
+    report = assessment.report
+    expected = {
+        (backend, path.name.removesuffix(".positive.py.txt"))
+        async for path in Path("typing_probes").glob("*.positive.py.txt")
+        for backend in ("sqlite", "mariadb")
+    }
+    observed = [(case["backend"], case["name"]) for case in report["cases"]]
+    assert_eq(expected - set(observed), set(), msg="Missing case/backend pairs")
+    assert_eq(set(observed) - expected, set(), msg="Unexpected case/backend pairs")
+    assert_eq(len(observed), len(expected))
+    assert_eq(report["unmapped_errors"], [])
+    assert_true(report["conforms"])
     failed = {
         (case["backend"], case["name"])
         for case in report["cases"]
@@ -299,18 +257,10 @@ async def ty_probe_uses_declared_configuration() -> None:
 @test(mark="fast")
 async def defaulted_fk_probe_preserves_target() -> None:
     """Nullable defaults retain constructor inference and reject other targets."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            "fk-defaults",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases("fk-defaults")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    assert_true(loads(completed.stdout)["conforms"])
+    assert_true(all(observation["conforms"] for observation in observations))
 
 
 @test(
@@ -319,21 +269,10 @@ async def defaulted_fk_probe_preserves_target() -> None:
 )
 async def row_constructor_requires_valid_pending_control(backend: str) -> None:
     """Only the direct Row call fails beside clean exact-type Pending controls."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            "row-constructor",
-            "--backend",
-            backend,
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases("row-constructor", backend=backend)
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    report = loads(completed.stdout)
-    case = report["cases"][0]
+    case = observations[0]
     assert_eq(case["positive_errors"], [])
     assert_eq(len(case["negative_errors"]), 1)
     assert_eq(case["negative_errors"][0]["line"], case["expected_line"])
@@ -355,15 +294,11 @@ async def row_constructor_requires_valid_pending_control(backend: str) -> None:
 )
 async def explicit_batch_contract_requires_clean_control(name: str) -> None:
     """Each rejection has independent exact-type nonempty and empty controls."""
-    completed = await run_process(
-        [sys.executable, "scripts/check_typing_compatibility.py", "--case", name],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases(name)
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 2)
-    for case in report["cases"]:
+    assert_eq(len(observations), 2)
+    for case in observations:
         assert_eq(case["positive_errors"], [])
         assert_eq(len(case["negative_errors"]), 1)
         assert_eq(case["negative_errors"][0]["line"], case["expected_line"])
@@ -389,14 +324,10 @@ async def explicit_batch_contract_requires_clean_control(name: str) -> None:
 )
 async def read_helper_contract_requires_clean_control(name: str) -> None:
     """Rejected helper usage must have clean exact-type controls on both backends."""
-    completed = await run_process(
-        [sys.executable, "scripts/check_typing_compatibility.py", "--case", name],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases(name)
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 2)
+    assert_eq(len(observations), 2)
     expected_rule = {
         "read-scope": "invalid-argument-type",
         "ready-write": "no-matching-overload",
@@ -407,7 +338,7 @@ async def read_helper_contract_requires_clean_control(name: str) -> None:
         "pending-input": "invalid-argument-type",
         "read-constructor": "call-non-callable",
     }[name]
-    for case in report["cases"]:
+    for case in observations:
         assert_eq(case["positive_errors"], [])
         assert_eq(len(case["negative_errors"]), 1)
         assert_eq(case["negative_errors"][0]["line"], case["expected_line"])
@@ -436,15 +367,11 @@ async def read_helper_contract_requires_clean_control(name: str) -> None:
 async def comparison_or_freezing_requires_clean_control(case: tuple[str, str]) -> None:
     """Check one invalid operation beside exact-type valid callers on each backend."""
     name, rule = case
-    completed = await run_process(
-        [sys.executable, "scripts/check_typing_compatibility.py", "--case", name],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases(name)
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 2)
-    for observation in report["cases"]:
+    assert_eq(len(observations), 2)
+    for observation in observations:
         assert_eq(observation["positive_errors"], [])
         assert_eq(len(observation["negative_errors"]), 1)
         assert_eq(
@@ -472,20 +399,11 @@ async def comparison_or_freezing_requires_clean_control(case: tuple[str, str]) -
 )
 async def query_source_contract_requires_clean_control(verb: str) -> None:
     """Nominal guards reject values without losing native query role result types."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            f"source-{verb}",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases(f"source-{verb}")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 2)
-    for observation in report["cases"]:
+    assert_eq(len(observations), 2)
+    for observation in observations:
         assert_eq(observation["positive_errors"], [])
         assert_eq(len(observation["negative_errors"]), 1)
         assert_eq(
@@ -506,20 +424,11 @@ async def query_source_contract_requires_clean_control(verb: str) -> None:
 )
 async def single_insert_contract_requires_clean_control(kind: str) -> None:
     """Sequence rejection accompanies exact single/batch RETURNING controls."""
-    completed = await run_process(
-        [
-            sys.executable,
-            "scripts/check_typing_compatibility.py",
-            "--case",
-            f"insert-{kind}",
-        ],
-        check=False,
-    )
+    assessment = await load_fixture(provide_typing_assessment())
+    observations = assessment.cases(f"insert-{kind}")
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
-    report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 2)
-    for observation in report["cases"]:
+    assert_eq(len(observations), 2)
+    for observation in observations:
         assert_eq(observation["positive_errors"], [])
         assert_eq(len(observation["negative_errors"]), 1)
         assert_eq(
