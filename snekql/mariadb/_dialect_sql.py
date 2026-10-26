@@ -3,9 +3,11 @@
 lazy from decimal import Decimal
 lazy from typing import Any
 
+lazy from snekql._explain_types import ExplainFormat
 lazy from snekql._query_dialect import ExplainMode, QueryDialect
 lazy from snekql._query_state import InsertState, LockWait, SelectState, WriteState
 lazy from snekql.errors import ModelValidationError, QueryCompilationError
+lazy from snekql.mariadb._explain import decode_explain
 lazy from snekql.mariadb.identifiers import quote_identifier
 lazy from snekql.storage import Attr
 
@@ -86,13 +88,21 @@ def _for_update_sql(wait: LockWait) -> str:
     }[wait]
 
 
-def _explain_sql(state: SelectState | WriteState, sql: str, mode: ExplainMode) -> str:
+def _explain_sql(
+    state: SelectState | WriteState,
+    sql: str,
+    mode: ExplainMode,
+    plan_format: ExplainFormat,
+) -> str:
     """MariaDB uses ANALYZE, not EXPLAIN ANALYZE, for execution statistics."""
 
     if isinstance(state, InsertState):
         msg = "MariaDB plan inspection supports SELECT, UPDATE, and DELETE only"
         raise QueryCompilationError(msg)
-    return ("ANALYZE " if mode == "analyze" else "EXPLAIN ") + sql
+    prefix = "ANALYZE " if mode == "analyze" else "EXPLAIN "
+    if plan_format == "json":
+        prefix += "FORMAT=JSON "
+    return prefix + sql
 
 
 def _integer_literal_sql(placeholder: str) -> str:
@@ -113,6 +123,7 @@ MARIADB_QUERY_DIALECT = QueryDialect(
     current_timestamp_sql=current_timestamp_sql,
     empty_insert_sql=_empty_insert_sql,
     explain_sql=_explain_sql,
+    decode_explain=decode_explain,
     for_update_sql=_for_update_sql,
     encode_column_value=_encode_column_value,
     encode_write_value=_encode_write_value,

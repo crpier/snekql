@@ -1,10 +1,14 @@
 """Backend-aware plan inspection through public Transactions."""
 
+import json
 from collections.abc import AsyncGenerator
 from dataclasses import FrozenInstanceError
 from traceback import format_exception
 from typing import ClassVar, Literal
+from unittest.mock import AsyncMock, patch
 
+from aiomysql import Cursor as MariaCursor
+from aiosqlite import Cursor as SQLiteCursor
 from anyio import fail_after
 from snektest import (
     Param,
@@ -183,8 +187,17 @@ async def sqlite_explain_does_not_apply_writes(kind: str) -> None:
     assert_eq(rows, [(7, "secret")])
 
 
-@test([Param("update", name="update"), Param("delete", name="delete")], mark="slow")
-async def mariadb_explain_does_not_apply_writes(kind: str) -> None:
+@test(
+    [Param("update", name="update"), Param("delete", name="delete")],
+    [
+        Param[Literal["native", "json"]]("native", name="native"),
+        Param[Literal["native", "json"]]("json", name="json"),
+    ],
+    mark="slow",
+)
+async def mariadb_explain_does_not_apply_writes(
+    kind: str, plan_format: Literal["native", "json"]
+) -> None:
     """Plain EXPLAIN never opts a write into executing ANALYZE."""
     database = await load_fixture(provide_mariadb_accounts())
     queries = {
@@ -193,15 +206,24 @@ async def mariadb_explain_does_not_apply_writes(kind: str) -> None:
     }
 
     async with database.transaction() as transaction:
-        await transaction.explain(queries[kind])
+        await transaction.explain(queries[kind], format=plan_format)
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
 
     assert_eq(rows, ["secret"])
 
 
-@test([Param("update", name="update"), Param("delete", name="delete")], mark="slow")
-async def analyze_write_commits_on_normal_transaction_exit(kind: str) -> None:
+@test(
+    [Param("update", name="update"), Param("delete", name="delete")],
+    [
+        Param[Literal["native", "json"]]("native", name="native"),
+        Param[Literal["native", "json"]]("json", name="json"),
+    ],
+    mark="slow",
+)
+async def analyze_write_commits_on_normal_transaction_exit(
+    kind: str, plan_format: Literal["native", "json"]
+) -> None:
     """Explicit ANALYZE actually applies writes using normal transaction rules."""
     database = await load_fixture(provide_mariadb_accounts())
     queries = {
@@ -212,7 +234,7 @@ async def analyze_write_commits_on_normal_transaction_exit(kind: str) -> None:
     }
 
     async with database.transaction() as transaction:
-        await transaction.explain_analyze(queries[kind])
+        await transaction.explain_analyze(queries[kind], format=plan_format)
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
 
@@ -412,3 +434,268 @@ async def analyzed_write_keeps_values_bound() -> None:
         rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
 
     assert_eq(rows, [email])
+
+
+@test(mark="medium")
+async def sqlite_plan_is_typed_and_traversable_without_losing_native_steps() -> None:
+    """A consumer can walk a scalar subquery and inspect its nested table access."""
+    database = await load_fixture(provide_sqlite_accounts())
+    query = sqlite.select(
+        Account.email, sqlite.scalar(sqlite.select(Account.account_id.max()))
+    )
+
+    async with database.transaction() as transaction:
+        result = await transaction.explain(query)
+
+    plan = result.plan
+    assert isinstance(plan, sqlite.SQLiteQueryPlan)
+    steps = tuple(plan.walk())
+    assert_true(len(steps) >= 3)
+    subquery = next(step for step in steps if "SCALAR SUBQUERY" in step.detail)
+    assert_true(any("SEARCH account" in child.detail for child in subquery.children))
+    assert_true(all(child.parent == subquery.id for child in subquery.children))
+    assert_eq(
+        {(step.id, step.parent, step.auxiliary, step.detail) for step in steps},
+        set(result.rows),
+    )
+    assert_eq(result.analyzed, False)
+    assert_eq(result.format, "native")
+
+
+@test(mark="slow")
+async def mariadb_json_plan_exposes_access_evidence_and_preserves_native_json() -> None:
+    """An analyzer can inspect table access without decoding native JSON itself."""
+    database = await load_fixture(provide_mariadb_accounts())
+
+    async with database.transaction() as transaction:
+        result = await transaction.explain(
+            mariadb.select(MariaAccount).where(MariaAccount.email.eq("secret")),
+            format="json",
+        )
+
+    plan = result.plan
+    assert isinstance(plan, mariadb.MariaDBQueryPlan)
+    table = next(node for node in plan.walk() if node.operation == "table")
+    assert_eq(table.table_name, "maria_account")
+    assert_eq(table.access_type, "ALL")
+    assert_eq(table.key, None)
+    assert_eq(table.estimated_rows, 1.0)
+    assert_eq(table.estimated_filtered_percent, 100.0)
+    assert_eq(table.actual_rows, None)
+    assert_eq(table.actual_loops, None)
+    assert_eq(table.total_time_ms, None)
+    assert_eq(table.path, ("query_block", "nested_loop", 0, "table"))
+    assert_eq(plan.native_json, result.rows[0][0])
+    assert_true("attached_condition" in plan.native_json)
+    assert_true("secret" in plan.native_json)
+    assert_eq(result.format, "json")
+    assert_eq(result.analyzed, False)
+
+
+@test(mark="slow")
+async def mariadb_json_analysis_distinguishes_actuals_zero_and_missing_metrics() -> (
+    None
+):
+    """Actual averages, loops and timings are evidence, not fabricated defaults."""
+    database = await load_fixture(provide_mariadb_accounts())
+
+    async with database.transaction() as transaction:
+        result = await transaction.explain_analyze(
+            mariadb.select(MariaAccount).where(MariaAccount.email.eq("missing")),
+            format="json",
+        )
+
+    plan = result.plan
+    assert isinstance(plan, mariadb.MariaDBQueryPlan)
+    table = next(node for node in plan.walk() if node.operation == "table")
+    assert_eq(table.actual_rows, 1.0)
+    assert_eq(table.actual_loops, 1)
+    assert_eq(table.actual_filtered_percent, 0.0)
+    assert table.table_time_ms is not None
+    assert_true(table.table_time_ms >= 0)
+    block = next(node for node in plan.walk() if node.operation == "query_block")
+    assert block.total_time_ms is not None
+    assert_true(block.total_time_ms >= 0)
+    assert_eq(block.table_time_ms, None)
+    assert_eq(block.estimated_rows, None)
+    assert_eq(result.analyzed, True)
+
+
+@test(
+    [Param("estimate", name="estimate"), Param("analyze", name="analyze")],
+    mark="slow",
+)
+async def unsupported_plan_formats_are_rejected(mode: str) -> None:
+    """An invalid format must not silently fall back to a different evidence set."""
+    database = await load_fixture(provide_mariadb_accounts())
+
+    async with database.transaction() as transaction:
+        with assert_raises(mariadb.QueryCompilationError):
+            if mode == "analyze":
+                await transaction.explain_analyze(
+                    mariadb.delete(MariaAccount).all(),
+                    format="yaml",  # ty: ignore[invalid-argument-type]
+                )
+            else:
+                await transaction.explain(
+                    mariadb.delete(MariaAccount).all(),
+                    format="yaml",  # ty: ignore[invalid-argument-type]
+                )
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
+    assert_eq(rows, ["secret"])
+
+
+class PlanPeer:
+    """A distinct table role used to retain both sides of a join in a plan."""
+
+
+@test(mark="slow")
+async def mariadb_json_plan_preserves_join_structure_and_native_index_names() -> None:
+    """Traversal exposes both table roles; indexed lookup retains its native key."""
+    database = await load_fixture(provide_mariadb_accounts())
+    peer = mariadb.alias(MariaAccount, PlanPeer, name="peer")
+    query = mariadb.select(MariaAccount).left_join(
+        peer,
+        on=MariaAccount.account_id.eq_col(peer.column(MariaAccount.account_id)),
+    )
+
+    async with database.transaction() as transaction:
+        joined = await transaction.explain(query, format="json")
+        indexed = await transaction.explain(
+            mariadb.select(MariaAccount).where(MariaAccount.account_id.eq(7)),
+            format="json",
+        )
+
+    plan = joined.plan
+    assert isinstance(plan, mariadb.MariaDBQueryPlan)
+    tables = [node for node in plan.walk() if node.table_name is not None]
+    assert_eq({node.table_name for node in tables}, {"maria_account", "peer"})
+    assert_true(all(node.path[-1] == "table" for node in tables))
+    assert_true(any(node.children for node in plan.roots))
+    index_plan = indexed.plan
+    assert isinstance(index_plan, mariadb.MariaDBQueryPlan)
+    indexed_table = next(node for node in index_plan.walk() if node.table_name)
+    assert_eq(indexed_table.key, "PRIMARY")
+
+
+@test(mark="slow")
+async def structured_plan_formatting_and_logging_omit_sensitive_evidence() -> None:
+    """Every nested plan repr is safe, not just the outer result's repr."""
+    database = await load_fixture(provide_mariadb_accounts())
+
+    with capture_snekql_logs() as logs:
+        async with database.transaction() as transaction:
+            result = await transaction.explain(
+                mariadb.select(MariaAccount).where(
+                    MariaAccount.email.eq("private_plan_literal")
+                ),
+                format="json",
+            )
+        plan = result.plan
+        assert isinstance(plan, mariadb.MariaDBQueryPlan)
+        rendered = repr(result) + repr(plan)
+        rendered += "".join(repr(node) + str(node) for node in plan.walk())
+        rendered += "".join(record.getMessage() for record in logs.records)
+
+    assert_true("private_plan_literal" in plan.native_json)
+    assert_eq("private_plan_literal" in rendered, False)
+    assert_eq("maria_account" in rendered, False)
+    with assert_raises(FrozenInstanceError):
+        plan.native_json = "replacement"  # ty: ignore[invalid-assignment]
+    table = next(node for node in plan.walk() if node.operation == "table")
+    with assert_raises(FrozenInstanceError):
+        table.table_name = "replacement"  # ty: ignore[invalid-assignment]
+
+
+@test(mark="medium")
+async def sqlite_json_is_rejected_before_query_io() -> None:
+    """An unsupported evidence format is not silently replaced with a native plan."""
+    async with (
+        await sqlite.Database.initialize(database=":memory:") as database,
+        database.transaction() as transaction,
+    ):
+        with assert_raises(sqlite.QueryCompilationError):
+            await transaction.explain(sqlite.select(Account), format="json")
+
+
+@test(mark="slow")
+async def unfamiliar_json_objects_remain_traversable_and_native_values_survive() -> (
+    None
+):
+    """A future server's nested arrays must not hide evidence from traversal."""
+    database = await load_fixture(provide_mariadb_accounts())
+    native = json.dumps(
+        {
+            "query_block": {
+                "future_operation": [
+                    [{"r_loops": 0, "r_rows": 0, "new_metric": "private_future_value"}]
+                ]
+            }
+        }
+    )
+
+    # Substitute only the external driver's returned cells, not snekql internals.
+    async with database.transaction() as transaction:
+        with patch.object(
+            MariaCursor, "fetchall", new=AsyncMock(return_value=((native,),))
+        ):
+            result = await transaction.explain(
+                mariadb.select(MariaAccount), format="json"
+            )
+
+    plan = result.plan
+    assert isinstance(plan, mariadb.MariaDBQueryPlan)
+    future = next(node for node in plan.walk() if node.operation == "future_operation")
+    assert_eq(future.path, ("query_block", "future_operation", 0, 0))
+    assert_eq(future.actual_loops, 0)
+    assert_eq(future.actual_rows, 0.0)
+    assert_eq(plan.native_json, native)
+    assert_eq(result.rows, ((native,),))
+
+
+@test(mark="medium")
+async def malformed_sqlite_parent_links_are_not_silently_dropped() -> None:
+    """A cyclic native result cannot masquerade as an empty structured plan."""
+    database = await load_fixture(provide_sqlite_accounts())
+    rows = ((1, 2, 0, "private_cycle"), (2, 1, 0, "private_cycle"))
+
+    async with database.transaction() as transaction:
+        with (
+            patch.object(SQLiteCursor, "fetchall", new=AsyncMock(return_value=rows)),
+            assert_raises(sqlite.DatabaseRuntimeError) as raised,
+        ):
+            await transaction.explain(sqlite.select(Account))
+
+    assert_eq("private_cycle" in str(raised.exception), False)
+
+
+@test(
+    [
+        Param("private_malformed_json", name="malformed-json"),
+        Param('["private_shape"]', name="not-an-object"),
+        Param('{"query_block": {"rows": "private_bad_number"}}', name="bad-number"),
+        Param('{"query_block": {"rows": true}}', name="boolean-not-number"),
+        Param('{"query_block": {"r_rows": NaN}}', name="nonfinite-number"),
+        Param('{"query_block": {"r_loops": 1.5}}', name="fractional-loops"),
+    ],
+    mark="slow",
+)
+async def malformed_json_plan_errors_omit_native_evidence(native: str) -> None:
+    """Validation failures do not echo plan cells or chained JSON parse errors."""
+    database = await load_fixture(provide_mariadb_accounts())
+
+    async with database.transaction() as transaction:
+        with (
+            patch.object(
+                MariaCursor, "fetchall", new=AsyncMock(return_value=((native,),))
+            ),
+            assert_raises(mariadb.DatabaseRuntimeError) as raised,
+        ):
+            await transaction.explain(mariadb.select(MariaAccount), format="json")
+
+    rendered = "".join(format_exception(raised.exception))
+    assert_eq("private_" in rendered, False)
+    assert_eq("JSONDecodeError" in rendered, False)
+    assert_eq("maria_account" in rendered, False)

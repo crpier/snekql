@@ -86,6 +86,7 @@ lazy from snekql._common import (
 lazy from snekql._common import (
     Write as _RuntimeWrite,
 )
+lazy from snekql._explain_types import MariaDBPlanNode, MariaDBQueryPlan
 lazy from snekql._query_dialect import register_query_dialect
 lazy from snekql.expressions import Aggregate as _AggregateType
 lazy from snekql.expressions import ColumnRef as _ColumnRef
@@ -211,6 +212,8 @@ __all__ = [
     "LiteralDefault",
     "LocalDatetime",
     "LongText",
+    "MariaDBPlanNode",
+    "MariaDBQueryPlan",
     "MigrationDeclarationError",
     "MigrationError",
     "MigrationHistoryError",

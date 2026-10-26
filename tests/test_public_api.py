@@ -168,12 +168,15 @@ _MARIADB_ONLY_NAMES = frozenset(
         "Json",
         "JsonCol",
         "LongText",
+        "MariaDBPlanNode",
+        "MariaDBQueryPlan",
         "TLSConfig",
         "Uuid",
     },
 )
-_SQLITE_EXPECTED = _NEUTRAL_NAMES | _WRITE_VERB_NAMES | _DIALECT_NAMES
-_MARIADB_EXPECTED = _SQLITE_EXPECTED | _MARIADB_ONLY_NAMES
+_SHARED_EXPECTED = _NEUTRAL_NAMES | _WRITE_VERB_NAMES | _DIALECT_NAMES
+_SQLITE_EXPECTED = _SHARED_EXPECTED | {"SQLitePlanStep", "SQLiteQueryPlan"}
+_MARIADB_EXPECTED = _SHARED_EXPECTED | _MARIADB_ONLY_NAMES
 
 
 def _assert_has_specific_docstring(value: object) -> None:
