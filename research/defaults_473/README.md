@@ -25,10 +25,22 @@ invalid cases, accepted gaps and surprising valid forms are grouped at the end.
 It is a non-executing visual document, not a production module. Its eleven core
 scenarios are also extracted into the existing native typing/consumer checks.
 
+The [implicit server-omission follow-up](implicit-server-omission.md) probes
+whether separate parameters can omit the explicit pending default. Six native
+mechanisms are checked with required-input and override controls. None satisfies
+the full desired contract yet; this is not an impossibility result or a rejection
+of the shorter spelling as an ergonomic goal.
+
 The [preceding investigation](review-results.md) and its extra variants are
 historical evidence, not the current ranking. The annotation-left / SQL-right
 split and its generated-typing route are abandoned. Validate locally; do not
 wait for GitHub Actions.
+
+## Deferred discussion
+
+After the defaults discussion, revisit whether SQL nullability should be declared
+explicitly rather than inferred from the Python field type, as the maintainer
+requested. This topic is deferred, not decided by the defaults research.
 
 ## Follow-up
 
