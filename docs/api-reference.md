@@ -115,6 +115,42 @@ CTEs and named set operators from future builder syntax.
 and [recovery](migration-recovery.md) explain the operational contracts. Keep one
 migration owner when [adopting alongside another layer](service-recipes.md#incremental-adoption).
 
+## Opt-in recorded migrations
+
+These names are in **`snekql.experimental.migrations`**, not the backend export
+index below. They remain experimental, with a bounded execution contract rather
+than a stable replacement/indefinite ABI promise. Start with the
+[recorded workflow](recorded-migrations.md) and
+[recorded recovery](recorded-migration-recovery.md), not the raw runner's baseline
+or recovery APIs. Use separate deployment targets for the two families.
+
+| Operation/value | Contract |
+| --- | --- |
+| `generate(revision, models, backend=..., previous=...) -> Draft` | Select owned declarations and draft against recorded state, never a live-database diff |
+| `Draft.then(...)`, `.resolve(...)`, `.adopt(...)`, `.advance(...)` | Immutable explicit authoring; named adoption is SQLite-only; resolve unsupported/removal decisions before compilation |
+| `Checkpoint(name=...)`, `DataChange.from_query(...)` | Bind a typed UPDATE to a named historical contract; no arbitrary Python migration callback |
+| `contract_source(draft, point=..., table=...)`, `contract_digest(draft, point=...)` | Generate actual importable historical query source and bind its contract, not today's model/codec ABI |
+| `compile(draft) -> Package`, `Package.check(draft)` | Freeze reviewed intent; separately check build freshness against supplied authoring |
+| `Package.dump()/load(...)` | Persist/load supported frozen interpretation without importing models |
+| `connect(config) -> Connection` | Inert, single-use owner exists before opening; async context entry yields a Target |
+| `await Connection.wait_closed()` | Post-failure/exit bounded join of this lifetime's known cleanup; keep its owning loop live |
+| `await Target.prepare(package, schema_writers_excluded=..., preserve_unmanaged=...) -> Prepared` | Read-only, target-aware preparation; explicit native writer exclusion; bounded preservation is SQLite-only |
+| `Prepared.dump()/load(...)` | Versioned original evidence; durably save before apply, not authentication or a portable Config/target |
+| `await Target.apply(original)` | Return `"applied"` or `"already_applied"`; an incomplete native history requires review, not blind replay |
+| `await Target.status() -> tuple[Progress, ...]` | Durable `complete`/`uncertain` progress and separate reconciliation audit; ordering unspecified |
+| `await Target.inspect_recovery(original, schema_writers_excluded=True) -> Recovery` | Fresh MariaDB evidence/classification, not a retry policy |
+| `await Target.reconcile(recovery, reason=..., schema_writers_excluded=True) -> Recovery` | Explicitly accept exactly a proved structural outcome; re-evaluate the returned classification |
+| `await Target.resume(recovery, schema_writers_excluded=True)` | Recheck and continue only `retry_remaining`/`finish` native evidence |
+| `PackageError` | Refused, stale, unresolved, inconsistent, or unsupported experimental input |
+
+Generated operation values describe creation/adoption, nullable additions,
+required/drop-column contraction, nullability/default changes, named indexes and
+CHECKs, and `RelinquishTable`. State/column/table values are inspection and trusted
+authoring representations, not a shortcut to fabricate construction authority or
+history. Unsupported SQL/dependencies refuse; this is not a general parser or
+raw-SQL runner. Completion and local cleanup are separate from application
+readiness, ordinary mapping, codecs, and physical remote quiescence.
+
 ## Errors, telemetry and test support
 
 Catch `SnekqlError` for intentional package-originated failures, or the narrower

@@ -134,25 +134,56 @@ Before announcing a release:
    The script requires exactly one wheel and sdist, installs the wheel outside
    the checkout, then checks imports, CLI startup, SQLite runtime startup, and
    public typing.
-6. After explicit maintainer approval, merge the release PR. Before authorizing
-   publication, verify the `pypi` environment approval rules and PyPI Trusted
-   Publisher configuration. The workflow's environment name alone does not
-   establish that approval is required. Tag the approved exact commit as
-   `v<project version>` and push the tag. Never reuse or move a release tag.
-7. With publication authorization, create the GitHub release from that tag. This
-   triggers the existing release workflow, not just an announcement. Its build
-   job verifies tag/version equality and records a build provenance attestation.
-   Its `pypi` publish job uses the same artifacts, Trusted Publishing and PyPI
-   attestations. Do not also run `uv publish` for the same version. Verify the
-   resulting attestations against the distributed artifacts.
-8. Run the published-package smoke test above and attach the dated changelog
-   entry to the GitHub release.
+6. Open a release PR against `main`, with exact candidate/artifact hashes and
+   completed validation reports. Do not merge, choose/create a release tag, publish,
+   or create a published GitHub release without explicit maintainer authorization.
+7. The human maintainer runs `uv publish` after approval. Actions are currently
+   maintainer-disabled: do not request/poll them, wait for unrun jobs, or claim
+   automated attestations. A retained release workflow is not permission to use a
+   second publishing path. Never reuse tags or publish a version twice.
+8. After authorized publication, smoke-test the actual distributed package outside
+   the checkout. Record its hashes/provenance and the dated changelog entry; do
+   not describe a local candidate as an already published release.
+
+### Additional recorded-migration candidate checks
+
+The [recorded guide](recorded-migrations.md) and
+[recorded recovery guide](recorded-migration-recovery.md) describe a bounded opt-in
+experimental contract. Engineering acceptance is not publication approval or a
+stable namespace/ABI promotion. Before including it in a release:
+
+- Keep raw-SQL usage/recovery supported and routed separately. Publish the separate
+  target requirement and absence of history conversion/stamping/cutover.
+- Include both guides and their linked recipe resources in wheel and sdist;
+  rebuild the wheel from the sdist and check resource/skill parity, release stamps,
+  preserved example bytes, and local links. Source-only proposals are not consumer
+  instructions and must not be silently shipped as such.
+- Run `uv run snektest tests/packaging --json-output` and the forced-lazy equivalent
+  using `scripts/run_lazy_tests.py tests/packaging --json-output`. The installed
+  recorded recipe must actually generate/type-check historical bindings, reject
+  stale intent, deploy without authoring imports, retain original evidence before
+  application, and read/write the final representation through ordinary models.
+- Retain exact-source runtime qualification and finite environment provenance.
+  Re-run affected evidence after runtime or program changes; an old report does
+  not automatically certify a changed candidate. State which inputs are unchanged
+  when reusing evidence. No blanket patch/OS/transport/upgrade/power-loss promise.
+- Explain the pre-opening lifetime, fresh bounded post-exit joins, primary-error
+  precedence, and live-loop supervision obligations. Publish original-plan,
+  historical-source/codec, metadata-authority and writer-exclusion responsibilities.
+- Keep the existing version unchanged during documentation-only candidate work.
+  Local archives with that metadata are **candidates**, not evidence that those
+  bytes or guides were distributed with an earlier published version.
 
 ## Adoption expectations
 
+For explicitly selected owned schema and typed intermediate backfills, evaluate
+[recorded packages](recorded-migrations.md) separately. They are experimental and
+narrower than the ordinary raw-SQL/query workflow below, not a new default or an
+automatic history migration.
+
 Security reports use the private process in [`SECURITY.md`](../SECURITY.md).
-CI reproduces the full validation and artifact smoke path on Python 3.15 with a
-live rolling MariaDB 12 server. Native release jobs also run the full suite on
+When enabled, CI is configured to reproduce the full validation and artifact smoke path on Python 3.15 with a
+live rolling MariaDB 12 server. Native release jobs are configured to run the full suite on
 10.11, 11.4, 11.8 and 12.3 LTS, plus the retained 12.2 compatibility target.
 They include owned-server restart and process-cleanup tests, rather than only
 the public example. Each job records its Python, SQLite, OS, and MariaDB versions.
@@ -170,7 +201,7 @@ snekql is a good fit when an application wants:
 
 snekql is not a fit when an application needs:
 
-- autogenerated migrations or automatic table alteration;
+- automatic live-schema diffing or unreviewed table alteration;
 - automatic table creation from models (schema comes only from migrations);
 - sync database access.
 

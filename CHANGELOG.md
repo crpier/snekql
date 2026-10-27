@@ -2,497 +2,63 @@
 
 ## [Unreleased]
 
-### Experimental
-
-- Make recorded-migration `connect(config)` return an unopened, single-use `Connection` lifetime
-  before acquisition. Preserve `async with` Target use; after failed opening or context exit,
-  `wait_closed()` joins that lifetime's retained cleanup under a fresh operation budget.
-  Timeout/cancellation does not cancel the producer or another waiter. No global drain,
-  unsafe cleanup SQL, automatic replay or failed-close repair (#477, G5 choice B).
-- Accept bounded G5 recorded-state architecture/first-promotion scope and ADR0023 with explicit
-  older ADR amendments. Keep the experimental namespace and released raw-SQL interface; no
-  cross-history conversion, stable replacement or publication approval is implied (#477).
-
-
-- Add finite recorded-migration qualification selection for SQLite3.45.1/3.53.1 and MariaDB
-  LTS10.11/11.4/11.8/12.3, normal/forced-lazy workflow, ownership/refusal/codec and real COMMIT/
-  DDL-loss journeys. Lost real ALTER OK requires explicit original structural reconciliation,
-  never replay. External installations only; no production/runtime/dependency change (#477).
-
-- Qualify actual WAL role-backfill client death under NORMAL/FULL using validated uncommitted
-  audit spill, SIGKILL, independent restart and unchanged original-plan application. Pinned
-  readers retain their old snapshot while fresh application completes. Existing runtime passes;
-  later finite-matrix/native DDL qualification is recorded separately. No power-loss certificate
-  or G5/release approval is implied (#477).
-
-- Join a Target's known retained SQLite close under a fresh bounded operation budget at context
-  exit, including after an I/O failure. Do not silently report successful exit while known
-  cleanup remains pending; preserve primary failures/cancellation and retain cleanup on expiry.
-  Explicit live-loop/global-shutdown limits remain candidate policy, not quiescence proof (#477).
-
-- Qualify real native COMMIT request/response loss and EOF using original role plans: recover
-  from actual durable progress without replaying committed work, or observe already-durable
-  completion despite a failed final COMMIT call. Keep driver outcome separate from migration
-  completion; no runtime patch or new outcome flag (#477).
-
-- Require positive native migration metadata coverage from direct global/exact-database SELECT,
-  SHOW VIEW, TRIGGER and EXECUTE grants (or observed unrestricted server grant bypass) before
-  admission. Privilege-filtered absence, role-only
-  or per-table/column grants cannot certify a complete catalog; no automatic grant/role repair
-  or full DDL/readiness audit (#477).
-
-- Stop migration admission at context exit, drain the active caller operation under a fresh
-  acquisition budget, then close. Failed/cancelled drain discards without cancelling caller
-  tasks or inferring rollback; retain primary body failures and original recovery evidence
-  (#477). Keep separate phase budgets, not an implicit whole-package/context timer.
-
-- Apply the shared MariaDB identity/minimum10.11 guard before dedicated migration policy/yield,
-  through owned deadline-aware I/O. Actual10.10.7 refuses before schema/data/history work;
-  existing supported-server role workflow and version observations remain unchanged (#477).
-
-- Verify inherited native STRICT_ALL_TABLES or STRICT_TRANS_TABLES before yielding a recorded
-  migration target, retaining exact SQL-mode/rendering evidence and the live required-column
-  check. Refuse weak sessions without original role execution, mode repair or receipt rewriting;
-  ordinary all-table normalization remains unchanged (#477).
-
-- Positively drain native migration advisory-lock ownership after acknowledged acquisition,
-  including recursive server bootstrap claims, within a fresh bounded release-control operation.
-  Keep primary errors and acknowledged receipts truthful; known acquisition refusal does not
-  release another owner's lock. Leave unrelated names untouched; unsafe cleanup expires closed
-  and fresh original evidence decides next action (#477).
-
-- Admit/preserve existing SQLite DELETE or WAL migration journals and apply/read back shared
-  NORMAL/FULL synchronization from Config.durability before target yield, retaining configured
-  migration busy waits. Real retained-trigger observations verify actual role-backfill policy;
-  ordinary runtime WAL policy stays unchanged. Not power-loss/WAL-death qualification (#477).
-
-- Verify inherited native foreign-key/CHECK/unique enforcement prerequisites before yielding
-  a dedicated migration target. Refuse disabled session flags without silently enabling them,
-  changing GLOBAL defaults or overwriting SQL-mode/rendering/recovery evidence. Original role
-  plans remain unchanged across refusal and explicit caller policy restoration (#477).
-
-- Apply/read back shared SQLite foreign-key and UTF-8 admission policy before yielding a
-  dedicated migration target; refuse existing UTF-16 files without changing bytes/data/history.
-  Retain migration-specific busy waits rather than importing the ordinary pool's fixed wait
-  and WAL/synchronous settings. Real original role deployment on an explicitly different UTF-8
-  target remains usable; journal/durability and remaining G3 policy stay open (#477).
-
-- Admit native migration sessions with the ordinary runtime's verified UTC time-zone policy
-  before yielding a target. Real original role/clock packages now preserve UTC meaning for
-  DATETIME and canonical TEXT CurrentTimestamp backfills under non-UTC server defaults,
-  without clearing SQL-mode/rendering evidence or rewriting old data/receipts (#477).
-  Remaining native admission, durability and outcome/shutdown policy is still experimental.
-
-- Identify exact SQLite BEGIN IMMEDIATE/SQLITE_BUSY as known writer acquisition refusal
-  with MigrationLockTimeoutError, retaining the synchronized target. Exercise original role
-  plans through actual refusal/grant and interrupted busy waits; unsafe targets remain closed.
-  Independently observe worker/descriptor disposal and unchanged history/data before explicit
-  ORIGINAL application on a replacement target. Runtime integration/qualification remain open.
-
-- Preserve fractional native migration advisory-lock waits instead of truncating them to zero;
-  report known non-acquisition as MigrationLockTimeoutError without invalidating the contender.
-  Exercise original role plans through real refusal/grant and interrupted driver waits, isolate
-  the active owner's session, and observe disconnect independently before physical-stop claims.
-  Server wait and driver deadlines remain distinct; complete G3 coordination policy is pending.
-
-- Bound local migration target-guard waiting with an acquisition budget without timing the
-  admitted body or discarding another task's active connection. Exercise real partially modified
-  native role work while queued status/prepare/apply expire or queued callers cancel, then
-  complete on the same target and use the typed application. Server coordination acquisition,
-  session/durability and outcome/shutdown policy remain incomplete.
-
-- Bound SQLite physical migration opening with the acquisition budget, retain blocked opening
-  futures after caller timeout/cancellation, and explicitly close eventual late handles instead
-  of relying on GC. Exercise real Linux file leases, surviving kernel waits, worker/FD disposal
-  and fresh frozen-role deployment/current typed use. Guard/coordination acquisition, session/
-  durability and shutdown/outcome policy remain incomplete; no physical-stop or replay inference.
-
-- Bound native migration connection opening with the acquisition budget, retain partial socket
-  ownership through cancellation, and require configured TLS rather than opportunistic plaintext
-  fallback. Share the existing owned connector with ordinary runtime pool filling; exercise actual
-  peer EOF, required-TLS refusal and frozen role deployment/current typed use over verified TLS.
-  SQLite opening, coordination acquisition and remaining session/durability/outcome policy stay open.
-
-- Apply configured per-I/O deadlines to checked-out migration driver/control/cleanup waits;
-  invalidate interrupted targets and retain independent SQLite physical cleanup. Real late
-  SQLite COMMIT and native partial-backfill timeout require fresh/original-plan evidence, not
-  inferred rollback or automatic replay. Opening/acquisition and session/durability integration
-  remain incomplete; validation diagnostics no longer predeclare rollback acknowledgement.
-
-- Define epoch-one canonical execution and deferred target lowering for legacy migration
-  formats2–8, independently of current public authoring compilation. Keep historical bytes
-  unchanged and current safety gates live; refuse incompatible future interpretation rather
-  than regenerate artifacts. Exercise a runtime without the authoring verb and an isolated
-  candidate changing real contraction grouping; no general future-epoch registry or conversion.
-
-- Add bounded versioned `Prepared.dump()` / `Prepared.load()` for original migration execution
-  evidence, with explicit execution-epoch admission, integrity and nested-package validation.
-  Exercise real preserved SQLite contraction/replacement-worker application and native
-  interruption/restart recovery without reconstructing the plan. Keep historical package
-  identities and completed receipts unchanged; standalone compiler-epoch compatibility,
-  caller storage durability and broader runtime/release guarantees remain separate work.
-
-- Propose finite recorded-migration promotion scope and reconcile the architecture in a
-  proposed ADR: keep query mapping independent of ownership, recommend strict SQLite
-  adoption and explicit writer exclusion, and identify execution-epoch/preparation,
-  durable recovery-plan, runtime deadline/session and qualification gates. No new runtime
-  guarantee, accepted ADR supersession, consumer-interface replacement or release approval.
-
-- Exercise real role-migrator process death, native server restart, competing operators and
-  an unrelated application writer. Distinguish SQLite DELETE-journal rollback/retry from
-  durable native uncertainty requiring the original prepared plan and explicit resume;
-  retain WAL and other receipt-loss windows as bounded, unresolved scope.
-
-- Exercise actual archived framework writers/readers and SQLite/MariaDB durable ledgers:
-  preserve supported old role-chain receipts through newly authored format-five index work,
-  and refuse actual incompatible ledger layouts without history conversion or repair.
-  Record existing-operation compiler-epoch policy as a separate unresolved limit.
-
-- Exercise genuine application-codec replacement before frozen historical deployment on
-  SQLite and MariaDB. Preserve old scalar bindings and receipts, distinguish structural
-  success from current-codec readability, and author an explicit new representation rewrite.
-  Record opaque provenance and framework compiler/package/ledger evolution as separate limits.
-
-- Exercise the combined SQLite query/adoption/role-migration/preservation/handoff lifecycle.
-  Prove retained unmanaged objects, values and enforcement; clean strict re-adoption succeeds,
-  while preserved additions and removed-column dependencies produce explicit safe refusals.
-  Record partial-adoption scope as an open product decision; no new adoption permission.
-
-- Add `Draft.advance(models, removals=...)` to compose a complete model-derived stage in
-  the same migration revision without intermediate packages, synthetic revisions or manual
-  state stitching. Preserve earlier contracts and stage-local explicit removal decisions;
-  refuse unresolved stages. The two-backend account-role journey retains committed package
-  bytes, with no format, ledger or operation-authority change.
-
-- Exercise the model-generated `is_admin` → `role` author/review/deploy/application journey
-  on SQLite and MariaDB, including generated typed historical declarations, edited-route
-  freshness and isolated model-free deployment. Record manual staged-draft composition as
-  the next interface priority; no production interface change or new parser work in this slice.
-
-- Check explicit SQLite FK parent members against observed/projected declared columns at
-  pending preparation and completion, rejecting missing columns and undeclared rowid aliases
-  without adopting parents or changing frozen identities. Retain quoted/ASCII names and
-  explicit composite table-FK lists. This closes a bounded member-readiness gap, not key/
-  index/type/collation/implicit-key resolution or full FK compatibility certification.
-
-- Require observed or explicitly projected ordinary SQLite parent tables for claimed inline
-  and table-level FKs during pending preparation and live endpoint validation. Reject
-  missing/view/virtual parents without adopting them; retain external unowned parents,
-  same-package creation in either order and frozen identities. An archived matching-FK
-  completion lacked usable parent context; this closes a bounded readiness gap, not a
-  missing-FK construction contradiction or full parent-key/index/type/collation/session
-  certificate. No new FK operation, format conversion or retrospective repair/revocation.
-
-- Bind experimental SQLite managed inline REFERENCES presence, explicit target/member,
-  bounded immediate actions and own label to construction before effects. Close an
-  archived orphan-accepting false completion with foreign_keys enabled; retain valid old
-  identities, NULL/valid-child/orphan rejection, CASCADE behavior and drift guards.
-  Keep NO ACTION distinct from RESTRICT; unknown implicit/composite/timing/MATCH/SET forms
-  need adapters even equal bytes. No native path change, implicit parent adoption,
-  parent-compatibility/readiness certificate, format conversion or retrospective repair.
-
-- Bind experimental SQLite managed inline CHECK bodies, own labels, order and multiplicity
-  to construction before effects, including handoff/intermediate/standalone admission.
-  Close an archived missing-CHECK false completion; retain truthful old identities,
-  nullable CHECK behavior, explicit adoption/handoff/re-adoption and preserving rebuilds.
-  Existing finite CHECK grammar/resources admit terms, not algebraic equivalence; unknown
-  expressions require adapters even equal bytes. No native CHECK path change, new removal
-  authority, enforcement/readiness certificate, format conversion or retrospective repair.
-
-- Bind experimental managed native ON UPDATE presence/precision to construction before
-  DDL/history, including relinquished/intermediate claims and standalone admission.
-  Retain valid old identities, known CURRENT_TIMESTAMP precision forms, deterministic
-  NULL-default/update behavior and drift guards. Separate bounded FK ON UPDATE/SET NULL
-  actions from timestamp/nullability roles. Earlier mismatch was native uncertainty,
-  not false completion; no new temporal alteration API, clock/session/readiness,
-  format conversion or repair claim.
-
-- Bind experimental managed generated-column kind, bounded scalar expression and SQLite
-  labels to construction. Close reproduced SQLite and native AS7/AS8 false completions;
-  retain valid old identities, known mode aliases and derived-value behavior. Unknown
-  expressions/roles require adapters, not SQL equivalence. No new generated-column
-  alteration API, format conversion, retrospective repair or readiness certificate.
-
-- Bind experimental managed native column visibility to construction before DDL/history,
-  including intermediate/relinquished claims and standalone language admission. Retain
-  valid old identities, invisible wildcard/positional/default behavior, named access and
-  independent drift guards. Existing explicit VISIBLE/unknown forms remain adapter-only;
-  no native false-completion, access-control, format conversion or repair claim.
-
-- Bind experimental managed native AUTO_INCREMENT presence/absence to construction,
-  including intermediate/relinquished claims and standalone language admission. Move
-  known contradictions before DDL/history and refuse duplicate attributes; retain valid
-  old identities, generation/default behavior and independent drift guards. No native
-  false-completion, exact counter/session/sequence, format conversion or repair claim.
-
-- Bind experimental managed column collations to construction: SQLite built-in
-  BINARY/NOCASE/RTRIM plus explicit labels, and the existing native type-prefix/JSON-bin
-  declaration contract. Close a reproduced SQLite NOCASE/BINARY UNIQUE false completion;
-  move known native mismatches before effects. Retain valid old identities, no conversion/
-  repair or native false-completion claim. Charset inheritance, custom collations,
-  registries/overrides, locale/version equivalence and readiness remain separate.
-
-- Bind experimental inline primary-key constraint labels independently of direction,
-  conflict, identity and effective nullability. Close a reproduced SQLite recorded/
-  constructed label contradiction; retain valid old identities and key/default behavior.
-  Known label quotes normalize, not presence/spelling/case; named native inline forms
-  need adapters. No new CHECK/index removal authority, format conversion, retrospective
-  repair, native runtime false-completion or general readiness claim.
-
-- Bind experimental explicit NOT NULL presence, SQLite conflict policy and constraint
-  labels to construction independently of effective key-nullability flags. Close a
-  reproduced SQLite IGNORE/REPLACE false completion; retain valid old identities and
-  default-dependent policy behavior. Intermediate/relinquished claims and standalone
-  payloads remain checked; no CHECK-removal authority, native named-policy inference,
-  format/ledger conversion, retrospective repair or general readiness proof.
-
-- Bind experimental managed inline UNIQUE presence/absence, SQLite conflict policy
-  and explicit constraint labels to construction, including relinquished/intermediate
-  claims and standalone payload admission. Close reproduced SQLite and native missing-
-  UNIQUE false completions; retain valid old identities. Known native UNIQUE KEY
-  spelling normalizes, named native inline forms need adapters. No index-drop authority,
-  format/ledger conversion, retrospective repair or general uniqueness/readiness proof.
-
-- Bind experimental primary-key-implied nullability to recorded column flags and
-  construction: SQLite INTEGER rowid aliases versus INT/DESC/composite keys,
-  STRICT/WITHOUT ROWID modes, explicit NOT NULL, and native required key members.
-  Close a reproduced non-STRICT SQLite required-TEXT-key false completion without
-  treating NULL input/rowid allocation as nullable stored ids. Bounded table-key
-  membership is not complete key/constraint/namespace/index/FK or codec proof;
-  native known mismatches move to pre-DDL refusal, with no format/ledger conversion.
-
-- Bind experimental managed inline primary-key claims to construction declarations
-  before effects, including intermediate/relinquished claims and standalone admission.
-  Preserve SQLite ordering, key conflict policy and AUTOINCREMENT distinctions rather
-  than comparing only key markers. Close a reproduced missing-key SQLite false
-  completion while retaining valid identities. Full table-key/nullability/rowid,
-  namespace and index/FK proofs remain separate; no format/ledger conversion or repair.
-
-- Refuse lossy automatic historical query declarations: check the proposed default
-  primitive against its recorded physical definition instead of trusting a coarse
-  storage hint. Native wider text and unsupported native codec policies need explicit
-  adapters, without blocking physical package deployment. Keep generic/Annotated
-  logical annotations opaque rather than reinterpreting type arguments as scalars;
-  unhashable opaque metadata no longer blocks physical generation with a TypeError.
-  Emit only finite builtin scalar union syntax and reject known generated-name shadows.
-  Preserve old deployment identities; no codec provenance, format or ledger conversion.
-
-- Bind experimental managed defaults to construction declarations before effects,
-  including absence and intermediate/relinquished claims. Compare bounded literals
-  and compiler clocks; unknown expressions require an adapter even when byte-equal.
-  Preserve native nullable effective-NULL behavior and SQLite declaration distinctions.
-  Close a reproduced SQLite DEFAULT-7-definition/DEFAULT-8-constructor false completion.
-  Valid identities remain; contradictory old artifacts refuse without format/ledger
-  conversion, retrospective repair or codec/readiness certification.
-
-- Compare experimental physical storage definitions with construction declarations before
-  effects, including intermediate/payload claims. Preserve bounded native aliases while
-  checking meaningful parameters/signedness; keep SQLite INT/INTEGER distinct rather
-  than equating affinity. Refuse unsupported claimed prefixes even after relinquishment.
-  Close a reproduced SQLite INTEGER-definition/TEXT-constructor false completion while
-  preserving valid identities. No format/ledger conversion or codec-hint certification.
-
-- Bind ordinary experimental nullable flags to column definitions and construction
-  declarations before execution, in both directions and through intermediate/payload
-  claims. Exclude expression/default/literal NULL tokens; refuse multiple clauses.
-  Close a reproduced SQLite required-claim/nullable-construction false completion.
-  Primary-key nullability remains separate. Preserve valid identities and explicitly
-  refuse old contradictions without format/ledger conversion or retrospective repair.
-
-- Require exactly one construction declaration for each experimental managed-column
-  claim during compilation/loading/preparation. Constraint/string/expression mentions,
-  pseudo-column aliases and ambiguous duplicate declarations cannot certify presence.
-  Close a SQLite false-completion gap without inferring claims from extra SQL columns
-  or equating full declarations. Valid artifacts retain identities; old mismatches
-  explicitly refuse without format/ledger conversion.
-
-- Bind experimental table-construction headers to the exact recorded owner during
-  compilation/loading, including prior and intermediate CREATE/ADOPT states. Refuse
-  views, temporary/virtual/guarded/qualified/indirect or commented construction headers
-  before effects; preserve ordinary quoted names, keyword case and whitespace.
-  Valid identities remain unchanged; formerly accepted wrong-owner artifacts explicitly
-  refuse without conversion. Body/declaration agreement remains separate, not sandboxed.
-
-- Refuse inconsistent experimental identifier claims during compilation/loading:
-  table quoted-name fragments and column definitions must bind to their recorded
-  names, including before/intermediate states and alteration payloads. Reject empty,
-  duplicate and ASCII-case-colliding names rather than silently collapsing claims.
-  Existing valid formats retain identities; historical mismatches explicitly refuse,
-  without conversion. This is not full construction/claim equivalence or a SQL sandbox.
-
-- Add explicit `DropCheck` and bounded replacement on SQLite/MariaDB (format 8),
-  with negative endpoint proof even after relinquishment. SQLite retains rollback,
-  preservation and corrected retry; native DROP/ADD leaves a real gap on failure.
-  Verify native constraint authority before DROP so an implicitly named foreign key
-  cannot be removed instead of the CHECK. Lost receipts remain ambiguous, and unsafe
-  intermediate names refuse before DROP/recovery; no repair or ledger conversion.
-
-- Add bounded named-table `AddCheck` generation/execution on SQLite and MariaDB
-  (format 7), reusing the finite CHECK grammar/work and SQL-byte envelopes. Require
-  enabled engine checking without changing session policy, and refuse SQLite
-  observed-name collisions. Cover old-data rejection, rollback/preservation,
-  corrected native retry, acknowledged-step recovery and ambiguous lost receipts.
-  Inline rewrites remain unresolved; no general enforcement certificate, automatic repair or ledger conversion.
-
-- Add explicit bounded `DropIndex` authorization and DROP/CREATE replacement on
-  SQLite and MariaDB (format 6). Prove removed-index absence before completion and
-  native recovery finish; project SQLite deletion through later rebuilds. Refuse
-  possible catalog/intermediate FK or stored-object dependencies and weak native
-  FK/opaque-program environments. Cover atomic SQLite replacement rollback, native
-  acknowledged DROP/failed CREATE retry and ambiguous lost receipts. Native
-  replacement has a real gap; no automatic repair, ledger conversion or general
-  index-reordering/dependency guarantee.
-
-- Add bounded `CreateIndex` generation/execution for appended named whole-column
-  indexes on SQLite and MariaDB. Format 5 carries the new operation; older routes
-  retain formats/identities. Cover SQLite duplicate-data rollback and rebuild
-  preservation, native acknowledged-step recovery and ambiguous lost receipts.
-  Conditional adoption, expressions/prefixes/options and index removal/replacement
-  remain unsupported; no ledger conversion or automatic repair.
-
-- Add bounded required-to-nullable `AllowNull` generation/execution on SQLite and
-  MariaDB, preserving values and composing with default changes/removal. Coupled
-  constraints and lexer comments are refused; opposing nullability operations need
-  a checkpoint. Format 4 adds the operation/metadata while older routes retain
-  formats 2/3 and identities. Cover SQLite rollback and refuse native structural
-  reconciliation that would ignore relaxation; lost receipts remain ambiguous.
-
-- Add explicit `generate(..., defaulted_additions="leave_null")` for nullable
-  defaulted additions on SQLite and MariaDB. Frozen ADD-without-default followed
-  by ChangeDefault leaves existing rows NULL and sets defaults for future writes;
-  required additions and implicit backfill remain unsupported. Cover SQLite
-  rollback/unmanaged-object preservation and native acknowledged-ADD/lost-default
-  recovery. Native steps are not atomic; intervening application writes can see
-  NULL. The preceding reader loads the frozen route unchanged; no new artifact
-  format or ledger conversion is introduced.
-
-- Enable bounded MariaDB set/change/remove-default migrations through frozen
-  `ChangeDefault` operations. Default-only changes use targeted ALTER COLUMN;
-  required/default composition retains NULL preconditions and requires explicit
-  data correction. Existing values are not backfilled. Add model-free deployment,
-  relinquishment and acknowledged-recovery coverage. Refuse SQL lexer comments in
-  transition sources and lost-default-receipt reconciliation: the older require/drop
-  projection cannot certify defaults it does not compare. Existing artifact formats
-  remain 2/3; older SQLite-only readers explicitly refuse native transitions.
-
-- Verify bounded MariaDB default absence in experimental migration endpoints:
-  reject hidden scalar/clock defaults, accepting native nullable NULL as effective
-  absence rather than proof of clause spelling. Mismatches leave uncertain native
-  progress and cannot authorize recovery finish. This does not enable native
-  default alteration or retrospectively certify old receipts.
-
-- Bound experimental compilation to 1 MiB UTF-8 per SQL source and 4 MiB aggregate
-  SQL, counting repeated declarations, emitted statements and frozen contraction
-  SQL incrementally. Oversized older artifacts are explicitly refused; normal
-  format-2/3 identities remain unchanged. This is not a total-memory, parser-work
-  or database-IO bound, and introduces no automatic artifact/ledger conversion.
-
-- Generate combined SQLite nullable-to-required/default transitions using the
-  existing structured operations and format 3. Refuse existing NULLs instead of
-  backfilling implicitly; support an explicitly authored typed backfill before the
-  transition. Fixed preceding-writer composition artifacts retain their identities
-  and deploy without authoring models. Native alteration, nullable relaxation and
-  defaulted additions remain unsupported.
-
-- Add SQLite default-only alteration through frozen `ChangeDefault` operations:
-  set, change or remove a SQL default without backfilling existing rows. Reuse
-  checked rebuild preservation and atomic rollback/retry. New operations require
-  package format 3; unchanged format-2 routes retain their identities. Fixed
-  old-writer contraction and fresh-process deployment coverage exercise the
-  boundary. MariaDB default alteration remains explicitly unsupported; no ledger
-  conversion or retrospective recertification is introduced.
-
-- Bound experimental migration package decoding by UTF-8 bytes, JSON nesting and
-  structural units. Reject duplicate decoded keys, implicit/coerced versions and
-  omitted operation kinds rather than selecting semantics through reader defaults.
-  Fixed prior-writer artifacts now exercise stable identities and model-free
-  deployment. Format 2 is unchanged; no ledger conversion, retrospective
-  recertification or whole-program resource guarantee is introduced.
-
-- Add an opt-in recorded-state migration prototype in
-  `snekql.experimental.migrations`: structured drafts, named historical query
-  contracts, frozen execution packages, explicit target preparation, and
-  uncertain-progress reporting on MariaDB. Supports creation, unconstrained
-  nullable additions, typed UPDATE backfills, and explicit required/drop-column
-  contraction. Explicit whole-table relinquishment records the end of management
-  without deleting application objects or disabling query models. Explicit SQLite
-  adoption/re-adoption verifies matching existing declarations without creating
-  tables; unmanaged extensions and MariaDB adoption remain unsupported. Scoped
-  drift handling remains separate. SQLite has bounded preservation-aware
-  rebuilds, including legacy quoted trigger dependencies and keyword-named index
-  preservation. SQLite now verifies the observed managed endpoint before committing
-  completion and rolls back the whole package on a mismatch. SQLite identifier
-  handling now preserves distinct Unicode names and prevents rebuild copy omissions
-  caused by keyword-like names or defaults. Rebuild copy contracts are independently
-  checked against SQLite column metadata before DDL, and retained typed values and
-  row identity are compared in identity-linked batches before dropping the source
-  table, avoiding oversized projections for ordinary wide tables. MariaDB can resume
-  proven remaining work without replaying acknowledged updates. New native completion
-  and finish recovery require each managed table to resolve to an observed base
-  table and its declared columns to resolve against observed physical column names,
-  without fetching application rows or accepting native pseudo-column aliases.
-  Native nullability and bounded storage-type metadata must match the recorded
-  columns, including lengths, precision and signedness. Known aliases normalize;
-  unsupported recorded types/modifiers fail preparation before DDL. Endpoint
-  failures retain uncertain progress without claiming DDL rollback. Explicit
-  supported collations and JSON's implicit binary collation are also verified by
-  server-resolved column names; unsupported collation positions fail preparation.
-  AUTO_INCREMENT attributes must match in both directions without claiming current
-  counter values; ambiguous declarations fail preparation rather than being guessed.
-  Native primary-key members and order must also match full ascending index
-  metadata; unique indexes are not substitutes. Unsupported key syntax fails
-  preparation. JSON aliases also require a recognized JSON_VALID check on the
-  correct physical column; constants, weaker expressions and comment text are not
-  proof. Stored JSON values, constraint-check session policy and secondary-index
-  constraints outside listed indexes remain unverified. Listed native secondary
-  indexes now require exact observed names and matching ordered members, prefix
-  lengths, uniqueness, ascending BTREE type and non-ignored state. Unsupported
-  forms fail preparation; IF NOT EXISTS cannot certify an occupied wrong index.
-  Explicit native engine identities must match
-  server-resolved definitions, with known aliases normalized. Silent substitution
-  or unavailable engine metadata cannot certify completion; engine properties and
-  durability are not inferred from the engine name.
-  Native ordinary/virtual/stored generation kinds must also match recorded column
-  declarations. Implicit virtual and STORED/PERSISTENT aliases normalize; ambiguous
-  generation syntax fails preparation. Expressions and generated values remain
-  unverified. Native column visibility must match in both directions. Bounded
-  INVISIBLE declarations distinguish literal/expression words; ambiguous positions
-  require explicit support. Comma-separated EXTRA flags preserve generated and
-  AUTO_INCREMENT facts when combined with INVISIBLE. Bounded temporal ON UPDATE
-  CURRENT_TIMESTAMP clauses now require matching native metadata and precision;
-  omitted arguments inherit column precision, while unsupported forms fail
-  preparation. Default-value and general write-behavior equivalence remain
-  unverified. Bounded native foreign-key definitions now require matching ordered
-  members, targets, referential actions and multiplicity. Discarded or mismatched
-  constraints cannot certify completion. Exact identifier spelling is required;
-  existing-row integrity and session enforcement remain outside this check.
-  Referenced targets must resolve to observed base tables before completion or
-  recovery finish; missing tables and views cannot certify availability. Unmanaged
-  parents remain unowned, and ordinary AUTO_INCREMENT advances are not schema drift.
-  Referenced storage must be provably InnoDB; incompatible or hidden engine metadata
-  blocks certification without imposing that requirement on unrelated tables.
-  Explicit nullable DEFAULT NULL claims require SQL-NULL default metadata, not
-  a string 'NULL' or another scalar. Parenthesized/implicit nullable NULL normalize;
-  Generated integer/Boolean and UTF-8 text defaults and compiler clock forms are
-  now checked against quoted native definitions; unsupported default and CHECK
-  expressions fail preparation rather than being silently unclaimed. Finite compiler
-  CHECK expressions now execute with endpoint comparison of names and multiplicity,
-  redundant column-claim agreement and bounded expression parsing/normalization.
-  A changed native CHECK meaning blocks completion and recovery finish.
-  The existing bounded JSON-validity proof remains separate. A model-free subprocess
-  route covers default preservation, nullable addition, backfill, contraction,
-  interrupted data recovery without replay, and ownership relinquishment. General
-  absence-of-default semantics and compiler/ledger evolution remain outside this slice.
-  Malformed native base-table catalog SQL now raises an object-specific PackageError.
-  Preparation remains read-only; after DDL, progress stays uncertain and unreadable
-  metadata prevents recovery inspection. MariaDB 12.2.2's malformed escaped foreign-
-  key rendering is explicitly refused, not guessed or repaired.
-  Exact observed contraction postconditions can be explicitly reconciled with durable audit
-  evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
-  checks the server/session rendering profile. Cancelled native protocol operations
-  discard their target connection without masking cancellation with cleanup errors,
-  including read-only inspection. Format 2 is provisional; broader adoption,
-  general reconciliation and production runtime integration remain incomplete. Existing migration interfaces are unchanged. Tracks #477.
+### Experimental recorded migrations (#477)
+
+- Add an opt-in workflow in `snekql.experimental.migrations`: ordinary historical
+  declarations select migration ownership; editable drafts and named intermediate
+  typed UPDATEs become frozen execution packages. `Draft.advance` composes stages
+  without manually stitching lineage or storing intermediate packages. Loading a
+  package requires neither authoring nor application models.
+- Support bounded creation, nullable additions, explicit required/drop-column
+  contraction, nullability/default changes, named indexes/CHECKs, and whole-table
+  relinquishment. Strict initial SQLite adoption claims matching existing facts,
+  not earlier execution history. Preservation is bounded and SQLite-only; native
+  and partial adoption remain unsupported. Unsupported declarations and dependencies
+  refuse rather than falling back to a general SQL parser or automatic live diff.
+- Separate read-only target preparation from application. Retain the original
+  target-bound `Prepared.dump()` envelope durably before applying; a new prepare
+  cannot reconstruct it. Frozen package formats 2–8 use defined execution epoch 1;
+  prepared wire format 1 checks integrity, not authenticity. Unsupported epochs or
+  ledger layouts refuse without conversion, re-lowering, stamping, or repair.
+- Record durable progress independently of caller acknowledgement. SQLite applies
+  transactionally within the qualified environment; MariaDB DDL can commit before
+  a later failure. Fresh-session inspection uses the saved original; explicit
+  `resume` continues only proved remaining work, while reviewed structural
+  reconciliation records acceptance without inventing a data-execution receipt.
+  Lost COMMIT/DDL acknowledgements do not authorize blind replay.
+- Return an inert, single-use `Connection` from `connect(config)` before opening.
+  `async with` yields a Target; post-failure/exit `wait_closed()` joins that
+  lifetime's known cleanup under a fresh operation budget. Timeout/cancellation
+  does not cancel the producer or other waiters. Keep the owning loop live;
+  there is no global drain, failed-close repair, or remote-quiescence guarantee.
+- Verify admitted session integrity and metadata authority without GLOBAL repair.
+  Preserve SQLite DELETE/WAL and apply requested NORMAL/FULL synchronization;
+  NORMAL deliberately replaces the earlier accidental FULL policy. MariaDB uses
+  its minimum 10.11 guard, UTC normalization, verified strict/integrity settings,
+  finite metadata visibility, and bounded migration-name lock ownership.
+- Qualify the finite Linux/GIL CPython 3.15/default-asyncio contract in normal and
+  forced-lazy modes: SQLite 3.45.1/3.53.1 and MariaDB 10.11.19/11.4.13/11.8.9/12.3.3,
+  with selected actual opening, worker, WAL client-death, COMMIT-loss, DDL-loss and
+  original-plan recovery journeys. This is not every patch/platform/transport,
+  in-place upgrade, host/power/volume-loss, or stopped-loop qualification.
+- Keep released raw-SQL `db.migrate`/`db.verify_migrations` supported and unchanged.
+  Use separate deployment targets for the two runner families; their separate
+  ledgers/locks do not coordinate each other. No raw-history conversion, automatic
+  cutover, stable namespace move, or indefinite prototype ABI promise is selected.
+  Query mapping, migration ownership, and application readiness remain independent.
+
+### Documentation and packaging
+
+- Add [recorded workflow](docs/recorded-migrations.md) and
+  [recorded recovery](docs/recorded-migration-recovery.md) consumer guides, including
+  connection-lifetime supervision, original evidence, finite support, and exclusions.
+- Bundle the guides and copyable role-authoring, original-storage, and ordinary
+  application recipes in wheel/sdist documentation resources. Route the installed
+  skill to the chosen migration family; keep internal proposals out of the bundle.
+- Validate actual installed-wheel authoring/type checking, stale-package refusal,
+  model-free deployment, retained originals and typed application use on both
+  backends. No version, tag, merge, publication, or Actions run is implied by this
+  documentation/packaging checkpoint.
 
 ## 0.9.0 - 2026-10-11
 

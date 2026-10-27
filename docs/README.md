@@ -14,7 +14,11 @@ Read these in order, or jump to the task you have now:
 2. [Models](models.md): describe columns, defaults, and Pending/Row values.
 3. [Queries](queries.md): filter, sort, insert, update, and delete.
 4. [Connections and transactions](transactions.md): commit, roll back, stream, and close.
-5. [Migrations](migrations.md): keep database changes in reviewed SQL.
+5. [Raw-SQL migrations](migrations.md): keep database changes in reviewed SQL.
+
+For a separate opt-in workflow, read [recorded migrations](recorded-migrations.md)
+and [recorded recovery](recorded-migration-recovery.md). The experimental runner
+does not replace or convert raw-SQL histories; keep deployment targets separate.
 
 [Why not an ORM?](why-not-orm.md) explains what snekql deliberately leaves out.
 [Choosing storage](storage.md) covers Python values versus database types.

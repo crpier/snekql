@@ -1,5 +1,9 @@
 # Keep connections healthy and shut them down
 
+This page describes ordinary Database/Transaction lifetimes. For the separate
+experimental `Connection`/`Target` and post-exit `wait_closed()` contract, read
+[recorded migrations](recorded-migrations.md#connection-lifetime-and-bounded-joins).
+
 An idle connection can be replaced. A transaction that has already started
 cannot be moved to another connection or replayed automatically. Keep that
 difference in mind when configuring health checks or recovering from an outage.

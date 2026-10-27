@@ -52,7 +52,10 @@ Read the [typing guide](typing.md) for declaration and query restrictions,
 [raw contracts](raw-sql.md) for typed raw results, [reporting](reporting.md) for
 runnable advanced-SQL recipes, and [connection lifecycle](connection-lifecycle.md)
 for cleanup and deadline limits. MySQL and PostgreSQL are not supported backends.
-There is no automatic migration generation, ORM session, identity map or lazy
-relationship loading.
+There is no automatic schema alteration at startup, ORM session, identity map,
+or lazy relationship loading. The raw-SQL runner does not generate migrations.
+The separate [experimental recorded workflow](recorded-migrations.md) authors
+model-derived drafts and frozen packages within its narrower finite support;
+this ordinary-runtime table is not additional recorded-migration qualification.
 
 [All guides](README.md)

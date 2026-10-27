@@ -5,6 +5,12 @@ This is engineering scope acceptance, not merge/tag/publication or consumer-guid
 The maintainer selected **B: explicit connection lifetime ownership**, rather than making
 supervised subprocesses the only supported deployment topology.
 
+Consumer/release documentation and isolated candidate packaging are now complete
+for review; see the [consumer packaging follow-through](recorded-migrations-consumer-release-review.md).
+That later checkpoint does not select a version, authorize publication, widen finite
+runtime support, or change the experimental namespace. Earlier chronology below
+remains evidence for its own source/checkpoint.
+
 ## Decision, names and interface
 
 Keep the qualified opt-in namespace **`snekql.experimental.migrations`** for the first bounded

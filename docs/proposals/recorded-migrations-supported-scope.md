@@ -18,6 +18,12 @@ The finite G4 matrix and selected WAL/COMMIT/DDL windows are now exercised; comp
 validation for that checkpoint is recorded in the G4 review. The G5 change is separately
 requalified below; architectural acceptance does not authorize merge or publication.
 
+Consumer/release documentation and isolated candidate packaging are now complete
+for review; see the [consumer packaging follow-through](recorded-migrations-consumer-release-review.md).
+That later checkpoint does not select a version, authorize publication, widen finite
+runtime support, or change the experimental namespace. Earlier chronology below
+remains evidence for its own source/checkpoint.
+
 ## G5 explicit lifetime review
 
 The maintainer selected B: a public connection lifetime retained BEFORE opening, with bounded

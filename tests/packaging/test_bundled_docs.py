@@ -59,6 +59,8 @@ async def wheel_contains_current_user_guides() -> None:
         "queries.md",
         "transactions.md",
         "migrations.md",
+        "recorded-migrations.md",
+        "recorded-migration-recovery.md",
         "api-reference.md",
         "typing.md",
         "typing-compatibility.md",

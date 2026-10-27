@@ -8,6 +8,11 @@ process failure.
 For application code, start with [handling errors](error-handling.md). For local
 validation commands, see [contributing](contributing.md).
 
+For the separate experimental recorded runner, consult its
+[finite support and exclusions](recorded-migrations.md#finite-support-and-promotion-status)
+and [original-plan recovery](recorded-migration-recovery.md). The ordinary runtime
+and raw-runner rows below are not a wider recorded-migration support certificate.
+
 ## Existing deterministic coverage
 
 Paths below are relative to the repository root. Test names identify focused

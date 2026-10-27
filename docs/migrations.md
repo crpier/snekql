@@ -1,10 +1,16 @@
 # Migrations
 
+This page covers the supported **raw-SQL runner** (`db.migrate(MIGRATIONS)`).
+For opt-in `snekql.experimental.migrations`, read the separate
+[recorded workflow](recorded-migrations.md) and
+[recorded recovery](recorded-migration-recovery.md). Use separate deployment
+targets; these are not interchangeable history or recovery APIs.
+
 A migration is a named SQL change you keep in source control. snekql runs changes
 in order and records their names and checksums, so later deployments can apply
 only what is new.
 
-You write and review the SQL. snekql does not turn model changes into ALTER TABLE
+You write and review the SQL. This raw-SQL runner does not turn model changes into ALTER TABLE
 statements, and opening a Database does not create tables. An empty database is
 built by running the complete migration chain.
 
@@ -501,7 +507,7 @@ Model metadata can legitimately improve over time; recomputing historical SQL
 would then change a v2 checksum.
 
 Later changes remain hand-authored `ALTER`, `CREATE INDEX`, `UPDATE`, and other
-raw SQL. snekql does not generate model diffs or down migrations.
+raw SQL in this runner. It does not generate model diffs or down migrations.
 
 ## Deployment and tests
 

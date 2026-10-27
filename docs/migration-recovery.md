@@ -1,5 +1,11 @@
 # Recovering an interrupted migration
 
+This page covers the supported **raw-SQL runner** (`db.migrate(MIGRATIONS)`).
+For opt-in `snekql.experimental.migrations`, read the separate
+[recorded workflow](recorded-migrations.md) and
+[recorded recovery](recorded-migration-recovery.md). Use separate deployment
+targets; these are not interchangeable history or recovery APIs.
+
 Do not immediately rerun a failed migration. Its SQL may already have changed
 the database, even if migration history still says it is pending.
 
