@@ -31,6 +31,10 @@ lazy from snekql._statement_failure import StatementConstraintError
 lazy from snekql._telemetry import ParameterVisibility
 lazy from snekql.errors import DatabaseFailure, DatabaseRuntimeError, FailureCategory
 lazy from snekql.model import Table
+lazy from snekql.sqlite._buffered_connection import (
+    BufferedConnection,
+    BufferedExecuteConstraintError,
+)
 lazy from snekql.sqlite.config import Config
 lazy from snekql.sqlite.migrations import (
     SQLiteMigrationConnectionState,
@@ -179,6 +183,29 @@ class SQLiteConnectionAdapter:
                 raise StatementConstraintError(e) from e
             raise
         return SQLiteCursorAdapter(cursor)
+
+    async def execute_buffered_select(
+        self, sql: str, params: tuple[object, ...]
+    ) -> Sequence[Sequence[object]]:
+        """Collect an ordinary many-row SELECT with worker-owned cursor cleanup."""
+        if not isinstance(self.connection, BufferedConnection):
+            cursor = await self.execute(sql, params)
+            try:
+                return await cursor.fetchall()
+            finally:
+                await cursor.close()
+        try:
+            return cast(
+                "Sequence[Sequence[object]]",
+                await self.connection.execute_fetchall(sql, params),
+            )
+        except BufferedExecuteConstraintError as failure:
+            error = failure.original
+        # Raise outside the wrapper handler, preserving the driver's own cause
+        # without installing the private stage marker as exception context.
+        if self._recoverable_constraint(error):
+            raise StatementConstraintError(error) from error
+        raise error
 
     async def execute_stream(
         self,

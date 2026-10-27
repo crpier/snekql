@@ -21,7 +21,7 @@ class BenchUser[S = Pending](mariadb.Model[S]):
         default=mariadb.PENDING_GENERATION,
     )
     email: BenchUser.Col[str] = mariadb.Text(nullable=False)
-    payload: BenchUser.Col[str] = mariadb.Text(nullable=False)
+    payload: BenchUser.Col[str] = mariadb.Text(length=8192, nullable=False)
 
 
 class BenchProfile[S = Pending](mariadb.Model[S]):
@@ -32,7 +32,7 @@ class BenchProfile[S = Pending](mariadb.Model[S]):
     __tablename__ = "bench_profile"
 
     user_id: BenchProfile.Col[int] = mariadb.Integer(primary_key=True)
-    payload: BenchProfile.Col[str] = mariadb.Text(nullable=False)
+    payload: BenchProfile.Col[str] = mariadb.Text(length=8192, nullable=False)
 
 
 class BenchWrite[S = Pending](mariadb.Model[S]):
@@ -44,7 +44,7 @@ class BenchWrite[S = Pending](mariadb.Model[S]):
 
     id: BenchWrite.Col[int] = mariadb.Integer(primary_key=True)
     email: BenchWrite.Col[str] = mariadb.Text(nullable=False)
-    payload: BenchWrite.Col[str] = mariadb.Text(nullable=False)
+    payload: BenchWrite.Col[str] = mariadb.Text(length=8192, nullable=False)
 
 
 MODELS = [BenchUser]

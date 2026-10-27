@@ -8,15 +8,19 @@ Existing benchmark families:
   and workload mixes ([issue #66](https://github.com/crpier/snekql/issues/66)).
 - **Construction** (`benchmarks.construction`): the pure-CPU cost of the
   immutable Query Builder, with no I/O. See
-  [Query construction throughput](#query-construction-throughput) below.
+  [Query construction throughput](#query-construction-throughput) below. The
+  [SELECT metadata measurements](select-metadata-481.md) cover construction-local
+  reuse of whole-model namespace checks.
 
 A new [comparative runtime command](comparison.md) measures equivalent validated
 work across raw drivers, snekql and SQLAlchemy Core. It covers buffered point
 reads, bounded streaming, indexed joins and verified bulk writes on both
 backends, including shared-capacity contention, heartbeat diagnostics and
 separate pool/memory profiles. See its measurement-scope limitations before
-comparing numbers. The [dated baseline](findings.md) publishes individual trial
-reports and noise-aware regression guidance.
+comparing numbers. The [current baseline](current-baseline-2026-10-26.md) and
+[historical baseline](findings.md) publish individual trial
+reports and noise-aware regression guidance. The [projection-decoding optimization](projection-decoding-479.md)
+records the before/after measurements for #479.
 
 ## Running
 
@@ -60,6 +64,9 @@ records event-loop wake-up lateness. Reported per scenario:
   monopolized the pool. The per-worker `min..max` op spread is printed too.
 - **loop stall** — worst heartbeat lateness; a large value means a synchronous
   stretch (typically row materialization) blocked the event loop.
+
+For focused codec measurements, the [temporal-classification optimization](temporal-classification-480.md)
+records isolated encoding and verified-bulk results for #480.
 
 ## Historical findings, June 2026
 
@@ -137,6 +144,9 @@ From the sweep (read-mostly point queries, one event loop):
 
 ## Query construction throughput
 
+The [logical-annotation measurements](logical-annotations-481.md) cover repeated
+type resolution in ordering, range predicates and numeric expressions.
+
 `benchmarks.construction` measures how fast `select(...).where(...).limit(...)`
 chains (and insert/update builds) turn into immutable query state — no database,
 no async. It reports a throughput distribution over repeated trials and
@@ -151,6 +161,13 @@ warmup), with the GC disabled inside each timed trial so a background collection
 cannot land mid-sample. Reported per workload: median and mean builds/second,
 the coefficient of variation (stdev / mean) across trials, and mean retained
 bytes per built query (`tracemalloc` snapshot diff with every query held alive).
+
+The [pagination-validation measurements](pagination-validation-481.md) cover
+strict integer argument handling, including keyword/subtype and execution controls.
+
+[Combined construction measurements](combined-construction-481.md) establish the
+merged baseline; [column protocol dispatch](column-protocols-494.md) measures the
+next compilation optimization, with execution controls and a SQLite follow-up.
 
 ### Variance
 
@@ -195,3 +212,83 @@ models, Linux), with per-query bytes unchanged:
 control: unchanged within noise, confirming the gain comes from the reordered
 checks rather than run drift. `dataclasses.replace` remains the next bottleneck
 to target.
+
+The [immutable query-construction measurements](query-construction-481.md) cover
+#481’s state-copy optimization, including the retained-intermediate memory tradeoff.
+
+[Buffered SQLite worker dispatch](sqlite-buffered-496.md) measures the local
+cleanup-safe driver adapter, including final-version controls, wide reads,
+retained memory, and a longer repeat of an initially unfavorable scenario.
+
+[Ordered model-row materialization](model-materialization-498.md) measures avoiding
+per-row metadata lookup and mapping reconstruction, while retaining validation
+and descriptor assignment, with wide-read and single-row controls.
+
+[Derived-output decoder resolution](derived-decoders-500.md) measures resolving
+built-in CTE wire-source chains once per execution, with flat/nested CTE reads,
+ordinary projection controls, memory samples and preserved validation policies.
+
+[Whole-source joined CTE decoding](joined-derived-502.md) measures execution-local
+named-source decoders while preserving physical-model assignment and joined-row
+presence witnesses, with wide/point controls and longer single-row follow-ups.
+
+[Scalar-subquery decoder resolution](scalar-decoders-504.md) measures execution-local
+source decoding while preserving scalar NULLs and validation, including initial
+and final measurements, guard-order refinement and longer single-row controls.
+
+[Ordinary MIN/MAX decoder resolution](extrema-decoders-506.md) measures grouped
+extrema with preserved source-policy semantics, including unfavorable single-row
+controls, CPU-affinity/reversed-order follow-ups, and separate memory/profiles.
+
+[Ordinary SUM normalization](sum-decoders-508.md) measures execution-local numeric
+policy resolution with SQLite/MariaDB contract tests, grouped numeric workloads,
+and forward/reverse/pinned single-row controls with CPU-time accounting.
+
+[Fixed COUNT/AVG decoders](fixed-aggregates-510.md) measures stateless numeric
+decoder resolution, with native backend contract tests, wide grouped reads,
+and retained unfavorable single-row results alongside matched control repeats.
+
+[Derived SUM provenance decoding](derived-sum-512.md) measures binding the existing
+numeric provenance path while retaining its per-value gate, with native backend
+contracts, grouped reads, memory/profiles and unfavorable point-read controls.
+
+[Resolved numeric classification](numeric-classification-514.md) retains derived
+SUM's per-value gates while avoiding repeated annotation analysis, with rejected
+initial layout costs, revised declaration memory, controls and reproducible data.
+
+[Derived MIN/MAX decoding](derived-extrema-516.md) resolves retained projection
+policies per execution, with clean-revision measurements, adverse one-row controls,
+matched repeats, retained-output memory and reproducible scripts.
+
+[Built-in value-expression decoding](value-expressions-518.md) binds native-domain
+decoders per execution, with ordinary/extrema controls, adverse point-read results,
+NULL-context regressions, output memory and reproducible scripts.
+
+[Native integer literal decoding](literal-decoders-520.md) binds the retained
+per-value policy per execution, with UNION/recursive regressions, unchanged output
+retention, adverse repeated pinned controls and reproducible scripts.
+
+[Whole-model RETURNING decoding](model-returning-522.md) reuses ordered decoding
+with batch-local metadata, preserving descriptors/validation and publishing
+SQLite UPDATE results, memory, mixed read controls and reproduction scripts.
+
+[Single-field SELECT materialization](single-field-524.md) avoids projection
+iteration while retaining collection/scalar/named shapes, with SQLite throughput,
+unchanged retention, adverse one-row controls and reproduction scripts.
+
+[Single-field RETURNING materialization](single-returning-526.md) selects direct
+single-value decoding per batch, with SQLite UPDATE evidence, unchanged retention,
+adverse point/control results and reproduction scripts.
+
+[Inherited runtime column access](descriptor-access-528.md) removes typing-only
+getter delegation, separating loaded-value access gains from mixed database
+results, with static-contract tests and reproduction scripts.
+
+[Joined span endpoint investigation](joined-spans-530.md) records a **shelved**
+candidate: removed width calls, modest LEFT-join gains, mixed other throughput,
+point-read declines and added plan memory. No production change proposed.
+
+[Guarded multi-field iteration](multi-field-532.md) measures explicit SELECT and
+RETURNING projections: repeated wide tuple gains, variable named results,
+unchanged output retention and mixed point controls. StopIteration behavior and
+all per-field/final contracts retained; no general point/backend gain claim.

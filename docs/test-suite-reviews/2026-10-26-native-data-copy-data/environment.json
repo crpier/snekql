@@ -1,0 +1,57 @@
+{
+  "revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27
+  ],
+  "storage": "TARGET FSTYPE OPTIONS\n/home  btrfs  rw,noatime,compress=zstd:3,ssd,space_cache=v2,subvolid=257,subvol=/@home\n",
+  "native_versions": {
+    "mariadbd": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+    "mariadb": "mariadb from 13.0.2-MariaDB, client 15.2 for Linux (x86_64) using readline 5.1"
+  },
+  "phase_command": [
+    "uv",
+    "run",
+    "python",
+    "/home/crpier/.cache/sqn.TCLuPteb/phases.py"
+  ],
+  "phase_env": {
+    "PYTHON_CONTEXT_AWARE_WARNINGS": "1"
+  },
+  "source_status": "",
+  "phase_script_sha256": "4150db763bc1f6ff44cebd3f7e42d574d852cbe281c55f353cb67f4a3f46b978",
+  "baseline_script_sha256": "17a21506e570be4b91ddfc296010ef77fac205b7e1386b32ad6c490c4ade555b",
+  "limitations": [
+    "Baseline commands uninstrumented; phase diagnostic separately instrumented and representative, not timings of individual fixture internals.",
+    "No concurrent suite/build by this agent; other host/worktree activity not isolated.",
+    "Retained-directory restart is not a measured pristine-copy candidate.",
+    "No source changes, optimization or new tests yet."
+  ]
+}

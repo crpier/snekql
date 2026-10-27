@@ -5,11 +5,15 @@ query state plus a backend tag; like compilation, it depends only on the shared
 query state, never on the Query Builder classes.
 """
 
-lazy from collections.abc import Sequence
+lazy from collections.abc import Callable, Sequence
 lazy from dataclasses import dataclass
 
-lazy from snekql._materialization_shape import JoinedRowShape, SourceRowShape
-lazy from snekql._model_materialization import decode_model_row
+lazy from snekql._materialization_shape import (
+    JoinedRowShape,
+    SourceDecoders,
+    SourceRowShape,
+)
+lazy from snekql._model_materialization import decode_model_values
 lazy from snekql._named_projection import NamedProjection
 lazy from snekql._query_state import (
     InsertState,
@@ -17,9 +21,22 @@ lazy from snekql._query_state import (
     SelectState,
     WriteState,
 )
-lazy from snekql._value_decode import _decode_projection_field, _decode_selectable
+lazy from snekql._value_decode import resolve_projection_decoder
 lazy from snekql.model import require_model_columns
 lazy from snekql.storage import StorageBackend
+
+
+def _decode_field(decode: Callable[[object], object], value: object) -> object:
+    """Apply a decoder without letting StopIteration truncate native iteration.
+
+    The former generator expression converted a hook's StopIteration into this
+    RuntimeError. A bare map would instead silently return an incomplete row.
+    """
+    try:
+        return decode(value)
+    except StopIteration as error:
+        msg = "generator raised StopIteration"
+        raise RuntimeError(msg) from error
 
 
 def _materialize_insert_returning_fields(
@@ -36,21 +53,31 @@ def _materialize_insert_returning_fields(
     row, several yield a tuple per row, both through the shared selectable decode.
     """
 
+    decoders = tuple(
+        resolve_projection_decoder(
+            field, nullable_models=frozenset(), backend=backend, validate=validate
+        )
+        for field in fields
+    )
     materialized: list[object] = []
+    if len(fields) == 1:
+        decode = decoders[0]
+        for row in rows:
+            assert len(row) == 1, (  # noqa: S101
+                "returning row shape did not match the projection"
+            )
+            value = decode(row[0])
+            materialized.append(
+                projection.materialize((value,)) if projection is not None else value
+            )
+        return materialized
     for row in rows:
         assert len(row) == len(fields), (  # noqa: S101
             "returning row shape did not match the projection"
         )
-        decoded = tuple(
-            _decode_selectable(field, row[index], backend=backend, validate=validate)
-            for index, field in enumerate(fields)
-        )
+        decoded = tuple(map(_decode_field, decoders, row, strict=True))
         materialized.append(
-            projection.materialize(decoded)
-            if projection is not None
-            else decoded[0]
-            if len(decoded) == 1
-            else decoded
+            projection.materialize(decoded) if projection is not None else decoded
         )
     return materialized
 
@@ -59,8 +86,8 @@ def _materialize_insert_returning_fields(
 class SelectMaterialization:
     """Capture a select's source shape and validation policy once per plan.
 
-    Row spans and nullable owners are immutable execution-local facts, not
-    work to repeat for every buffered or streamed row.
+    Row spans, projection decoders and nullable owners are execution-local
+    facts, not work to repeat for every buffered or streamed row.
     """
 
     # Consumption facts followed by source shape facts.
@@ -68,8 +95,9 @@ class SelectMaterialization:
     state: SelectState
     validate: bool
     joined: JoinedRowShape | None
-    nullable_models: frozenset[type[object]]
+    decoders: tuple[Callable[[object], object], ...]
     source: SourceRowShape | None
+    joined_decoders: tuple[SourceDecoders, ...]
 
     @classmethod
     def for_state(
@@ -86,15 +114,32 @@ class SelectMaterialization:
             if state.returns_model and not state.joins
             else None
         )
+        nullable_models = frozenset(
+            join.model for join in state.joins if join.join_type == "LEFT"
+        )
+        decoders = (
+            tuple(
+                resolve_projection_decoder(
+                    column,
+                    nullable_models=nullable_models,
+                    backend=backend,
+                    validate=validate,
+                )
+                for column in state.fields
+            )
+            if not state.returns_model
+            else ()
+        )
         return cls(
             state=state,
             backend=backend,
             validate=validate,
             joined=joined,
+            joined_decoders=joined.resolve_decoders(backend=backend, validate=validate)
+            if joined is not None
+            else (),
             source=source,
-            nullable_models=frozenset(
-                join.model for join in state.joins if join.join_type == "LEFT"
-            ),
+            decoders=decoders,
         )
 
     def materialize(self, row: Sequence[object]) -> object:
@@ -104,25 +149,26 @@ class SelectMaterialization:
         )
         if self.joined is not None:
             return self.joined.materialize(
-                row, backend=self.backend, validate=self.validate
+                row,
+                backend=self.backend,
+                validate=self.validate,
+                decoders=self.joined_decoders,
             )
         if self.source is not None:
             return self.source.materialize(
                 row, backend=self.backend, validate=self.validate
             )
-        decoded_values = tuple(
-            _decode_projection_field(
-                column,
-                value,
-                nullable_models=self.nullable_models,
-                backend=self.backend,
-                validate=self.validate,
+        if len(self.decoders) == 1:
+            value = self.decoders[0](row[0])
+            return (
+                self.state.named_projection.materialize((value,))
+                if self.state.named_projection is not None
+                else value
             )
-            for column, value in zip(self.state.fields, row, strict=True)
-        )
+        decoded_values = tuple(map(_decode_field, self.decoders, row, strict=True))
         if self.state.named_projection is not None:
             return self.state.named_projection.materialize(decoded_values)
-        return decoded_values[0] if len(decoded_values) == 1 else decoded_values
+        return decoded_values
 
 
 def materialize_select_row_for_backend(
@@ -165,14 +211,14 @@ def materialize_write_returning_rows_for_backend(
     if model_class is None:
         return []
     columns = require_model_columns(model_class)
-    names = tuple(columns)
     materialized: list[object] = []
     for row in rows:
-        assert len(row) == len(names), (  # noqa: S101
+        assert len(row) == len(columns), (  # noqa: S101
             "returning row shape did not match the written model"
         )
-        values = {name: row[index] for index, name in enumerate(names)}
         materialized.append(
-            decode_model_row(model_class, values, backend=backend, validate=validate),
+            decode_model_values(
+                model_class, columns, row, backend=backend, validate=validate
+            ),
         )
     return materialized

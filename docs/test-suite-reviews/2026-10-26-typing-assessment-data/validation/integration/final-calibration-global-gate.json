@@ -1,0 +1,1 @@
+{"passed": 0, "failed": 1, "errors": 0, "fixture_teardown_failed": 0, "session_teardown_failed": 0, "session_teardown_failures": [], "tests": [{"name": "tests/test_typing_assessment_execution.py::broken_controls_retain_named_failures", "duration": 0.5541657069989014, "markers": ["slow"], "status": "failed", "exception": {"type": "AssertionFailure", "message": "0 != 12"}}]}

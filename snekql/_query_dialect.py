@@ -4,6 +4,7 @@ lazy from collections.abc import Callable
 lazy from dataclasses import dataclass
 lazy from typing import Any, Literal
 
+lazy from snekql._explain_types import ExplainFormat, MariaDBQueryPlan, SQLiteQueryPlan
 lazy from snekql._query_state import LockWait, SelectState, WriteState
 lazy from snekql.errors import QueryCompilationError
 lazy from snekql.storage import Attr
@@ -13,7 +14,13 @@ type ConflictDoNothingCompiler = Callable[[tuple[str, ...]], str]
 type ConflictUpdateCompiler = Callable[[tuple[str, ...], str], str]
 type InsertedValueRenderer = Callable[[str], str]
 type ExplainMode = Literal["explain", "analyze"]
-type ExplainSqlCompiler = Callable[[SelectState | WriteState, str, ExplainMode], str]
+type ExplainSqlCompiler = Callable[
+    [SelectState | WriteState, str, ExplainMode, ExplainFormat], str
+]
+type ExplainPlanDecoder = Callable[
+    [tuple[str, ...], tuple[tuple[object, ...], ...], ExplainFormat],
+    SQLiteQueryPlan | MariaDBQueryPlan | None,
+]
 type QueryValueEncoder = Callable[[QueryColumn, object], object]
 
 
@@ -34,6 +41,7 @@ class QueryDialect:
     quote_identifier: Callable[[str], str]
     integer_literal_sql: Callable[[str], str] | None = None
     explain_sql: ExplainSqlCompiler | None = None
+    decode_explain: ExplainPlanDecoder | None = None
     char_length_function: str | None = None
     for_update_sql: Callable[[LockWait], str] | None = None
     supports_delete_returning: bool = False

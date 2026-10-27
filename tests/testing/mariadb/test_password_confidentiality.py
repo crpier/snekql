@@ -24,7 +24,11 @@ from snektest import (
 )
 
 from snekql.testing.mariadb import TemporaryMariaDBServerError, temporary_mariadb_server
-from tests.helpers import capture_snekql_logs, provide_mariadb_server
+from tests.helpers import (
+    capture_snekql_logs,
+    provide_mariadb_server,
+    wait_for_task_event,
+)
 
 SENTINEL = "harmless_bootstrap_sentinel_323"
 
@@ -56,7 +60,10 @@ async def bootstrap_password_uses_stdin() -> None:
         patch("asyncio.create_subprocess_exec", record),
     ):
         async with temporary_mariadb_server(
-            auth="password", password=SENTINEL, data_directory=Path(directory) / "data"
+            auth="password",
+            password=SENTINEL,
+            runtime_base_directory=Path(directory),
+            data_directory=Path(directory) / "data",
         ) as server:
             assert_eq((await server.run_sql("SELECT 1")).returncode, 0)
 
@@ -135,6 +142,7 @@ async def startup_failures_do_not_echo_password(stage: str) -> None:
         async with temporary_mariadb_server(
             auth="password",
             password=SENTINEL,
+            runtime_base_directory=Path(directory),
             data_directory=Path(directory) / "data",
         ):
             assert_true(False, msg="fault must prevent startup")
@@ -193,7 +201,10 @@ async def cancelled_bootstrap_closes_sensitive_client(mode: str) -> None:
         with scope:
             try:
                 async with temporary_mariadb_server(
-                    auth="password", password=SENTINEL, data_directory=data_directory
+                    auth="password",
+                    password=SENTINEL,
+                    runtime_base_directory=data_directory.parent,
+                    data_directory=data_directory,
                 ):
                     assert_true(False)
             except asyncio.CancelledError as error:
@@ -209,12 +220,12 @@ async def cancelled_bootstrap_closes_sensitive_client(mode: str) -> None:
         try:
             # Native installation/startup is setup, not cancellation latency. Its
             # watchdog must allow the server's own 20-second readiness budget.
-            await asyncio.wait_for(gate.started.wait(), 60)
+            await wait_for_task_event(task, gate.started, timeout=60)
             if mode == "native":
                 task.cancel("first cancellation")
             else:
                 scope.cancel()
-            await asyncio.wait_for(gate.cleaning.wait(), 10)
+            await wait_for_task_event(task, gate.cleaning, timeout=10)
             if mode == "native":
                 task.cancel("repeated cancellation")
             gate.release.set()
@@ -258,6 +269,7 @@ async def bootstrap_credentials_remain_usable(case: tuple[str, str | None]) -> N
             auth="password",
             user=user,
             password=password,
+            runtime_base_directory=Path(directory),
             data_directory=Path(directory) / "data",
         ) as server:
             result = await server.run_sql("SELECT 1")

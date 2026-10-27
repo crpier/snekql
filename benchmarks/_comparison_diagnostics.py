@@ -19,13 +19,34 @@ class PoolDiagnostics:
     """Accept only samples inside the timed window; disabled runs install no observer."""
 
     enabled: bool
+    telemetry_enabled: bool = False
     active: bool = False
     samples: LatencyRecorder = field(default_factory=LatencyRecorder)
+    events: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def observer_enabled(self) -> bool:
+        return self.enabled or self.telemetry_enabled
+
+    @property
+    def collect_pool(self) -> bool:
+        return self.active and self.enabled
+
+    def telemetry_report(self, adapter: str) -> dict[str, object]:
+        applicable = adapter == "snekql"
+        return {
+            "observer_installed": applicable and self.observer_enabled,
+            "counting_enabled": applicable and self.telemetry_enabled,
+            "events": self.events if applicable else {},
+        }
 
     def observe(self, event: TelemetryEvent) -> None:
         """Use public snekql admission events, not whole transaction-entry latency."""
+        if self.active and self.telemetry_enabled:
+            key = f"{event.kind}:{event.phase}"
+            self.events[key] = self.events.get(key, 0) + 1
         if (
-            self.active
+            self.collect_pool
             and event.kind == "pool_wait"
             and event.phase == "finish"
             and event.duration_seconds is not None
@@ -39,7 +60,7 @@ class PoolDiagnostics:
         return {
             "metric": "checkout" if adapter == "sqlalchemy" else "admission_wait",
             "source": {
-                "raw": "asyncio-lock",
+                "raw": "asyncio-queue",
                 "snekql": "public-pool-wait-event",
                 "sqlalchemy": "async-engine-connect",
             }[adapter],

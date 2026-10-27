@@ -1,0 +1,86 @@
+[
+  {
+    "run": "round1-baseline-mariadb-execution",
+    "backend": "mariadb",
+    "mode": "timing",
+    "commit": "84e6f0d90f69d441aff4821bb296bffa6d05892d",
+    "dirty": false
+  },
+  {
+    "run": "round1-baseline-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "84e6f0d90f69d441aff4821bb296bffa6d05892d",
+    "dirty": false
+  },
+  {
+    "run": "round2-candidate-mariadb-execution",
+    "backend": "mariadb",
+    "mode": "timing",
+    "commit": "bb3473b3e4271a51260f3989cca672c6e714100c",
+    "dirty": false
+  },
+  {
+    "run": "round2-candidate-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "bb3473b3e4271a51260f3989cca672c6e714100c",
+    "dirty": false
+  },
+  {
+    "run": "round3-baseline-mariadb-execution",
+    "backend": "mariadb",
+    "mode": "timing",
+    "commit": "84e6f0d90f69d441aff4821bb296bffa6d05892d",
+    "dirty": false
+  },
+  {
+    "run": "round3-baseline-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "84e6f0d90f69d441aff4821bb296bffa6d05892d",
+    "dirty": false
+  },
+  {
+    "run": "round4-candidate-mariadb-execution",
+    "backend": "mariadb",
+    "mode": "timing",
+    "commit": "bb3473b3e4271a51260f3989cca672c6e714100c",
+    "dirty": false
+  },
+  {
+    "run": "round4-candidate-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "bb3473b3e4271a51260f3989cca672c6e714100c",
+    "dirty": false
+  },
+  {
+    "run": "round5-baseline-mariadb-execution",
+    "backend": "mariadb",
+    "mode": "timing",
+    "commit": "84e6f0d90f69d441aff4821bb296bffa6d05892d",
+    "dirty": false
+  },
+  {
+    "run": "round5-baseline-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "84e6f0d90f69d441aff4821bb296bffa6d05892d",
+    "dirty": false
+  },
+  {
+    "run": "round6-candidate-mariadb-execution",
+    "backend": "mariadb",
+    "mode": "timing",
+    "commit": "bb3473b3e4271a51260f3989cca672c6e714100c",
+    "dirty": false
+  },
+  {
+    "run": "round6-candidate-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "bb3473b3e4271a51260f3989cca672c6e714100c",
+    "dirty": false
+  }
+]

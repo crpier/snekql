@@ -1,0 +1,23 @@
+{
+  "revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+  "source_status": "",
+  "source_sha256": {
+    "tests/helpers.py": "76729d730592cde986bf63a4bdbc06ff063b293d53191bf51eba2c2bf685fd45",
+    "tests/testing/mariadb/test_password_literals.py": "5ac95eef7ae9591d3edd10fdf0b82c366d7a154bd90d658e8e51bfc8dbc6937a",
+    "tests/testing/mariadb/test_public_api.py": "95420722868141bab1de1b7c39e8ce777e07cad517029c277d8451380a8e1a30",
+    "snekql/testing/mariadb/server.py": "a10a382ab85f70dede6dd052978a41de6d6d22cf179161ead1cc3f37f2ce6a87",
+    "snekql/testing/mariadb/_process.py": "367743196ffe06e0c39bd2287951627674971f91490425ec8255b615299258b9",
+    "pyproject.toml": "05b5af5a737ea1914e70e5ddc883af2c2167fe74901f56de8d6b64cf86e972e6",
+    "uv.lock": "7e622ca52611bcfed193b5d167f2eb1856ccc855ed5133c7fff6c1c9808210bc"
+  },
+  "packages": {
+    "snekql": "0.9.0",
+    "snektest": "0.16.0",
+    "anyio": "4.15.1",
+    "ty": "0.0.84",
+    "aiomysql": "0.3.2"
+  },
+  "python": "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+  "python_version": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+  "runs": []
+}

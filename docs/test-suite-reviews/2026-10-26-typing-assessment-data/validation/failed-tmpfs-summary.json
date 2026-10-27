@@ -1,0 +1,14 @@
+{
+  "passed": 4049,
+  "failed": 42,
+  "errors": 75,
+  "fixture_teardown_failed": 0,
+  "session_teardown_failed": 0,
+  "exceptions": {
+    "AssertionFailure": 42,
+    "TemporaryMariaDBServerError": 69,
+    "AssertionError": 6
+  },
+  "tmpfs_mount": "TARGET SOURCE FSTYPE OPTIONS\n/tmp   tmpfs  tmpfs  rw,nosuid,nodev,nr_inodes=1048576,inode64,huge=advise,usrquota\n",
+  "tmpfs_df": "Filesystem       1B-blocks        Used  Available Use% Mounted on\ntmpfs          16727396352 13365678080 3361718272  80% /tmp\n"
+}

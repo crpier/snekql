@@ -1,0 +1,43 @@
+"""Unchanged public process-cleanup tests; timing and retention accounting only."""
+import hashlib
+import json
+import os
+import shutil
+import signal
+import subprocess
+import time
+from pathlib import Path
+
+for sig in (signal.SIGINT, signal.SIGQUIT, signal.SIGHUP):
+    signal.signal(sig, signal.SIG_DFL)
+root = Path(__file__).parent
+inputs = json.loads((root / "inputs.json").read_text())
+records = []
+file = "tests/testing/mariadb/test_process_cleanup.py"
+for index, profile in ((1, "single"), (1, "file"), (2, "file"), (2, "single")):
+    assert subprocess.check_output(["git", "status", "--porcelain"], text=True) == ""
+    assert subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip() == inputs["revision"]
+    name = f"before-{profile}-{index}"
+    tmp = root / f"tmp-{profile}-{index}"
+    tmp.mkdir()
+    selected = file if profile == "file" else file + "::terminate_resistant_server_is_killed"
+    command = ["uv", "run", "snektest", selected, "--json-output"]
+    started = time.time()
+    load = os.getloadavg()
+    with (root / f"{name}.json").open("wb") as stdout, (root / f"{name}.stderr").open("wb") as stderr:
+        result = subprocess.run(command, env={**os.environ, "TMPDIR": str(tmp), "PYTHON_CONTEXT_AWARE_WARNINGS": "1"}, stdout=stdout, stderr=stderr, check=False)
+    elapsed = time.time() - started
+    (root / f"{name}.status").write_text(f"{result.returncode}\n")
+    report = json.loads((root / f"{name}.json").read_text())
+    entry = {"name": name, "profile": profile, "command": command, "cwd": str(Path.cwd()), "revision": inputs["revision"], "tmpdir": str(tmp), "started_unix": started, "wall_seconds": elapsed, "load_start": load, "load_end": os.getloadavg(), "env": {"TMPDIR": str(tmp), "PYTHON_CONTEXT_AWARE_WARNINGS": "1"}, "exit_code": result.returncode, "report_sha256": hashlib.sha256((root / f"{name}.json").read_bytes()).hexdigest(), "counts": {key: report[key] for key in ("passed", "failed", "errors", "fixture_teardown_failed", "session_teardown_failed")}, "cases": [{"name": case["name"], "duration": case["duration"], "status": case["status"]} for case in report["tests"]], "remaining_tmp_entries": [str(p.relative_to(tmp)) for p in tmp.rglob("*")]}
+    records.append(entry)
+    (root / "baseline.json").write_text(json.dumps(records, indent=2) + "\n")
+    assert result.returncode == 0 and all(report[key] == 0 for key in ("failed", "errors", "fixture_teardown_failed", "session_teardown_failed")), entry["counts"]
+    assert all(hashlib.sha256(Path(name).read_bytes()).hexdigest() == digest for name, digest in inputs["source_sha256"].items())
+    assert subprocess.check_output(["git", "status", "--porcelain"], text=True) == ""
+    active = [line for line in subprocess.check_output(["ps", "-eo", "pid,args"], text=True).splitlines() if str(tmp) in line]
+    assert not active, active
+    assert not any(p.is_file() and p.stat().st_size for p in tmp.rglob("*")), entry["remaining_tmp_entries"]
+    shutil.rmtree(tmp)
+    print(name, entry["counts"], elapsed, flush=True)
+(root / "baseline.status").write_text("0\n")

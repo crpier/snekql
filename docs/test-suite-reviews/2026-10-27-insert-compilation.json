@@ -1,0 +1,4091 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-27",
+  "issue": 571,
+  "scope": "Fifth bounded public insert compilation / batch conflict bindings slice, not completion of #571",
+  "base": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+  "raw_evidence_directory": "/home/crpier/.cache/sq571-write-A5UVVgkZ",
+  "approved_seams": [
+    "Public Query Builder construction/compile()",
+    "Focused snektest selection"
+  ],
+  "not_claimed": [
+    "Product defect",
+    "Runtime speedup",
+    "Full forced-lazy suite",
+    "Direct forced-lazy native/Core children",
+    "Remote Actions validation",
+    "Completion of #571"
+  ],
+  "coverage_audit": {
+    "base": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+    "files": {
+      "tests/query/test_bulk_insert_compilation.py": {
+        "original_cases": 9,
+        "revised_cases": 9,
+        "added_cases": [],
+        "unchanged_case_bodies": [
+          "returning_rejects_a_column_from_another_model",
+          "bulk_insert_rejects_rows_from_different_models",
+          "insert_rejects_uninitialized_model_instances"
+        ],
+        "original_model_class_asts_retained": 2,
+        "added_model_classes": 0,
+        "private_compile_calls_before": 6,
+        "public_compile_calls_after": 6,
+        "sha256": "886e5ed4e296b32fc8662cb35938da6449123d0123704cdfe5753d6c09ddb538"
+      },
+      "tests/query/test_insert_conflict.py": {
+        "original_cases": 11,
+        "revised_cases": 13,
+        "added_cases": [
+          "mariadb_bulk_conflict_binds_rows_before_update_values",
+          "sqlite_bulk_conflict_binds_rows_before_update_values"
+        ],
+        "unchanged_case_bodies": [
+          "conflict_action_requires_an_assignment",
+          "conflict_action_requires_a_target_column",
+          "conflict_target_requires_an_inserted_model_column",
+          "conflict_update_requires_inserted_model_assignments"
+        ],
+        "original_model_class_asts_retained": 13,
+        "added_model_classes": 2,
+        "private_compile_calls_before": 7,
+        "public_compile_calls_after": 9,
+        "sha256": "7820877623ce090d4acda37224448b6e36eb598cdd992710f95d052610505c58"
+      }
+    },
+    "case_mapping": [
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "single_returning_appends_all_columns_in_declaration_order",
+        "original_normalized_assertions": [
+          "assert_eq(sql, expected)",
+          "assert_eq(params, ('a@example.com', 'active'))"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "single_returning_columns_lists_only_named_columns",
+        "original_normalized_assertions": [
+          "assert_eq(sql, expected)",
+          "assert_eq(params, ('a@example.com', 'active'))"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "bulk_returning_columns_lists_only_named_columns_once",
+        "original_normalized_assertions": [
+          "assert_eq(sql, expected)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "returning_rejects_a_column_from_another_model",
+        "original_normalized_assertions": [
+          "assert_raises(QueryConstructionError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": true
+      },
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "bulk_insert_compiles_one_multi_row_values_statement",
+        "original_normalized_assertions": [
+          "assert_eq(sql, 'INSERT INTO \"user\" (\"email\", \"status\") VALUES (?, ?), (?, ?)')",
+          "assert_eq(params, ('a@example.com', 'active', 'b@example.com', 'invited'))"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "bulk_insert_rejects_rows_from_different_models",
+        "original_normalized_assertions": [
+          "assert_raises(QueryConstructionError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": true
+      },
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "insert_rejects_uninitialized_model_instances",
+        "original_normalized_assertions": [
+          "assert_raises(QueryConstructionError)",
+          "assert_raises(QueryConstructionError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": true
+      },
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "bulk_insert_returning_appends_columns_once",
+        "original_normalized_assertions": [
+          "assert_eq(sql, expected)",
+          "assert_eq(params, ('a@example.com', 'active', 'b@example.com', 'active'))"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_bulk_insert_compilation.py",
+        "case": "bulk_insert_rejects_heterogeneous_column_sets",
+        "original_normalized_assertions": [
+          "assert_raises(QueryCompilationError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "sqlite_conflict_update_compiles_multiple_inserted_values",
+        "original_normalized_assertions": [
+          "assert_eq(sql, expected_sql)",
+          "assert_eq(params, ('a@example.com', 'Alice', 'active'))"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "sqlite_conflict_do_nothing_compiles_without_assignments",
+        "original_normalized_assertions": [
+          "assert_eq(sql, expected_sql)",
+          "assert_eq(params, ('a@example.com',))"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "conflict_do_nothing_rejects_returning_result_shape",
+        "original_normalized_assertions": [
+          "assert_raises(QueryCompilationError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "conflict_action_requires_an_assignment",
+        "original_normalized_assertions": [
+          "assert_raises(QueryConstructionError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": true
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "conflict_action_requires_a_target_column",
+        "original_normalized_assertions": [
+          "assert_raises(QueryConstructionError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": true
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "conflict_target_requires_an_inserted_model_column",
+        "original_normalized_assertions": [
+          "assert_raises(QueryConstructionError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": true
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "conflict_update_requires_inserted_model_assignments",
+        "original_normalized_assertions": [
+          "assert_raises(QueryConstructionError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": true
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "conflict_action_rejects_default_values_insert",
+        "original_normalized_assertions": [
+          "assert_raises(QueryCompilationError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "inserted_value_rejects_regular_update_context",
+        "original_normalized_assertions": [
+          "assert_raises(QueryCompilationError)"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "mariadb_conflict_update_uses_duplicate_key_and_values",
+        "original_normalized_assertions": [
+          "assert_eq(sql, expected_sql)",
+          "assert_eq(params, ('a@example.com', 'Alice', 'inactive', 'active'))"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      },
+      {
+        "file": "tests/query/test_insert_conflict.py",
+        "case": "mariadb_conflict_do_nothing_compiles_as_no_op_update",
+        "original_normalized_assertions": [
+          "assert_eq(sql, expected_sql)",
+          "assert_eq(params, ('a@example.com',))"
+        ],
+        "original_query_construction_and_expectations_identical_after_public_compile_normalization": true,
+        "whole_body_and_decorators_identical": false
+      }
+    ],
+    "changed_existing_files": [
+      "tests/query/test_bulk_insert_compilation.py",
+      "tests/query/test_insert_conflict.py"
+    ],
+    "all_other_preexisting_tracked_files_unchanged": true,
+    "sdk_files_unchanged": 117,
+    "original_compilations_retained": 13,
+    "public_compilations_after": 15,
+    "added_original_case_assertions": {
+      "backend": 9,
+      "bulk_projection_params": 1
+    },
+    "group_inventory": {
+      "before": 20,
+      "after": 22,
+      "all_original_names_and_markers_retained": true,
+      "added_cases": [
+        "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values"
+      ]
+    },
+    "query_inventory": {
+      "before": 673,
+      "after": 675,
+      "all_original_names_and_markers_retained": true,
+      "added_cases": [
+        "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values"
+      ]
+    },
+    "normal_lazy_query_inventory_identical": true
+  },
+  "runs": [
+    {
+      "label": "before-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.24402131099486724,
+      "revision": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+      "tmpdir": "/tmp/sq571-70voeq_8",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-70voeq_8"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 20,
+      "passed": 20,
+      "failed": [],
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "after-group",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.22854905200074427,
+      "revision": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+      "tmpdir": "/tmp/sq571-k9uyh_zg",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-k9uyh_zg"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 22,
+      "passed": 22,
+      "failed": [],
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "before-query",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.087259036998148,
+      "revision": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+      "tmpdir": "/tmp/sq571-e22ssjd6",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-e22ssjd6"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 673,
+      "passed": 673,
+      "failed": [],
+      "totals": {
+        "passed": 673,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "after-query",
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.1059214569977485,
+      "revision": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+      "tmpdir": "/tmp/sq571-2olj1g15",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-2olj1g15"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 675,
+      "passed": 675,
+      "failed": [],
+      "totals": {
+        "passed": 675,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    },
+    {
+      "label": "lazy-query",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests/query",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 1.065019586996641,
+      "revision": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+      "tmpdir": "/tmp/sq571-znwkqhu6",
+      "signals": {
+        "SIGINT": "<built-in function default_int_handler>",
+        "SIGTERM": "0",
+        "SIGQUIT": "0"
+      },
+      "environment_overrides": {
+        "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+        "TMPDIR": "/tmp/sq571-znwkqhu6"
+      },
+      "remaining": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "size": 0
+        }
+      ],
+      "tests": 675,
+      "passed": 675,
+      "failed": [],
+      "totals": {
+        "passed": 675,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "removed_lock_only_root": true
+    }
+  ],
+  "red_green_tracers": {
+    "projection-bindings": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/projection-bindings",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "        + f\" ({quoted_columns}) VALUES {values_clause}{conflict}{returning}\"\n    )\n    return sql, params",
+          "new": "        + f\" ({quoted_columns}) VALUES {values_clause}{conflict}{returning}\"\n    )\n    if len(encoded_rows) > 1 and state.returning_fields:\n        params = tuple(reversed(params))\n    return sql, params",
+          "case": "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once",
+            "duration": 0.008797918999334797,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "('active', 'b@example.com', 'active', 'a@example.com') != ('a@example.com', 'active', 'b@example.com', 'active')"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/projection-bindings",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once",
+            "duration": 0.008312838996062055,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "single_returning_appends_all_columns_in_declaration_order": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::single_returning_appends_all_columns_in_declaration_order",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/single_returning_appends_all_columns_in_declaration_order",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+          "new": "return CompiledQuery(backend='mariadb', params=params, sql=sql)",
+          "case": "tests/query/test_bulk_insert_compilation.py::single_returning_appends_all_columns_in_declaration_order"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::single_returning_appends_all_columns_in_declaration_order",
+            "duration": 0.008827628000290133,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'mariadb' != 'sqlite'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::single_returning_appends_all_columns_in_declaration_order",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/single_returning_appends_all_columns_in_declaration_order",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::single_returning_appends_all_columns_in_declaration_order",
+            "duration": 0.008637581995571963,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "single_returning_columns_lists_only_named_columns": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::single_returning_columns_lists_only_named_columns",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/single_returning_columns_lists_only_named_columns",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+          "new": "return CompiledQuery(backend='mariadb', params=params, sql=sql)",
+          "case": "tests/query/test_bulk_insert_compilation.py::single_returning_columns_lists_only_named_columns"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::single_returning_columns_lists_only_named_columns",
+            "duration": 0.008791701999143697,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'mariadb' != 'sqlite'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::single_returning_columns_lists_only_named_columns",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/single_returning_columns_lists_only_named_columns",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::single_returning_columns_lists_only_named_columns",
+            "duration": 0.008365084999240935,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "bulk_insert_compiles_one_multi_row_values_statement": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::bulk_insert_compiles_one_multi_row_values_statement",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/bulk_insert_compiles_one_multi_row_values_statement",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+          "new": "return CompiledQuery(backend='mariadb', params=params, sql=sql)",
+          "case": "tests/query/test_bulk_insert_compilation.py::bulk_insert_compiles_one_multi_row_values_statement"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::bulk_insert_compiles_one_multi_row_values_statement",
+            "duration": 0.008660845996928401,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'mariadb' != 'sqlite'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::bulk_insert_compiles_one_multi_row_values_statement",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/bulk_insert_compiles_one_multi_row_values_statement",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::bulk_insert_compiles_one_multi_row_values_statement",
+            "duration": 0.008560051006497815,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "bulk_insert_returning_appends_columns_once": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::bulk_insert_returning_appends_columns_once",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/bulk_insert_returning_appends_columns_once",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+          "new": "return CompiledQuery(backend='mariadb', params=params, sql=sql)",
+          "case": "tests/query/test_bulk_insert_compilation.py::bulk_insert_returning_appends_columns_once"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::bulk_insert_returning_appends_columns_once",
+            "duration": 0.008699301004526205,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'mariadb' != 'sqlite'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::bulk_insert_returning_appends_columns_once",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/bulk_insert_returning_appends_columns_once",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::bulk_insert_returning_appends_columns_once",
+            "duration": 0.008455421993858181,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "bulk_insert_rejects_heterogeneous_column_sets": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::bulk_insert_rejects_heterogeneous_column_sets",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/bulk_insert_rejects_heterogeneous_column_sets",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "if tuple(row_values) != names:",
+          "new": "if False and tuple(row_values) != names:",
+          "case": "tests/query/test_bulk_insert_compilation.py::bulk_insert_rejects_heterogeneous_column_sets"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::bulk_insert_rejects_heterogeneous_column_sets",
+            "duration": 0.008160847006365657,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "Expected to raise QueryCompilationError but raised KeyError"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_bulk_insert_compilation.py::bulk_insert_rejects_heterogeneous_column_sets",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/bulk_insert_rejects_heterogeneous_column_sets",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_bulk_insert_compilation.py::bulk_insert_rejects_heterogeneous_column_sets",
+            "duration": 0.00797199600492604,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "sqlite_conflict_update_compiles_multiple_inserted_values": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::sqlite_conflict_update_compiles_multiple_inserted_values",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/sqlite_conflict_update_compiles_multiple_inserted_values",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+          "new": "return CompiledQuery(backend='mariadb', params=params, sql=sql)",
+          "case": "tests/query/test_insert_conflict.py::sqlite_conflict_update_compiles_multiple_inserted_values"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::sqlite_conflict_update_compiles_multiple_inserted_values",
+            "duration": 0.014382495006429963,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'mariadb' != 'sqlite'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::sqlite_conflict_update_compiles_multiple_inserted_values",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/sqlite_conflict_update_compiles_multiple_inserted_values",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::sqlite_conflict_update_compiles_multiple_inserted_values",
+            "duration": 0.014115744008449838,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "sqlite_conflict_do_nothing_compiles_without_assignments": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::sqlite_conflict_do_nothing_compiles_without_assignments",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/sqlite_conflict_do_nothing_compiles_without_assignments",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+          "new": "return CompiledQuery(backend='mariadb', params=params, sql=sql)",
+          "case": "tests/query/test_insert_conflict.py::sqlite_conflict_do_nothing_compiles_without_assignments"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::sqlite_conflict_do_nothing_compiles_without_assignments",
+            "duration": 0.013330066998605616,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'mariadb' != 'sqlite'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::sqlite_conflict_do_nothing_compiles_without_assignments",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/sqlite_conflict_do_nothing_compiles_without_assignments",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::sqlite_conflict_do_nothing_compiles_without_assignments",
+            "duration": 0.013192986996727996,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "conflict_do_nothing_rejects_returning_result_shape": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::conflict_do_nothing_rejects_returning_result_shape",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/conflict_do_nothing_rejects_returning_result_shape",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "if state.returning:\n            msg = \"DoNothing cannot be combined with returning()\"",
+          "new": "if False and state.returning:\n            msg = \"DoNothing cannot be combined with returning()\"",
+          "case": "tests/query/test_insert_conflict.py::conflict_do_nothing_rejects_returning_result_shape"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::conflict_do_nothing_rejects_returning_result_shape",
+            "duration": 0.013473434999468736,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "Expected to raise an exception but no exception was raised"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::conflict_do_nothing_rejects_returning_result_shape",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/conflict_do_nothing_rejects_returning_result_shape",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::conflict_do_nothing_rejects_returning_result_shape",
+            "duration": 0.01261289200920146,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "conflict_action_rejects_default_values_insert": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::conflict_action_rejects_default_values_insert",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/conflict_action_rejects_default_values_insert",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "if state.conflict_action is not None:\n            msg = \"on_conflict requires at least one explicit insert column\"",
+          "new": "if False and state.conflict_action is not None:\n            msg = \"on_conflict requires at least one explicit insert column\"",
+          "case": "tests/query/test_insert_conflict.py::conflict_action_rejects_default_values_insert"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::conflict_action_rejects_default_values_insert",
+            "duration": 0.011873274997924455,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "Expected to raise an exception but no exception was raised"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::conflict_action_rejects_default_values_insert",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/conflict_action_rejects_default_values_insert",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::conflict_action_rejects_default_values_insert",
+            "duration": 0.011304258994641714,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "inserted_value_rejects_regular_update_context": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::inserted_value_rejects_regular_update_context",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/inserted_value_rejects_regular_update_context",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "if assignment.value is InsertedValue:\n            msg = \"to_inserted() is only valid in a conflict update\"",
+          "new": "if False and assignment.value is InsertedValue:\n            msg = \"to_inserted() is only valid in a conflict update\"",
+          "case": "tests/query/test_insert_conflict.py::inserted_value_rejects_regular_update_context"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::inserted_value_rejects_regular_update_context",
+            "duration": 0.012161507998825982,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "Expected to raise QueryCompilationError but raised ModelValidationError"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::inserted_value_rejects_regular_update_context",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/inserted_value_rejects_regular_update_context",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::inserted_value_rejects_regular_update_context",
+            "duration": 0.011942962009925395,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "mariadb_conflict_update_uses_duplicate_key_and_values": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/mariadb_conflict_update_uses_duplicate_key_and_values",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+          "new": "return CompiledQuery(backend='sqlite', params=params, sql=sql)",
+          "case": "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+            "duration": 0.02251056498789694,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'sqlite' != 'mariadb'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/mariadb_conflict_update_uses_duplicate_key_and_values",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+            "duration": 0.02194951799174305,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "mariadb_conflict_do_nothing_compiles_as_no_op_update": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::mariadb_conflict_do_nothing_compiles_as_no_op_update",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/mariadb_conflict_do_nothing_compiles_as_no_op_update",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+          "new": "return CompiledQuery(backend='sqlite', params=params, sql=sql)",
+          "case": "tests/query/test_insert_conflict.py::mariadb_conflict_do_nothing_compiles_as_no_op_update"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::mariadb_conflict_do_nothing_compiles_as_no_op_update",
+            "duration": 0.02169285700074397,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "'sqlite' != 'mariadb'"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::mariadb_conflict_do_nothing_compiles_as_no_op_update",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/mariadb_conflict_do_nothing_compiles_as_no_op_update",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::mariadb_conflict_do_nothing_compiles_as_no_op_update",
+            "duration": 0.02095114698749967,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "sqlite-batch-action": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/sqlite-batch-action",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "    params = (*params, *conflict_params)",
+          "new": "    params = (*conflict_params, *params) if len(encoded_rows) > 1 else (*params, *conflict_params)",
+          "case": "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values",
+            "duration": 0.014747181994607672,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "('active', 'a@example.com', 'Alice', 'inactive', 'b@example.com', 'Bob', 'invited') != ('a@example.com', 'Alice', 'inactive', 'b@example.com', 'Bob', 'invited', 'active')"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/sqlite-batch-action",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values",
+            "duration": 0.013780281995423138,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ],
+    "mariadb-batch-action": [
+      {
+        "label": "red",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/mariadb-batch-action",
+        "returncode": 1,
+        "mutation": {
+          "file": "snekql/_query_compile.py",
+          "old": "    params = (*params, *conflict_params)",
+          "new": "    params = (*conflict_params, *params) if len(encoded_rows) > 1 else (*params, *conflict_params)",
+          "case": "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values"
+        },
+        "totals": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+            "duration": 0.022673981002299115,
+            "markers": [
+              "fast"
+            ],
+            "status": "failed",
+            "exception": {
+              "type": "AssertionFailure",
+              "message": "('active', 'a@example.com', 'Alice', 'inactive', 'b@example.com', 'Bob', 'invited') != ('a@example.com', 'Alice', 'inactive', 'b@example.com', 'Bob', 'invited', 'active')"
+            }
+          }
+        ]
+      },
+      {
+        "label": "green",
+        "command": [
+          "/home/crpier/Projects/second-snekql/.venv/bin/python",
+          "-m",
+          "snektest",
+          "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+          "--json-output"
+        ],
+        "cwd": "/home/crpier/.cache/sq571-write-A5UVVgkZ/tracers/mariadb-batch-action",
+        "returncode": 0,
+        "mutation": null,
+        "totals": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "fixture_teardown_failed": 0,
+          "session_teardown_failed": 0,
+          "session_teardown_failures": []
+        },
+        "tests": [
+          {
+            "name": "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+            "duration": 0.022099777997937053,
+            "markers": [
+              "fast"
+            ],
+            "status": "passed"
+          }
+        ]
+      }
+    ]
+  },
+  "calibrations": [
+    {
+      "snapshot": "faults/before-public-backend",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3091590330004692,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=\"mariadb\" if backend == \"sqlite\" else \"sqlite\", params=params, sql=sql)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-public-backend",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3056684269977268,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-public-sql",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.30976921500405297,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=params, sql=\"BROKEN \" + sql)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-public-sql",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3000960180070251,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-public-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.31342695499188267,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-public-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.29728727698966395,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-projection-bindings",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.30940903299779166,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "        + f\" ({quoted_columns}) VALUES {values_clause}{conflict}{returning}\"\n    )\n    return sql, params",
+        "new": "        + f\" ({quoted_columns}) VALUES {values_clause}{conflict}{returning}\"\n    )\n    if len(encoded_rows) > 1 and state.returning_fields:\n        params = tuple(reversed(params))\n    return sql, params"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-projection-bindings",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2984185679961229,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-batch-action-first",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2961320530012017,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    params = (*params, *conflict_params)",
+        "new": "    params = (*conflict_params, *params) if len(encoded_rows) > 1 else (*params, *conflict_params)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-batch-action-first",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.30421141799888574,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-batch-action-repeated",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3028078450006433,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    params = (*params, *conflict_params)",
+        "new": "    params = (*params, *(conflict_params * len(encoded_rows)))"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-batch-action-repeated",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3039226120017702,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-all-action-first",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.306393395003397,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    params = (*params, *conflict_params)",
+        "new": "    params = (*conflict_params, *params)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 19,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 19
+    },
+    {
+      "snapshot": "faults/before-all-action-first",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.29662224600906484,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-bulk_insert_rejects_heterogeneous_column_sets",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.30043471400858834,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "if tuple(row_values) != names:",
+        "new": "if False and tuple(row_values) != names:"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 19,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_bulk_insert_compilation.py::bulk_insert_rejects_heterogeneous_column_sets"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 19
+    },
+    {
+      "snapshot": "faults/before-bulk_insert_rejects_heterogeneous_column_sets",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.30203847200027667,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-conflict_do_nothing_rejects_returning_result_shape",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.30986993000260554,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "if state.returning:\n            msg = \"DoNothing cannot be combined with returning()\"",
+        "new": "if False and state.returning:\n            msg = \"DoNothing cannot be combined with returning()\""
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 19,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::conflict_do_nothing_rejects_returning_result_shape"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 19
+    },
+    {
+      "snapshot": "faults/before-conflict_do_nothing_rejects_returning_result_shape",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.3093561699934071,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-conflict_action_rejects_default_values_insert",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.30308223399333656,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "if state.conflict_action is not None:\n            msg = \"on_conflict requires at least one explicit insert column\"",
+        "new": "if False and state.conflict_action is not None:\n            msg = \"on_conflict requires at least one explicit insert column\""
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 19,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::conflict_action_rejects_default_values_insert"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 19
+    },
+    {
+      "snapshot": "faults/before-conflict_action_rejects_default_values_insert",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.30059171600441914,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/before-inserted_value_rejects_regular_update_context",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.3101351329969475,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "if assignment.value is InsertedValue:\n            msg = \"to_inserted() is only valid in a conflict update\"",
+        "new": "if False and assignment.value is InsertedValue:\n            msg = \"to_inserted() is only valid in a conflict update\""
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 19,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::inserted_value_rejects_regular_update_context"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 19
+    },
+    {
+      "snapshot": "faults/before-inserted_value_rejects_regular_update_context",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2977888329915004,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/after-public-backend",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2936795510031516,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=\"mariadb\" if backend == \"sqlite\" else \"sqlite\", params=params, sql=sql)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 11,
+        "failed": 11,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_bulk_insert_compilation.py::bulk_insert_compiles_one_multi_row_values_statement",
+        "tests/query/test_bulk_insert_compilation.py::bulk_insert_returning_appends_columns_once",
+        "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once",
+        "tests/query/test_bulk_insert_compilation.py::single_returning_appends_all_columns_in_declaration_order",
+        "tests/query/test_bulk_insert_compilation.py::single_returning_columns_lists_only_named_columns",
+        "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::mariadb_conflict_do_nothing_compiles_as_no_op_update",
+        "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+        "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::sqlite_conflict_do_nothing_compiles_without_assignments",
+        "tests/query/test_insert_conflict.py::sqlite_conflict_update_compiles_multiple_inserted_values"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 11
+    },
+    {
+      "snapshot": "faults/after-public-backend",
+      "label": "focused-healthy",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py::returning_rejects_a_column_from_another_model",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.25097361698863097,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=\"mariadb\" if backend == \"sqlite\" else \"sqlite\", params=params, sql=sql)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 1
+    },
+    {
+      "snapshot": "faults/after-public-backend",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28792148501088377,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-public-sql",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2989760119962739,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=params, sql=\"BROKEN \" + sql)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 11,
+        "failed": 11,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_bulk_insert_compilation.py::bulk_insert_compiles_one_multi_row_values_statement",
+        "tests/query/test_bulk_insert_compilation.py::bulk_insert_returning_appends_columns_once",
+        "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once",
+        "tests/query/test_bulk_insert_compilation.py::single_returning_appends_all_columns_in_declaration_order",
+        "tests/query/test_bulk_insert_compilation.py::single_returning_columns_lists_only_named_columns",
+        "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::mariadb_conflict_do_nothing_compiles_as_no_op_update",
+        "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+        "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::sqlite_conflict_do_nothing_compiles_without_assignments",
+        "tests/query/test_insert_conflict.py::sqlite_conflict_update_compiles_multiple_inserted_values"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 11
+    },
+    {
+      "snapshot": "faults/after-public-sql",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2896451519918628,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-public-params",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2856467829988105,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 13,
+        "failed": 9,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_bulk_insert_compilation.py::bulk_insert_compiles_one_multi_row_values_statement",
+        "tests/query/test_bulk_insert_compilation.py::bulk_insert_returning_appends_columns_once",
+        "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once",
+        "tests/query/test_bulk_insert_compilation.py::single_returning_appends_all_columns_in_declaration_order",
+        "tests/query/test_bulk_insert_compilation.py::single_returning_columns_lists_only_named_columns",
+        "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+        "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::sqlite_conflict_update_compiles_multiple_inserted_values"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 13
+    },
+    {
+      "snapshot": "faults/after-public-params",
+      "label": "focused-healthy",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_insert_conflict.py::sqlite_conflict_do_nothing_compiles_without_assignments",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2690930329990806,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "return CompiledQuery(backend=backend, params=params, sql=sql)",
+        "new": "return CompiledQuery(backend=backend, params=tuple(reversed(params)), sql=sql)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 1
+    },
+    {
+      "snapshot": "faults/after-public-params",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28093281899055,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-projection-bindings",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2897572039946681,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "        + f\" ({quoted_columns}) VALUES {values_clause}{conflict}{returning}\"\n    )\n    return sql, params",
+        "new": "        + f\" ({quoted_columns}) VALUES {values_clause}{conflict}{returning}\"\n    )\n    if len(encoded_rows) > 1 and state.returning_fields:\n        params = tuple(reversed(params))\n    return sql, params"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_bulk_insert_compilation.py::bulk_returning_columns_lists_only_named_columns_once"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 21
+    },
+    {
+      "snapshot": "faults/after-projection-bindings",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2827263080107514,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-batch-action-first",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2877370299975155,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    params = (*params, *conflict_params)",
+        "new": "    params = (*conflict_params, *params) if len(encoded_rows) > 1 else (*params, *conflict_params)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 2,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/after-batch-action-first",
+      "label": "focused-healthy",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2768939870002214,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    params = (*params, *conflict_params)",
+        "new": "    params = (*conflict_params, *params) if len(encoded_rows) > 1 else (*params, *conflict_params)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 1
+    },
+    {
+      "snapshot": "faults/after-batch-action-first",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2870917219988769,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-batch-action-repeated",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2873952170048142,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    params = (*params, *conflict_params)",
+        "new": "    params = (*params, *(conflict_params * len(encoded_rows)))"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 20,
+        "failed": 2,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 20
+    },
+    {
+      "snapshot": "faults/after-batch-action-repeated",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2864616000006208,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-all-action-first",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.28908445000706706,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "    params = (*params, *conflict_params)",
+        "new": "    params = (*conflict_params, *params)"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 19,
+        "failed": 3,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+        "tests/query/test_insert_conflict.py::mariadb_conflict_update_uses_duplicate_key_and_values",
+        "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 19
+    },
+    {
+      "snapshot": "faults/after-all-action-first",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2817529530002503,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-bulk_insert_rejects_heterogeneous_column_sets",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2926306720037246,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "if tuple(row_values) != names:",
+        "new": "if False and tuple(row_values) != names:"
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_bulk_insert_compilation.py::bulk_insert_rejects_heterogeneous_column_sets"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 21
+    },
+    {
+      "snapshot": "faults/after-bulk_insert_rejects_heterogeneous_column_sets",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.28001363899966236,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-conflict_do_nothing_rejects_returning_result_shape",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.29277657200873364,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "if state.returning:\n            msg = \"DoNothing cannot be combined with returning()\"",
+        "new": "if False and state.returning:\n            msg = \"DoNothing cannot be combined with returning()\""
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::conflict_do_nothing_rejects_returning_result_shape"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 21
+    },
+    {
+      "snapshot": "faults/after-conflict_do_nothing_rejects_returning_result_shape",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2799325389933074,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-conflict_action_rejects_default_values_insert",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2995384980022209,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "if state.conflict_action is not None:\n            msg = \"on_conflict requires at least one explicit insert column\"",
+        "new": "if False and state.conflict_action is not None:\n            msg = \"on_conflict requires at least one explicit insert column\""
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::conflict_action_rejects_default_values_insert"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 21
+    },
+    {
+      "snapshot": "faults/after-conflict_action_rejects_default_values_insert",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.280294131996925,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-inserted_value_rejects_regular_update_context",
+      "label": "mutant",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 1,
+      "wall_seconds": 0.2875258220010437,
+      "mutation": {
+        "file": "snekql/_query_compile.py",
+        "old": "if assignment.value is InsertedValue:\n            msg = \"to_inserted() is only valid in a conflict update\"",
+        "new": "if False and assignment.value is InsertedValue:\n            msg = \"to_inserted() is only valid in a conflict update\""
+      },
+      "empty_path": false,
+      "totals": {
+        "passed": 21,
+        "failed": 1,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [
+        "tests/query/test_insert_conflict.py::inserted_value_rejects_regular_update_context"
+      ],
+      "failure_types": [
+        "AssertionFailure"
+      ],
+      "passed_count": 21
+    },
+    {
+      "snapshot": "faults/after-inserted_value_rejects_regular_update_context",
+      "label": "restored",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2808725350041641,
+      "mutation": null,
+      "empty_path": false,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    },
+    {
+      "snapshot": "faults/after-empty-path",
+      "label": "no-binaries",
+      "command": [
+        "/home/crpier/Projects/second-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/query/test_bulk_insert_compilation.py",
+        "tests/query/test_insert_conflict.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.2898631080024643,
+      "mutation": null,
+      "empty_path": true,
+      "totals": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0,
+        "session_teardown_failures": []
+      },
+      "failed_names": [],
+      "failure_types": [],
+      "passed_count": 22
+    }
+  ],
+  "full_normal": {
+    "label": "full-normal",
+    "command": [
+      "uv",
+      "run",
+      "snektest",
+      "tests",
+      "--json-output"
+    ],
+    "returncode": 0,
+    "wall_seconds": 348.4927837080031,
+    "totals": {
+      "passed": 4269,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": []
+    },
+    "signals": {
+      "SIGINT": "<built-in function default_int_handler>",
+      "SIGTERM": "0",
+      "SIGQUIT": "0"
+    },
+    "tmpdir": "/dev/shm/sqa-vlkv4px7",
+    "failed_tests": [],
+    "remaining": [
+      {
+        "path": "uv-d1196c17db265703.lock",
+        "size": 0,
+        "directory": false
+      }
+    ],
+    "source_unchanged": true
+  },
+  "full_inventory_comparison": {
+    "comparison_revision": "bce8e88a0e490cb4ba5002932dff8a6d78c6fca1 (validated #584; identical merged base tree)",
+    "before": 4267,
+    "after": 4269,
+    "all_original_names_and_markers_retained": true,
+    "added_cases": [
+      "tests/query/test_insert_conflict.py::mariadb_bulk_conflict_binds_rows_before_update_values",
+      "tests/query/test_insert_conflict.py::sqlite_bulk_conflict_binds_rows_before_update_values"
+    ],
+    "fresh_run_used": true
+  },
+  "full_cleanup": {
+    "owned_tmpdir": "/dev/shm/sqa-vlkv4px7",
+    "user_processes_checked": 141,
+    "live_owned_processes": [],
+    "unreadable_environments": [
+      {
+        "pid": 1582,
+        "cmdline": "/usr/lib/systemd/systemd --user ",
+        "started_before_validation": true
+      },
+      {
+        "pid": 1590,
+        "cmdline": "(sd-pam) ",
+        "started_before_validation": true
+      },
+      {
+        "pid": 24690,
+        "cmdline": "/opt/1Password/1Password-BrowserSupport chrome-extension://aeblfdkhhhdcdjpifhhbdiojplfjncoa/ ",
+        "started_before_validation": true
+      }
+    ],
+    "environment_audit_limit": "Inaccessible environments are recorded; every such process predates validation and its readable command line contains no owned root.",
+    "remaining": [
+      {
+        "path": "uv-d1196c17db265703.lock",
+        "size": 0,
+        "directory": false
+      }
+    ],
+    "reusable_mariadb_data": "Caller-owned .snektest/mariadb-data was left untouched.",
+    "removed": true
+  },
+  "static_checks": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "ty",
+        "check"
+      ],
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": "",
+      "wall_seconds": 0.6015833600104088
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": "",
+      "wall_seconds": 0.01993738900637254
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "returncode": 0,
+      "stdout": "635 files already formatted\n",
+      "stderr": "",
+      "wall_seconds": 0.01719721598783508
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "scripts/generate_query_overloads.py",
+        "--check"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.0449935640062904
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.0024441599962301552
+    }
+  ],
+  "initial_static_report_format_failure": {
+    "command": [
+      "uv",
+      "run",
+      "ruff",
+      "format",
+      "--check",
+      "."
+    ],
+    "returncode": 1,
+    "stdout": "unformatted: File would be reformatted\n  --> docs/test-suite-reviews/2026-10-27-insert-compilation.md:49:21\n   |\n48 | (\n   -     \"a@example.com\", \"Alice\", \"inactive\",\n   -     \"b@example.com\", \"Bob\", \"invited\",\n49 +     \"a@example.com\",\n50 +     \"Alice\",\n51 +     \"inactive\",\n52 +     \"b@example.com\",\n53 +     \"Bob\",\n54 +     \"invited\",\n55 |     \"active\",\n   |\n\n1 file would be reformatted, 634 files already formatted\n",
+    "stderr": "",
+    "note": "Initial report Markdown tuple formatting rejected; code source unchanged."
+  },
+  "environment": {
+    "python": "3.15.0",
+    "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+    "uv": "uv 0.13.4 (x86_64-unknown-linux-gnu)",
+    "host_exclusive": false,
+    "session_suites_parallel": false
+  },
+  "raw_artifacts": {
+    "after-group-record.json": {
+      "sha256": "cf6cd19babbd0a1caca71407cabd97ae4c6d32142efc3b38a19b5be92dddfa50",
+      "bytes": 927
+    },
+    "after-group.json": {
+      "sha256": "0de342e7e63808e4d807071f032247ed4d53269a0cdfb9b5537f5816eba4bbf2",
+      "bytes": 4086
+    },
+    "after-group.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "after-query-record.json": {
+      "sha256": "2903757a798ba197f29ea3f32bf45f665b0e2f33690d012a0db02c9ad778a4cd",
+      "bytes": 854
+    },
+    "after-query.json": {
+      "sha256": "ec812d51e5e7d2aaf4a417d7ce390c075d3e15d9289cac837056b2aaa77a5f85",
+      "bytes": 117608
+    },
+    "after-query.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "audit.py": {
+      "sha256": "2bc5b23d0fdfaeb9cf2bbbb1a33cb55e5bb78884d92613fdbb8870eb834057ae",
+      "bytes": 4947
+    },
+    "before-group-record.json": {
+      "sha256": "5afb5ed8588ab18022e0aa21cbd582e22e5f92a1d77be0df33543abb7feb025f",
+      "bytes": 928
+    },
+    "before-group.json": {
+      "sha256": "836252df5e8e33182d3dc370f04fcb5a0e37fcdd7361ffa8b7b0e9f0bc0dc09f",
+      "bytes": 3731
+    },
+    "before-group.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "before-query-record.json": {
+      "sha256": "c397aaab469b11c96f0faccdce6076e6fc705e07a1dc68b34af05a05b61aa98d",
+      "bytes": 854
+    },
+    "before-query.json": {
+      "sha256": "1c776d8b34d979405a7c29b894a40e025a355cc5a924dc04e5845d596e47ac04",
+      "bytes": 117263
+    },
+    "before-query.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "before-source.json": {
+      "sha256": "b6bc074c65a8d77a6264f82e99f0563b1b90273db1f04c2c3e737a203658c948",
+      "bytes": 229817
+    },
+    "before-test_bulk_insert_compilation.py": {
+      "sha256": "d3e51255635efa9a86481e5497a2d562f6296e531be402fd40fe9d5d56609571",
+      "bytes": 5778
+    },
+    "before-test_insert_conflict.py": {
+      "sha256": "9dd497b46fabb7914164f7a4a9e71f95271fa68db492536c15fe30941095c55a",
+      "bytes": 8693
+    },
+    "bulk_insert_compiles_one_multi_row_values_statement-tracer.json": {
+      "sha256": "9f5ee3f1c5a3f993efa5fd350cf6624b5fbe15673112c8e4f72d7a28c6a0f643",
+      "bytes": 2222
+    },
+    "bulk_insert_rejects_heterogeneous_column_sets-tracer.json": {
+      "sha256": "eed42a66ebc02a7b4774f142f24bb17ed8b0bbd5141e632d6ac4ce3c6ed9f9ce",
+      "bytes": 2163
+    },
+    "bulk_insert_returning_appends_columns_once-tracer.json": {
+      "sha256": "15e81a90f806ffae942dfa5098b84c6df6ee8bc73161bb66d945b6158e6e058b",
+      "bytes": 2159
+    },
+    "calibrate.py": {
+      "sha256": "85119a3f6c9a6dfbdf303ddee9240cf49e4f044aa03fd1d5b502e4c52e2b3d6f",
+      "bytes": 3997
+    },
+    "cleanup-full.py": {
+      "sha256": "bf8cc5fd026b4aa6eaa765b08f1b54ed563c36f8a449ecfef8ab6c19a6443f18",
+      "bytes": 2301
+    },
+    "conflict_action_rejects_default_values_insert-tracer.json": {
+      "sha256": "cd596fd0b3f5692dafb7a71c8ae5b60b28fb01b29237db006bfd140b2e95da5c",
+      "bytes": 2297
+    },
+    "conflict_do_nothing_rejects_returning_result_shape-tracer.json": {
+      "sha256": "5d5be598e8f348d1e479264f67564af3d3cf6a08e40cd29b720306e6c592fc7e",
+      "bytes": 2273
+    },
+    "coverage-audit.json": {
+      "sha256": "21e0d49cb2e0e0987c04a820a1c470e6357bdc4438e8248c4e1356eb616fc162",
+      "bytes": 10928
+    },
+    "fault-records.json": {
+      "sha256": "15c5b9d8684a6b333b9c46bf7b05486571fd865abba09a85e35d795759a34561",
+      "bytes": 149765
+    },
+    "faults/after-all-action-first/mutant.json": {
+      "sha256": "78422cdf96cf4c05d005628e637a582536a0056016f192e0aa5532b2bc2d67dd",
+      "bytes": 4700
+    },
+    "faults/after-all-action-first/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-all-action-first/restored.json": {
+      "sha256": "753431a1520101f0900db8ac8ad9b7657054edefcd6f893cf6d913b103352ace",
+      "bytes": 4082
+    },
+    "faults/after-all-action-first/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-batch-action-first/focused-healthy.json": {
+      "sha256": "3185aeaa32e75b7c008b2df804e6980cede81e8f396fc93c9762114ac70c05a1",
+      "bytes": 323
+    },
+    "faults/after-batch-action-first/focused-healthy.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-batch-action-first/mutant.json": {
+      "sha256": "b913ec5c518531a31c4035dd7a2da8c5146babaa669656edc4baffd3edb9e6b2",
+      "bytes": 4539
+    },
+    "faults/after-batch-action-first/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-batch-action-first/restored.json": {
+      "sha256": "718fbe1290cad00e643265548fae60077b8482aee956adf8be12582dc20b9956",
+      "bytes": 4084
+    },
+    "faults/after-batch-action-first/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-batch-action-repeated/mutant.json": {
+      "sha256": "74faebc16a893cec5745d76e518c13f7e2eb36ce736ccc9dd9b157c15936bf26",
+      "bytes": 4563
+    },
+    "faults/after-batch-action-repeated/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-batch-action-repeated/restored.json": {
+      "sha256": "75eac1de839d2ca10cbf759c07169a13b7c9a1c225a9c890450cc31c7961f732",
+      "bytes": 4086
+    },
+    "faults/after-batch-action-repeated/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-bulk_insert_rejects_heterogeneous_column_sets/mutant.json": {
+      "sha256": "130300105289c2f86458cefa5ccc76c6f1579920f157f3464f4239e06dccff97",
+      "bytes": 4204
+    },
+    "faults/after-bulk_insert_rejects_heterogeneous_column_sets/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-bulk_insert_rejects_heterogeneous_column_sets/restored.json": {
+      "sha256": "ee1330bb5fdef5faf5b32e50406933de1f9f86da20fabe8b0d87e36695718154",
+      "bytes": 4084
+    },
+    "faults/after-bulk_insert_rejects_heterogeneous_column_sets/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-conflict_action_rejects_default_values_insert/mutant.json": {
+      "sha256": "41f790c2d6bb6d9db0edadad34b0b45b5ae21c6ef19c2893493b95cf6e558162",
+      "bytes": 4201
+    },
+    "faults/after-conflict_action_rejects_default_values_insert/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-conflict_action_rejects_default_values_insert/restored.json": {
+      "sha256": "180c3f2dd6aa5f024dc5801fd89c4545ff643534c10a5170c669490fd5af298a",
+      "bytes": 4085
+    },
+    "faults/after-conflict_action_rejects_default_values_insert/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-conflict_do_nothing_rejects_returning_result_shape/mutant.json": {
+      "sha256": "5e17cd3fc7dd49be93aa2140859c8bbb3cabfcee27dd9ec8052ad8405502f82d",
+      "bytes": 4205
+    },
+    "faults/after-conflict_do_nothing_rejects_returning_result_shape/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-conflict_do_nothing_rejects_returning_result_shape/restored.json": {
+      "sha256": "eadcd511116775b1b7741fb242fad85910539c30e6c04e45682c9c7c663370a6",
+      "bytes": 4084
+    },
+    "faults/after-conflict_do_nothing_rejects_returning_result_shape/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-empty-path/no-binaries.json": {
+      "sha256": "6654def326077539c4a3ca78ed0df48d893842e00ed6b2121d84a107363fd3a5",
+      "bytes": 4083
+    },
+    "faults/after-empty-path/no-binaries.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-inserted_value_rejects_regular_update_context/mutant.json": {
+      "sha256": "4d629d0624705468dd0cdd505f2b6000285af358d4684b16430d094f52c05e4a",
+      "bytes": 4215
+    },
+    "faults/after-inserted_value_rejects_regular_update_context/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-inserted_value_rejects_regular_update_context/restored.json": {
+      "sha256": "79465260aed670f27b5ab9a9c7c6dc28b550f625da0a6d8c7937d96e80311ae1",
+      "bytes": 4082
+    },
+    "faults/after-inserted_value_rejects_regular_update_context/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-projection-bindings/mutant.json": {
+      "sha256": "0aaa0c6201d95bdb0d14a9ace548502295fa246b0fba221346a525fda5258dfc",
+      "bytes": 4253
+    },
+    "faults/after-projection-bindings/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-projection-bindings/restored.json": {
+      "sha256": "9ad6184fd7d9cf258928c721397da3760fac5ecce4381991c652137dc3e9efd8",
+      "bytes": 4083
+    },
+    "faults/after-projection-bindings/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-public-backend/focused-healthy.json": {
+      "sha256": "43ac8251c4a86e548ef6a7acc8eefa235b2bc6775851970651c5ea241575b0f7",
+      "bytes": 324
+    },
+    "faults/after-public-backend/focused-healthy.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-public-backend/mutant.json": {
+      "sha256": "c594b288ad2ba785041e7dbf7e70358d316adbdbcb835de5061cb73d5f6716c0",
+      "bytes": 4950
+    },
+    "faults/after-public-backend/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-public-backend/restored.json": {
+      "sha256": "be9f60d96109ff14ab252dd5ebbf9ac2c254fea058b6543c55bdfe31d0ed824a",
+      "bytes": 4086
+    },
+    "faults/after-public-backend/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-public-params/focused-healthy.json": {
+      "sha256": "09851d8c41dd8674e27fec1c8e3ff8d5bc67b11d668511f790303bc66ed2b60c",
+      "bytes": 325
+    },
+    "faults/after-public-params/focused-healthy.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-public-params/mutant.json": {
+      "sha256": "dcdc3f2ff048381a32c60f70247395c1a3a9abef23329d847a6eeddaf6075c36",
+      "bytes": 5578
+    },
+    "faults/after-public-params/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-public-params/restored.json": {
+      "sha256": "175dbe646051614c5f0ffe708970d447367ef4aeff99b081bec014b016199e58",
+      "bytes": 4091
+    },
+    "faults/after-public-params/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-public-sql/mutant.json": {
+      "sha256": "505b58dcce4933c2ca20891922620742cc3c2eb7eaa76d7e5711b9a209fa940d",
+      "bytes": 7311
+    },
+    "faults/after-public-sql/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/after-public-sql/restored.json": {
+      "sha256": "b47891cf76e20a77bbb82fa88ac4bb188a348ca24bfb474709c615c560352aa9",
+      "bytes": 4080
+    },
+    "faults/after-public-sql/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-all-action-first/mutant.json": {
+      "sha256": "0650824fd1b113b96af4fcfa90c5812e510e0b13c1ee9468685607a6bc95ac54",
+      "bytes": 3882
+    },
+    "faults/before-all-action-first/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-all-action-first/restored.json": {
+      "sha256": "46fab4be4d8e0ec3c0c5714d1c4a1eca62f975de11d79f0a509a7bee3bbd9688",
+      "bytes": 3729
+    },
+    "faults/before-all-action-first/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-batch-action-first/mutant.json": {
+      "sha256": "5b06acef21791bf12092b949b47ca8d6fb9b5165f8be9e9cfca789f32909ce1d",
+      "bytes": 3725
+    },
+    "faults/before-batch-action-first/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-batch-action-first/restored.json": {
+      "sha256": "b1132b8a5eca0304571a599074de997fe2812dede2cccfaf1aa95af009c97133",
+      "bytes": 3726
+    },
+    "faults/before-batch-action-first/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-batch-action-repeated/mutant.json": {
+      "sha256": "722f41b4909c3f050f0e149ac055f0faadeb4bb5c32d44525f17004dc7e4bbd9",
+      "bytes": 3725
+    },
+    "faults/before-batch-action-repeated/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-batch-action-repeated/restored.json": {
+      "sha256": "9109ad9a3c8a52259c67ca950723c5a0416de8949bbbd655b26bda1ab64a7868",
+      "bytes": 3729
+    },
+    "faults/before-batch-action-repeated/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-bulk_insert_rejects_heterogeneous_column_sets/mutant.json": {
+      "sha256": "a6034e3b9e39b804ec42101b4371a5eb872dc84ad86023422f69d97f0f8520bd",
+      "bytes": 3846
+    },
+    "faults/before-bulk_insert_rejects_heterogeneous_column_sets/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-bulk_insert_rejects_heterogeneous_column_sets/restored.json": {
+      "sha256": "fc39b59123960f7a9d039ac3fd121969c9be4e10571bf5589c62c45280010d18",
+      "bytes": 3725
+    },
+    "faults/before-bulk_insert_rejects_heterogeneous_column_sets/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-conflict_action_rejects_default_values_insert/mutant.json": {
+      "sha256": "d86426ef61586d0f2d3e615bc92bdfb3849259ee5026fd382ecf5638d8398a0a",
+      "bytes": 3843
+    },
+    "faults/before-conflict_action_rejects_default_values_insert/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-conflict_action_rejects_default_values_insert/restored.json": {
+      "sha256": "10239e98a31155d215df0e06b75c9713b85017a10a64dfdb41112aff0584416c",
+      "bytes": 3730
+    },
+    "faults/before-conflict_action_rejects_default_values_insert/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-conflict_do_nothing_rejects_returning_result_shape/mutant.json": {
+      "sha256": "a64c46e533edf3de8726aeabc33ec4fb2636a8af03ab916d768e8cdaf247d79f",
+      "bytes": 3839
+    },
+    "faults/before-conflict_do_nothing_rejects_returning_result_shape/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-conflict_do_nothing_rejects_returning_result_shape/restored.json": {
+      "sha256": "1d0ab0ef26b7085c29c63ebd194196b53f374a603bbecdcb3eba5dec1359f25b",
+      "bytes": 3726
+    },
+    "faults/before-conflict_do_nothing_rejects_returning_result_shape/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-inserted_value_rejects_regular_update_context/mutant.json": {
+      "sha256": "8c9588fa74f65f6d4f930fd2eb2ba7028e71dfabab6890f0c82db6f847ea9093",
+      "bytes": 3855
+    },
+    "faults/before-inserted_value_rejects_regular_update_context/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-inserted_value_rejects_regular_update_context/restored.json": {
+      "sha256": "b28da3d11378ca318c47ab60a219568efa7612c837b352cb7128fb13198c135b",
+      "bytes": 3725
+    },
+    "faults/before-inserted_value_rejects_regular_update_context/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-projection-bindings/mutant.json": {
+      "sha256": "d9b0241431408bb1ad930d376b589c3d6ab23ec03d3ae3c278c2e90b30300787",
+      "bytes": 3727
+    },
+    "faults/before-projection-bindings/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-projection-bindings/restored.json": {
+      "sha256": "09859583e0ea32453ada5a58083b79a47697d71daa3d6767ad6c24839fa9f8d0",
+      "bytes": 3730
+    },
+    "faults/before-projection-bindings/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-public-backend/mutant.json": {
+      "sha256": "d58094227fcb59a70b52c9d0618d3aaf4f6bc75340e0551e746669bcf21d54be",
+      "bytes": 3726
+    },
+    "faults/before-public-backend/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-public-backend/restored.json": {
+      "sha256": "58efb5d932fdff73814014232bc666b98bd0e4c549b2e6c063468986d7c10dbc",
+      "bytes": 3727
+    },
+    "faults/before-public-backend/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-public-params/mutant.json": {
+      "sha256": "439b9fdcb8316dfef63294671bf7a2a920fbab5da6f09fa048ac82cb533f99e1",
+      "bytes": 3724
+    },
+    "faults/before-public-params/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-public-params/restored.json": {
+      "sha256": "ca3d6ce0748ef593f6a733dc30091d2443a7e9b6ed93819c2c5e93aaea2a4d2b",
+      "bytes": 3730
+    },
+    "faults/before-public-params/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-public-sql/mutant.json": {
+      "sha256": "3f59272e484650243cce4d71cdeb829acd9a4ccf7311a26c8ddecff940034782",
+      "bytes": 3725
+    },
+    "faults/before-public-sql/mutant.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "faults/before-public-sql/restored.json": {
+      "sha256": "00c4c814d251a471f6254957e70e629b2c9b83395a17f24bd255d571a63ed9ac",
+      "bytes": 3722
+    },
+    "faults/before-public-sql/restored.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "full-cleanup.json": {
+      "sha256": "428ce5575c3da1cf4b1df9abb13cecbd7dfc2c399ca233d6033fea75f98839c9",
+      "bytes": 946
+    },
+    "full-exit-code": {
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    "full-launch.log": {
+      "sha256": "6eb28caf047e02d9c8b4dcf82588af389674ba90a282fcd6b6d9e21628ba08c9",
+      "bytes": 673
+    },
+    "full-normal.json": {
+      "sha256": "0c72ddf641091c696502764dec097932f0f373840ba9aeb03a25e23cad0429d3",
+      "bytes": 764454
+    },
+    "full-normal.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "full-records.json": {
+      "sha256": "8f1154b97e65329077cf6e3e5a06b7b8254dd201a32ff8d68b659e8ef09d03a7",
+      "bytes": 747
+    },
+    "full-source.json": {
+      "sha256": "d75139d605d66c0faeb32f9e0bed753971d63225cd75b8449d0bcf192c13d377",
+      "bytes": 49617
+    },
+    "full-tmpdir": {
+      "sha256": "2dbf1de61dc26a037e333b384c5bed258bc44f2744d5e83f3234238b4e43b430",
+      "bytes": 22
+    },
+    "inserted_value_rejects_regular_update_context-tracer.json": {
+      "sha256": "464be44170b68999c3fbb64be1d9f6c0c284ecf73d560ecbea212bcfd61492ec",
+      "bytes": 2294
+    },
+    "lazy-query-record.json": {
+      "sha256": "14250458dae75ea72e2429bded163917ec5e67b546a928db597e80598b750b01",
+      "bytes": 917
+    },
+    "lazy-query.json": {
+      "sha256": "704ac2fdf31fd1fab602a27348b56de49a9f8c6fc8f480d985b52305b0d1f215",
+      "bytes": 117634
+    },
+    "lazy-query.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "mariadb-batch-action-tracer.json": {
+      "sha256": "b3d353df6e8aeb14f81735f518329c95ba64458adc32932a674b4dc557118bc0",
+      "bytes": 2293
+    },
+    "mariadb_conflict_do_nothing_compiles_as_no_op_update-tracer.json": {
+      "sha256": "7689ad6c3c66ac32462198efee37d0fc377fcd4eb7a14cf39058bc241412aa98",
+      "bytes": 2186
+    },
+    "mariadb_conflict_update_uses_duplicate_key_and_values-tracer.json": {
+      "sha256": "ef6c7f395a449d7a531ee5b3dae035180619c25c3fc08fca8909181ba30b7c4f",
+      "bytes": 2193
+    },
+    "migrate-one.py": {
+      "sha256": "1252f2edd2ac894a55fd1449f79bdd2474d186888523abf5ba7f493aef346b7e",
+      "bytes": 3306
+    },
+    "projection-bindings-tracer.json": {
+      "sha256": "c4566414709707ea29a3451abd8b21c91db328bac9782db0110a6306ad4ada7b",
+      "bytes": 2448
+    },
+    "run.py": {
+      "sha256": "fb755afe46623517c029b402ea5651a3aed2f74680788f3fce1bcc275ea51fe8",
+      "bytes": 1611
+    },
+    "single_returning_appends_all_columns_in_declaration_order-tracer.json": {
+      "sha256": "55a95de9ab2c619ab0fb85594779d3fcde115c469405ee5675e3edef128bf653",
+      "bytes": 2264
+    },
+    "single_returning_columns_lists_only_named_columns-tracer.json": {
+      "sha256": "583e81f529ec6d193fb9e6e2d0cf1084ad9189db6c751e23a38e82da0ad4c16e",
+      "bytes": 2208
+    },
+    "snektest-METADATA.txt": {
+      "sha256": "9dafa685c8132c98119aa571000e8051495f2bb446f2290960d62002cabf4880",
+      "bytes": 15056
+    },
+    "sqlite-batch-action-tracer.json": {
+      "sha256": "57719f1acbe1107d886bd1864e07d22257682a7f21f7f8b61036f753b92289ba",
+      "bytes": 2286
+    },
+    "sqlite_conflict_do_nothing_compiles_without_assignments-tracer.json": {
+      "sha256": "9508e69f8dbe8211d26cbd338e3a8f21dee4c7d6bcddec6bde1f965ef416b97c",
+      "bytes": 2210
+    },
+    "sqlite_conflict_update_compiles_multiple_inserted_values-tracer.json": {
+      "sha256": "d10253da0b39fcd042b971aa46911464931be0ff6969a52a1628220b6f322126",
+      "bytes": 2217
+    },
+    "static-before-format.json": {
+      "sha256": "70e1b93b8d0dee4294d959c946c4b236b484d751eef4eed35afbd83079e90266",
+      "bytes": 693
+    },
+    "static.json": {
+      "sha256": "cdaf05ece255ceeca60ee4567941757cc5da08ce15ba028148845efb4f878777",
+      "bytes": 1064
+    },
+    "tracer-specs.json": {
+      "sha256": "0a0658267f59a32101122e7af0f5866462d57716820df8613dd60e27e217cb9c",
+      "bytes": 5803
+    },
+    "tracer.py": {
+      "sha256": "0eb48d1bf203498cdd5c2e30a3fd9be90bd8913792ee6c2a7688944314a51935",
+      "bytes": 1314
+    },
+    "tracers/bulk_insert_compiles_one_multi_row_values_statement/green.json": {
+      "sha256": "0c6dbcb3fb1995bf9515161791dcd6c39c33747e1379a2e4b15c8c6377e451ee",
+      "bytes": 329
+    },
+    "tracers/bulk_insert_compiles_one_multi_row_values_statement/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/bulk_insert_compiles_one_multi_row_values_statement/red.json": {
+      "sha256": "b377aeb70986ad7d5643ec186c96a8d767292df049d931fc6c84f97025333b39",
+      "bytes": 408
+    },
+    "tracers/bulk_insert_compiles_one_multi_row_values_statement/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/bulk_insert_rejects_heterogeneous_column_sets/green.json": {
+      "sha256": "9bdb02dc56bbe56defb760202ea9f0727349cf3b0d1beb217f8824cac3eb6558",
+      "bytes": 322
+    },
+    "tracers/bulk_insert_rejects_heterogeneous_column_sets/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/bulk_insert_rejects_heterogeneous_column_sets/red.json": {
+      "sha256": "f569d3ed6f9490f2bba237f4301dd64759548b862b3ef283846d3f3bbc85f979",
+      "bytes": 440
+    },
+    "tracers/bulk_insert_rejects_heterogeneous_column_sets/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/bulk_insert_returning_appends_columns_once/green.json": {
+      "sha256": "26c0e773da9ffe3e13a33c45f604a17e5827cfbaba4854a2db561b36dc4c16c3",
+      "bytes": 320
+    },
+    "tracers/bulk_insert_returning_appends_columns_once/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/bulk_insert_returning_appends_columns_once/red.json": {
+      "sha256": "3f446ea74e71597baed563792fabe38af63c6a1825031734da7ccdc42ca22c68",
+      "bytes": 399
+    },
+    "tracers/bulk_insert_returning_appends_columns_once/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/conflict_action_rejects_default_values_insert/green.json": {
+      "sha256": "5bd7c25a58de1f42d6998f597f69551f46ff69d1985998517baf195e4f9c22fe",
+      "bytes": 315
+    },
+    "tracers/conflict_action_rejects_default_values_insert/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/conflict_action_rejects_default_values_insert/red.json": {
+      "sha256": "85fc1d6c459113d2ca8a5e2a2208b58fa2a42ed8e7f49953614ec0f5f50bf8a9",
+      "bytes": 431
+    },
+    "tracers/conflict_action_rejects_default_values_insert/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/conflict_do_nothing_rejects_returning_result_shape/green.json": {
+      "sha256": "b4f73af3d76631fa4befe5b76ab779df428eb03b1d8a665c804db1b36348a1c0",
+      "bytes": 319
+    },
+    "tracers/conflict_do_nothing_rejects_returning_result_shape/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/conflict_do_nothing_rejects_returning_result_shape/red.json": {
+      "sha256": "759b309ee0420cf01c012c82e3ff8cd0efce709fa3655cbaebbb706cba164198",
+      "bytes": 436
+    },
+    "tracers/conflict_do_nothing_rejects_returning_result_shape/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/inserted_value_rejects_regular_update_context/green.json": {
+      "sha256": "4086f164343f34946ce9233d2cf21f5d7eb19da93dab58d5cc07dbbdc96612f2",
+      "bytes": 315
+    },
+    "tracers/inserted_value_rejects_regular_update_context/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/inserted_value_rejects_regular_update_context/red.json": {
+      "sha256": "773e04a834d05c7c7b0896fa8b8119b480fe7fea16c1d2013d937fcbd0d6d103",
+      "bytes": 444
+    },
+    "tracers/inserted_value_rejects_regular_update_context/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/mariadb-batch-action/green.json": {
+      "sha256": "1f14bf6ed74eda3c3a7f3f3b31c6d46c635494d0a8b264d9fc48bcf2467f40dd",
+      "bytes": 323
+    },
+    "tracers/mariadb-batch-action/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/mariadb-batch-action/red.json": {
+      "sha256": "5490cc548a68f2be3995f7dc30d1dc5929362e3069ead1d7e9045c407b4d1320",
+      "bytes": 551
+    },
+    "tracers/mariadb-batch-action/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/mariadb_conflict_do_nothing_compiles_as_no_op_update/green.json": {
+      "sha256": "7d12bf8a7ca2a050f21a1e8b24ea2ab0ed154f3b1c1ea7d5a1dfe44b5f6f5cc5",
+      "bytes": 321
+    },
+    "tracers/mariadb_conflict_do_nothing_compiles_as_no_op_update/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/mariadb_conflict_do_nothing_compiles_as_no_op_update/red.json": {
+      "sha256": "2837e14ef12f0cae1bd4fd9f30c35e94f83a8d7fbf6b5d173b475a271e1864bf",
+      "bytes": 400
+    },
+    "tracers/mariadb_conflict_do_nothing_compiles_as_no_op_update/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/mariadb_conflict_update_uses_duplicate_key_and_values/green.json": {
+      "sha256": "2b0a36cd01cf8d497f75d98e543a8e0dfe9852e1c02e529393f677a5e5f9be66",
+      "bytes": 322
+    },
+    "tracers/mariadb_conflict_update_uses_duplicate_key_and_values/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/mariadb_conflict_update_uses_duplicate_key_and_values/red.json": {
+      "sha256": "e3eddf95eb81f01ce3c63618d87a6e7f25b5ce5e3fbfb025ae50041ecbfec9c4",
+      "bytes": 401
+    },
+    "tracers/mariadb_conflict_update_uses_duplicate_key_and_values/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/projection-bindings/green.json": {
+      "sha256": "f5c23589195e936452555e9d0e3f0a47cb19c84eac8dfb865b3900ffd2e204c5",
+      "bytes": 330
+    },
+    "tracers/projection-bindings/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/projection-bindings/red.json": {
+      "sha256": "91143489529762012fd0f748ed56e0ad9987cd67410576510bea74e1a7dcb012",
+      "bytes": 500
+    },
+    "tracers/projection-bindings/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/single_returning_appends_all_columns_in_declaration_order/green.json": {
+      "sha256": "0429a115da9629e91a12a9d8603696d0af074e1a11204d6620ba1e51cf9ca426",
+      "bytes": 335
+    },
+    "tracers/single_returning_appends_all_columns_in_declaration_order/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/single_returning_appends_all_columns_in_declaration_order/red.json": {
+      "sha256": "4bebcf3efbf34782c0d5447aab1e6d7a08c20e499d056aa27208b39e2c91e707",
+      "bytes": 414
+    },
+    "tracers/single_returning_appends_all_columns_in_declaration_order/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/single_returning_columns_lists_only_named_columns/green.json": {
+      "sha256": "1a362be713c5d95e6de3cae872faa1cd68a3a097a87ed95f85a09bdf1e6c438a",
+      "bytes": 327
+    },
+    "tracers/single_returning_columns_lists_only_named_columns/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/single_returning_columns_lists_only_named_columns/red.json": {
+      "sha256": "fbc087f2d7eb344f5e387e07a7bba1b1fe8ae37ebeaaf698820793d049057e7d",
+      "bytes": 406
+    },
+    "tracers/single_returning_columns_lists_only_named_columns/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/sqlite-batch-action/green.json": {
+      "sha256": "759f593428e9a56e1934a63ac76a05251ce969df644b3dffe8a5db2cbf3f62e3",
+      "bytes": 322
+    },
+    "tracers/sqlite-batch-action/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/sqlite-batch-action/red.json": {
+      "sha256": "bcf18d1e2027fffc3a5596b1a0f19431bc488f6754afc349427b4107b4ac13cc",
+      "bytes": 550
+    },
+    "tracers/sqlite-batch-action/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/sqlite_conflict_do_nothing_compiles_without_assignments/green.json": {
+      "sha256": "756fcbac0ec2f1d14bc38863b6171f884da2866a69b46d97b175c8590bc8ba89",
+      "bytes": 325
+    },
+    "tracers/sqlite_conflict_do_nothing_compiles_without_assignments/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/sqlite_conflict_do_nothing_compiles_without_assignments/red.json": {
+      "sha256": "950a7ef33d8014b8428f8fa13099713a4fe76d24778c7ddb8f93833fa94cc833",
+      "bytes": 404
+    },
+    "tracers/sqlite_conflict_do_nothing_compiles_without_assignments/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/sqlite_conflict_update_compiles_multiple_inserted_values/green.json": {
+      "sha256": "b33fdeb0b242753ae5bb5cf973dab8806394963fc298b73a7a9649bc0c91d494",
+      "bytes": 326
+    },
+    "tracers/sqlite_conflict_update_compiles_multiple_inserted_values/green.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "tracers/sqlite_conflict_update_compiles_multiple_inserted_values/red.json": {
+      "sha256": "096001e499e147851f33df96e4952fd2ae1e910faee83ba8ac8d2c9f3168a229",
+      "bytes": 405
+    },
+    "tracers/sqlite_conflict_update_compiles_multiple_inserted_values/red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validate-full.py": {
+      "sha256": "a3b26d8c1cdc56086e248c38dedb68ef64471571ac4cd8e154ea6c5a2384aabf",
+      "bytes": 2021
+    },
+    "write-evidence.py": {
+      "sha256": "556989a76084ef5cf86867772f24968e5773deb2d88ef723abaa6bbed95631a4",
+      "bytes": 6075
+    }
+  }
+}

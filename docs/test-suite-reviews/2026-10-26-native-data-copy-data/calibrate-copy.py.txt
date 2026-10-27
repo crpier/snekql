@@ -1,0 +1,39 @@
+import gzip,hashlib,json,os,shutil,subprocess,sys,time
+from pathlib import Path
+r=Path(__file__).parent;checkout=Path.cwd();copy=r/'copy-calibration-src';copy.mkdir(exist_ok=True)
+files=subprocess.check_output(['git','ls-files','snekql','benchmarks','tests/__init__.py','tests/testing/__init__.py','tests/testing/mariadb/__init__.py'],text=True).splitlines()+['tests/testing/mariadb/data.py','tests/testing/mariadb/test_data_copy.py']
+for name in files:
+ source=checkout/name
+ if source.is_file():dest=copy/name;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,dest)
+p=copy/'tests/testing/mariadb/data.py';original=p.read_bytes();base=original.decode();metadata={'library_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'candidate_source_sha256':{n:hashlib.sha256((checkout/n).read_bytes()).hexdigest() for n in files[-2:]},'runs':[]}
+live=base.replace('''        ):
+            pass
+
+        def copy_data(destination: Path) -> None:
+            _ = copytree(seed, destination)
+
+        yield copy_data''','''        ):
+            def copy_data(destination: Path) -> None:
+                _ = copytree(seed, destination)
+            yield copy_data''');assert live!=base
+faults=[('live-seed',live,'seed_is_reaped_before_factory_publication'),('overwrite',base.replace('copytree(seed, destination)','copytree(seed, destination, dirs_exist_ok=True)'),'data_copy_rejects_existing_destinations'),('alias',base.replace('_ = copytree(seed, destination)','destination.symlink_to(seed, target_is_directory=True)'),'data_copies_isolate_schema_history_and_accounts'),('hardlink',base.replace('from pathlib import Path','from pathlib import Path\nfrom os import link').replace('copytree(seed, destination)','copytree(seed, destination, copy_function=link)'),'data_copies_isolate_schema_history_and_accounts')]
+for index,(name,fault,test) in enumerate(faults):
+ tmp=r/f'f{index}';tmp.mkdir();cmd=[sys.executable,'-m','snektest','tests/testing/mariadb/test_data_copy.py::'+test,'--json-output'];start=time.time()
+ try:
+  p.write_text(fault)
+  with (r/f'fault-copy-{name}.json').open('wb') as out,(r/f'fault-copy-{name}.stderr').open('wb') as err:result=subprocess.run(cmd,cwd=copy,env={**os.environ,'TMPDIR':str(tmp),'PYTHON_CONTEXT_AWARE_WARNINGS':'1'},stdout=out,stderr=err,check=False)
+  data=json.loads((r/f'fault-copy-{name}.json').read_text());assert result.returncode==1 and data['failed']==1 and data['errors']==0,(name,result.returncode,data);print(name,data['tests'][0].get('exception'),flush=True)
+  active=[l for l in subprocess.check_output(['ps','-eo','pid,args'],text=True).splitlines() if str(tmp) in l];assert not active,active
+  artifacts=[]
+  for path in sorted(tmp.rglob('*')):
+   if path.is_file():
+    info={'path':str(path.relative_to(tmp)),'size':path.stat().st_size}
+    if path.suffix in ('.err','.log'):
+     raw=path.read_bytes();archive=r/'fault-copy-logs'/f'{name}-{len(artifacts)}.gz';archive.parent.mkdir(exist_ok=True);archive.write_bytes(gzip.compress(raw,mtime=0));info.update({'sha256':hashlib.sha256(raw).hexdigest(),'gzip':str(archive.relative_to(r))});assert gzip.decompress(archive.read_bytes())==raw
+    artifacts.append(info)
+  metadata['runs'].append({'name':name,'test':test,'command':cmd,'TMPDIR':str(tmp),'exit_code':result.returncode,'wall_seconds':time.time()-start,'fault_source_sha256':hashlib.sha256(fault.encode()).hexdigest(),'fault_source':fault,'report_sha256':hashlib.sha256((r/f'fault-copy-{name}.json').read_bytes()).hexdigest(),'artifacts_before_removal':artifacts,'no_live_owned_processes':True})
+  shutil.rmtree(tmp)
+ finally:p.write_bytes(original)
+ assert p.read_bytes()==original
+(r/'copy-calibration.json').write_text(json.dumps(metadata,indent=2)+'\n')
+print('All copied sources restored; owned failed data removed after preserving logs.')

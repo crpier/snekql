@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncGenerator, Generator, Sequence
 from contextlib import contextmanager
@@ -10,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from snektest import fixture, load_fixture
 
+from benchmarks._artifacts import mariadb_artifacts
 from snekql._query_codec import DialectQueryCodec
 from snekql._runtime_selection import RuntimeConfig
 from snekql.mariadb._dialect_sql import MARIADB_QUERY_DIALECT
@@ -30,6 +32,37 @@ if TYPE_CHECKING:
 # Bind test codecs directly rather than depending on import registration order.
 SQLITE_CODEC = DialectQueryCodec(backend="sqlite", dialect=SQLITE_QUERY_DIALECT)
 MARIADB_CODEC = DialectQueryCodec(backend="mariadb", dialect=MARIADB_QUERY_DIALECT)
+
+
+async def wait_for_task_event[T](
+    task: asyncio.Task[T],
+    event: asyncio.Event,
+    *,
+    timeout: float,  # noqa: ASYNC109 - preserve each caller's test watchdog budget
+) -> None:
+    """Observe readiness or task failure without cancelling the caller-owned task.
+
+    Normal completion before the event is an assertion failure. The supplied
+    timeout only bounds observation; callers still own task cancellation/reaping.
+    Only the event waiter allocated here is cancelled and collected on exit.
+    """
+
+    waiter = asyncio.create_task(event.wait())
+    try:
+        done, _ = await asyncio.wait(
+            (task, waiter), timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+        )
+        if task in done:
+            task.result()
+            if not event.is_set():
+                msg = "Task completed before the expected event was set"
+                raise AssertionError(msg)
+        if waiter not in done:
+            msg = "Timed out waiting for the expected task event"
+            raise TimeoutError(msg)
+    finally:
+        waiter.cancel()
+        await asyncio.gather(waiter, return_exceptions=True)
 
 
 def scaffold_migrations(
@@ -165,11 +198,15 @@ def capture_snekql_logs() -> Generator[SnekqlLogCapture]:
 async def _provide_mariadb_server_session() -> AsyncGenerator[TemporaryMariaDBServer]:
     """Keep one local MariaDB process alive for the integration-test session."""
 
-    async with temporary_mariadb_server(
-        data_directory=Path(".snektest/mariadb-data"),
-        reset_database=True,
-        transports={"tcp"},
-    ) as server:
+    async with (
+        mariadb_artifacts() as root,
+        temporary_mariadb_server(
+            data_directory=Path(".snektest/mariadb-data"),
+            runtime_base_directory=root,
+            reset_database=True,
+            transports={"tcp"},
+        ) as server,
+    ):
         yield server
 
 

@@ -2,9 +2,11 @@
 
 lazy from typing import Any
 
+lazy from snekql._explain_types import ExplainFormat
 lazy from snekql._query_dialect import ExplainMode, QueryDialect
 lazy from snekql._query_state import SelectState, WriteState
 lazy from snekql.errors import QueryCompilationError
+lazy from snekql.sqlite._explain import decode_explain
 lazy from snekql.sqlite.identifiers import quote_identifier
 lazy from snekql.storage import Attr
 
@@ -49,11 +51,19 @@ def _inserted_value_sql(quoted_column: str) -> str:
     return f"excluded.{quoted_column}"
 
 
-def _explain_sql(_state: SelectState | WriteState, sql: str, mode: ExplainMode) -> str:
+def _explain_sql(
+    _state: SelectState | WriteState,
+    sql: str,
+    mode: ExplainMode,
+    plan_format: ExplainFormat,
+) -> str:
     """SQLite exposes query plans but no executing ANALYZE statement."""
 
     if mode == "analyze":
         msg = "SQLite does not support EXPLAIN ANALYZE"
+        raise QueryCompilationError(msg)
+    if plan_format != "native":
+        msg = "SQLite does not support JSON query plans"
         raise QueryCompilationError(msg)
     return "EXPLAIN QUERY PLAN " + sql
 
@@ -65,6 +75,7 @@ SQLITE_QUERY_DIALECT = QueryDialect(
     current_timestamp_sql=current_timestamp_sql,
     empty_insert_sql=_empty_insert_sql,
     explain_sql=_explain_sql,
+    decode_explain=decode_explain,
     encode_column_value=_encode_column_value,
     encode_write_value=_encode_write_value,
     encode_sum_value=_encode_column_value,

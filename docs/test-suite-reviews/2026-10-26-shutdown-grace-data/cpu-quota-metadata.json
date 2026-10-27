@@ -1,0 +1,18 @@
+{
+  "command": [
+    "systemd-run",
+    "--user",
+    "--scope",
+    "--quiet",
+    "--unit=sq570-probe-1793035489",
+    "-p",
+    "CPUQuota=5%",
+    "--",
+    "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+    "-m",
+    "tests.testing.mariadb.shutdown_probe"
+  ],
+  "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+  "exit_code": 0,
+  "scope": "owned transient user scope; executed only after matched captures"
+}

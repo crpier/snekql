@@ -20,9 +20,9 @@ from snekql.sqlite import (
     Row,
     Text,
     insert,
+    insert_many,
     update,
 )
-from tests.helpers import MARIADB_CODEC, SQLITE_CODEC
 
 
 @test(mark="fast")
@@ -38,7 +38,7 @@ def sqlite_conflict_update_compiles_multiple_inserted_values() -> None:
         name: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False)
 
-    sql, params = SQLITE_CODEC.compile_write_sql(
+    compiled = (
         insert(User(email="a@example.com", name="Alice", status="active")).on_conflict(
             User.email,
             action=DoUpdate(
@@ -46,13 +46,15 @@ def sqlite_conflict_update_compiles_multiple_inserted_values() -> None:
                 User.status.to_inserted(),
             ),
         )
-    )
+    ).compile()
 
     expected_sql = 'INSERT INTO "user" ("email", "name", "status") VALUES (?, ?, ?)'
     expected_sql += ' ON CONFLICT ("email") DO UPDATE SET'
     expected_sql += ' "name" = excluded."name", "status" = excluded."status"'
-    assert_eq(sql, expected_sql)
-    assert_eq(params, ("a@example.com", "Alice", "active"))
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(compiled.params, ("a@example.com", "Alice", "active"))
+
+    assert_eq(compiled.backend, "sqlite")
 
 
 @test(mark="fast")
@@ -66,17 +68,19 @@ def sqlite_conflict_do_nothing_compiles_without_assignments() -> None:
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
-    sql, params = SQLITE_CODEC.compile_write_sql(
+    compiled = (
         insert(User(email="a@example.com")).on_conflict(
             User.email,
             action=DoNothing,
         )
-    )
+    ).compile()
 
     expected_sql = 'INSERT INTO "user" ("email") VALUES (?)'
     expected_sql += ' ON CONFLICT ("email") DO NOTHING'
-    assert_eq(sql, expected_sql)
-    assert_eq(params, ("a@example.com",))
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(compiled.params, ("a@example.com",))
+
+    assert_eq(compiled.backend, "sqlite")
 
 
 @test(mark="fast")
@@ -97,7 +101,7 @@ def conflict_do_nothing_rejects_returning_result_shape() -> None:
     )
 
     with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_write_sql(query)
+        _ = query.compile()
 
 
 @test(mark="fast")
@@ -197,7 +201,7 @@ def conflict_action_rejects_default_values_insert() -> None:
     query = insert(AuditLog()).on_conflict(AuditLog.id, action=DoNothing)
 
     with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_write_sql(query)
+        _ = query.compile()
 
 
 @test(mark="fast")
@@ -214,7 +218,7 @@ def inserted_value_rejects_regular_update_context() -> None:
     query = update(User).set(User.status.to_inserted()).all()
 
     with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_write_sql(query)
+        _ = query.compile()
 
 
 @test(mark="fast")
@@ -230,7 +234,7 @@ def mariadb_conflict_update_uses_duplicate_key_and_values() -> None:
         name: User.Col[str] = mariadb.Text(nullable=False)
         status: User.Col[str] = mariadb.Text(nullable=False)
 
-    sql, params = MARIADB_CODEC.compile_write_sql(
+    compiled = (
         mariadb.insert(
             User(email="a@example.com", name="Alice", status="inactive")
         ).on_conflict(
@@ -240,12 +244,14 @@ def mariadb_conflict_update_uses_duplicate_key_and_values() -> None:
                 User.status.to("active"),
             ),
         )
-    )
+    ).compile()
 
     expected_sql = "INSERT INTO `user` (`email`, `name`, `status`) VALUES (%s, %s, %s)"
     expected_sql += " ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `status` = %s"
-    assert_eq(sql, expected_sql)
-    assert_eq(params, ("a@example.com", "Alice", "inactive", "active"))
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(compiled.params, ("a@example.com", "Alice", "inactive", "active"))
+
+    assert_eq(compiled.backend, "mariadb")
 
 
 @test(mark="fast")
@@ -259,14 +265,111 @@ def mariadb_conflict_do_nothing_compiles_as_no_op_update() -> None:
 
         email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
 
-    sql, params = MARIADB_CODEC.compile_write_sql(
+    compiled = (
         mariadb.insert(User(email="a@example.com")).on_conflict(
             User.email,
             action=mariadb.DoNothing,
         )
-    )
+    ).compile()
 
     expected_sql = "INSERT INTO `user` (`email`) VALUES (%s)"
     expected_sql += " ON DUPLICATE KEY UPDATE `email` = `email`"
-    assert_eq(sql, expected_sql)
-    assert_eq(params, ("a@example.com",))
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(compiled.params, ("a@example.com",))
+
+    assert_eq(compiled.backend, "mariadb")
+
+
+@test(mark="fast")
+def sqlite_bulk_conflict_binds_rows_before_update_values() -> None:
+    """A conflict literal binds once, after every attempted SQLite row."""
+
+    class User[S = Pending](Model[S]):
+        """Batch destination with an attempted value and a literal update."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
+
+        email: User.Col[str] = Text(nullable=False, unique=True)
+        name: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False)
+
+    compiled = (
+        insert_many(
+            User,
+            [
+                User(email="a@example.com", name="Alice", status="inactive"),
+                User(email="b@example.com", name="Bob", status="invited"),
+            ],
+        )
+        .on_conflict(
+            User.email,
+            action=DoUpdate(User.name.to_inserted(), User.status.to("active")),
+        )
+        .compile()
+    )
+
+    expected_sql = (
+        'INSERT INTO "user" ("email", "name", "status") VALUES (?, ?, ?), (?, ?, ?)'
+    )
+    expected_sql += ' ON CONFLICT ("email") DO UPDATE SET'
+    expected_sql += ' "name" = excluded."name", "status" = ?'
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(
+        compiled.params,
+        (
+            "a@example.com",
+            "Alice",
+            "inactive",
+            "b@example.com",
+            "Bob",
+            "invited",
+            "active",
+        ),
+    )
+    assert_eq(compiled.backend, "sqlite")
+
+
+@test(mark="fast")
+def mariadb_bulk_conflict_binds_rows_before_update_values() -> None:
+    """A conflict literal binds once, after every attempted MariaDB row."""
+
+    class User[S = mariadb.Pending](mariadb.Model[S]):
+        """Native-family batch destination for mixed conflict assignments."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[mariadb.Row]]]
+
+        email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
+        name: User.Col[str] = mariadb.Text(nullable=False)
+        status: User.Col[str] = mariadb.Text(nullable=False)
+
+    compiled = (
+        mariadb.insert_many(
+            User,
+            [
+                User(email="a@example.com", name="Alice", status="inactive"),
+                User(email="b@example.com", name="Bob", status="invited"),
+            ],
+        )
+        .on_conflict(
+            User.email,
+            action=mariadb.DoUpdate(User.name.to_inserted(), User.status.to("active")),
+        )
+        .compile()
+    )
+
+    expected_sql = "INSERT INTO `user` (`email`, `name`, `status`) VALUES (%s, %s, %s), (%s, %s, %s)"
+    expected_sql += " ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `status` = %s"
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(
+        compiled.params,
+        (
+            "a@example.com",
+            "Alice",
+            "inactive",
+            "b@example.com",
+            "Bob",
+            "invited",
+            "active",
+        ),
+    )
+    assert_eq(compiled.backend, "mariadb")

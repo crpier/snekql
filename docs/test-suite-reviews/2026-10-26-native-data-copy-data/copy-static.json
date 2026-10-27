@@ -1,0 +1,81 @@
+{
+  "revision": "45441add9485250eff8f2009bb71a3127f1cdd5b",
+  "source_status": "",
+  "source_sha256": {
+    "tests/testing/mariadb/data.py": "d722fbed65f1d61b4340f9b580dc05ce0321187c8bcb41de9650ff6c636d39e5",
+    "tests/testing/mariadb/test_data_copy.py": "b8b1210ee02a73771edfbf35b7f8054636be6513d77960f1d2d98b9975051529",
+    "tests/testing/mariadb/test_password_literals.py": "d8942dda724195e0b1cffd099f51bd92628c65f7bb6c2194ed2a1f1c33d92322",
+    "tests/helpers.py": "76729d730592cde986bf63a4bdbc06ff063b293d53191bf51eba2c2bf685fd45",
+    "snekql/testing/mariadb/server.py": "a10a382ab85f70dede6dd052978a41de6d6d22cf179161ead1cc3f37f2ce6a87",
+    "snekql/testing/mariadb/_process.py": "367743196ffe06e0c39bd2287951627674971f91490425ec8255b615299258b9",
+    "pyproject.toml": "05b5af5a737ea1914e70e5ddc883af2c2167fe74901f56de8d6b64cf86e972e6",
+    "uv.lock": "7e622ca52611bcfed193b5d167f2eb1856ccc855ed5133c7fff6c1c9808210bc"
+  },
+  "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "packages": {
+    "snekql": "0.9.0",
+    "snektest": "0.16.0",
+    "anyio": "4.15.1",
+    "aiomysql": "0.3.2",
+    "ty": "0.0.84",
+    "ruff": "0.16.9"
+  },
+  "native_versions": {
+    "mariadbd": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+    "mariadb": "mariadb from 13.0.2-MariaDB, client 15.2 for Linux (x86_64) using readline 5.1"
+  },
+  "static_commands": [
+    {
+      "name": "ty",
+      "command": [
+        "uv",
+        "run",
+        "ty",
+        "check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "ruff-check",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "ruff-format",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "lock",
+      "command": [
+        "uv",
+        "lock",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

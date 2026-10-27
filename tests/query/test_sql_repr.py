@@ -25,7 +25,6 @@ from snekql.sqlite import (
     select,
     update,
 )
-from tests.helpers import SQLITE_CODEC
 
 
 class User[S = Pending](Model[S]):
@@ -47,12 +46,12 @@ def repr_renders_parameterized_select_sql() -> None:
     """``repr`` shows parameterized SQL and the binding count on one line."""
 
     query = select(User).where(User.age.gt(18))
-    sql, params = SQLITE_CODEC.compile_select_sql(query)
+    compiled = query.compile()
+    expected_sql = 'SELECT "id", "email", "age" FROM "user" WHERE ("age" > ?)'
 
-    assert_eq(
-        repr(query), f"<SelectModelQuery: {sql} | params=<redacted:{len(params)}>>"
-    )
-    assert_eq(params, (18,))
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(compiled.params, (18,))
+    assert_eq(repr(query), f"<SelectModelQuery: {expected_sql} | params=<redacted:1>>")
 
 
 @test(mark="fast")
@@ -62,11 +61,23 @@ def explicit_inspection_includes_inlined_form() -> None:
     query = select(User).where(User.email.eq("a@b.com"), User.age.gt(18))
     rendered = query.inspect(parameter_visibility="values")
 
-    assert_eq("-- parameterized (executes):" in rendered, True)
-    assert_eq('("email" = ?)' in rendered, True)
-    assert_eq("-- inlined literals (approximate, not executed):" in rendered, True)
-    assert_eq("""("email" = 'a@b.com')""" in rendered, True)
-    assert_eq('("age" > 18)' in rendered, True)
+    expected_sql = (
+        'SELECT "id", "email", "age" FROM "user" WHERE ("email" = ?) AND ("age" > ?)'
+    )
+    expected_inlined = (
+        'SELECT "id", "email", "age" FROM "user" '
+        """WHERE ("email" = 'a@b.com') AND ("age" > 18)"""
+    )
+
+    assert_eq(
+        rendered,
+        "-- parameterized (executes):\n"
+        f"{expected_sql}\n"
+        "-- params: ('a@b.com', 18)\n"
+        "\n"
+        "-- inlined literals (approximate, not executed):\n"
+        f"{expected_inlined}",
+    )
 
 
 @test(mark="fast")
@@ -75,22 +86,30 @@ def composed_query_repr_reflects_final_state() -> None:
 
     query = select(User).where(User.age.gt(18))
     query = query.where(User.email.eq("a@b.com"))
-    sql, _params = SQLITE_CODEC.compile_select_sql(query)
+    compiled = query.compile()
+    expected_sql = (
+        'SELECT "id", "email", "age" FROM "user" WHERE ("age" > ?) AND ("email" = ?)'
+    )
 
-    assert_eq('("age" > ?)' in sql, True)
-    assert_eq('("email" = ?)' in sql, True)
-    assert_eq(sql in repr(query), True)
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(compiled.params, (18, "a@b.com"))
+    assert_eq(repr(query), f"<SelectModelQuery: {expected_sql} | params=<redacted:2>>")
 
 
 @test(mark="fast")
 def bare_select_repr_renders_sql() -> None:
     """A bare SELECT renders through the normal redacted inspection path."""
 
-    rendered = repr(select(User))
+    expected_sql = 'SELECT "id", "email", "age" FROM "user"'
+    expected_repr = f"<SelectModelQuery: {expected_sql} | params=<redacted:0>>"
+    expected_text = (
+        f"-- parameterized (executes):\n{expected_sql}\n-- params: <redacted:0>"
+    )
 
-    assert_eq(rendered, repr(select(User)))
-    assert_eq(str(select(User)), str(select(User)))
-    assert_eq("SELECT" in rendered, True)
+    for query in (select(User), select(User)):
+        assert_eq(repr(query), expected_repr)
+        assert_eq(str(query), expected_text)
+        assert_eq(query.inspect(), expected_text)
 
 
 @test(mark="fast")
@@ -98,17 +117,23 @@ def update_and_delete_repr_render_write_sql() -> None:
     """Update and delete queries render their write SQL through ``repr``."""
 
     update_query = update(User).set(User.age.to(21)).where(User.id.eq(1))
-    update_sql, update_params = SQLITE_CODEC.compile_write_sql(update_query)
+    compiled_update = update_query.compile()
+    expected_update_sql = 'UPDATE "user" SET "age" = ? WHERE ("id" = ?)'
+    assert_eq(compiled_update.sql, expected_update_sql)
+    assert_eq(compiled_update.params, (21, 1))
     assert_eq(
         repr(update_query),
-        f"<UpdateQuery: {update_sql} | params=<redacted:{len(update_params)}>>",
+        f"<UpdateQuery: {expected_update_sql} | params=<redacted:2>>",
     )
 
     delete_query = delete(User).where(User.id.eq(1))
-    delete_sql, delete_params = SQLITE_CODEC.compile_write_sql(delete_query)
+    compiled_delete = delete_query.compile()
+    expected_delete_sql = 'DELETE FROM "user" WHERE ("id" = ?)'
+    assert_eq(compiled_delete.sql, expected_delete_sql)
+    assert_eq(compiled_delete.params, (1,))
     assert_eq(
         repr(delete_query),
-        f"<DeleteQuery: {delete_sql} | params=<redacted:{len(delete_params)}>>",
+        f"<DeleteQuery: {expected_delete_sql} | params=<redacted:1>>",
     )
 
 
@@ -117,8 +142,11 @@ def insert_repr_renders_values_sql() -> None:
     """An insert query renders its ``INSERT`` SQL through ``repr``."""
 
     insert_query = insert(User(email="a@b.com", age=18))
-    sql, params = SQLITE_CODEC.compile_write_sql(insert_query)
+    compiled = insert_query.compile()
+    expected_sql = 'INSERT INTO "user" ("email", "age") VALUES (?, ?)'
 
+    assert_eq(compiled.sql, expected_sql)
+    assert_eq(compiled.params, ("a@b.com", 18))
     assert_eq(
-        repr(insert_query), f"<InsertQuery: {sql} | params=<redacted:{len(params)}>>"
+        repr(insert_query), f"<InsertQuery: {expected_sql} | params=<redacted:2>>"
     )

@@ -2,9 +2,10 @@
 
 The command covers buffered point reads and bounded
 streaming scans, indexed joins and verified bulk writes on SQLite and MariaDB.
-It also measures capacity-one pool contention and provides separate pool and
+It also measures configurable bounded-pool contention and provides separate pool and
 memory diagnostic profiles. [Published results and regression guidance](findings.md)
-include raw artifacts and exact commands. Do not treat a tiny local run as a
+include historical raw artifacts and exact commands. The
+[current baseline](current-baseline-2026-10-26.md) refreshes this evidence. Do not treat a tiny local run as a
 complete performance assessment.
 
 ## Run from a source checkout
@@ -30,6 +31,13 @@ Install `mariadbd`, `mariadb-install-db` and `mariadb` first. Startup, bootstrap
 shutdown are outside the timed region. Missing tools fail the command, rather
 than silently skipping the requested comparison. No existing database is used.
 
+The published commands use ordinary interpreter import mode. Direct
+`python -X lazy_imports=all` all-adapter execution currently hits a SQLAlchemy
+2.1.1 initialization failure, reproducible without snekql; see
+[the tracked limitation](https://github.com/crpier/snekql/issues/558). Native raw/snekql forced-lazy probes pass,
+but a forced-lazy test runner alone does not propagate that mode to CLI children.
+No dependency or silent import exemption is applied by this command.
+
 `--adapter` accepts `all`, `raw`, `snekql`, and `sqlalchemy`. `--workload` accepts
 `point-read`, the default, `stream`, `join`, or `bulk`. For a scan, one operation means reading the
 entire seeded dataset, so use fewer operations:
@@ -50,10 +58,16 @@ Bounds are:
 | `--trials` | 3 | 1 through 30, per adapter |
 | `--warmup` | 100 | 0 through 10000, before each trial |
 | `--batch-size` | 256 | 1 through 10000, per stream batch or bulk INSERT |
-| `--workers` | 1 | 1 through 128, sharing capacity one |
+| `--workers` | 1 | 1 through 128, sharing the configured pool |
+| `--pool-size` | 1 | 1 through 32, every adapter, no overflow |
+| `--payload-bytes` | 32 | 1 through 8192, ASCII payload per row |
+| `--telemetry` | off | off or on, bounded snekql event-kind/phase counters |
+| `--order` | balanced | balanced, forward or reverse |
 
 `all` rotates the starting adapter each round. Three rounds give each adapter
-each position once. Runs are sequential in one process, not isolated subprocess
+each position once. The default `balanced` order reverses direction after each
+three-round cycle: six rounds cover all six permutations. `forward` and `reverse`
+retain one rotation direction. Reports record each round and position. Runs are sequential in one process, not isolated subprocess
 memory experiments. This rotation reduces fixed order bias; it does not remove
 thermal drift, scheduler noise, or cache effects.
 
@@ -62,22 +76,29 @@ thermal drift, scheduler noise, or cache effects.
 Within a run, all adapters read the same privately owned database. SQLite uses
 a file; MariaDB uses an InnoDB table in the temporary server. Seed identities are contiguous from one; point reads select the next identity,
 wrapping at `--rows`. Streaming selects every row in primary-key order. Rows have an integer ID, an email string and a 32-byte ASCII
-payload. No random-number generation occurs in the timed operation.
+payload by default, configurable with `--payload-bytes`. MariaDB payload columns
+are VARCHAR(8192), including narrow cases; SQLite uses TEXT. No random-number
+generation occurs in the timed operation.
 
 Each operation uses explicit SQL BEGIN and acknowledged COMMIT, consumes the
 complete result, and validates each row once against the same strict Pydantic
 result contract. Common correctness checks also compare actual values, order
-and cardinality against the seeded records, including during warmup. It records observed row counts and identity sums, not planned work counts.
+and cardinality against the seeded records, including during warmup. It records observed row counts, identity sums and ASCII payload bytes, not planned
+work counts. Reported bytes exclude emails, identifiers and wire/storage overhead.
 
 SQLite uses WAL, NORMAL synchronization, foreign keys on, and a 5000 ms busy
 timeout. MariaDB uses utf8mb4, REPEATABLE READ, UTC and the same strict SQL mode
-and integrity checks as snekql. Each MariaDB adapter probes the actual session
-before timing; a policy mismatch aborts the comparison. Reported server metadata
+and integrity checks as snekql. Every adapter holds and probes every physical pool slot simultaneously before
+timing, on both backends; a policy mismatch aborts the comparison. Reported server metadata
 includes VERSION(), redo flush policy, binary logging, sync_binlog and page size.
 
-Every adapter has capacity one. Raw aiosqlite/aiomysql retains one connection
-behind a FIFO asyncio lock held from before BEGIN through commit/rollback.
-Snekql and SQLAlchemy acquire their own size-one pools per transaction. Their checkout and reset costs remain part of the
+Every adapter has exactly `--pool-size` prepared sessions. Raw aiosqlite/aiomysql
+retains that many connections behind an asyncio.Queue of free leases held from
+before BEGIN through commit/rollback. The raw queue does not reproduce snekql's
+FIFO/no-barging admission guarantee; inspect maximum waits as well as percentiles.
+Snekql and SQLAlchemy acquire their own
+bounded pools per transaction; Core has zero overflow. Session preparation,
+policy verification and physical connection creation are outside timing. Their checkout and reset costs remain part of the
 comparison. This is a raw-driver baseline, not a claim that either raw driver provides
 snekql's lifecycle guarantees. MariaDB raw and Core clients explicitly BEGIN,
 consume results, validate, and COMMIT; they do not rely on implicit transaction
@@ -122,17 +143,19 @@ reply without persistence; the missing readback must fail the command.
 
 ## Contention and diagnostic profiles
 
-`--workers 8` puts eight tasks against capacity one. `--operations` is a total,
+`--pool-size 4 --workers 1`, `4` and `16` exercise below-, at- and
+above-capacity closed-loop concurrency. The default pool still has capacity one. `--operations` is a total,
 not a per-worker count. Workers receive disjoint operation indices and bulk IDs.
-This tests application-side pool contention, not concurrent server-side writers
-or cross-process SQLite file locks. Per-worker counts are predetermined and must
+This includes application-side contention and, with multiple slots, concurrent
+server-side work/writers. It does not exercise cross-process SQLite clients.
+Closed-loop workers are not an offered-arrival-rate or SLO capacity test. Per-worker counts are predetermined and must
 not be read as a fairness measurement. Latency includes actual acquisition wait.
 
-Use `--profile timing`, the default, for primary comparisons. It installs no
-snekql observer and records no pool samples. The common heartbeat still runs.
+Use `--profile timing`, the default, for primary comparisons. With the default
+`--telemetry off`, it installs no snekql observer and records no pool samples. The common heartbeat still runs.
 Use `--profile diagnostic` separately for acquisition measurements:
 
-- Raw drivers report time acquiring the one-connection asyncio lock.
+- Raw drivers report time acquiring a free connection from their bounded queue.
 - Snekql reports its public `pool_wait` finish events, which measure admission.
 - Core reports time awaiting `AsyncEngine.connect()`. This is **checkout**,
   including pool bookkeeping and possible physical connection work, not pure
@@ -159,13 +182,71 @@ allocates its input dataset before measurement. Memory-profile timings are
 instrumented and must not be mixed with timing-profile results. An interpreter
 already running tracemalloc is rejected rather than silently resetting its data.
 
-## Report version 1
+`--telemetry on` independently installs a synchronous counting observer for snekql.
+It retains only bounded event-kind/phase counters, no event objects, SQL, traces
+or per-event latency samples. Only measured events count; preparation, warmup,
+resets and teardown are excluded. Raw/Core remain uninstrumented reference
+adapters. `--telemetry off` disables counting, but diagnostic profile still
+installs the pool-wait observer; each trial reports both flags explicitly. This
+is not an OpenTelemetry exporter, logging, network collector or production
+instrumentation-overhead certification. Compare on/off runs with identical sizes,
+profiles and capacity, keeping instrumentation timings separate from primary runs.
+
+### Combined resource budgets
+
+CLI sizes are checked together before native setup. One seeded table's payload
+is limited to 64 MiB (both user/profile tables are seeded). Bulk INSERT payload is
+limited to 8 MiB; the larger of warmup/measured write phases is limited to 128 MiB
+of payload plus a 64-byte-per-row allowance. These are logical safety budgets,
+not physical disk/RSS limits, packet-size guarantees or filesystem isolation.
+
+## Plan without running a database
+
+The source-checkout interface `benchmarks.comparison_plan.ComparisonPlan` is a
+frozen, keyword-only dataclass. `backend` is required; its other fields use the
+CLI defaults above. Field names match CLI options with underscores instead of
+hyphens (`pool_size`, `payload_bytes`, and so on).
+
+```python
+from benchmarks.comparison_plan import ComparisonPlan
+
+plan = ComparisonPlan(
+    backend="mariadb", operations=3, rows=4, trials=2, order="reverse"
+)
+configuration = plan.configuration
+measurement_scope = plan.measurement
+schedule = [(trial.round, trial.position, trial.adapter) for trial in plan.schedule]
+```
+
+Construction raises `ValueError` for unsupported selectors, non-integer sizes
+(including booleans), individual bounds or combined budget violations. It does
+not parse command-line arguments, import database drivers, find server tools,
+start a server, seed data or run work. The CLI uses the same defaults and
+validation, translating invalid requests into usage errors before native setup.
+This interface belongs to the repository's benchmark tooling, not the installed
+`snekql` package API.
+
+- `schedule` is a tuple of frozen `TrialPlan` records. `round` and `position` are
+  one-based; `adapter` identifies requested work, not completed work.
+- `configuration` and `measurement` return fresh report-metadata dictionaries.
+  Editing a view cannot change the plan or the shared declared MariaDB policy.
+  These dictionaries have the meanings described in report version 2 below;
+  they do not contain observed rows, timings or native verification results.
+
+A valid plan does **not** certify actual delivery, commits, prepared sessions,
+effective native policy, resource availability or physical disk/RSS limits.
+Planning checks are deliberately separate from real CLI/backend and owned fault
+checks. In particular, never manufacture `observed` or successful trial results
+from a schedule.
+
+## Report version 2
 
 - `configuration` records workload sizes and the policies above.
 - `environment` records Python, loaded SQLite, package versions, OS, architecture,
   logical CPUs, event-loop class, GC state, Git commit and dirty-tree status.
   `hardware` adds Linux CPU model, physical memory, process affinity and the
-  CPU-zero governor when available. Unsupported or inaccessible facts are null.
+  CPU-zero governor when available. Source-directory Git provenance, the SHA-256
+  of uv.lock, PyMySQL and pydantic-core versions are also recorded. Unsupported or inaccessible facts are null.
   Publication needs an identifiable clean source revision; neither CPU frequency
   nor host background activity is controlled by this command.
 - `trials` keeps each adapter/round separately, with completed-operation latency
@@ -176,7 +257,7 @@ already running tracemalloc is rejected rather than silently resetting its data.
   entry, execution, validation, correctness checks, commit and return. Reports
   from the earlier point-read prototype excluded post-read checks and must not
   be compared directly with this timing definition.
-- `observed` records the returned row count and identity sum. Throughput is in
+- `observed` records the returned row count, identity sum and ASCII payload bytes. Throughput is in
   completed operations per second, not rows per second.
 - `stream` records consumed batch count and largest delivered batch, or null for
   point reads. Warmup batches and rows are excluded.
@@ -189,12 +270,26 @@ already running tracemalloc is rejected rather than silently resetting its data.
 - `per_worker_operations` records completed requests for each task.
 - `measurement` records the profile, heartbeat interval and timing scope. Heartbeat
   shutdown, setup and warmup are outside elapsed workload time.
-- `session_policy` records the probed MariaDB session values for each trial.
-  SQLite currently reports null here; its configuration fields describe the
-  requested setup, not an additional benchmark-level probe.
+- `session_policy` records verified effective values on both backends; every
+  slot must match. `prepared_sessions` records the number verified before timing.
+- `telemetry` records observer installation, counting status and measured counters.
+- Version 1 historical reports lack these additional fields and use capacity one,
+  fixed 32-byte payloads and forward-only rotation. Do not silently pool schemas.
 
-No latency or throughput value is a CI pass threshold. CLI tests check observed
-work, argument bounds, trial ordering and report configuration. An injected
+No latency or throughput value is a CI pass threshold. Pure planning tests check
+bounds, schedules and metadata. Retained CLI tests independently check argument
+wiring and early rejection, real trial order, report configuration and observed
+work. An injected
 50 ms driver callback block checks the heartbeat, not machine throughput.
 See [the published baseline](findings.md) for repeated results and noise-aware
 regression review.
+
+## Temporary MariaDB artifacts
+
+Comparative runs own a unique private temporary root, stop the server before
+removing that root on success, and do not leave a database per completed command.
+On an error the root is retained conservatively, with its path in an exception
+note on stderr; no successful JSON report is emitted. Logs can contain sensitive
+information: paths are reported, not their contents. Failed/interrupted roots
+need explicit inspection and cleanup after confirming no owned process is live.
+This changes benchmark ownership, not the public server helper's retention policy.

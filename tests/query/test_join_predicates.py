@@ -6,7 +6,7 @@ from uuid import UUID
 from snektest import Param, assert_eq, assert_raises, assert_true, test
 
 from snekql import sqlite
-from tests.query.test_join_compilation import Order, User
+from tests.query.join_models import Order, User
 from tests.query.test_join_validation import Item
 
 

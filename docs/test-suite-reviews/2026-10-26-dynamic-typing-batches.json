@@ -1,0 +1,354 @@
+{
+  "recorded_at": "2026-10-26T12:44:43.271608+00:00",
+  "issue": 562,
+  "before_environment": {
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+    "uv": "uv 0.13.4 (x86_64-unknown-linux-gnu)",
+    "packages": {
+      "snekql": "0.9.0",
+      "snektest": "0.16.0",
+      "anyio": "4.15.1",
+      "pydantic": "2.14.0",
+      "ty": "0.0.84"
+    },
+    "tmpdir": "/tmp",
+    "context_aware_warnings": "1",
+    "source_hashes_unchanged_after_both_runs": true
+  },
+  "before_sources": {
+    "revision": "4ad6564543580e91fda16852964947cc4b14e7d5",
+    "sha256": {
+      "tests/test_nested_expression_families.py": "529a40914afb595116c691deb1af5d1c6434ef53c15b69293bdedab68277e969",
+      "tests/test_temporal_typing.py": "826b953cd6494274a03f9a201700917e37b5d2f4fae69dedbf61b5d41a7de2f7",
+      "scripts/check_typing_compatibility.py": "824b3c21cf4c429e814bacbfd6f5f8ae878a49bb01f3e67a399ec47c4f2100af",
+      "tests/typing_assessment.py": "6303d5ba4e910f41a9acc9d55bfbbf23ee1ad70de9bdb09b94c90fc561a9e0d5",
+      "typing_probes/nested-helper-family.positive.py.txt": "ec9eb2e786cae1f809b29c558b2145546dd6c7a3fa84f7228f67c0b1e2178583",
+      "typing_probes/temporal-domains.positive.py.txt": "35ae5f4928d2d36518bffd5c74a4414c235ad591de5250f1b577d423a9b997bf",
+      "uv.lock": "7e622ca52611bcfed193b5d167f2eb1856ccc855ed5133c7fff6c1c9808210bc"
+    }
+  },
+  "after_and_full_sources": {
+    "revision": "4ad6564543580e91fda16852964947cc4b14e7d5",
+    "sha256": {
+      "scripts/check_typing_compatibility.py": "1e7254b6e972bd42d2b942308de9bdcc14925e15bccd6f4a663746ed86672182",
+      "tests/test_nested_expression_families.py": "f90d54a7e0b27d9e3b72567f9170334a6904f670aad28c268d4b3eee14345ce2",
+      "tests/test_temporal_typing.py": "864ad3e6219b6c8d71456901ce4a7255aa4f7aa633dc88bd099670165d4393ee",
+      "tests/typing_variants.py": "d894449d37aae1caac8f5d8936378251edfc2104fc61ff346594d5ffd8c43136",
+      "tests/test_typing_batches.py": "685ab0a54f5f0d67ce974a5a71c3d1c222aad5d1a7568067364fd84407965436"
+    }
+  },
+  "before": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 36.42799370099965,
+      "passed": 102,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "raw_sha256": "8afdd34497606a110b8c445755b7207d51927216b7da8519b65ef206dbb97a45"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 34.04782372000045,
+      "passed": 102,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "raw_sha256": "8ab33b2918ef13b04d49c16c78f8c428b4009ac55d176d67d437f40c640335e8"
+    }
+  ],
+  "after": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "--json-output"
+      ],
+      "wall_seconds": 1.1349532489984995,
+      "returncode": 0,
+      "passed": 102,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "raw_sha256": "55b003c75f81f94079d75f1eb5df1ee635fd5d01fe14001e9648a782490c533b"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests/test_nested_expression_families.py",
+        "tests/test_temporal_typing.py",
+        "--json-output"
+      ],
+      "wall_seconds": 1.1387604280025698,
+      "returncode": 0,
+      "passed": 102,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "raw_sha256": "c715d69abe4e66b9aeee75369dbb8a53c1cd75aedb2ed0803ff3d1a69948a63d"
+    }
+  ],
+  "mean_before_wall_seconds": 35.23790871050005,
+  "mean_after_wall_seconds": 1.1368568385005346,
+  "observed_mean_wall_reduction_fraction": 0.9677376756991888,
+  "focused": [
+    {
+      "mode": "before",
+      "selection": "tests/test_nested_expression_families.py::nested_expression_rejects_foreign_family[sqlite, eq_col]",
+      "run": 1,
+      "wall_seconds": 0.56079833900003,
+      "case_duration": 0.30657664299360476
+    },
+    {
+      "mode": "before",
+      "selection": "tests/test_nested_expression_families.py::nested_expression_rejects_foreign_family[sqlite, eq_col]",
+      "run": 2,
+      "wall_seconds": 0.48661268599971663,
+      "case_duration": 0.3017347089989926
+    },
+    {
+      "mode": "before",
+      "selection": "tests/test_temporal_typing.py::temporal_meanings_have_exact_negative_diagnostics[sqlite, raw-datetime]",
+      "run": 1,
+      "wall_seconds": 0.4529865290023736,
+      "case_duration": 0.26959097600047244
+    },
+    {
+      "mode": "before",
+      "selection": "tests/test_temporal_typing.py::temporal_meanings_have_exact_negative_diagnostics[sqlite, raw-datetime]",
+      "run": 2,
+      "wall_seconds": 0.4467593189983745,
+      "case_duration": 0.2700789880036609
+    },
+    {
+      "mode": "after",
+      "selection": "tests/test_nested_expression_families.py::nested_expression_rejects_foreign_family[sqlite, eq_col]",
+      "run": 1,
+      "wall_seconds": 0.7978696350037353,
+      "case_duration": 0.6211199239987764
+    },
+    {
+      "mode": "after",
+      "selection": "tests/test_nested_expression_families.py::nested_expression_rejects_foreign_family[sqlite, eq_col]",
+      "run": 2,
+      "wall_seconds": 0.8097589150056592,
+      "case_duration": 0.6291343179982505
+    },
+    {
+      "mode": "after",
+      "selection": "tests/test_temporal_typing.py::temporal_meanings_have_exact_negative_diagnostics[sqlite, raw-datetime]",
+      "run": 1,
+      "wall_seconds": 0.514846744001261,
+      "case_duration": 0.3341281169996364
+    },
+    {
+      "mode": "after",
+      "selection": "tests/test_temporal_typing.py::temporal_meanings_have_exact_negative_diagnostics[sqlite, raw-datetime]",
+      "run": 2,
+      "wall_seconds": 0.5088917950051837,
+      "case_duration": 0.3351031170022907
+    }
+  ],
+  "coverage": {
+    "corpus": [
+      {
+        "file": "tests/test_nested_expression_families.py",
+        "old_variant_declarations_equal": true,
+        "cases": 80,
+        "all_rendered_hashes_match_original_source_construction": true
+      },
+      {
+        "file": "tests/test_temporal_typing.py",
+        "old_variant_declarations_equal": true,
+        "cases": 22,
+        "all_rendered_hashes_match_original_source_construction": true
+      }
+    ],
+    "assertions": [
+      {
+        "file": "tests/test_nested_expression_families.py",
+        "test_signature_backend_parameterization_marker_unchanged": true,
+        "diagnostic_assertions_preserved": 6,
+        "aggregate_exit_assertions_moved": 1
+      },
+      {
+        "file": "tests/test_temporal_typing.py",
+        "test_signature_backend_parameterization_marker_unchanged": true,
+        "diagnostic_assertions_preserved": 6,
+        "aggregate_exit_assertions_moved": 1
+      }
+    ],
+    "existing_checker_configuration_diagnostic_parser_environment_and_report_schema_unchanged": true
+  },
+  "all_previous_4173_full_cases_preserved": true,
+  "additional_cases": [
+    "tests/test_typing_batches.py::batch_certifies_every_declared_variant_and_aggregate_status[nested]",
+    "tests/test_typing_batches.py::batch_certifies_every_declared_variant_and_aggregate_status[temporal]",
+    "tests/test_typing_batches.py::batch_reports_each_distinct_input_with_its_own_control",
+    "tests/test_typing_batches.py::broken_variant_does_not_poison_a_healthy_variant_on_the_same_backend",
+    "tests/test_typing_batches.py::duplicate_batch_identity_is_an_infrastructure_error",
+    "tests/test_typing_batches.py::focused_selection_does_not_assess_an_unrelated_broken_variant",
+    "tests/test_typing_batches.py::invalid_batch_cannot_emit_a_success_report[conflicting-modes]",
+    "tests/test_typing_batches.py::invalid_batch_cannot_emit_a_success_report[empty-batch]",
+    "tests/test_typing_batches.py::invalid_batch_cannot_emit_a_success_report[invalid-json]",
+    "tests/test_typing_batches.py::invalid_batch_cannot_emit_a_success_report[missing-backend]",
+    "tests/test_typing_batches.py::invalid_batch_cannot_emit_a_success_report[missing-marker]",
+    "tests/test_typing_batches.py::invalid_batch_cannot_emit_a_success_report[missing-name]",
+    "tests/test_typing_batches.py::invalid_batch_cannot_emit_a_success_report[multiple-markers]",
+    "tests/test_typing_batches.py::invalid_batch_cannot_emit_a_success_report[unknown-schema]"
+  ],
+  "full_inventory_equal": true,
+  "full_validation": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 413.7774455830004,
+      "tmpdir": "/dev/shm/sqd-KJF7cb",
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "directory": false,
+          "bytes": 0
+        }
+      ],
+      "passed": 4187,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "raw_sha256": "913bd52f74c80f6aa4b755650b2f0fc11cf8e9918f8d907dae77aa4316f17dee"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests",
+        "--json-output"
+      ],
+      "returncode": 0,
+      "wall_seconds": 455.3366557690024,
+      "tmpdir": "/dev/shm/sqd-KJF7cb",
+      "remaining_entries": [
+        {
+          "path": "uv-d1196c17db265703.lock",
+          "directory": false,
+          "bytes": 0
+        }
+      ],
+      "passed": 4187,
+      "failed": 0,
+      "errors": 0,
+      "fixture_teardown_failed": 0,
+      "session_teardown_failed": 0,
+      "session_teardown_failures": [],
+      "raw_sha256": "2247c69ae2d4e280b1271956a90e249467f5f483f6a7a403ab53b39f72c25609"
+    }
+  ],
+  "full_sqlite": "3.53.1",
+  "full_mariadb": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+  "full_root_removed_between_runs": false,
+  "full_root_removed_after_both_runs_and_process_audit": true,
+  "faults": [
+    {
+      "mutation": "missing-variant",
+      "test": "tests/test_typing_batches.py::batch_certifies_every_declared_variant_and_aggregate_status[nested]",
+      "returncode": 1,
+      "failed": 1,
+      "errors": 0
+    },
+    {
+      "mutation": "wrong-rule",
+      "test": "tests/test_nested_expression_families.py::nested_expression_rejects_foreign_family[sqlite, eq_col]",
+      "returncode": 1,
+      "failed": 1,
+      "errors": 0
+    }
+  ],
+  "direct_forced_lazy_cli": {
+    "command": [
+      "uv",
+      "run",
+      "python",
+      "-X",
+      "lazy_imports=all",
+      "scripts/check_typing_compatibility.py",
+      "--manifest",
+      "/home/crpier/.cache/sq-dynamic-typing-V2hURzpc/direct-lazy-manifest.json"
+    ],
+    "returncode": 0,
+    "conforming_cases": 102,
+    "exact_diagnostics_verified": true
+  },
+  "github_actions": "Disabled by maintainer; no remote checks awaited.",
+  "performance_scope": "Only identical 102-case command. Nonexclusive host; two sequential before and two after samples, not interleaved. No full-suite percentage speedup claimed.",
+  "local_evidence_directory": "/home/crpier/.cache/sq-dynamic-typing-V2hURzpc",
+  "raw_sha256": {
+    "before-1.json": "8afdd34497606a110b8c445755b7207d51927216b7da8519b65ef206dbb97a45",
+    "before-2.json": "8ab33b2918ef13b04d49c16c78f8c428b4009ac55d176d67d437f40c640335e8",
+    "after-1.json": "55b003c75f81f94079d75f1eb5df1ee635fd5d01fe14001e9648a782490c533b",
+    "after-2.json": "c715d69abe4e66b9aeee75369dbb8a53c1cd75aedb2ed0803ff3d1a69948a63d",
+    "typing-green.json": "56f2ea1e6fd29d1d525ad4a4f90eaf2e098d2fa54ee40a92227a790cd7b77cd9",
+    "typing-lazy.json": "da719e3728c29b9f81d0c5ac1a31d77a0c952a48ff44905d9df3db419e563d25",
+    "red-batch.json": "9d0a81974cc372828fa18cc3ddd3d316541661b94c706fcfe54b2ced88ee74d1",
+    "green-batch.json": "04a0bfe10921f53976cc367270dffb571be56dbd66e87bf53d28c230c148d174",
+    "red-duplicate.json": "391d059c36220c8a88d580f29719e0f912c3ae284622f67bb634039072428adf",
+    "green-duplicate.json": "1055350a9b9dafe7f319c2bd36bd2e2a86b269eb98b897dec0a33c1814ad5edd",
+    "red-focused.json": "13e2a718416481da608b032b8e4de6251fc5c6a8d64ebc87bb3de358524b93bc",
+    "fault-missing-variant.json": "4400cd1edc32d0e28b791d456a18642ae8b3cb42acd2b272642b6cd60af8d20b",
+    "fault-wrong-rule.json": "9e3dd77d014ad437b25334eee8182057266c4772b5d79898e0fa34533fd74ebf",
+    "full-1.json": "913bd52f74c80f6aa4b755650b2f0fc11cf8e9918f8d907dae77aa4316f17dee",
+    "full-2.json": "2247c69ae2d4e280b1271956a90e249467f5f483f6a7a403ab53b39f72c25609",
+    "direct-lazy.json": "b5f46e13a6bf18d2c47b732faa2b0b0868e614feceb2d668434a12551b4b4460",
+    "direct-lazy-manifest.json": "e97f5f7bca1ce30520eb9e59b18ece28f911f49c999037c3defa884420301a1d",
+    "nested-helper-family-report.json": "8d1fd929000e74d0239d0bd25ad9efdb8d5fcc8273c50dacde166b78698e8678",
+    "temporal-domains-report.json": "93cf819398bae30e19836d622b1ec271831e6a23b931eaaee9f4108eadb8561a"
+  },
+  "main_integration": {
+    "main_revision": "6891bfcf39810bfe06df5b61c021f419ada1ad8d",
+    "original_feature_code_hashes_unchanged": true,
+    "focused_normal_passed": 196,
+    "focused_forced_lazy_passed": 196,
+    "raw_sha256": {
+      "integrated-typing-normal.json": "4ee8e604b956cd565986869644440f03bf2cffc4f3283abb9e95d626ad569668",
+      "integrated-typing-lazy.json": "a91b1a1a2afb8bd88629bdd724f1e301f0d3d3a652bf9bdc21c4ca6a23968d99"
+    },
+    "scope": "All affected typing modules, including main's two end-to-end proofs. No fresh 4189-case full-suite run claimed."
+  }
+}

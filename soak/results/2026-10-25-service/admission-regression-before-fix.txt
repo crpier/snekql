@@ -1,0 +1,270 @@
+tests/test_soak_runner.py::service_soak_sustained_multislot_saturation_does_not_stall ... FAIL (37.19s)
+
+=================================== FAILURES ===================================
+
+tests/test_soak_runner.py::service_soak_sustained_multislot_saturation_does_not_stall ... FAIL (37.19s)
+Traceback (most recent call last):
+  File "/home/crpier/Projects/fourth-snekql/tests/test_soak_runner.py", line 
+171, in service_soak_sustained_multislot_saturation_does_not_stall
+        assert_eq(result.returncode, 0, msg=result.stderr.decode())             
+E         + Exception Group Traceback (most recent call last):
+  |   File "<frozen runpy>", line 201, in _run_module_as_main
+  |   File "<frozen runpy>", line 87, in _run_code
+  |   File "/home/crpier/Projects/fourth-snekql/soak/service.py", line 263, in 
+<module>
+  |     main()
+  |     ~~~~^^
+  |   File "/home/crpier/Projects/fourth-snekql/soak/service.py", line 256, in 
+main
+  |     asyncio.run(run(Config(**vars(args))))
+  |     ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/runners.py", line 205, in run
+  |     return runner.run(main)
+  |            ~~~~~~~~~~^^^^^^
+  |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/runners.py", line 128, in run
+  |     return self._loop.run_until_complete(task)
+  |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/base_events.py", line 724, in run_until_complete
+  |     return future.result()
+  |            ~~~~~~~~~~~~~^^
+  |   File "/home/crpier/Projects/fourth-snekql/soak/service.py", line 208, in 
+run
+  |     report = await _exercise(database, config, namespace)
+  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/crpier/Projects/fourth-snekql/soak/service.py", line 123, in 
+_exercise
+  |     async with asyncio.TaskGroup() as group:
+  |                ~~~~~~~~~~~~~~~~~^^
+  |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/taskgroups.py", line 75, in __aexit__
+  |     return await self._aexit(et, exc)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/taskgroups.py", line 195, in _aexit
+  |     raise BaseExceptionGroup(
+  |     ...<2 lines>...
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Exception Group Traceback (most recent call last):
+    |   File "/home/crpier/Projects/fourth-snekql/soak/service.py", line 82, in 
+_phase
+    |     async with asyncio.TaskGroup() as group:
+    |                ~~~~~~~~~~~~~~~~~^^
+    |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/taskgroups.py", line 75, in __aexit__
+    |     return await self._aexit(et, exc)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/taskgroups.py", line 195, in _aexit
+    |     raise BaseExceptionGroup(
+    |     ...<2 lines>...
+    |     ) from None
+    | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+    +-+---------------- 1 ----------------
+      | Exception Group Traceback (most recent call last):
+      |   File "/home/crpier/Projects/fourth-snekql/soak/service.py", line 85, 
+in _phase
+      |     async with asyncio.TaskGroup() as workers:
+      |                ~~~~~~~~~~~~~~~~~^^
+      |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/taskgroups.py", line 75, in __aexit__
+      |     return await self._aexit(et, exc)
+      |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/taskgroups.py", line 195, in _aexit
+      |     raise BaseExceptionGroup(
+      |     ...<2 lines>...
+      |     ) from None
+      | ExceptionGroup: unhandled errors in a TaskGroup (2 sub-exceptions)
+      +-+---------------- 1 ----------------
+        | Traceback (most recent call last):
+        |   File 
+"/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/anyio/_c
+ore/_tasks.py", line 152, in fail_at
+        |     yield cancel_scope
+        |   File 
+"/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/anyio/_c
+ore/_tasks.py", line 179, in fail_after
+        |     yield scope
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 197, in _wait_for_release
+        |     await self.condition.wait()
+        |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/locks.py", line 272, in wait
+        |     await fut
+        | asyncio.exceptions.CancelledError: Cancelled via cancel scope 
+7f4466072170; reason: deadline exceeded
+        | 
+        | During handling of the above exception, another exception occurred:
+        | 
+        | Traceback (most recent call last):
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 196, in _wait_for_release
+        |     with anyio.fail_after(remaining_timeout):
+        |          ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+        |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/contextlib.py", line 224, in __exit__
+        |     self.gen.throw(value)
+        |     ~~~~~~~~~~~~~~^^^^^^^
+        |   File 
+"/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/anyio/_c
+ore/_tasks.py", line 178, in fail_after
+        |     with fail_at(deadline, shield=shield, reason=reason) as scope:
+        |          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/contextlib.py", line 224, in __exit__
+        |     self.gen.throw(value)
+        |     ~~~~~~~~~~~~~~^^^^^^^
+        |   File 
+"/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/anyio/_c
+ore/_tasks.py", line 155, in fail_at
+        |     raise TimeoutError(reason) if reason else TimeoutError
+        | TimeoutError
+        | 
+        | The above exception was the direct cause of the following exception:
+        | 
+        | Traceback (most recent call last):
+        |   File "/home/crpier/Projects/fourth-snekql/soak/service.py", line 64,
+in worker
+        |     await work.stream(early=name == "early_stream")
+        |   File 
+"/home/crpier/Projects/fourth-snekql/soak/_service_workload.py", line 134, in 
+stream
+        |     async with self.database.transaction() as tx:
+        |                ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/runtime.py", line 
+735, in __aenter__
+        |     connection = await self.runtime.acquire(self.acquisition_timeout)
+        |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        |   File 
+"/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py", line 629, in 
+acquire
+        |     connection = await 
+self.connection_pool.acquire(acquisition_timeout)
+        |                  
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        |   File 
+"/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py", line 344, in 
+acquire
+        |     await self.gate.admit(deadline, acquisition_timeout)
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 95, in admit
+        |     await self._admit(deadline, acquisition_timeout)
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 132, in _admit
+        |     await self._wait_for_release(ticket, deadline, 
+acquisition_timeout)
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 206, in _wait_for_release
+        |     raise PoolTimeoutError(msg) from error
+        | snekql.errors.PoolTimeoutError: timed out acquiring database 
+connection
+        +---------------- 2 ----------------
+        | Traceback (most recent call last):
+        |   File 
+"/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/anyio/_c
+ore/_tasks.py", line 152, in fail_at
+        |     yield cancel_scope
+        |   File 
+"/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/anyio/_c
+ore/_tasks.py", line 179, in fail_after
+        |     yield scope
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 197, in _wait_for_release
+        |     await self.condition.wait()
+        |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/asyncio/locks.py", line 272, in wait
+        |     await fut
+        | asyncio.exceptions.CancelledError: Cancelled via cancel scope 
+7f4466072850; reason: deadline exceeded
+        | 
+        | During handling of the above exception, another exception occurred:
+        | 
+        | Traceback (most recent call last):
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 196, in _wait_for_release
+        |     with anyio.fail_after(remaining_timeout):
+        |          ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+        |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/contextlib.py", line 224, in __exit__
+        |     self.gen.throw(value)
+        |     ~~~~~~~~~~~~~~^^^^^^^
+        |   File 
+"/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/anyio/_c
+ore/_tasks.py", line 178, in fail_after
+        |     with fail_at(deadline, shield=shield, reason=reason) as scope:
+        |          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        |   File 
+"/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3
+.15/contextlib.py", line 224, in __exit__
+        |     self.gen.throw(value)
+        |     ~~~~~~~~~~~~~~^^^^^^^
+        |   File 
+"/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/anyio/_c
+ore/_tasks.py", line 155, in fail_at
+        |     raise TimeoutError(reason) if reason else TimeoutError
+        | TimeoutError
+        | 
+        | The above exception was the direct cause of the following exception:
+        | 
+        | Traceback (most recent call last):
+        |   File "/home/crpier/Projects/fourth-snekql/soak/service.py", line 62,
+in worker
+        |     await work.write(identity)
+        |   File 
+"/home/crpier/Projects/fourth-snekql/soak/_service_workload.py", line 118, in 
+write
+        |     async with self.database.transaction() as tx:
+        |                ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/runtime.py", line 
+735, in __aenter__
+        |     connection = await self.runtime.acquire(self.acquisition_timeout)
+        |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        |   File 
+"/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py", line 629, in 
+acquire
+        |     connection = await 
+self.connection_pool.acquire(acquisition_timeout)
+        |                  
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        |   File 
+"/home/crpier/Projects/fourth-snekql/snekql/mariadb/runtime.py", line 344, in 
+acquire
+        |     await self.gate.admit(deadline, acquisition_timeout)
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 95, in admit
+        |     await self._admit(deadline, acquisition_timeout)
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 132, in _admit
+        |     await self._wait_for_release(ticket, deadline, 
+acquisition_timeout)
+        |   File "/home/crpier/Projects/fourth-snekql/snekql/_pool_gate.py", 
+line 206, in _wait_for_release
+        |     raise PoolTimeoutError(msg) from error
+        | snekql.errors.PoolTimeoutError: timed out acquiring database 
+connection
+        +------------------------------------
+
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/test_soak_runner.py::service_soak_sustained_multislot_saturation_does_not_stall - …
+
+───────────────────────── 1 failed, 0 passed in 37.19s ─────────────────────────

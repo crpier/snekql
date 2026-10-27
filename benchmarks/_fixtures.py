@@ -17,6 +17,7 @@ from typing import Any
 from snektest import fixture
 
 from benchmarks import _models_mariadb, _models_sqlite
+from benchmarks._artifacts import mariadb_artifacts
 from benchmarks._workloads import BackendQueryApi, seed_rows
 from snekql.runtime import Database
 from snekql.testing.mariadb import TemporaryMariaDBServer, temporary_mariadb_server
@@ -27,11 +28,15 @@ from tests.helpers import migrate_models
 async def benchmark_mariadb_server() -> AsyncGenerator[TemporaryMariaDBServer]:
     """Provide a throwaway MariaDB server for the duration of the block."""
 
-    async with temporary_mariadb_server(
-        data_directory=Path(".snektest/bench-mariadb-data"),
-        reset_database=True,
-        transports={"tcp"},
-    ) as server:
+    async with (
+        mariadb_artifacts() as root,
+        temporary_mariadb_server(
+            data_directory=Path(".snektest/bench-mariadb-data"),
+            runtime_base_directory=root,
+            reset_database=True,
+            transports={"tcp"},
+        ) as server,
+    ):
         yield server
 
 

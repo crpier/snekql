@@ -1611,3 +1611,41 @@ if TYPE_CHECKING:
         assert_type(sqlite.select(User).inspect(), str)
         assert_type(sqlite.select(User).inspect(parameter_visibility="values"), str)
         sqlite.select(User).inspect(parameter_visibility="invalid")  # ty: ignore[invalid-argument-type]
+
+
+if TYPE_CHECKING:
+
+    async def check_structured_explain_types(
+        local: sqlite.Transaction, remote: mariadb.Transaction
+    ) -> None:
+        """Consumers narrow native evidence once, then traverse without casts."""
+        result = await local.explain(sqlite.select(User))
+        assert_type(result, sqlite.ExplainResult)
+        assert_type(result.format, Literal["native", "json"])
+        assert_type(result.analyzed, bool)
+        plan = result.plan
+        if isinstance(plan, sqlite.SQLiteQueryPlan):
+            assert_type(plan.roots, tuple[sqlite.SQLitePlanStep, ...])
+            for step in plan.walk():
+                assert_type(step, sqlite.SQLitePlanStep)
+                assert_type(step.children, tuple[sqlite.SQLitePlanStep, ...])
+                assert_type(step.id, int)
+                assert_type(step.detail, str)
+
+        result = await remote.explain_analyze(
+            mariadb.select(MariadbUser), format="json"
+        )
+        plan = result.plan
+        if isinstance(plan, mariadb.MariaDBQueryPlan):
+            assert_type(plan.native_json, str)
+            assert_type(plan.roots, tuple[mariadb.MariaDBPlanNode, ...])
+            for node in plan.walk():
+                assert_type(node, mariadb.MariaDBPlanNode)
+                assert_type(node.path, tuple[str | int, ...])
+                assert_type(node.children, tuple[mariadb.MariaDBPlanNode, ...])
+                assert_type(node.table_name, str | None)
+                assert_type(node.key, str | None)
+                assert_type(node.estimated_rows, float | None)
+                assert_type(node.actual_rows, float | None)
+                assert_type(node.actual_loops, int | None)
+                assert_type(node.total_time_ms, float | None)

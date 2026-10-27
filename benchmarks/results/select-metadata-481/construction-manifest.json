@@ -1,0 +1,434 @@
+[
+  {
+    "run": "round1-baseline-construction",
+    "commit": "a10cd178b024ffbc32e36c52f73d6e6cbad39991",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "source": "/home/crpier/.cache/snekql-481-metadata/baseline/snekql/_query_state.py",
+    "mode": "timing",
+    "warmup": 5000,
+    "compiled": {
+      "point_read": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"id\" = ?) LIMIT ?",
+        "params": [
+          42,
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "filtered": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"age\" > ?) AND (\"name\" = ?) ORDER BY \"id\" DESC LIMIT ? OFFSET ?",
+        "params": [
+          18,
+          "alice",
+          10,
+          5
+        ],
+        "backend": "sqlite"
+      },
+      "projection": {
+        "sql": "SELECT \"email\", \"name\" FROM \"bench_user\" WHERE (\"age\" >= ?) LIMIT ?",
+        "params": [
+          21,
+          100
+        ],
+        "backend": "sqlite"
+      },
+      "insert": {
+        "sql": "INSERT INTO \"bench_user\" (\"email\", \"name\", \"age\") VALUES (?, ?, ?)",
+        "params": [
+          "a@b.com",
+          "alice",
+          30
+        ],
+        "backend": "sqlite"
+      },
+      "update": {
+        "sql": "UPDATE \"bench_user\" SET \"name\" = ? WHERE (\"id\" = ?)",
+        "params": [
+          "bob",
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "aggregate": {
+        "sql": "SELECT COUNT(\"id\") FROM \"bench_user\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "mixed": {
+        "sql": "SELECT \"id\", \"id\", \"id\", \"id\", \"id\", \"id\", COUNT(\"id\") FROM \"bench_user\" GROUP BY \"id\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "deferred": {
+        "sql": "SELECT \"id\", \"parent\" FROM \"node\"",
+        "params": [],
+        "backend": "sqlite"
+      }
+    }
+  },
+  {
+    "run": "round2-candidate-construction",
+    "commit": "8e5cdc440183831f539e2b9c52f858a252d820ee",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "source": "/home/crpier/Projects/third-snekql/snekql/_query_state.py",
+    "mode": "timing",
+    "warmup": 5000,
+    "compiled": {
+      "point_read": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"id\" = ?) LIMIT ?",
+        "params": [
+          42,
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "filtered": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"age\" > ?) AND (\"name\" = ?) ORDER BY \"id\" DESC LIMIT ? OFFSET ?",
+        "params": [
+          18,
+          "alice",
+          10,
+          5
+        ],
+        "backend": "sqlite"
+      },
+      "projection": {
+        "sql": "SELECT \"email\", \"name\" FROM \"bench_user\" WHERE (\"age\" >= ?) LIMIT ?",
+        "params": [
+          21,
+          100
+        ],
+        "backend": "sqlite"
+      },
+      "insert": {
+        "sql": "INSERT INTO \"bench_user\" (\"email\", \"name\", \"age\") VALUES (?, ?, ?)",
+        "params": [
+          "a@b.com",
+          "alice",
+          30
+        ],
+        "backend": "sqlite"
+      },
+      "update": {
+        "sql": "UPDATE \"bench_user\" SET \"name\" = ? WHERE (\"id\" = ?)",
+        "params": [
+          "bob",
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "aggregate": {
+        "sql": "SELECT COUNT(\"id\") FROM \"bench_user\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "mixed": {
+        "sql": "SELECT \"id\", \"id\", \"id\", \"id\", \"id\", \"id\", COUNT(\"id\") FROM \"bench_user\" GROUP BY \"id\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "deferred": {
+        "sql": "SELECT \"id\", \"parent\" FROM \"node\"",
+        "params": [],
+        "backend": "sqlite"
+      }
+    }
+  },
+  {
+    "run": "round3-baseline-construction",
+    "commit": "a10cd178b024ffbc32e36c52f73d6e6cbad39991",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "source": "/home/crpier/.cache/snekql-481-metadata/baseline/snekql/_query_state.py",
+    "mode": "timing",
+    "warmup": 5000,
+    "compiled": {
+      "point_read": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"id\" = ?) LIMIT ?",
+        "params": [
+          42,
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "filtered": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"age\" > ?) AND (\"name\" = ?) ORDER BY \"id\" DESC LIMIT ? OFFSET ?",
+        "params": [
+          18,
+          "alice",
+          10,
+          5
+        ],
+        "backend": "sqlite"
+      },
+      "projection": {
+        "sql": "SELECT \"email\", \"name\" FROM \"bench_user\" WHERE (\"age\" >= ?) LIMIT ?",
+        "params": [
+          21,
+          100
+        ],
+        "backend": "sqlite"
+      },
+      "insert": {
+        "sql": "INSERT INTO \"bench_user\" (\"email\", \"name\", \"age\") VALUES (?, ?, ?)",
+        "params": [
+          "a@b.com",
+          "alice",
+          30
+        ],
+        "backend": "sqlite"
+      },
+      "update": {
+        "sql": "UPDATE \"bench_user\" SET \"name\" = ? WHERE (\"id\" = ?)",
+        "params": [
+          "bob",
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "aggregate": {
+        "sql": "SELECT COUNT(\"id\") FROM \"bench_user\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "mixed": {
+        "sql": "SELECT \"id\", \"id\", \"id\", \"id\", \"id\", \"id\", COUNT(\"id\") FROM \"bench_user\" GROUP BY \"id\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "deferred": {
+        "sql": "SELECT \"id\", \"parent\" FROM \"node\"",
+        "params": [],
+        "backend": "sqlite"
+      }
+    }
+  },
+  {
+    "run": "round4-candidate-construction",
+    "commit": "8e5cdc440183831f539e2b9c52f858a252d820ee",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "source": "/home/crpier/Projects/third-snekql/snekql/_query_state.py",
+    "mode": "timing",
+    "warmup": 5000,
+    "compiled": {
+      "point_read": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"id\" = ?) LIMIT ?",
+        "params": [
+          42,
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "filtered": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"age\" > ?) AND (\"name\" = ?) ORDER BY \"id\" DESC LIMIT ? OFFSET ?",
+        "params": [
+          18,
+          "alice",
+          10,
+          5
+        ],
+        "backend": "sqlite"
+      },
+      "projection": {
+        "sql": "SELECT \"email\", \"name\" FROM \"bench_user\" WHERE (\"age\" >= ?) LIMIT ?",
+        "params": [
+          21,
+          100
+        ],
+        "backend": "sqlite"
+      },
+      "insert": {
+        "sql": "INSERT INTO \"bench_user\" (\"email\", \"name\", \"age\") VALUES (?, ?, ?)",
+        "params": [
+          "a@b.com",
+          "alice",
+          30
+        ],
+        "backend": "sqlite"
+      },
+      "update": {
+        "sql": "UPDATE \"bench_user\" SET \"name\" = ? WHERE (\"id\" = ?)",
+        "params": [
+          "bob",
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "aggregate": {
+        "sql": "SELECT COUNT(\"id\") FROM \"bench_user\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "mixed": {
+        "sql": "SELECT \"id\", \"id\", \"id\", \"id\", \"id\", \"id\", COUNT(\"id\") FROM \"bench_user\" GROUP BY \"id\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "deferred": {
+        "sql": "SELECT \"id\", \"parent\" FROM \"node\"",
+        "params": [],
+        "backend": "sqlite"
+      }
+    }
+  },
+  {
+    "run": "round5-baseline-construction",
+    "commit": "a10cd178b024ffbc32e36c52f73d6e6cbad39991",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "source": "/home/crpier/.cache/snekql-481-metadata/baseline/snekql/_query_state.py",
+    "mode": "timing",
+    "warmup": 5000,
+    "compiled": {
+      "point_read": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"id\" = ?) LIMIT ?",
+        "params": [
+          42,
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "filtered": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"age\" > ?) AND (\"name\" = ?) ORDER BY \"id\" DESC LIMIT ? OFFSET ?",
+        "params": [
+          18,
+          "alice",
+          10,
+          5
+        ],
+        "backend": "sqlite"
+      },
+      "projection": {
+        "sql": "SELECT \"email\", \"name\" FROM \"bench_user\" WHERE (\"age\" >= ?) LIMIT ?",
+        "params": [
+          21,
+          100
+        ],
+        "backend": "sqlite"
+      },
+      "insert": {
+        "sql": "INSERT INTO \"bench_user\" (\"email\", \"name\", \"age\") VALUES (?, ?, ?)",
+        "params": [
+          "a@b.com",
+          "alice",
+          30
+        ],
+        "backend": "sqlite"
+      },
+      "update": {
+        "sql": "UPDATE \"bench_user\" SET \"name\" = ? WHERE (\"id\" = ?)",
+        "params": [
+          "bob",
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "aggregate": {
+        "sql": "SELECT COUNT(\"id\") FROM \"bench_user\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "mixed": {
+        "sql": "SELECT \"id\", \"id\", \"id\", \"id\", \"id\", \"id\", COUNT(\"id\") FROM \"bench_user\" GROUP BY \"id\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "deferred": {
+        "sql": "SELECT \"id\", \"parent\" FROM \"node\"",
+        "params": [],
+        "backend": "sqlite"
+      }
+    }
+  },
+  {
+    "run": "round6-candidate-construction",
+    "commit": "8e5cdc440183831f539e2b9c52f858a252d820ee",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "source": "/home/crpier/Projects/third-snekql/snekql/_query_state.py",
+    "mode": "timing",
+    "warmup": 5000,
+    "compiled": {
+      "point_read": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"id\" = ?) LIMIT ?",
+        "params": [
+          42,
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "filtered": {
+        "sql": "SELECT \"id\", \"email\", \"name\", \"age\" FROM \"bench_user\" WHERE (\"age\" > ?) AND (\"name\" = ?) ORDER BY \"id\" DESC LIMIT ? OFFSET ?",
+        "params": [
+          18,
+          "alice",
+          10,
+          5
+        ],
+        "backend": "sqlite"
+      },
+      "projection": {
+        "sql": "SELECT \"email\", \"name\" FROM \"bench_user\" WHERE (\"age\" >= ?) LIMIT ?",
+        "params": [
+          21,
+          100
+        ],
+        "backend": "sqlite"
+      },
+      "insert": {
+        "sql": "INSERT INTO \"bench_user\" (\"email\", \"name\", \"age\") VALUES (?, ?, ?)",
+        "params": [
+          "a@b.com",
+          "alice",
+          30
+        ],
+        "backend": "sqlite"
+      },
+      "update": {
+        "sql": "UPDATE \"bench_user\" SET \"name\" = ? WHERE (\"id\" = ?)",
+        "params": [
+          "bob",
+          1
+        ],
+        "backend": "sqlite"
+      },
+      "aggregate": {
+        "sql": "SELECT COUNT(\"id\") FROM \"bench_user\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "mixed": {
+        "sql": "SELECT \"id\", \"id\", \"id\", \"id\", \"id\", \"id\", COUNT(\"id\") FROM \"bench_user\" GROUP BY \"id\"",
+        "params": [],
+        "backend": "sqlite"
+      },
+      "deferred": {
+        "sql": "SELECT \"id\", \"parent\" FROM \"node\"",
+        "params": [],
+        "backend": "sqlite"
+      }
+    }
+  },
+  {
+    "run": "memory-baseline",
+    "commit": "a10cd178b024ffbc32e36c52f73d6e6cbad39991",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "source": "/home/crpier/.cache/snekql-481-metadata/baseline/snekql/_query_state.py",
+    "mode": "memory",
+    "count": 5000
+  },
+  {
+    "run": "memory-candidate",
+    "commit": "8e5cdc440183831f539e2b9c52f858a252d820ee",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "source": "/home/crpier/Projects/third-snekql/snekql/_query_state.py",
+    "mode": "memory",
+    "count": 5000
+  }
+]

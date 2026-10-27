@@ -1,19 +1,25 @@
 """Decode SQL output values without constructing intermediate result models."""
 
+lazy from collections.abc import Callable
+lazy from functools import partial
 lazy from typing import Any, cast
 
+lazy from snekql._column_protocols import is_dialect_selectable, is_policy_selectable
+lazy from snekql._cte import _CteOutput
 lazy from snekql._dialect_expr import (
     DialectSelectable,
     NullExtendedSelectable,
     NumericAggregatePolicy,
     PolicySelectable,
 )
+lazy from snekql._literal import _IntegerLiteral
 lazy from snekql._query_state import (
     Selectable,
     require_column_model,
     require_field,
     require_single_column_subquery,
 )
+lazy from snekql._value_expression import ValueExpression
 lazy from snekql.errors import QueryCompilationError
 lazy from snekql.expressions import _Aggregate, _Scalar
 lazy from snekql.storage import Attr, StorageBackend
@@ -141,3 +147,160 @@ def _decode_projection_field(
     ):
         return None
     return _decode_selectable(column, value, backend=backend, validate=validate)
+
+
+def resolve_projection_decoder(
+    column: Selectable,
+    *,
+    nullable_models: frozenset[type[object]],
+    backend: StorageBackend,
+    validate: bool,
+) -> Callable[[object], object]:
+    """Resolve ordinary columns and built-in derived chains for this execution.
+
+    Structural extension seams take precedence even on Attr subclasses. Keep
+    those and non-column expressions on the general decoder; never cache by
+    class or globally, since ownership and validation belong to the execution.
+    """
+    # Built-in derived references only forward to their definition's wire
+    # source. Resolve that chain with each definition's own NULL-extension
+    # context; never validate its intermediate application result model.
+    if type(cast("object", column)) is _CteOutput:
+        reference = cast("_CteOutput[Any, Any, Any]", column)
+        slot = reference.__output_slot__()
+        if backend == slot.backend:
+            decode = resolve_projection_decoder(
+                slot.source,
+                nullable_models=slot.nullable_models,
+                backend=slot.backend,
+                validate=validate,
+            )
+            if reference.relation in nullable_models:
+
+                def decode_derived_nullable(raw: object) -> object:
+                    return None if raw is None else decode(raw)
+
+                return decode_derived_nullable
+            return decode
+        # Preserve the existing error boundary: an incompatible slot fails
+        # when decoded, not while resolving an empty or NULL-extended read.
+    if (
+        isinstance(column, Attr)
+        and not is_policy_selectable(column)
+        and not is_dialect_selectable(column)
+    ):
+        decode = partial(column.decode, backend=backend, validate=validate)
+        if nullable_models and require_column_model(column) in nullable_models:
+
+            def decode_nullable(raw: object) -> object:
+                return None if raw is None else decode(raw)
+
+            return decode_nullable
+        return decode
+    return _resolve_expression_decoder(
+        column, nullable_models=nullable_models, backend=backend, validate=validate
+    )
+
+
+def _resolve_expression_decoder(
+    column: Selectable,
+    *,
+    nullable_models: frozenset[type[object]],
+    backend: StorageBackend,
+    validate: bool,
+) -> Callable[[object], object]:
+    """Resolve built-in expressions off the ordinary-column dispatch path."""
+    if type(column) is ValueExpression:
+        decode = column.__decode__
+        if nullable_models and column.owner in nullable_models:
+
+            def decode_value_nullable(raw: object) -> object:
+                # Keep NULL-extension evaluation at the original value boundary:
+                # CASE/COALESCE may produce a value even without their owner row.
+                if raw is None and column.__nullable_when_extended__():
+                    return None
+                return decode(raw)
+
+            return decode_value_nullable
+        return decode
+    if type(column) is _IntegerLiteral:
+        # UNION/recursive rows may differ from the declared constant. Retain the
+        # policy's per-value backend/type checks, not a cached literal value.
+        return partial(
+            column.__decode_with_policy__, backend=backend, validate=validate
+        )
+    if type(column) is _Scalar:
+        inner = require_single_column_subquery(column.subquery)
+        decode = resolve_projection_decoder(
+            inner.fields[0],
+            nullable_models=frozenset(),
+            backend=backend,
+            validate=validate,
+        )
+
+        def decode_scalar(raw: object) -> object:
+            # SQL NULL from an empty scalar bypasses even a NOT NULL source
+            # codec, just as it does on the general selectable path.
+            return None if raw is None else decode(raw)
+
+        return decode_scalar
+    if type(column) is _Aggregate:
+        aggregate_decoder = _resolve_column_aggregate_decoder(
+            column, backend=backend, validate=validate
+        )
+        if aggregate_decoder is not None:
+            return aggregate_decoder
+    return partial(
+        _decode_projection_field,
+        column,
+        nullable_models=nullable_models,
+        backend=backend,
+        validate=validate,
+    )
+
+
+def _resolve_column_aggregate_decoder(
+    aggregate: _Aggregate[Any, Any], *, backend: StorageBackend, validate: bool
+) -> Callable[[object], object] | None:
+    """Bind aggregate codecs, retaining distinct fixed and source-policy domains."""
+    if aggregate.func == "COUNT":
+        return _decode_count
+    if aggregate.func == "AVG":
+        return _decode_average
+    source = aggregate.column
+    if aggregate.func == "SUM" and type(source) is _CteOutput:
+        # Bind the existing numeric provenance path, not its original codec.
+        # Keep the numeric gate per value to preserve errors and source behavior.
+        decode = source.__output_slot__().provenance.decode_sum
+    elif aggregate.func in ("MIN", "MAX") and type(source) is _CteOutput:
+        # Derived extrema adopt the definition's projection policy (including
+        # dialect hooks), unlike extrema directly over a physical column.
+        # Resolve through the reference to retain deferred backend failures.
+        decode = resolve_projection_decoder(
+            source, nullable_models=frozenset(), backend=backend, validate=validate
+        )
+    elif not isinstance(source, Attr):
+        return None
+    elif aggregate.func in ("MIN", "MAX") and not is_policy_selectable(source):
+        # Extrema do not adopt dialect-only projection hooks.
+        decode = partial(source.decode, backend=backend, validate=validate)
+    elif aggregate.func == "SUM" and not isinstance(source, NumericAggregatePolicy):
+        # SUM normalizes its SQL numeric domain, not the column's logical type.
+        decode = partial(_normalize_sum, source)
+    else:
+        return None
+
+    def decode_nullable(raw: object) -> object:
+        return None if raw is None else decode(raw)
+
+    return decode_nullable
+
+
+def _decode_count(value: object) -> object:
+    """Keep SQL NULLs distinct from COUNT's ordinary zero result."""
+    return None if value is None else int(cast("int", value))
+
+
+def _decode_average(value: object) -> object:
+    """AVG uses a nullable float domain, not the source column's codec."""
+    return None if value is None else float(cast("float", value))

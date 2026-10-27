@@ -13,7 +13,7 @@ from typing import ClassVar
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import sqlite
+from snekql import mariadb, sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
     Pending,
@@ -22,7 +22,8 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
+from tests.helpers import initialized_database
+from tests.query.aggregate_models import MariaUser
 
 
 class User[S = Pending](sqlite.Model[S]):
@@ -56,12 +57,13 @@ class Order[S = Pending](sqlite.Model[S]):
 def having_renders_between_group_by_and_order_by() -> None:
     """Clause order is WHERE -> GROUP BY -> HAVING -> ORDER BY."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User.country, User.id.count())
         .where(User.id.gt(0))
         .group_by(User.country)
         .having(User.id.count().gt(1))
-        .order_by(User.country.asc()),
+        .order_by(User.country.asc())
+        .compile()
     )
 
     expected = " ".join(
@@ -71,49 +73,52 @@ def having_renders_between_group_by_and_order_by() -> None:
             'HAVING (COUNT("id") > ?) ORDER BY "country" ASC',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, (0, 1))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, (0, 1))
 
 
 @test(mark="fast")
 def having_over_an_aggregate_renders_the_function() -> None:
     """A HAVING predicate over an aggregate renders ``FUNC(col)`` as its LHS."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User.country, User.id.count())
         .group_by(User.country)
-        .having(User.id.count().gt(5)),
+        .having(User.id.count().gt(5))
+        .compile()
     )
 
     expected = 'SELECT "country", COUNT("id") FROM "user" GROUP BY "country" HAVING (COUNT("id") > ?)'
-    assert_eq(sql, expected)
-    assert_eq(params, (5,))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, (5,))
 
 
 @test(mark="fast")
 def having_over_a_grouped_column_renders_the_column() -> None:
     """A HAVING predicate may target a grouped column instead of an aggregate."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User.country, User.id.count())
         .group_by(User.country)
-        .having(User.country.ne("antarctica")),
+        .having(User.country.ne("antarctica"))
+        .compile()
     )
 
     expected = 'SELECT "country", COUNT("id") FROM "user" GROUP BY "country" HAVING ("country" != ?)'
-    assert_eq(sql, expected)
-    assert_eq(params, ("antarctica",))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ("antarctica",))
 
 
 @test(mark="fast")
 def having_qualifies_aggregates_under_a_join() -> None:
     """A joined HAVING aggregate qualifies the wrapped column with its table."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(
+    compiled = (
         select(User.country, Order.amount.sum())
         .join(Order, on=Order.user_id.references(User.id))
         .group_by(User.country)
-        .having(Order.amount.sum().gt(10)),
+        .having(Order.amount.sum().gt(10))
+        .compile()
     )
 
     expected = " ".join(
@@ -123,20 +128,23 @@ def having_qualifies_aggregates_under_a_join() -> None:
             'GROUP BY "user"."country" HAVING (SUM("order"."amount") > ?)',
         ],
     )
-    assert_eq(sql, expected)
-    assert_eq(params, (10,))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, (10,))
 
 
 @test(mark="fast")
 def having_is_backend_portable() -> None:
     """HAVING is identical SQL in MariaDB save for identifier quoting."""
 
+    compiled = (
+        mariadb.select(MariaUser.country, MariaUser.id.count())
+        .group_by(MariaUser.country)
+        .having(MariaUser.id.count().gt(5))
+        .compile()
+    )
+
     assert_eq(
-        MARIADB_CODEC.compile_select_sql(
-            select(User.country, User.id.count())
-            .group_by(User.country)
-            .having(User.id.count().gt(5)),
-        )[0],
+        compiled.sql,
         " ".join(
             [
                 "SELECT `country`, COUNT(`id`) FROM `user`",
@@ -144,6 +152,8 @@ def having_is_backend_portable() -> None:
             ],
         ),
     )
+    assert_eq(compiled.params, (5,))
+    assert_eq(compiled.backend, "mariadb")
 
 
 @test(mark="fast")

@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
 
+from benchmarks._artifacts import mariadb_artifacts
 from examples.migration_baseline import (
     MARIADB_MIGRATIONS,
     SQLITE_MIGRATIONS,
@@ -36,7 +37,10 @@ async def provide_baseline_case(backend: BackendFamily) -> AsyncGenerator[RawCas
         yield await load_fixture(provide_raw_case("sqlite"))
     else:
         async with (
-            temporary_mariadb_server(auth="password", transports={"tcp"}) as server,
+            mariadb_artifacts() as root,
+            temporary_mariadb_server(
+                auth="password", transports={"tcp"}, runtime_base_directory=root
+            ) as server,
             await mariadb.Database.initialize(server.config()) as database,
         ):
             yield RawCase(database, mariadb)

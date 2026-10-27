@@ -11,6 +11,7 @@ lazy from json import JSONDecodeError, loads
 lazy from math import isfinite
 lazy from types import EllipsisType, UnionType
 lazy from typing import (
+    TYPE_CHECKING,
     Annotated,
     Any,
     ForwardRef,
@@ -1242,6 +1243,10 @@ class Attr[
         self.unique: bool = unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
+        self._resolved_logical_type_cache: tuple[object, bool | None] | None = None
+        self._temporal_type_cache: (
+            tuple[type[UtcDatetime | LocalDatetime | ZonedDatetime] | None] | None
+        ) = None
         self._snekql_metadata_frozen: bool = False
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -1453,7 +1458,12 @@ class Attr[
         """Allow only private codec caches after model declaration finishes."""
 
         frozen = getattr(self, "_snekql_metadata_frozen", False)
-        if not frozen or name in ("_logical_adapter_cache", "_is_json_cache"):
+        if not frozen or name in (
+            "_logical_adapter_cache",
+            "_is_json_cache",
+            "_resolved_logical_type_cache",
+            "_temporal_type_cache",
+        ):
             return
         owner = self.owner
         owner_name = owner.__name__ if owner is not None else "<unbound>"
@@ -1603,17 +1613,34 @@ class Attr[
     def _temporal_type(
         self,
     ) -> type[UtcDatetime | LocalDatetime | ZonedDatetime] | None:
-        """Recover temporal meaning from the logical annotation, never from storage."""
+        """Retain resolved temporal meaning, including a known non-temporal result.
+
+        This descriptor-local cache follows annotation binding, not storage or
+        backend identity. Unbound and partially resolved declarations are never
+        cached; aliases may copy the result because they retain the source type.
+        """
+        cached = self._temporal_type_cache
+        if cached is not None:
+            return cached[0]
         if self.owner is None or self.name is None:
             return None
         logical = _extract_logical_type(
             _resolve_model_hint(self.owner, self.name), self.name
         )
         types = _annotation_core_types(logical)
-        for temporal_type in (UtcDatetime, LocalDatetime, ZonedDatetime):
-            if temporal_type in types:
-                return temporal_type
-        return None
+        result = next(
+            (
+                kind
+                for kind in (UtcDatetime, LocalDatetime, ZonedDatetime)
+                if kind in types
+            ),
+            None,
+        )
+        # A module-level forward reference can resolve after declaration.
+        # Unknown is not a negative classification; retry it on the next use.
+        if not _contains_forward_ref(logical):
+            self._temporal_type_cache = (result,)
+        return result
 
     def validate_temporal_declaration(self, backend: StorageBackend) -> None:
         """Reject ambiguous temporal storage before it can claim a query contract."""
@@ -1953,19 +1980,30 @@ class Attr[
         (with the ``pydantic.Json`` marker stripped) rather than a validator, so
         the nullability/numeric gates can inspect it. Resolution can legitimately
         fail before a model's declaring scope is fully populated (forward refs);
-        callers treat ``None`` as "unknown" and stay permissive.
+        callers treat ``None`` as "unknown" and stay permissive. Fully resolved
+        types are retained per descriptor, like the logical validator; unresolved
+        references and resolution failures must be retried. Query aliases retain
+        their source annotation and may share the resolved type object.
+        The second cache item retains numeric classification when first needed;
+        sharing this cache avoids another descriptor dictionary key.
         """
 
+        cached = self._resolved_logical_type_cache
+        if cached is not None:
+            return cached[0]
         owner = self.owner
         if owner is None:
             return None
         try:
             annotation = _resolve_model_hint(owner, self._require_name())
-            return _strip_json_marker(
+            logical = _strip_json_marker(
                 _extract_logical_type(annotation, self._require_name())
             )
         except ModelDeclarationError, NameError, TypeError:
             return None
+        if not _contains_forward_ref(logical):
+            self._resolved_logical_type_cache = (logical, None)
+        return logical
 
     def _require_ordering(self) -> None:
         logical = self._resolved_logical_type()
@@ -2010,18 +2048,24 @@ class Attr[
         it subclasses ``int``: summing/averaging a boolean column is not a boolean.
         """
 
+        cached = self._resolved_logical_type_cache
+        if cached is not None and cached[1] is not None:
+            return cached[1]
         logical = self._resolved_logical_type()
         if logical is None:
             return None
         cores = _annotation_core_types(logical)
-        if not cores:
-            return False
-        return all(
+        result = bool(cores) and all(
             isinstance(core, type)
             and issubclass(core, (Decimal, int, float))
             and not issubclass(core, bool)
             for core in cores
         )
+        # Only the resolved annotation cache proves this answer is stable.
+        # Unbound/forward declarations must retry; aliases retain source meaning.
+        if self._resolved_logical_type_cache is not None:
+            self._resolved_logical_type_cache = (logical, result)
+        return result
 
     def _coerce_int_column_bool(self, value: object) -> object:
         """Coerce a ``bool`` to ``int`` for an integer-logical column.
@@ -2279,70 +2323,71 @@ class FKAttr[
     error while still resolving at runtime.
     """
 
-    # Class access must keep the FKAttr type (not widen to Attr) so `references`
-    # stays visible; the value overloads mirror the base descriptor protocol.
-    @overload
-    def __get__[AccessOwner, NonNullT](
-        self: FKAttr[
+    if TYPE_CHECKING:
+        # Class access must keep the FKAttr type (not widen to Attr) so `references`
+        # stays visible; the value overloads mirror the base descriptor protocol.
+        @overload
+        def __get__[AccessOwner, NonNullT](
+            self: FKAttr[
+                WriteOwnerT,
+                LoadedOwnerT,
+                OwnerT,
+                WriteT,
+                NonNullT | None,
+                TargetOwnerT,
+                SetValueT,
+                Any,
+                FamilyT,
+            ],
+            instance: None,
+            owner: type[AccessOwner],
+        ) -> FKAttr[
             WriteOwnerT,
             LoadedOwnerT,
-            OwnerT,
+            AccessOwner,
             WriteT,
             NonNullT | None,
             TargetOwnerT,
             SetValueT,
-            Any,
+            NonNullT,
             FamilyT,
-        ],
-        instance: None,
-        owner: type[AccessOwner],
-    ) -> FKAttr[
-        WriteOwnerT,
-        LoadedOwnerT,
-        AccessOwner,
-        WriteT,
-        NonNullT | None,
-        TargetOwnerT,
-        SetValueT,
-        NonNullT,
-        FamilyT,
-    ]: ...
-    @overload
-    def __get__[AccessOwner](
-        self: FKAttr[
+        ]: ...
+        @overload
+        def __get__[AccessOwner](
+            self: FKAttr[
+                WriteOwnerT,
+                LoadedOwnerT,
+                OwnerT,
+                WriteT,
+                ReadValueT,
+                TargetOwnerT,
+                SetValueT,
+                Any,
+                FamilyT,
+            ],
+            instance: None,
+            owner: type[AccessOwner],
+        ) -> FKAttr[
             WriteOwnerT,
             LoadedOwnerT,
-            OwnerT,
+            AccessOwner,
             WriteT,
             ReadValueT,
             TargetOwnerT,
             SetValueT,
-            Any,
+            ReadValueT,
             FamilyT,
-        ],
-        instance: None,
-        owner: type[AccessOwner],
-    ) -> FKAttr[
-        WriteOwnerT,
-        LoadedOwnerT,
-        AccessOwner,
-        WriteT,
-        ReadValueT,
-        TargetOwnerT,
-        SetValueT,
-        ReadValueT,
-        FamilyT,
-    ]: ...
-    @overload
-    def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
-    @overload
-    def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
-    def __get__(  # ty: ignore[invalid-method-override]
-        self,
-        instance: object | None,
-        owner: type[Any],
-    ) -> object:
-        return cast("object", super().__get__(cast("Any", instance), owner))
+        ]: ...
+        @overload
+        def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
+        @overload
+        def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
+        def __get__(  # ty: ignore[invalid-method-override]
+            self,
+            instance: object | None,
+            owner: type[Any],
+        ) -> object:
+            return cast("object", super().__get__(cast("Any", instance), owner))
 
     @overload
     def references[KeyT](

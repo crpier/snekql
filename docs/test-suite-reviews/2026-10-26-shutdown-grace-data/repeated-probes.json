@@ -1,0 +1,602 @@
+[
+  {
+    "mode": "ordinary",
+    "index": 1,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 2,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 3,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 4,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 5,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 6,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 7,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 8,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 9,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 10,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 11,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 12,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 13,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 14,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 15,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 16,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 17,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 18,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 19,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "ordinary",
+    "index": 20,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 1,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 2,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 3,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 4,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 5,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 6,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 7,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 8,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 9,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 10,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 11,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 12,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 13,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 14,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 15,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 16,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 17,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 18,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 19,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  },
+  {
+    "mode": "direct-forced-lazy",
+    "index": 20,
+    "exit_code": 0,
+    "report": {
+      "term_received": true,
+      "server_returncode": -9,
+      "all_reaped": true,
+      "kill_times": [
+        11.0
+      ],
+      "alive_at_nine": true,
+      "watchdog_fired": false
+    }
+  }
+]

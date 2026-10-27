@@ -1,0 +1,456 @@
+{
+  "reports": [
+    {
+      "run": "timing1-baseline",
+      "commit": "f3fab4b5629a199536cddb7b831c219ceec1b516",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "mode": "timing"
+    },
+    {
+      "run": "timing2-candidate",
+      "commit": "6a20f6ae1cb3b56c2b3af83b9d0ec2aa4387fa85",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "mode": "timing"
+    },
+    {
+      "run": "timing3-baseline",
+      "commit": "f3fab4b5629a199536cddb7b831c219ceec1b516",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "mode": "timing"
+    },
+    {
+      "run": "timing4-candidate",
+      "commit": "6a20f6ae1cb3b56c2b3af83b9d0ec2aa4387fa85",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "mode": "timing"
+    },
+    {
+      "run": "timing5-baseline",
+      "commit": "f3fab4b5629a199536cddb7b831c219ceec1b516",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "mode": "timing"
+    },
+    {
+      "run": "timing6-candidate",
+      "commit": "6a20f6ae1cb3b56c2b3af83b9d0ec2aa4387fa85",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "mode": "timing"
+    },
+    {
+      "run": "memory-baseline",
+      "commit": "f3fab4b5629a199536cddb7b831c219ceec1b516",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "mode": "memory"
+    },
+    {
+      "run": "memory-candidate",
+      "commit": "6a20f6ae1cb3b56c2b3af83b9d0ec2aa4387fa85",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "mode": "memory"
+    },
+    {
+      "run": "followup1-baseline",
+      "commit": "f3fab4b5629a199536cddb7b831c219ceec1b516",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+    },
+    {
+      "run": "followup2-candidate",
+      "commit": "6a20f6ae1cb3b56c2b3af83b9d0ec2aa4387fa85",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+    },
+    {
+      "run": "followup3-baseline",
+      "commit": "f3fab4b5629a199536cddb7b831c219ceec1b516",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+    },
+    {
+      "run": "followup4-candidate",
+      "commit": "6a20f6ae1cb3b56c2b3af83b9d0ec2aa4387fa85",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+    },
+    {
+      "run": "followup5-baseline",
+      "commit": "f3fab4b5629a199536cddb7b831c219ceec1b516",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+    },
+    {
+      "run": "followup6-candidate",
+      "commit": "6a20f6ae1cb3b56c2b3af83b9d0ec2aa4387fa85",
+      "dirty": false,
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+    }
+  ],
+  "execution": {
+    "environment": {
+      "TMPDIR": "/home/crpier/.cache/snekql-504/tmp",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1"
+    },
+    "runs": [
+      {
+        "report": "timing1-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "timing"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709518.9703994,
+        "elapsed": 30.218873262405396
+      },
+      {
+        "report": "point1-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "-m",
+          "benchmarks.compare",
+          "--backend",
+          "sqlite",
+          "--workload",
+          "point-read",
+          "--rows",
+          "2000",
+          "--operations",
+          "2000",
+          "--trials",
+          "6",
+          "--warmup",
+          "200"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709549.1978643,
+        "elapsed": 9.969180345535278
+      },
+      {
+        "report": "timing2-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "timing"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792709559.175773,
+        "elapsed": 15.044742822647095
+      },
+      {
+        "report": "point2-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "-m",
+          "benchmarks.compare",
+          "--backend",
+          "sqlite",
+          "--workload",
+          "point-read",
+          "--rows",
+          "2000",
+          "--operations",
+          "2000",
+          "--trials",
+          "6",
+          "--warmup",
+          "200"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792709574.2292488,
+        "elapsed": 10.502663373947144
+      },
+      {
+        "report": "timing3-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "timing"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709584.7409039,
+        "elapsed": 33.40258073806763
+      },
+      {
+        "report": "point3-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "-m",
+          "benchmarks.compare",
+          "--backend",
+          "sqlite",
+          "--workload",
+          "point-read",
+          "--rows",
+          "2000",
+          "--operations",
+          "2000",
+          "--trials",
+          "6",
+          "--warmup",
+          "200"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709618.1521766,
+        "elapsed": 9.993614196777344
+      },
+      {
+        "report": "timing4-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "timing"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792709638.1633677,
+        "elapsed": 14.789847135543823
+      },
+      {
+        "report": "point4-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "-m",
+          "benchmarks.compare",
+          "--backend",
+          "sqlite",
+          "--workload",
+          "point-read",
+          "--rows",
+          "2000",
+          "--operations",
+          "2000",
+          "--trials",
+          "6",
+          "--warmup",
+          "200"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792709652.961793,
+        "elapsed": 10.05579662322998
+      },
+      {
+        "report": "timing5-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "timing"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709663.0261955,
+        "elapsed": 29.67815589904785
+      },
+      {
+        "report": "point5-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "-m",
+          "benchmarks.compare",
+          "--backend",
+          "sqlite",
+          "--workload",
+          "point-read",
+          "--rows",
+          "2000",
+          "--operations",
+          "2000",
+          "--trials",
+          "6",
+          "--warmup",
+          "200"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709692.7129323,
+        "elapsed": 9.756028652191162
+      },
+      {
+        "report": "timing6-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "timing"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792709702.4825757,
+        "elapsed": 15.521404027938843
+      },
+      {
+        "report": "point6-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "-m",
+          "benchmarks.compare",
+          "--backend",
+          "sqlite",
+          "--workload",
+          "point-read",
+          "--rows",
+          "2000",
+          "--operations",
+          "2000",
+          "--trials",
+          "6",
+          "--warmup",
+          "200"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792709718.0129914,
+        "elapsed": 9.930557250976562
+      },
+      {
+        "report": "memory-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "memory"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709727.952215,
+        "elapsed": 10.937829494476318
+      },
+      {
+        "report": "profile-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "profile"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709738.898619,
+        "elapsed": 12.791764259338379
+      },
+      {
+        "report": "memory-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "memory"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792709751.6990502,
+        "elapsed": 3.2794549465179443
+      },
+      {
+        "report": "profile-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/probe.py",
+          "profile"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792709754.9870377,
+        "elapsed": 4.049201011657715
+      }
+    ]
+  },
+  "followup_execution": {
+    "environment": {
+      "TMPDIR": "/home/crpier/.cache/snekql-504/tmp",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1"
+    },
+    "runs": [
+      {
+        "report": "followup1-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/followup.py",
+          "0"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792709994.0829499,
+        "elapsed": 6.609591960906982
+      },
+      {
+        "report": "followup2-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/followup.py",
+          "1"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792710000.7010953,
+        "elapsed": 6.8658447265625
+      },
+      {
+        "report": "followup3-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/followup.py",
+          "2"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792710007.5777664,
+        "elapsed": 6.679474353790283
+      },
+      {
+        "report": "followup4-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/followup.py",
+          "3"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792710014.2664669,
+        "elapsed": 6.6714088916778564
+      },
+      {
+        "report": "followup5-baseline.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/followup.py",
+          "4"
+        ],
+        "cwd": "/home/crpier/.cache/snekql-504/baseline",
+        "exit": 0,
+        "started": 1792710020.9467387,
+        "elapsed": 6.690777063369751
+      },
+      {
+        "report": "followup6-candidate.json",
+        "command": [
+          "/home/crpier/Projects/third-snekql/.venv/bin/python",
+          "/home/crpier/.cache/snekql-504/followup.py",
+          "5"
+        ],
+        "cwd": "/home/crpier/Projects/third-snekql",
+        "exit": 0,
+        "started": 1792710027.6464558,
+        "elapsed": 7.042957544326782
+      }
+    ]
+  }
+}

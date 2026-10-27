@@ -1,4 +1,4 @@
-"""Comparable SQLite/MariaDB point reads via `python -m benchmarks.compare`."""
+"""Validated runtime/capacity comparisons via `python -m benchmarks.compare`."""
 
 import asyncio
 import os
@@ -11,10 +11,11 @@ from contextlib import (
     asynccontextmanager,
     suppress,
 )
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from datetime import UTC, datetime
 from functools import partial
 from gc import isenabled
+from hashlib import sha256
 from importlib.metadata import version
 from json import dumps
 from os import cpu_count
@@ -26,6 +27,7 @@ from time import perf_counter
 from anyio import TemporaryDirectory, run_process
 
 from benchmarks import _comparison_mariadb, _comparison_sqlite
+from benchmarks._artifacts import mariadb_artifacts
 from benchmarks._comparison_contract import (
     ComparisonError,
     ReadSession,
@@ -34,39 +36,32 @@ from benchmarks._comparison_contract import (
 )
 from benchmarks._comparison_diagnostics import PoolDiagnostics, measure_memory
 from benchmarks._metrics import LatencyRecorder
+from benchmarks.comparison_plan import ComparisonPlan
 from snekql.testing.mariadb import temporary_mariadb_server
 
 
-@dataclass(frozen=True, kw_only=True)
-class _RunConfig:
-    adapter: str
-    backend: str
-    batch_size: int
-    operations: int
-    profile: str
-    rows: int
-    trials: int
-    warmup: int
-    workload: str
-    workers: int
-
-
 async def _operation(
-    session: ReadSession, target: int, run: _RunConfig
+    session: ReadSession, target: int, run: ComparisonPlan
 ) -> StreamObservation:
     """Check completed work, including warmup, without retaining streamed rows."""
     if run.workload == "bulk":
         start = target * run.batch_size + 1
         records = await session.bulk(start, run.batch_size)
         expected = [
-            Record(id=identity, email=f"user{identity}@example.com", payload="x" * 32)
+            Record(
+                id=identity,
+                email=f"user{identity}@example.com",
+                payload="x" * run.payload_bytes,
+            )
             for identity in range(start, start + run.batch_size)
         ]
         if records != expected:
             message = "bulk write did not return its committed records"
             raise ComparisonError(message)
         return StreamObservation(
-            rows=len(records), identity_sum=sum(record.id for record in records)
+            rows=len(records),
+            identity_sum=sum(record.id for record in records),
+            payload_bytes=sum(len(record.payload) for record in records),
         )
     if run.workload == "stream":
         observed = await session.stream(run.batch_size)
@@ -80,13 +75,15 @@ async def _operation(
     expected = Record(
         id=target,
         email=f"user{target}@example.com",
-        payload=("j" if run.workload == "join" else "x") * 32,
+        payload=("j" if run.workload == "join" else "x") * run.payload_bytes,
     )
     if records != [expected]:
         message = "point read did not return its expected validated record"
         raise ComparisonError(message)
     return StreamObservation(
-        rows=len(records), identity_sum=sum(record.id for record in records)
+        rows=len(records),
+        identity_sum=sum(record.id for record in records),
+        payload_bytes=sum(len(record.payload) for record in records),
     )
 
 
@@ -118,10 +115,15 @@ async def _measure(
     ],
     *,
     adapter: str,
-    run: _RunConfig,
+    run: ComparisonPlan,
 ) -> dict[str, object]:
-    diagnostics = PoolDiagnostics(enabled=run.profile == "diagnostic")
+    diagnostics = PoolDiagnostics(
+        enabled=run.profile == "diagnostic", telemetry_enabled=run.telemetry == "on"
+    )
     async with open_reader(adapter, diagnostics) as session:
+        if session.prepared_sessions != run.pool_size:
+            message = "comparison did not prepare every pool slot"
+            raise ComparisonError(message)
         if run.workload == "bulk":
             await session.reset_bulk()
         for index in range(run.warmup):
@@ -141,6 +143,7 @@ async def _measure(
                 observed = await _operation(session, target, run)
                 latency.record(perf_counter() - operation_started)
                 totals.rows += observed.rows
+                totals.payload_bytes += observed.payload_bytes
                 totals.identity_sum += observed.identity_sum
                 totals.batches += observed.batches
                 totals.max_batch_rows = max(
@@ -152,7 +155,7 @@ async def _measure(
             measure_memory(enabled=run.profile == "memory") as memory,
             _observe_loop() as stalls,
         ):
-            diagnostics.active = diagnostics.enabled
+            diagnostics.active = True
             started = perf_counter()
             async with asyncio.TaskGroup() as tasks:
                 for worker_index in range(run.workers):
@@ -161,6 +164,8 @@ async def _measure(
             diagnostics.active = False
     return {
         "adapter": adapter,
+        "prepared_sessions": session.prepared_sessions,
+        "telemetry": diagnostics.telemetry_report(adapter),
         "session_policy": session.policy,
         "pool": diagnostics.report(adapter),
         "memory": memory,
@@ -176,7 +181,11 @@ async def _measure(
         },
         "elapsed_seconds": elapsed,
         "latency": asdict(latency.summary()),
-        "observed": {"rows": totals.rows, "identity_sum": totals.identity_sum},
+        "observed": {
+            "rows": totals.rows,
+            "identity_sum": totals.identity_sum,
+            "payload_bytes": totals.payload_bytes,
+        },
         "stream": {"batches": totals.batches, "max_batch_rows": totals.max_batch_rows}
         if run.workload == "stream"
         else None,
@@ -219,11 +228,17 @@ def _hardware() -> dict[str, object]:
 
 async def _environment() -> dict[str, object]:
     """Collect provenance outside the timed workload, never guess missing versions."""
-    commit = await run_process(["git", "rev-parse", "HEAD"], check=False)
-    status = await run_process(["git", "status", "--porcelain"], check=False)
+    source = (await asyncio.to_thread(Path(__file__).resolve)).parent.parent
+    lock = await asyncio.to_thread((source / "uv.lock").read_bytes)
+    commit = await run_process(["git", "rev-parse", "HEAD"], cwd=source, check=False)
+    status = await run_process(
+        ["git", "status", "--porcelain"], cwd=source, check=False
+    )
     loop_type = type(asyncio.get_running_loop())
     return {
         "hardware": await asyncio.to_thread(_hardware),
+        "source_directory": str(source),
+        "lock_sha256": sha256(lock).hexdigest(),
         "architecture": machine(),
         "cpu": await asyncio.to_thread(processor),
         "logical_cpus": cpu_count(),
@@ -243,13 +258,15 @@ async def _environment() -> dict[str, object]:
                 "sqlalchemy",
                 "greenlet",
                 "pydantic",
+                "pydantic-core",
+                "pymysql",
                 "anyio",
             )
         },
     }
 
 
-async def _run(run: _RunConfig) -> dict[str, object]:
+async def _run(run: ComparisonPlan) -> dict[str, object]:
     server_metadata: dict[str, object] | None = None
     async with AsyncExitStack() as resources:
         if run.backend == "sqlite":
@@ -257,67 +274,42 @@ async def _run(run: _RunConfig) -> dict[str, object]:
                 TemporaryDirectory(prefix="snekql-compare-")
             )
             path = Path(directory) / "comparison.db"
-            await _comparison_sqlite.seed(path, run.rows)
-            open_reader = partial(_comparison_sqlite.open_reader, path)
-        else:
-            server = await resources.enter_async_context(
-                temporary_mariadb_server(transports={"tcp"})
+            await _comparison_sqlite.seed(
+                path, run.rows, payload_bytes=run.payload_bytes
             )
-            config = server.config(pool_size=1)
-            server_metadata = await _comparison_mariadb.seed(config, run.rows)
-            open_reader = partial(_comparison_mariadb.open_reader, config)
-        measurements = []
-        adapters = (
-            ["raw", "snekql", "sqlalchemy"] if run.adapter == "all" else [run.adapter]
-        )
-        for trial in range(run.trials):
-            offset = trial % len(adapters)
-            for selected in adapters[offset:] + adapters[:offset]:
-                measurement = await _measure(
-                    open_reader,
-                    adapter=selected,
-                    run=run,
+            open_reader = partial(
+                _comparison_sqlite.open_reader,
+                path,
+                pool_size=run.pool_size,
+                payload_bytes=run.payload_bytes,
+            )
+        else:
+            root = await resources.enter_async_context(mariadb_artifacts())
+            server = await resources.enter_async_context(
+                temporary_mariadb_server(
+                    transports={"tcp"}, runtime_base_directory=root
                 )
-                measurement["round"] = trial + 1
-                measurements.append(measurement)
+            )
+            config = server.config(pool_size=run.pool_size)
+            server_metadata = await _comparison_mariadb.seed(
+                config, run.rows, payload_bytes=run.payload_bytes
+            )
+            open_reader = partial(
+                _comparison_mariadb.open_reader, config, payload_bytes=run.payload_bytes
+            )
+        measurements = []
+        for trial in run.schedule:
+            measurement = await _measure(open_reader, adapter=trial.adapter, run=run)
+            measurement["round"] = trial.round
+            measurement["position"] = trial.position
+            measurements.append(measurement)
     return {
         "backend": run.backend,
-        "configuration": {
-            "operations": run.operations,
-            "rows": run.rows,
-            "trials": run.trials,
-            "warmup": run.warmup,
-            "workers": run.workers,
-            "pool_size": 1,
-            "payload_bytes": 32,
-            "buffering": "fetch-many" if run.workload == "stream" else "fetch-all",
-            **(
-                {"batch_size": run.batch_size}
-                if run.workload in {"stream", "bulk"}
-                else {}
-            ),
-            "validation": "strict-pydantic",
-            "transaction": "explicit-begin-commit",
-            "query_construction": "per-operation",
-            run.backend: {
-                "journal_mode": "WAL",
-                "synchronous": "NORMAL",
-                "foreign_keys": True,
-                "busy_timeout_ms": 5000,
-            }
-            if run.backend == "sqlite"
-            else _comparison_mariadb.POLICY,
-        },
+        "configuration": run.configuration,
         "environment": {**await _environment(), "mariadb": server_metadata},
-        "measurement": {
-            "profile": run.profile,
-            "heartbeat_interval_seconds": 0.005,
-            "latency_includes_correctness_checks": True,
-            "setup_included": False,
-            "warmup_included": False,
-        },
+        "measurement": run.measurement,
         "recorded_at": datetime.now(UTC).isoformat(),
-        "schema_version": 1,
+        "schema_version": 2,
         "trials": measurements,
         "workload": run.workload,
     }
@@ -325,54 +317,44 @@ async def _run(run: _RunConfig) -> dict[str, object]:
 
 def main() -> None:
     """Emit a JSON report only after every requested transaction succeeds."""
+    defaults = ComparisonPlan(backend="sqlite")
     parser = ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=("sqlite", "mariadb"), required=True)
     parser.add_argument(
-        "--adapter", choices=("all", "raw", "snekql", "sqlalchemy"), default="all"
+        "--adapter",
+        choices=("all", "raw", "snekql", "sqlalchemy"),
+        default=defaults.adapter,
     )
     parser.add_argument(
         "--workload",
         choices=("point-read", "stream", "join", "bulk"),
-        default="point-read",
+        default=defaults.workload,
     )
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=defaults.batch_size)
     parser.add_argument(
-        "--profile", choices=("timing", "diagnostic", "memory"), default="timing"
+        "--profile",
+        choices=("timing", "diagnostic", "memory"),
+        default=defaults.profile,
     )
-    parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--operations", type=int, default=1000)
-    parser.add_argument("--rows", type=int, default=1000)
-    parser.add_argument("--trials", type=int, default=3)
-    parser.add_argument("--warmup", type=int, default=100)
+    parser.add_argument(
+        "--order", choices=("balanced", "forward", "reverse"), default=defaults.order
+    )
+    parser.add_argument(
+        "--telemetry", choices=("off", "on"), default=defaults.telemetry
+    )
+    parser.add_argument("--payload-bytes", type=int, default=defaults.payload_bytes)
+    parser.add_argument("--pool-size", type=int, default=defaults.pool_size)
+    parser.add_argument("--workers", type=int, default=defaults.workers)
+    parser.add_argument("--operations", type=int, default=defaults.operations)
+    parser.add_argument("--rows", type=int, default=defaults.rows)
+    parser.add_argument("--trials", type=int, default=defaults.trials)
+    parser.add_argument("--warmup", type=int, default=defaults.warmup)
     arguments = parser.parse_args()
-    for name, lower, upper in (
-        ("workers", 1, 128),
-        ("batch_size", 1, 10000),
-        ("operations", 1, 100000),
-        ("rows", 1, 1000000),
-        ("trials", 1, 30),
-        ("warmup", 0, 10000),
-    ):
-        if not lower <= getattr(arguments, name) <= upper:
-            parser.error(
-                f"--{name.replace('_', '-')} must be between {lower} and {upper}"
-            )
-    report = asyncio.run(
-        _run(
-            _RunConfig(
-                backend=arguments.backend,
-                batch_size=arguments.batch_size,
-                workload=arguments.workload,
-                workers=arguments.workers,
-                adapter=arguments.adapter,
-                operations=arguments.operations,
-                profile=arguments.profile,
-                rows=arguments.rows,
-                trials=arguments.trials,
-                warmup=arguments.warmup,
-            )
-        )
-    )
+    try:
+        plan = ComparisonPlan(**vars(arguments))
+    except ValueError as error:
+        parser.error(str(error))
+    report = asyncio.run(_run(plan))
     print(dumps(report, allow_nan=False))
 
 

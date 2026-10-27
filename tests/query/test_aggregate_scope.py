@@ -5,7 +5,7 @@ from typing import ClassVar
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
-from tests.query.test_join_compilation import Order, User
+from tests.query.join_models import Order, User
 
 
 @test([Param("having", name="having"), Param("ordering", name="ordering")], mark="fast")

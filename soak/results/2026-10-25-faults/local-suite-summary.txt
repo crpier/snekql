@@ -1,0 +1,14 @@
+SIGINT disposition: <built-in function default_int_handler>
+tests/test_fault_drills.py::drill_records_engine_and_effective_operation_configuration[stream] ... OK (6.40s)
+tests/test_fault_drills.py::drill_records_engine_and_effective_operation_configuration[commit] ... OK (7.25s)
+tests/test_fault_drills.py::drill_records_engine_and_effective_operation_configuration[restart] ... OK (8.24s)
+tests/test_fault_drills.py::drill_records_engine_and_effective_operation_configuration[storage] ... OK (0.33s)
+tests/test_fault_drills.py::owned_server_restart_interrupts_active_and_queued_load_without_replay ... OK (13.41s)
+tests/test_fault_drills.py::real_commit_reply_blackhole_requires_reconciliation_not_replay ... OK (6.95s)
+tests/test_fault_drills.py::storage_cli_proves_real_enospc_recovery_or_explicit_isolation_rejection ... OK (0.32s)
+tests/test_fault_drills.py::stream_transport_cut_is_terminal_and_fresh_work_recovers ... OK (5.58s)
+tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, root] ... OK (6.61s)
+tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[ordinary, worker] ... OK (6.14s)
+tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, root] ... OK (5.81s)
+tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, worker] ... OK (6.66s)
+──────────────────────────── 4122 passed in 982.37s ────────────────────────────

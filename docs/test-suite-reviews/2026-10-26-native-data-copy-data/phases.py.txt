@@ -1,0 +1,74 @@
+"""Diagnostic only: unchanged public workflow, transparent OS/process timestamps."""
+import asyncio,hashlib,json,os,shutil,signal,subprocess,time,traceback
+from pathlib import Path
+from unittest.mock import patch
+from snekql import mariadb
+from snekql.testing.mariadb import TemporaryMariaDBServer,temporary_mariadb_server
+
+ROOT=Path(__file__).parent
+CHAIN={"001_create_probe":"CREATE TABLE setup_phase_value (id INTEGER PRIMARY KEY, value VARCHAR(16) NOT NULL)","002_seed_probe":"INSERT INTO setup_phase_value (id, value) VALUES (1, 'ready')"}
+
+class Trace:
+ def __init__(self):
+  self.events=[];self.processes=[];self.reset_events=[];self.spawn=asyncio.create_subprocess_exec;self.signal=os.killpg;self.reset=TemporaryMariaDBServer.reset_database
+ async def observe_spawn(self,*args,**kwargs):
+  category='process';exe=Path(str(args[0])).name
+  if exe=='mariadb':
+   query=str(args[-1]);category='readiness' if query=='SELECT 1' else 'reset' if 'snekql_views_to_drop' in query else 'create-database' if query.startswith('CREATE DATABASE') else 'sql'
+   if kwargs.get('stdin')==asyncio.subprocess.PIPE:category='bootstrap-stdin'
+  event={'executable':exe,'category':category,'spawn_before':time.perf_counter()}
+  p=await self.spawn(*args,**kwargs);event.update({'pid':p.pid,'spawn_after':time.perf_counter(),'signals':[]});self.events.append(event);self.processes.append(p);wait=p.wait
+  async def observe_wait():
+   try:return await wait()
+   finally:
+    if p.returncode is not None and 'exit_at' not in event:event.update({'exit_at':time.perf_counter(),'returncode':p.returncode})
+  object.__setattr__(p,'wait',observe_wait);return p
+ def observe_signal(self,pid,signum):
+  for event in self.events:
+   if event['pid']==pid:event['signals'].append({'signal':int(signum),'at':time.perf_counter()})
+  return self.signal(pid,signum)
+ async def observe_reset(self,server):
+  start=time.perf_counter()
+  try:return await self.reset(server)
+  finally:self.reset_events.append({'start':start,'end':time.perf_counter()})
+
+async def sample(data,label,auth):
+ trace=Trace();phases=[];started=time.perf_counter()
+ async def reset(server):return await trace.observe_reset(server)
+ with patch('asyncio.create_subprocess_exec',trace.observe_spawn),patch('os.killpg',trace.observe_signal),patch.object(TemporaryMariaDBServer,'reset_database',reset):
+  async with temporary_mariadb_server(data_directory=data,runtime_base_directory=data.parent,auth=auth,reset_database=True,transports={'tcp'} if auth=='insecure' else {'unix_socket'}) as server:
+   entry=time.perf_counter()
+   for i in range(3):
+    t=time.perf_counter();await server.reset_database();phases.append({'phase':'reset','iteration':i+1,'seconds':time.perf_counter()-t})
+    t=time.perf_counter();absent=await server.run_sql("SHOW TABLES LIKE 'setup_phase_value'");history=await server.run_sql("SHOW TABLES LIKE 'snekql_migrations'");assert absent.stdout==history.stdout=='';phases.append({'phase':'pre-replay-checks','iteration':i+1,'seconds':time.perf_counter()-t})
+    t=time.perf_counter();db=await mariadb.Database.initialize(server.config(pool_size=1));phases.append({'phase':'connect','iteration':i+1,'seconds':time.perf_counter()-t})
+    try:
+     t=time.perf_counter();await db.migrate(CHAIN);phases.append({'phase':'real-migration-replay','iteration':i+1,'seconds':time.perf_counter()-t})
+     t=time.perf_counter();await db.verify_migrations(CHAIN);phases.append({'phase':'verify-history','iteration':i+1,'seconds':time.perf_counter()-t})
+     t=time.perf_counter();result=await server.run_sql('SELECT value FROM setup_phase_value WHERE id=1');assert result.stdout.strip().split('\n')[-1]=='ready';phases.append({'phase':'data-check','iteration':i+1,'seconds':time.perf_counter()-t})
+    finally:
+     t=time.perf_counter();await db.close();phases.append({'phase':'close-runtime','iteration':i+1,'seconds':time.perf_counter()-t})
+   exit_started=time.perf_counter()
+  ended=time.perf_counter();assert all(p.returncode is not None for p in trace.processes)
+  for p in trace.processes:await p.wait()
+ return {'label':label,'auth':auth,'transports':['tcp'] if auth=='insecure' else ['unix_socket'],'entry_seconds':entry-started,'body_seconds':exit_started-entry,'shutdown_seconds':ended-exit_started,'total_seconds':ended-started,'events':trace.events,'public_reset_intervals':trace.reset_events,'phases':phases,'all_children_reaped':True,'top_level_data_entries':sorted(p.name for p in data.iterdir()),'allocated_bytes':sum(p.stat().st_blocks*512 for p in data.rglob('*') if p.is_file())}
+
+async def main():
+ assert (ROOT/'baseline.status').read_text().strip()=='0'
+ results={'revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'source_status':subprocess.check_output(['git','status','--porcelain'],text=True),'diagnostic':'instrumented representative public workflows, not uninstrumented test timings or speedup evidence','script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'migration_chain':CHAIN,'samples':[]}
+ assert results['source_status']==''
+ for i in range(2):
+  owner=ROOT/f'p{i}';owner.mkdir()
+  try:
+   for label,auth in [('fresh-insecure','insecure'),('retained-insecure','insecure'),('fresh-password','password')]:
+    data=owner/('p' if auth=='password' else 'd');result=await sample(data,f'{i+1}-{label}',auth);results['samples'].append(result);(ROOT/'phases.json').write_text(json.dumps(results,indent=2)+'\n');print(result['label'],{k:round(result[k],5) for k in ('entry_seconds','body_seconds','shutdown_seconds')},flush=True)
+   assert not [l for l in subprocess.check_output(['ps','-eo','pid,args'],text=True).splitlines() if str(owner) in l]
+   start=time.perf_counter();shutil.rmtree(owner);results.setdefault('cleanup',[]).append({'owner':str(owner),'seconds':time.perf_counter()-start})
+  except BaseException:
+   print('Failed diagnostic: retained owned evidence at',owner,flush=True);raise
+ assert subprocess.check_output(['git','status','--porcelain'],text=True)==''
+ (ROOT/'phases.json').write_text(json.dumps(results,indent=2)+'\n');(ROOT/'phases.status').write_text('0\n')
+
+if __name__=='__main__':
+ for sig in (signal.SIGINT,signal.SIGQUIT,signal.SIGHUP):signal.signal(sig,signal.SIG_DFL)
+ asyncio.run(main())

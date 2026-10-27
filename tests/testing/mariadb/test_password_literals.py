@@ -9,10 +9,12 @@ from pathlib import Path
 from signal import SIGINT
 from tempfile import TemporaryDirectory
 
-from snektest import Param, assert_eq, test
+from snektest import Param, assert_eq, assert_in, assert_not_in, load_fixture, test
 
+from benchmarks._artifacts import mariadb_artifacts
 from snekql import mariadb
 from snekql.testing.mariadb import temporary_mariadb_server
+from tests.testing.mariadb.data import provide_mariadb_data_copy
 
 
 @test(
@@ -33,12 +35,16 @@ from snekql.testing.mariadb import temporary_mariadb_server
 )
 async def password_authenticates(mode: str, user: str, password: str) -> None:
     """The caller's exact password works with ordinary backslash SQL escaping."""
-    with TemporaryDirectory() as directory:
+    copy_data = await load_fixture(provide_mariadb_data_copy())
+    async with mariadb_artifacts() as root:
+        data = root / "data"
+        copy_data(data)
         async with temporary_mariadb_server(
             auth="password",
             password=password,
             user=user,
-            data_directory=Path(directory) / "data",
+            runtime_base_directory=root,
+            data_directory=data,
             server_args=(f"--sql-mode={mode}",),
         ) as server:
             result = await server.run_sql("SELECT 1")
@@ -58,7 +64,7 @@ async def password_authenticates(mode: str, user: str, password: str) -> None:
     mark="slow",
 )
 async def cli_environment_password_authenticates(mode: str, user: str) -> None:
-    """The foreground CLI preserves the exact password supplied via environment."""
+    """Environment credentials remain usable without leaking into CLI output."""
     password = "harmless\\'env\\tail_345"
     with TemporaryDirectory() as directory:
         socket_path = Path(directory) / "db.sock"
@@ -73,20 +79,24 @@ async def cli_environment_password_authenticates(mode: str, user: str) -> None:
             "SNEKQL_TEST_PASSWORD",
             "--user",
             user,
+            "--runtime-base-directory",
+            directory,
             "--data-directory",
             str(Path(directory) / "data"),
             "--socket-path",
             str(socket_path),
             f"--server-arg=--sql-mode={mode}",
             env={**os.environ, "SNEKQL_TEST_PASSWORD": password},
-            stdout=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+        startup_output = bytearray()
         try:
             assert process.stderr is not None
             async with asyncio.timeout(60):
                 while True:
                     line = await process.stderr.readline()
+                    startup_output.extend(line)
                     if b"Press Ctrl-C to stop." in line:
                         break
                     assert line, "CLI exited before readiness"
@@ -106,9 +116,14 @@ async def cli_environment_password_authenticates(mode: str, user: str) -> None:
             if process.returncode is None:
                 process.send_signal(SIGINT)
             try:
-                await asyncio.wait_for(process.communicate(), 25)
+                stdout, stderr = await asyncio.wait_for(process.communicate(), 25)
             except TimeoutError:
                 process.kill()
                 await process.communicate()
                 raise
         assert_eq(process.returncode, 130)
+        output = bytes(startup_output) + stderr
+        assert_in(b"password: [provided via environment variable]\n", output)
+        assert_not_in(password.encode(), output)
+        assert_not_in(password.encode(), stdout)
+        assert_in(b" -p ", stdout)

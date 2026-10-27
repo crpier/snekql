@@ -1,5 +1,9 @@
 # Comparative baseline, 2026-09-20
 
+Historical evidence. See the [current baseline](current-baseline-2026-10-26.md)
+for refreshed runtime/capacity measurements; these older numbers are not a
+same-environment before/after comparison.
+
 All 20 requested runs completed successfully. Raw JSON and exact argument lists
 are in [`results/2026-09-20/`](results/2026-09-20/), including `manifest.json`. These are
 local observations, not CI thresholds or universal capacity recommendations.

@@ -1,0 +1,60 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 201, in _run_module_as_main
+  File "<frozen runpy>", line 87, in _run_code
+  File "/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 453, in <module>
+    main()
+    ~~~~^^
+  File "/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 429, in main
+    report = asyncio.run(
+        _run(
+    ...<16 lines>...
+        )
+    )
+  File "/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/asyncio/base_events.py", line 724, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 324, in _run
+    measurement = await _measure(
+                  ^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/home/crpier/Projects/fourth-snekql/benchmarks/compare.py", line 139, in _measure
+    async with open_reader(adapter, diagnostics) as session:
+               ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/contextlib.py", line 276, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/crpier/Projects/fourth-snekql/benchmarks/_comparison_mariadb.py", line 539, in open_reader
+    async with factories[adapter](
+               ~~~~~~~~~~~~~~~~~~^
+        config, diagnostics, payload_bytes=payload_bytes
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ) as session:
+    ^
+  File "/home/crpier/.local/share/uv/python/cpython-3.15.0-linux-x86_64-gnu/lib/python3.15/contextlib.py", line 276, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/crpier/Projects/fourth-snekql/benchmarks/_comparison_mariadb.py", line 348, in _open_sqlalchemy
+    table = Table(
+        "bench_user",
+    ...<3 lines>...
+        Column("payload", String),
+    )
+  File "<sqlalchemy generated warned() wrapper for sqlalchemy.sql.schema.Table.__new__>", line 2, in __new__
+    return target(fn, cls, *args, **kw)
+  File "/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/sqlalchemy/util/deprecations.py", line 281, in warned
+    return fn(*args, **kwargs)  # type: ignore[no-any-return]
+  File "/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/sqlalchemy/sql/schema.py", line 489, in __new__
+    return cls._new(*args, **kw)
+           ~~~~~~~~^^^^^^^^^^^^^
+  File "/home/crpier/Projects/fourth-snekql/.venv/lib/python3.15/site-packages/sqlalchemy/sql/schema.py", line 557, in _new
+    table.dispatch.before_parent_attach(table, metadata)
+    ^^^^^^^^^^^^^^
+AttributeError: 'Table' object has no attribute 'dispatch'

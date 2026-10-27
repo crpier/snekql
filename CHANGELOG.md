@@ -2,6 +2,46 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add immutable, typed query-plan evidence to `ExplainResult.plan`: SQLite
+  native steps and MariaDB `format="json"` plans with structural traversal,
+  selected access/estimate/actual metrics, and preserved native output. Existing
+  tabular results remain the default; executing analysis remains explicit.
+  Addresses #577.
+
+- Extend comparative benchmarks with real bounded pool capacity, validated narrow/
+  wide payloads, balanced adapter permutations and optional counting observation,
+  with versioned provenance and logical setup/write budgets. Addresses #548.
+
+- Add `runtime_base_directory` and CLI `--runtime-base-directory` for explicit
+  Temporary MariaDB Test Server artifact ownership without changing retention.
+  Repository fixtures, benchmarks, and fault/soak commands clean successful
+  owned runtime trees after shutdown and retain propagated-error evidence.
+  Addresses #542.
+
+- Add reproducible owned TCP stream cuts, withheld real COMMIT replies, concurrent
+  MariaDB restart and private bounded-tmpfs SQLite ENOSPC drills with explicit
+  outcome/reconciliation evidence. Addresses #544.
+
+- Add an opt-in long-lived service soak with mixed validated workloads, admission
+  saturation/cancellation, bounded latency histograms and Linux resource evidence,
+  plus a manual both-backend/pool-size workflow. Addresses #538.
+
+### Fixed
+
+- Let the service contention smoke require completed bursts independently of
+  elapsed duration, retaining recovery/resource checks without a machine-speed
+  throughput floor. Addresses #551.
+
+- Preserve MariaDB stream connection-loss classification when native cursor
+  cleanup encounters an already-closed reader; detach without draining the dead
+  connection instead of masking the original failure. Addresses #545.
+
+- Wake queued acquirers when FIFO admission advances with free slots remaining.
+  Multi-lease saturation could otherwise strand sleeping waiters despite free
+  capacity until acquisition timed out. Addresses #540.
+
 ### Experimental recorded migrations (#477)
 
 - Add an opt-in workflow in `snekql.experimental.migrations`: ordinary historical

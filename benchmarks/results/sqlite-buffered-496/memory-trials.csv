@@ -1,0 +1,13 @@
+run,shape,trial,retained_rows,retained_bytes,peak_bytes
+memory-baseline,model,1,20000,6356069,6455219
+memory-baseline,model,2,20000,6356069,6455219
+memory-baseline,model,3,20000,6356069,6455219
+memory-baseline,projection,1,20000,12756005,12841555
+memory-baseline,projection,2,20000,12756005,12841555
+memory-baseline,projection,3,20000,12756005,12841555
+memory-candidate,model,1,20000,6365570,6455138
+memory-candidate,model,2,20000,6365570,6455138
+memory-candidate,model,3,20000,6365570,6455138
+memory-candidate,projection,1,20000,12765538,12841410
+memory-candidate,projection,2,20000,12765538,12841410
+memory-candidate,projection,3,20000,12765538,12841410

@@ -1,0 +1,172 @@
+[
+  {
+    "run": "round1-baseline-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false
+  },
+  {
+    "run": "round2-candidate-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false
+  },
+  {
+    "run": "round3-baseline-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false
+  },
+  {
+    "run": "round4-candidate-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false
+  },
+  {
+    "run": "round5-baseline-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false
+  },
+  {
+    "run": "round6-candidate-sqlite-execution",
+    "backend": "sqlite",
+    "mode": "timing",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false
+  },
+  {
+    "run": "wide1-baseline",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "mode": "timing"
+  },
+  {
+    "run": "wide2-candidate",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "mode": "timing"
+  },
+  {
+    "run": "wide3-baseline",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "mode": "timing"
+  },
+  {
+    "run": "wide4-candidate",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "mode": "timing"
+  },
+  {
+    "run": "wide5-baseline",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "mode": "timing"
+  },
+  {
+    "run": "wide6-candidate",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "mode": "timing"
+  },
+  {
+    "run": "memory-baseline",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "mode": "memory"
+  },
+  {
+    "run": "memory-candidate",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "mode": "memory"
+  },
+  {
+    "run": "followup1-baseline-per_read",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup1-baseline-shared",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup2-candidate-per_read",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup2-candidate-shared",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup3-baseline-per_read",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup3-baseline-shared",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup4-candidate-per_read",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup4-candidate-shared",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup5-baseline-per_read",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup5-baseline-shared",
+    "commit": "5645557fa8673e5ff9460e60bbd817c3887a5fe4",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup6-candidate-per_read",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  },
+  {
+    "run": "followup6-candidate-shared",
+    "commit": "3def82ec286d9e1162680505843b6c7a69416648",
+    "dirty": false,
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]"
+  }
+]

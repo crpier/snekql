@@ -238,6 +238,7 @@ class _TemporaryMariaDBServerOptions:
     password: str | None
     port: int | None
     reset_database: bool
+    runtime_base_directory: Path | None
     server_args: tuple[str, ...]
     socket_path: Path | None
     startup_timeout: float
@@ -292,7 +293,18 @@ async def _create_process_paths(
 ) -> _ProcessPaths:
     """Create retained runtime paths without deleting them at shutdown."""
 
-    runtime_directory = Path(mkdtemp(prefix="snekql-mariadb-"))
+    base = (
+        _resolve_user_path(options.runtime_base_directory)
+        if options.runtime_base_directory is not None
+        else None
+    )
+    try:
+        runtime_directory = Path(
+            await run_sync(partial(mkdtemp, prefix="snekql-mariadb-", dir=base))
+        )
+    except OSError as error:
+        msg = f"failed to create MariaDB runtime directory (errno {error.errno})"
+        raise TemporaryMariaDBServerError(msg) from None
     data_directory = (
         _resolve_user_path(options.data_directory)
         if options.data_directory is not None
@@ -787,6 +799,21 @@ def _password_bootstrap_sql(*, database: str, password: str, user: str) -> str:
     )
 
 
+def _validate_runtime_ownership(options: _TemporaryMariaDBServerOptions) -> None:
+    """A destructive data reset must not invalidate its own runtime paths."""
+
+    if (
+        options.clean_before_start
+        and options.runtime_base_directory is not None
+        and options.data_directory is not None
+        and _resolve_user_path(options.runtime_base_directory).is_relative_to(
+            _resolve_user_path(options.data_directory)
+        )
+    ):
+        msg = "runtime_base_directory must be outside data_directory when clean_before_start=True"
+        raise TemporaryMariaDBServerError(msg)
+
+
 def _validate_options(options: _TemporaryMariaDBServerOptions) -> None:
     """Reject option combinations that cannot honor the public contract."""
 
@@ -796,6 +823,7 @@ def _validate_options(options: _TemporaryMariaDBServerOptions) -> None:
     if options.clean_before_start and options.data_directory is None:
         msg = "clean_before_start requires data_directory"
         raise TemporaryMariaDBServerError(msg)
+    _validate_runtime_ownership(options)
     if options.clean_before_start and options.reset_database:
         msg = "reset_database is incompatible with clean_before_start"
         raise TemporaryMariaDBServerError(msg)
@@ -825,6 +853,7 @@ def temporary_mariadb_server(  # noqa: PLR0913
     auth: MariaDBAuth = "insecure",
     transports: set[MariaDBTransport] | None = None,
     data_directory: Path | None = None,
+    runtime_base_directory: Path | None = None,
     clean_before_start: bool = False,
     reset_database: bool = False,
     database: str = _DEFAULT_DATABASE,
@@ -851,6 +880,7 @@ def temporary_mariadb_server(  # noqa: PLR0913
         password=password,
         port=port,
         reset_database=reset_database,
+        runtime_base_directory=runtime_base_directory,
         server_args=server_args,
         socket_path=socket_path,
         startup_timeout=startup_timeout,

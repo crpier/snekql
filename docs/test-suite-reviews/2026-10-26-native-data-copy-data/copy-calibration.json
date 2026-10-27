@@ -1,0 +1,2592 @@
+{
+  "library_revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+  "candidate_source_sha256": {
+    "tests/testing/mariadb/data.py": "d722fbed65f1d61b4340f9b580dc05ce0321187c8bcb41de9650ff6c636d39e5",
+    "tests/testing/mariadb/test_data_copy.py": "b8b1210ee02a73771edfbf35b7f8054636be6513d77960f1d2d98b9975051529"
+  },
+  "runs": [
+    {
+      "name": "live-seed",
+      "test": "seed_is_reaped_before_factory_publication",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_data_copy.py::seed_is_reaped_before_factory_publication",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/f0",
+      "exit_code": 1,
+      "wall_seconds": 6.069350957870483,
+      "fault_source_sha256": "e38f387d2a904f881bb0723f373ac386905fb5c415675d5e140b675d20bc2339",
+      "fault_source": "\"\"\"Test-only copies of stopped native data, never application schema snapshots.\"\"\"\n\nfrom collections.abc import AsyncGenerator, Callable\nfrom pathlib import Path\nfrom shutil import copytree\n\nfrom snektest import fixture\n\nfrom benchmarks._artifacts import mariadb_artifacts\nfrom snekql.testing.mariadb import temporary_mariadb_server\n\ntype MariaDBDataCopy = Callable[[Path], None]\n\n\n@fixture(scope=\"session\")\nasync def provide_mariadb_data_copy() -> AsyncGenerator[MariaDBDataCopy]:\n    \"\"\"Initialize once; give callers independent data without application history.\n\n    The native seed server has stopped before this factory is published. Copies\n    run synchronously: cancellation cannot leave a background writer using the\n    seed after its fixture owner exits. Callers own destination lifetimes and\n    must stop their servers before removing them. Existing destinations fail\n    rather than silently reusing potentially mutated data.\n    \"\"\"\n    async with mariadb_artifacts() as root:\n        seed = root / \"data\"\n        async with temporary_mariadb_server(\n            runtime_base_directory=root, data_directory=seed\n        ):\n            def copy_data(destination: Path) -> None:\n                _ = copytree(seed, destination)\n            yield copy_data\n",
+      "report_sha256": "e15c0b7079045186344f626663acab0e9b076b988b1572912f9d450f3865b7dd",
+      "artifacts_before_removal": [],
+      "no_live_owned_processes": true
+    },
+    {
+      "name": "overwrite",
+      "test": "data_copy_rejects_existing_destinations",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_data_copy.py::data_copy_rejects_existing_destinations",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/f1",
+      "exit_code": 1,
+      "wall_seconds": 6.073194742202759,
+      "fault_source_sha256": "37b7ab94feb1bfd120358d5d5c0afc034c7546fc6955cb90bb49b2667e3ef788",
+      "fault_source": "\"\"\"Test-only copies of stopped native data, never application schema snapshots.\"\"\"\n\nfrom collections.abc import AsyncGenerator, Callable\nfrom pathlib import Path\nfrom shutil import copytree\n\nfrom snektest import fixture\n\nfrom benchmarks._artifacts import mariadb_artifacts\nfrom snekql.testing.mariadb import temporary_mariadb_server\n\ntype MariaDBDataCopy = Callable[[Path], None]\n\n\n@fixture(scope=\"session\")\nasync def provide_mariadb_data_copy() -> AsyncGenerator[MariaDBDataCopy]:\n    \"\"\"Initialize once; give callers independent data without application history.\n\n    The native seed server has stopped before this factory is published. Copies\n    run synchronously: cancellation cannot leave a background writer using the\n    seed after its fixture owner exits. Callers own destination lifetimes and\n    must stop their servers before removing them. Existing destinations fail\n    rather than silently reusing potentially mutated data.\n    \"\"\"\n    async with mariadb_artifacts() as root:\n        seed = root / \"data\"\n        async with temporary_mariadb_server(\n            runtime_base_directory=root, data_directory=seed\n        ):\n            pass\n\n        def copy_data(destination: Path) -> None:\n            _ = copytree(seed, destination, dirs_exist_ok=True)\n\n        yield copy_data\n",
+      "report_sha256": "23dded0b54ee73446f22f5008e3297a643942e95a6ee64838303cffd5200fd0a",
+      "artifacts_before_removal": [
+        {
+          "path": "sq-7ya5fyq5/data/aria_log.00000001",
+          "size": 417792
+        },
+        {
+          "path": "sq-7ya5fyq5/data/aria_log_control",
+          "size": 52
+        },
+        {
+          "path": "sq-7ya5fyq5/data/caller_owned",
+          "size": 13
+        },
+        {
+          "path": "sq-7ya5fyq5/data/ib_buffer_pool",
+          "size": 806
+        },
+        {
+          "path": "sq-7ya5fyq5/data/ib_logfile0",
+          "size": 100663296
+        },
+        {
+          "path": "sq-7ya5fyq5/data/ibdata1",
+          "size": 12582912
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mariadb_upgrade_info",
+          "size": 14
+        },
+        {
+          "path": "sq-7ya5fyq5/data/multi-master.info",
+          "size": 0
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/column_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/column_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/column_stats.frm",
+          "size": 2367
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/columns_priv.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/columns_priv.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/columns_priv.frm",
+          "size": 2840
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/db.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/db.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/db.frm",
+          "size": 3489
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/event.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/event.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/event.frm",
+          "size": 4678
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/func.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/func.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/func.frm",
+          "size": 1583
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/general_log.CSM",
+          "size": 35
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/general_log.CSV",
+          "size": 0
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/general_log.frm",
+          "size": 804
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/global_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/global_priv.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/global_priv.frm",
+          "size": 2183
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/gtid_slave_pos.frm",
+          "size": 1027
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/gtid_slave_pos.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_category.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_category.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_category.frm",
+          "size": 1708
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_keyword.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_keyword.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_keyword.frm",
+          "size": 1640
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_relation.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_relation.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_relation.frm",
+          "size": 1461
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_topic.MAD",
+          "size": 2359296
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_topic.MAI",
+          "size": 40960
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/help_topic.frm",
+          "size": 1778
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/index_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/index_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/index_stats.frm",
+          "size": 1630
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/innodb_index_stats.frm",
+          "size": 5407
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/innodb_index_stats.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/innodb_table_stats.frm",
+          "size": 1912
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/innodb_table_stats.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/plugin.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/plugin.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/plugin.frm",
+          "size": 1519
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/proc.MAD",
+          "size": 466944
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/proc.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/proc.frm",
+          "size": 4549
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/procs_priv.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/procs_priv.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/procs_priv.frm",
+          "size": 4376
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/proxies_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/proxies_priv.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/proxies_priv.frm",
+          "size": 5029
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/roles_mapping.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/roles_mapping.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/roles_mapping.frm",
+          "size": 2535
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/servers.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/servers.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/servers.frm",
+          "size": 10383
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/slow_log.CSM",
+          "size": 35
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/slow_log.CSV",
+          "size": 0
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/slow_log.frm",
+          "size": 2386
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/table_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/table_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/table_stats.frm",
+          "size": 1375
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/tables_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/tables_priv.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/tables_priv.frm",
+          "size": 4441
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone.frm",
+          "size": 974
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_leap_second.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_leap_second.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_leap_second.frm",
+          "size": 972
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_name.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_name.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_name.frm",
+          "size": 1147
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_transition.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_transition.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_transition.frm",
+          "size": 1014
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_transition_type.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_transition_type.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/time_zone_transition_type.frm",
+          "size": 1080
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/transaction_registry.frm",
+          "size": 2624
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/transaction_registry.ibd",
+          "size": 114688
+        },
+        {
+          "path": "sq-7ya5fyq5/data/mysql/user.frm",
+          "size": 13612
+        },
+        {
+          "path": "sq-7ya5fyq5/data/performance_schema/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/host_summary.frm",
+          "size": 4092
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/host_summary_by_file_io.frm",
+          "size": 2414
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/host_summary_by_file_io_type.frm",
+          "size": 3053
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/host_summary_by_stages.frm",
+          "size": 2837
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/host_summary_by_statement_latency.frm",
+          "size": 4208
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/host_summary_by_statement_type.frm",
+          "size": 4567
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/innodb_buffer_stats_by_schema.frm",
+          "size": 2689
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/innodb_buffer_stats_by_table.frm",
+          "size": 3085
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/innodb_lock_waits.frm",
+          "size": 5653
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/io_by_thread_by_latency.frm",
+          "size": 4975
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/io_global_by_file_by_bytes.frm",
+          "size": 4157
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/io_global_by_file_by_latency.frm",
+          "size": 2664
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/io_global_by_wait_by_bytes.frm",
+          "size": 5176
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/io_global_by_wait_by_latency.frm",
+          "size": 5019
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/latest_file_io.frm",
+          "size": 3529
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/memory_by_host_by_current_bytes.frm",
+          "size": 3494
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/memory_by_thread_by_current_bytes.frm",
+          "size": 3272
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/memory_by_user_by_current_bytes.frm",
+          "size": 3494
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/memory_global_by_current_bytes.frm",
+          "size": 3424
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/memory_global_total.frm",
+          "size": 866
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/metrics.frm",
+          "size": 5516
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/privileges_by_table_by_level.frm",
+          "size": 4962
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/processlist.frm",
+          "size": 8704
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/ps_check_lost_instrumentation.frm",
+          "size": 1146
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_auto_increment_columns.frm",
+          "size": 6407
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_index_statistics.frm",
+          "size": 3725
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_object_overview.frm",
+          "size": 3793
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_redundant_indexes.frm",
+          "size": 5508
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_table_lock_waits.frm",
+          "size": 5288
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_table_statistics.frm",
+          "size": 4112
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_table_statistics_with_buffer.frm",
+          "size": 5514
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_tables_with_full_table_scans.frm",
+          "size": 2058
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/schema_unused_indexes.frm",
+          "size": 2364
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/session.frm",
+          "size": 3089
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/session_ssl_status.frm",
+          "size": 2101
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/statement_analysis.frm",
+          "size": 7240
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/statements_with_errors_or_warnings.frm",
+          "size": 3869
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/statements_with_full_table_scans.frm",
+          "size": 5777
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/statements_with_runtimes_in_95th_percentile.frm",
+          "size": 3625
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/statements_with_sorting.frm",
+          "size": 4447
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/statements_with_temp_tables.frm",
+          "size": 4446
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/sys_config.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/sys_config.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/sys_config.frm",
+          "size": 2160
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/user_summary.frm",
+          "size": 4786
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/user_summary_by_file_io.frm",
+          "size": 2414
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/user_summary_by_file_io_type.frm",
+          "size": 3001
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/user_summary_by_stages.frm",
+          "size": 2803
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/user_summary_by_statement_latency.frm",
+          "size": 4208
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/user_summary_by_statement_type.frm",
+          "size": 4533
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/version.frm",
+          "size": 525
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/wait_classes_global_by_avg_latency.frm",
+          "size": 3827
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/wait_classes_global_by_latency.frm",
+          "size": 3491
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/waits_by_host_by_latency.frm",
+          "size": 3290
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/waits_by_user_by_latency.frm",
+          "size": 3493
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/waits_global_by_latency.frm",
+          "size": 2499
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024host_summary.frm",
+          "size": 3793
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024host_summary_by_file_io.frm",
+          "size": 2360
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024host_summary_by_file_io_type.frm",
+          "size": 2945
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024host_summary_by_stages.frm",
+          "size": 2729
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024host_summary_by_statement_latency.frm",
+          "size": 4046
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024host_summary_by_statement_type.frm",
+          "size": 4405
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024innodb_buffer_stats_by_schema.frm",
+          "size": 2667
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024innodb_buffer_stats_by_table.frm",
+          "size": 3063
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024innodb_lock_waits.frm",
+          "size": 5505
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024io_by_thread_by_latency.frm",
+          "size": 4759
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024io_global_by_file_by_bytes.frm",
+          "size": 3888
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024io_global_by_file_by_latency.frm",
+          "size": 2389
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024io_global_by_wait_by_bytes.frm",
+          "size": 4753
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024io_global_by_wait_by_latency.frm",
+          "size": 4527
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024latest_file_io.frm",
+          "size": 3374
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024memory_by_host_by_current_bytes.frm",
+          "size": 3326
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024memory_by_thread_by_current_bytes.frm",
+          "size": 3105
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024memory_by_user_by_current_bytes.frm",
+          "size": 3326
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024memory_global_by_current_bytes.frm",
+          "size": 3256
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024memory_global_total.frm",
+          "size": 824
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024processlist.frm",
+          "size": 8208
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024ps_digest_95th_percentile_by_avg_us.frm",
+          "size": 2027
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024ps_digest_avg_latency_distribution.frm",
+          "size": 1080
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024ps_schema_table_statistics_io.frm",
+          "size": 3373
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024schema_flattened_keys.frm",
+          "size": 2567
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024schema_index_statistics.frm",
+          "size": 3509
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024schema_table_lock_waits.frm",
+          "size": 5214
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024schema_table_statistics.frm",
+          "size": 3596
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024schema_table_statistics_with_buffer.frm",
+          "size": 4928
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024schema_tables_with_full_table_scans.frm",
+          "size": 2004
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024session.frm",
+          "size": 3215
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024statement_analysis.frm",
+          "size": 6950
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024statements_with_errors_or_warnings.frm",
+          "size": 3795
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024statements_with_full_table_scans.frm",
+          "size": 5613
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024statements_with_runtimes_in_95th_percentile.frm",
+          "size": 3389
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024statements_with_sorting.frm",
+          "size": 4319
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024statements_with_temp_tables.frm",
+          "size": 4318
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024user_summary.frm",
+          "size": 4540
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024user_summary_by_file_io.frm",
+          "size": 2360
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024user_summary_by_file_io_type.frm",
+          "size": 2893
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024user_summary_by_stages.frm",
+          "size": 2695
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024user_summary_by_statement_latency.frm",
+          "size": 4046
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024user_summary_by_statement_type.frm",
+          "size": 4371
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024wait_classes_global_by_avg_latency.frm",
+          "size": 3503
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024wait_classes_global_by_latency.frm",
+          "size": 3278
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024waits_by_host_by_latency.frm",
+          "size": 3128
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024waits_by_user_by_latency.frm",
+          "size": 3331
+        },
+        {
+          "path": "sq-7ya5fyq5/data/sys/x@0024waits_global_by_latency.frm",
+          "size": 2337
+        },
+        {
+          "path": "sq-7ya5fyq5/data/test/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-7ya5fyq5/data/undo001",
+          "size": 10485760
+        },
+        {
+          "path": "sq-7ya5fyq5/data/undo002",
+          "size": 10485760
+        },
+        {
+          "path": "sq-7ya5fyq5/data/undo003",
+          "size": 10485760
+        }
+      ],
+      "no_live_owned_processes": true
+    },
+    {
+      "name": "alias",
+      "test": "data_copies_isolate_schema_history_and_accounts",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_data_copy.py::data_copies_isolate_schema_history_and_accounts",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/f2",
+      "exit_code": 1,
+      "wall_seconds": 8.422777652740479,
+      "fault_source_sha256": "39754404fe1b064cf3e142142dda6207a43693a89110a6ffa7b4b008059ec4a5",
+      "fault_source": "\"\"\"Test-only copies of stopped native data, never application schema snapshots.\"\"\"\n\nfrom collections.abc import AsyncGenerator, Callable\nfrom pathlib import Path\nfrom shutil import copytree\n\nfrom snektest import fixture\n\nfrom benchmarks._artifacts import mariadb_artifacts\nfrom snekql.testing.mariadb import temporary_mariadb_server\n\ntype MariaDBDataCopy = Callable[[Path], None]\n\n\n@fixture(scope=\"session\")\nasync def provide_mariadb_data_copy() -> AsyncGenerator[MariaDBDataCopy]:\n    \"\"\"Initialize once; give callers independent data without application history.\n\n    The native seed server has stopped before this factory is published. Copies\n    run synchronously: cancellation cannot leave a background writer using the\n    seed after its fixture owner exits. Callers own destination lifetimes and\n    must stop their servers before removing them. Existing destinations fail\n    rather than silently reusing potentially mutated data.\n    \"\"\"\n    async with mariadb_artifacts() as root:\n        seed = root / \"data\"\n        async with temporary_mariadb_server(\n            runtime_base_directory=root, data_directory=seed\n        ):\n            pass\n\n        def copy_data(destination: Path) -> None:\n            destination.symlink_to(seed, target_is_directory=True)\n\n        yield copy_data\n",
+      "report_sha256": "091b76db78d3f094d75d3682ad77deb83d952ad8374a4a7ca4f2739ca35d8a35",
+      "artifacts_before_removal": [
+        {
+          "path": "sq-lkf1yrr3/snekql-mariadb-ku8htx8f/mariadb.err",
+          "size": 5087,
+          "sha256": "5d5f9ee9f8134dc854dbfeca6943a464dadb6fb04eafd731fefaa71a44dc35da",
+          "gzip": "fault-copy-logs/alias-0.gz"
+        },
+        {
+          "path": "sq-lkf1yrr3/snekql-mariadb-nmmr2tl1/mariadb.err",
+          "size": 4944,
+          "sha256": "cd02e36b99e6fa9d05fc03a0213b55d8e9e7b3c6b6a157b7d8f058503ff9833a",
+          "gzip": "fault-copy-logs/alias-1.gz"
+        }
+      ],
+      "no_live_owned_processes": true
+    },
+    {
+      "name": "hardlink",
+      "test": "data_copies_isolate_schema_history_and_accounts",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_data_copy.py::data_copies_isolate_schema_history_and_accounts",
+        "--json-output"
+      ],
+      "TMPDIR": "/home/crpier/.cache/sqn.TCLuPteb/f3",
+      "exit_code": 1,
+      "wall_seconds": 9.710479259490967,
+      "fault_source_sha256": "4e52319cf408c3e207eb3fa1f26637590aeca864fa670987a8497281eb018f1f",
+      "fault_source": "\"\"\"Test-only copies of stopped native data, never application schema snapshots.\"\"\"\n\nfrom collections.abc import AsyncGenerator, Callable\nfrom pathlib import Path\nfrom os import link\nfrom shutil import copytree\n\nfrom snektest import fixture\n\nfrom benchmarks._artifacts import mariadb_artifacts\nfrom snekql.testing.mariadb import temporary_mariadb_server\n\ntype MariaDBDataCopy = Callable[[Path], None]\n\n\n@fixture(scope=\"session\")\nasync def provide_mariadb_data_copy() -> AsyncGenerator[MariaDBDataCopy]:\n    \"\"\"Initialize once; give callers independent data without application history.\n\n    The native seed server has stopped before this factory is published. Copies\n    run synchronously: cancellation cannot leave a background writer using the\n    seed after its fixture owner exits. Callers own destination lifetimes and\n    must stop their servers before removing them. Existing destinations fail\n    rather than silently reusing potentially mutated data.\n    \"\"\"\n    async with mariadb_artifacts() as root:\n        seed = root / \"data\"\n        async with temporary_mariadb_server(\n            runtime_base_directory=root, data_directory=seed\n        ):\n            pass\n\n        def copy_data(destination: Path) -> None:\n            _ = copytree(seed, destination, copy_function=link)\n\n        yield copy_data\n",
+      "report_sha256": "ff440af34a2d6c7a090f40473271fba54fbbe46cc8b72097e4b2cd8d9c4f7380",
+      "artifacts_before_removal": [
+        {
+          "path": "sq-s1k_egxl/first/aria_log.00000001",
+          "size": 417792
+        },
+        {
+          "path": "sq-s1k_egxl/first/aria_log_control",
+          "size": 52
+        },
+        {
+          "path": "sq-s1k_egxl/first/ib_buffer_pool",
+          "size": 877
+        },
+        {
+          "path": "sq-s1k_egxl/first/ib_logfile0",
+          "size": 100663296
+        },
+        {
+          "path": "sq-s1k_egxl/first/ibdata1",
+          "size": 12582912
+        },
+        {
+          "path": "sq-s1k_egxl/first/mariadb_upgrade_info",
+          "size": 14
+        },
+        {
+          "path": "sq-s1k_egxl/first/multi-master.info",
+          "size": 0
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/column_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/column_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/column_stats.frm",
+          "size": 2367
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/columns_priv.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/columns_priv.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/columns_priv.frm",
+          "size": 2840
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/db.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/db.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/db.frm",
+          "size": 3489
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/event.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/event.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/event.frm",
+          "size": 4678
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/func.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/func.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/func.frm",
+          "size": 1583
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/general_log.CSM",
+          "size": 35
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/general_log.CSV",
+          "size": 0
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/general_log.frm",
+          "size": 804
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/global_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/global_priv.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/global_priv.frm",
+          "size": 2183
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/gtid_slave_pos.frm",
+          "size": 1027
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/gtid_slave_pos.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_category.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_category.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_category.frm",
+          "size": 1708
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_keyword.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_keyword.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_keyword.frm",
+          "size": 1640
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_relation.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_relation.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_relation.frm",
+          "size": 1461
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_topic.MAD",
+          "size": 2359296
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_topic.MAI",
+          "size": 40960
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/help_topic.frm",
+          "size": 1778
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/index_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/index_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/index_stats.frm",
+          "size": 1630
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/innodb_index_stats.frm",
+          "size": 5407
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/innodb_index_stats.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/innodb_table_stats.frm",
+          "size": 1912
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/innodb_table_stats.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/plugin.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/plugin.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/plugin.frm",
+          "size": 1519
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/proc.MAD",
+          "size": 466944
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/proc.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/proc.frm",
+          "size": 4549
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/procs_priv.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/procs_priv.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/procs_priv.frm",
+          "size": 4376
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/proxies_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/proxies_priv.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/proxies_priv.frm",
+          "size": 5029
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/roles_mapping.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/roles_mapping.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/roles_mapping.frm",
+          "size": 2535
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/servers.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/servers.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/servers.frm",
+          "size": 10383
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/slow_log.CSM",
+          "size": 35
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/slow_log.CSV",
+          "size": 0
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/slow_log.frm",
+          "size": 2386
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/table_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/table_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/table_stats.frm",
+          "size": 1375
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/tables_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/tables_priv.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/tables_priv.frm",
+          "size": 4441
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone.frm",
+          "size": 974
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_leap_second.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_leap_second.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_leap_second.frm",
+          "size": 972
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_name.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_name.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_name.frm",
+          "size": 1147
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_transition.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_transition.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_transition.frm",
+          "size": 1014
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_transition_type.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_transition_type.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/time_zone_transition_type.frm",
+          "size": 1080
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/transaction_registry.frm",
+          "size": 2624
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/transaction_registry.ibd",
+          "size": 114688
+        },
+        {
+          "path": "sq-s1k_egxl/first/mysql/user.frm",
+          "size": 13612
+        },
+        {
+          "path": "sq-s1k_egxl/first/performance_schema/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/host_summary.frm",
+          "size": 4092
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/host_summary_by_file_io.frm",
+          "size": 2414
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/host_summary_by_file_io_type.frm",
+          "size": 3053
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/host_summary_by_stages.frm",
+          "size": 2837
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/host_summary_by_statement_latency.frm",
+          "size": 4208
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/host_summary_by_statement_type.frm",
+          "size": 4567
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/innodb_buffer_stats_by_schema.frm",
+          "size": 2689
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/innodb_buffer_stats_by_table.frm",
+          "size": 3085
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/innodb_lock_waits.frm",
+          "size": 5653
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/io_by_thread_by_latency.frm",
+          "size": 4975
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/io_global_by_file_by_bytes.frm",
+          "size": 4157
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/io_global_by_file_by_latency.frm",
+          "size": 2664
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/io_global_by_wait_by_bytes.frm",
+          "size": 5176
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/io_global_by_wait_by_latency.frm",
+          "size": 5019
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/latest_file_io.frm",
+          "size": 3529
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/memory_by_host_by_current_bytes.frm",
+          "size": 3494
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/memory_by_thread_by_current_bytes.frm",
+          "size": 3272
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/memory_by_user_by_current_bytes.frm",
+          "size": 3494
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/memory_global_by_current_bytes.frm",
+          "size": 3424
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/memory_global_total.frm",
+          "size": 866
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/metrics.frm",
+          "size": 5516
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/privileges_by_table_by_level.frm",
+          "size": 4962
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/processlist.frm",
+          "size": 8704
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/ps_check_lost_instrumentation.frm",
+          "size": 1146
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_auto_increment_columns.frm",
+          "size": 6407
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_index_statistics.frm",
+          "size": 3725
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_object_overview.frm",
+          "size": 3793
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_redundant_indexes.frm",
+          "size": 5508
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_table_lock_waits.frm",
+          "size": 5288
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_table_statistics.frm",
+          "size": 4112
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_table_statistics_with_buffer.frm",
+          "size": 5514
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_tables_with_full_table_scans.frm",
+          "size": 2058
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/schema_unused_indexes.frm",
+          "size": 2364
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/session.frm",
+          "size": 3089
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/session_ssl_status.frm",
+          "size": 2101
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/statement_analysis.frm",
+          "size": 7240
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/statements_with_errors_or_warnings.frm",
+          "size": 3869
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/statements_with_full_table_scans.frm",
+          "size": 5777
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/statements_with_runtimes_in_95th_percentile.frm",
+          "size": 3625
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/statements_with_sorting.frm",
+          "size": 4447
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/statements_with_temp_tables.frm",
+          "size": 4446
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/sys_config.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/sys_config.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/sys_config.frm",
+          "size": 2160
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/user_summary.frm",
+          "size": 4786
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/user_summary_by_file_io.frm",
+          "size": 2414
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/user_summary_by_file_io_type.frm",
+          "size": 3001
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/user_summary_by_stages.frm",
+          "size": 2803
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/user_summary_by_statement_latency.frm",
+          "size": 4208
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/user_summary_by_statement_type.frm",
+          "size": 4533
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/version.frm",
+          "size": 525
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/wait_classes_global_by_avg_latency.frm",
+          "size": 3827
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/wait_classes_global_by_latency.frm",
+          "size": 3491
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/waits_by_host_by_latency.frm",
+          "size": 3290
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/waits_by_user_by_latency.frm",
+          "size": 3493
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/waits_global_by_latency.frm",
+          "size": 2499
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024host_summary.frm",
+          "size": 3793
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024host_summary_by_file_io.frm",
+          "size": 2360
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024host_summary_by_file_io_type.frm",
+          "size": 2945
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024host_summary_by_stages.frm",
+          "size": 2729
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024host_summary_by_statement_latency.frm",
+          "size": 4046
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024host_summary_by_statement_type.frm",
+          "size": 4405
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024innodb_buffer_stats_by_schema.frm",
+          "size": 2667
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024innodb_buffer_stats_by_table.frm",
+          "size": 3063
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024innodb_lock_waits.frm",
+          "size": 5505
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024io_by_thread_by_latency.frm",
+          "size": 4759
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024io_global_by_file_by_bytes.frm",
+          "size": 3888
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024io_global_by_file_by_latency.frm",
+          "size": 2389
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024io_global_by_wait_by_bytes.frm",
+          "size": 4753
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024io_global_by_wait_by_latency.frm",
+          "size": 4527
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024latest_file_io.frm",
+          "size": 3374
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024memory_by_host_by_current_bytes.frm",
+          "size": 3326
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024memory_by_thread_by_current_bytes.frm",
+          "size": 3105
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024memory_by_user_by_current_bytes.frm",
+          "size": 3326
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024memory_global_by_current_bytes.frm",
+          "size": 3256
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024memory_global_total.frm",
+          "size": 824
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024processlist.frm",
+          "size": 8208
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024ps_digest_95th_percentile_by_avg_us.frm",
+          "size": 2027
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024ps_digest_avg_latency_distribution.frm",
+          "size": 1080
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024ps_schema_table_statistics_io.frm",
+          "size": 3373
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024schema_flattened_keys.frm",
+          "size": 2567
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024schema_index_statistics.frm",
+          "size": 3509
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024schema_table_lock_waits.frm",
+          "size": 5214
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024schema_table_statistics.frm",
+          "size": 3596
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024schema_table_statistics_with_buffer.frm",
+          "size": 4928
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024schema_tables_with_full_table_scans.frm",
+          "size": 2004
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024session.frm",
+          "size": 3215
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024statement_analysis.frm",
+          "size": 6950
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024statements_with_errors_or_warnings.frm",
+          "size": 3795
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024statements_with_full_table_scans.frm",
+          "size": 5613
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024statements_with_runtimes_in_95th_percentile.frm",
+          "size": 3389
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024statements_with_sorting.frm",
+          "size": 4319
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024statements_with_temp_tables.frm",
+          "size": 4318
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024user_summary.frm",
+          "size": 4540
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024user_summary_by_file_io.frm",
+          "size": 2360
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024user_summary_by_file_io_type.frm",
+          "size": 2893
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024user_summary_by_stages.frm",
+          "size": 2695
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024user_summary_by_statement_latency.frm",
+          "size": 4046
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024user_summary_by_statement_type.frm",
+          "size": 4371
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024wait_classes_global_by_avg_latency.frm",
+          "size": 3503
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024wait_classes_global_by_latency.frm",
+          "size": 3278
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024waits_by_host_by_latency.frm",
+          "size": 3128
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024waits_by_user_by_latency.frm",
+          "size": 3331
+        },
+        {
+          "path": "sq-s1k_egxl/first/sys/x@0024waits_global_by_latency.frm",
+          "size": 2337
+        },
+        {
+          "path": "sq-s1k_egxl/first/test/copy_probe.frm",
+          "size": 925
+        },
+        {
+          "path": "sq-s1k_egxl/first/test/copy_probe.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-s1k_egxl/first/test/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-s1k_egxl/first/test/snekql_migrations.frm",
+          "size": 2927
+        },
+        {
+          "path": "sq-s1k_egxl/first/test/snekql_migrations.ibd",
+          "size": 81920
+        },
+        {
+          "path": "sq-s1k_egxl/first/undo001",
+          "size": 10485760
+        },
+        {
+          "path": "sq-s1k_egxl/first/undo002",
+          "size": 10485760
+        },
+        {
+          "path": "sq-s1k_egxl/first/undo003",
+          "size": 10485760
+        },
+        {
+          "path": "sq-s1k_egxl/second/aria_log.00000001",
+          "size": 417792
+        },
+        {
+          "path": "sq-s1k_egxl/second/aria_log_control",
+          "size": 52
+        },
+        {
+          "path": "sq-s1k_egxl/second/ib_buffer_pool",
+          "size": 806
+        },
+        {
+          "path": "sq-s1k_egxl/second/ib_logfile0",
+          "size": 100663296
+        },
+        {
+          "path": "sq-s1k_egxl/second/ibdata1",
+          "size": 12582912
+        },
+        {
+          "path": "sq-s1k_egxl/second/mariadb_upgrade_info",
+          "size": 14
+        },
+        {
+          "path": "sq-s1k_egxl/second/multi-master.info",
+          "size": 0
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/column_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/column_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/column_stats.frm",
+          "size": 2367
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/columns_priv.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/columns_priv.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/columns_priv.frm",
+          "size": 2840
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/db.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/db.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/db.frm",
+          "size": 3489
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/event.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/event.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/event.frm",
+          "size": 4678
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/func.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/func.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/func.frm",
+          "size": 1583
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/general_log.CSM",
+          "size": 35
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/general_log.CSV",
+          "size": 0
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/general_log.frm",
+          "size": 804
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/global_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/global_priv.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/global_priv.frm",
+          "size": 2183
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/gtid_slave_pos.frm",
+          "size": 1027
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/gtid_slave_pos.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_category.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_category.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_category.frm",
+          "size": 1708
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_keyword.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_keyword.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_keyword.frm",
+          "size": 1640
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_relation.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_relation.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_relation.frm",
+          "size": 1461
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_topic.MAD",
+          "size": 2359296
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_topic.MAI",
+          "size": 40960
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/help_topic.frm",
+          "size": 1778
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/index_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/index_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/index_stats.frm",
+          "size": 1630
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/innodb_index_stats.frm",
+          "size": 5407
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/innodb_index_stats.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/innodb_table_stats.frm",
+          "size": 1912
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/innodb_table_stats.ibd",
+          "size": 65536
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/plugin.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/plugin.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/plugin.frm",
+          "size": 1519
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/proc.MAD",
+          "size": 466944
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/proc.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/proc.frm",
+          "size": 4549
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/procs_priv.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/procs_priv.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/procs_priv.frm",
+          "size": 4376
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/proxies_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/proxies_priv.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/proxies_priv.frm",
+          "size": 5029
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/roles_mapping.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/roles_mapping.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/roles_mapping.frm",
+          "size": 2535
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/servers.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/servers.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/servers.frm",
+          "size": 10383
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/slow_log.CSM",
+          "size": 35
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/slow_log.CSV",
+          "size": 0
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/slow_log.frm",
+          "size": 2386
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/table_stats.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/table_stats.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/table_stats.frm",
+          "size": 1375
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/tables_priv.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/tables_priv.MAI",
+          "size": 24576
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/tables_priv.frm",
+          "size": 4441
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone.frm",
+          "size": 974
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_leap_second.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_leap_second.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_leap_second.frm",
+          "size": 972
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_name.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_name.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_name.frm",
+          "size": 1147
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_transition.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_transition.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_transition.frm",
+          "size": 1014
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_transition_type.MAD",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_transition_type.MAI",
+          "size": 8192
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/time_zone_transition_type.frm",
+          "size": 1080
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/transaction_registry.frm",
+          "size": 2624
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/transaction_registry.ibd",
+          "size": 114688
+        },
+        {
+          "path": "sq-s1k_egxl/second/mysql/user.frm",
+          "size": 13612
+        },
+        {
+          "path": "sq-s1k_egxl/second/performance_schema/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/host_summary.frm",
+          "size": 4092
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/host_summary_by_file_io.frm",
+          "size": 2414
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/host_summary_by_file_io_type.frm",
+          "size": 3053
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/host_summary_by_stages.frm",
+          "size": 2837
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/host_summary_by_statement_latency.frm",
+          "size": 4208
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/host_summary_by_statement_type.frm",
+          "size": 4567
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/innodb_buffer_stats_by_schema.frm",
+          "size": 2689
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/innodb_buffer_stats_by_table.frm",
+          "size": 3085
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/innodb_lock_waits.frm",
+          "size": 5653
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/io_by_thread_by_latency.frm",
+          "size": 4975
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/io_global_by_file_by_bytes.frm",
+          "size": 4157
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/io_global_by_file_by_latency.frm",
+          "size": 2664
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/io_global_by_wait_by_bytes.frm",
+          "size": 5176
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/io_global_by_wait_by_latency.frm",
+          "size": 5019
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/latest_file_io.frm",
+          "size": 3529
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/memory_by_host_by_current_bytes.frm",
+          "size": 3494
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/memory_by_thread_by_current_bytes.frm",
+          "size": 3272
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/memory_by_user_by_current_bytes.frm",
+          "size": 3494
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/memory_global_by_current_bytes.frm",
+          "size": 3424
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/memory_global_total.frm",
+          "size": 866
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/metrics.frm",
+          "size": 5516
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/privileges_by_table_by_level.frm",
+          "size": 4962
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/processlist.frm",
+          "size": 8704
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/ps_check_lost_instrumentation.frm",
+          "size": 1146
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_auto_increment_columns.frm",
+          "size": 6407
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_index_statistics.frm",
+          "size": 3725
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_object_overview.frm",
+          "size": 3793
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_redundant_indexes.frm",
+          "size": 5508
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_table_lock_waits.frm",
+          "size": 5288
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_table_statistics.frm",
+          "size": 4112
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_table_statistics_with_buffer.frm",
+          "size": 5514
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_tables_with_full_table_scans.frm",
+          "size": 2058
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/schema_unused_indexes.frm",
+          "size": 2364
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/session.frm",
+          "size": 3089
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/session_ssl_status.frm",
+          "size": 2101
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/statement_analysis.frm",
+          "size": 7240
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/statements_with_errors_or_warnings.frm",
+          "size": 3869
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/statements_with_full_table_scans.frm",
+          "size": 5777
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/statements_with_runtimes_in_95th_percentile.frm",
+          "size": 3625
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/statements_with_sorting.frm",
+          "size": 4447
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/statements_with_temp_tables.frm",
+          "size": 4446
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/sys_config.MAD",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/sys_config.MAI",
+          "size": 16384
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/sys_config.frm",
+          "size": 2160
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/user_summary.frm",
+          "size": 4786
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/user_summary_by_file_io.frm",
+          "size": 2414
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/user_summary_by_file_io_type.frm",
+          "size": 3001
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/user_summary_by_stages.frm",
+          "size": 2803
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/user_summary_by_statement_latency.frm",
+          "size": 4208
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/user_summary_by_statement_type.frm",
+          "size": 4533
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/version.frm",
+          "size": 525
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/wait_classes_global_by_avg_latency.frm",
+          "size": 3827
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/wait_classes_global_by_latency.frm",
+          "size": 3491
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/waits_by_host_by_latency.frm",
+          "size": 3290
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/waits_by_user_by_latency.frm",
+          "size": 3493
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/waits_global_by_latency.frm",
+          "size": 2499
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024host_summary.frm",
+          "size": 3793
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024host_summary_by_file_io.frm",
+          "size": 2360
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024host_summary_by_file_io_type.frm",
+          "size": 2945
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024host_summary_by_stages.frm",
+          "size": 2729
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024host_summary_by_statement_latency.frm",
+          "size": 4046
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024host_summary_by_statement_type.frm",
+          "size": 4405
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024innodb_buffer_stats_by_schema.frm",
+          "size": 2667
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024innodb_buffer_stats_by_table.frm",
+          "size": 3063
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024innodb_lock_waits.frm",
+          "size": 5505
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024io_by_thread_by_latency.frm",
+          "size": 4759
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024io_global_by_file_by_bytes.frm",
+          "size": 3888
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024io_global_by_file_by_latency.frm",
+          "size": 2389
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024io_global_by_wait_by_bytes.frm",
+          "size": 4753
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024io_global_by_wait_by_latency.frm",
+          "size": 4527
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024latest_file_io.frm",
+          "size": 3374
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024memory_by_host_by_current_bytes.frm",
+          "size": 3326
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024memory_by_thread_by_current_bytes.frm",
+          "size": 3105
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024memory_by_user_by_current_bytes.frm",
+          "size": 3326
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024memory_global_by_current_bytes.frm",
+          "size": 3256
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024memory_global_total.frm",
+          "size": 824
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024processlist.frm",
+          "size": 8208
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024ps_digest_95th_percentile_by_avg_us.frm",
+          "size": 2027
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024ps_digest_avg_latency_distribution.frm",
+          "size": 1080
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024ps_schema_table_statistics_io.frm",
+          "size": 3373
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024schema_flattened_keys.frm",
+          "size": 2567
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024schema_index_statistics.frm",
+          "size": 3509
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024schema_table_lock_waits.frm",
+          "size": 5214
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024schema_table_statistics.frm",
+          "size": 3596
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024schema_table_statistics_with_buffer.frm",
+          "size": 4928
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024schema_tables_with_full_table_scans.frm",
+          "size": 2004
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024session.frm",
+          "size": 3215
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024statement_analysis.frm",
+          "size": 6950
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024statements_with_errors_or_warnings.frm",
+          "size": 3795
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024statements_with_full_table_scans.frm",
+          "size": 5613
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024statements_with_runtimes_in_95th_percentile.frm",
+          "size": 3389
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024statements_with_sorting.frm",
+          "size": 4319
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024statements_with_temp_tables.frm",
+          "size": 4318
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024user_summary.frm",
+          "size": 4540
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024user_summary_by_file_io.frm",
+          "size": 2360
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024user_summary_by_file_io_type.frm",
+          "size": 2893
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024user_summary_by_stages.frm",
+          "size": 2695
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024user_summary_by_statement_latency.frm",
+          "size": 4046
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024user_summary_by_statement_type.frm",
+          "size": 4371
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024wait_classes_global_by_avg_latency.frm",
+          "size": 3503
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024wait_classes_global_by_latency.frm",
+          "size": 3278
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024waits_by_host_by_latency.frm",
+          "size": 3128
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024waits_by_user_by_latency.frm",
+          "size": 3331
+        },
+        {
+          "path": "sq-s1k_egxl/second/sys/x@0024waits_global_by_latency.frm",
+          "size": 2337
+        },
+        {
+          "path": "sq-s1k_egxl/second/test/db.opt",
+          "size": 67
+        },
+        {
+          "path": "sq-s1k_egxl/second/undo001",
+          "size": 10485760
+        },
+        {
+          "path": "sq-s1k_egxl/second/undo002",
+          "size": 10485760
+        },
+        {
+          "path": "sq-s1k_egxl/second/undo003",
+          "size": 10485760
+        },
+        {
+          "path": "sq-s1k_egxl/snekql-mariadb-j_xfaqq3/mariadb.err",
+          "size": 6438,
+          "sha256": "068d69ae1fbafc0996295abc35dd876256577894e475a1b6663778e9145012f4",
+          "gzip": "fault-copy-logs/hardlink-414.gz"
+        },
+        {
+          "path": "sq-s1k_egxl/snekql-mariadb-ysjs7emg/mariadb.err",
+          "size": 5091,
+          "sha256": "4898083b8ac58dced47e6fff4fe9bb61eb2cf8a91d0881472fcb9ecef752791e",
+          "gzip": "fault-copy-logs/hardlink-415.gz"
+        }
+      ],
+      "no_live_owned_processes": true
+    }
+  ]
+}

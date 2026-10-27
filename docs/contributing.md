@@ -34,6 +34,129 @@ uv run ty check examples/typed_queries.py
 
 The fast group does not replace the full SQLite/MariaDB suite.
 
+For measured suite costs, timing limitations, and safe temporary-artifact ownership,
+see the [2026-10-25 test-suite baseline](test-suite-reviews/2026-10-25-baseline.md).
+Use equivalent environments and repeated measurements before claiming a speedup.
+The [artifact-ownership verification](test-suite-reviews/2026-10-26-artifact-ownership.md)
+records successful-run cleanup, explicit error retention, and its validation limits.
+
+## Focused join-compilation checks
+
+```sh
+uv run snektest tests/query/test_join_compilation.py
+uv run snektest tests/query/test_join_predicates.py::compound_on_preserves_sql_binding_order
+```
+
+These checks inspect SQL and bindings through the public Query Builder's
+`compile()` interface; they do not execute a database operation. Keep the full
+SQLite/MariaDB suite for execution and lifecycle coverage.
+
+The related compilation, aggregate-scope, predicate, alias, and physical-name
+checks share the declarations in `tests/query/join_models.py`, rather than
+importing them from a test module. This is one related pair of Table Models,
+not a universal schema: similarly shaped declarations elsewhere can deliberately
+carry different identities. Preserve those distinctions when extracting support.
+The [query-test coupling review](test-suite-reviews/2026-10-26-query-test-coupling.md)
+records the preserved contracts, focused-selection proofs, and remaining audit
+scope under #571.
+
+## Focused benchmark checks
+
+```sh
+uv run snektest tests/test_benchmark_planning.py
+uv run snektest 'tests/test_comparative_benchmarks.py::comparison_rejects_invalid_bounds[zero-workers]'
+PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest \
+  'tests/test_comparative_benchmarks.py::streaming_comparison_consumes_partial_final_batch[raw, sqlite]'
+```
+
+The first two selections check pure planning, not database execution. The last
+keeps a focused real CLI/native stream check; adapter/backend selections do not
+share an all-adapter success result. Use the complete comparative and fixture
+files, or the full suite, for the remaining native and fault coverage.
+The [planning interface](../benchmarks/comparison.md#plan-without-running-a-database)
+describes the distinction between requested metadata and observed work. The
+[benchmark test review](test-suite-reviews/2026-10-26-benchmark-planning.md)
+records the coverage map, matched timings and validation limits.
+
+## Focused typing checks
+
+```sh
+uv run snektest tests/test_typing_compatibility.py tests/test_typing_guarantees.py
+uv run snektest 'tests/test_typing_guarantees.py::public_typing_contract_has_exact_diagnostic[select-all]'
+uv run python scripts/check_typing_compatibility.py --case select-all --backend sqlite
+```
+
+Compatible static tests share one real all-case assessment per runner execution,
+while keeping independently named diagnostic assertions. A cold named test
+prepares that report; the direct CLI retains narrow case/backend execution.
+Source-mutation and special-configuration tests remain independent. The
+[static typing assessment review](test-suite-reviews/2026-10-26-static-typing-assessments.md)
+records measured savings and coverage accounting.
+The complementary [end-to-end fault proofs](test-suite-reviews/2026-10-26-typing-assessment.md)
+exercise independently named diagnostic failures and focused selection through
+real copied-checkout runner commands; historical measurements remain revision-pinned.
+
+The 80 nested-expression and 22 temporal checks keep their distinct inputs,
+markers and independently named diagnostic assertions, but now share one real
+batch assessment per immutable group:
+
+```sh
+uv run snektest tests/test_nested_expression_families.py tests/test_temporal_typing.py
+uv run snektest 'tests/test_nested_expression_families.py::nested_expression_rejects_foreign_family[sqlite, eq_col]'
+```
+
+A cold named check prepares its group's report, not the other groups' reports.
+The [dynamic typing batch review](test-suite-reviews/2026-10-26-dynamic-typing-batches.md)
+records group savings and the small additional focused setup cost. Challenge
+names, expression strings and expected rules live in `tests/typing_variants.py`.
+
+### Explicit checker batches
+
+The repository-only checker script also accepts a JSON manifest, for example
+`requests.json`:
+
+```json
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "assignment",
+      "backend": "sqlite",
+      "positive": "value: int = 1\n",
+      "negative": "wrong: str = value  # expect-error\n"
+    }
+  ]
+}
+```
+
+```sh
+uv run python scripts/check_typing_compatibility.py --manifest requests.json
+uv run python scripts/check_typing_compatibility.py --manifest requests.json --name assignment --backend sqlite
+```
+
+`positive` is a complete positive-control template; `negative` is a fragment
+appended to its rendered contents in a separate file, not a second standalone
+module. Positive templates may use `__BACKEND__` and `__OTHER_BACKEND__`, as in
+the static probes. The combined negative source must contain exactly one
+`# expect-error` marker. Every request gets independent paired files and source
+hashes; source modules are type-checked, never executed.
+
+The manifest must have schema version 1 and a nonempty `cases` list. Each request
+requires a nonempty name, one explicit `sqlite` or `mariadb` backend, and both
+source strings; unknown fields are rejected. Duplicate name/backend keys are
+invalid even when outside a requested filter. Labels do not become filesystem
+paths. `--case` and `--manifest` are mutually exclusive; `--name` requires a
+manifest. `--backend` filters manifest requests, and an empty selection is an
+error rather than a vacuous pass.
+
+Exit 0 means every selected positive control is clean and every selected
+negative has errors only on its marked line. It does **not** replace callers'
+exact diagnostic count/rule assertions. Exit 1 emits a complete nonconforming
+report, retaining independently attributable observations and unmapped errors.
+Exit 2 reports usage, malformed/missing input, timeout or checker-infrastructure
+failure on stderr without a success report. The existing 90-second assessment
+deadline, checker configuration and normal static selectors are unchanged.
+
 ## Find the code
 
 | Area | Start here |

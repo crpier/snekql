@@ -1,0 +1,7 @@
+{
+  "baseline_revision": "c7aee1611fdcef7c6ef92ffcf6489596fd7daa8b",
+  "cli_function_ast_unchanged": true,
+  "password_parameterization_and_markers_unchanged": true,
+  "original_password_assertions_ast_unchanged": true,
+  "runtime_library_diff": ""
+}

@@ -1,0 +1,4 @@
+Suite PID 415820
+SIGINT disposition: <built-in function default_int_handler>
+SigIgn:	0000000001001001
+SigCgt:	0000000100000002

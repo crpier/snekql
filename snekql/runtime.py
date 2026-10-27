@@ -26,7 +26,12 @@ lazy from typing import (
 lazy import anyio
 lazy import anyio.lowlevel
 
-lazy from snekql._explain import ExplainResult, compile_explain_plan
+lazy from snekql._explain import (
+    ExplainResult,
+    compile_explain_plan,
+    materialize_explain,
+)
+lazy from snekql._explain_types import ExplainFormat
 lazy from snekql._migrations import (
     MigrationPlan,
     MigrationResult,
@@ -206,6 +211,19 @@ class RuntimeConnection(Protocol):
         connection.
         """
         ...
+
+
+@runtime_checkable
+class BufferedSelectConnection(Protocol):
+    """Optional adapter capability; owns execution, full fetch and cursor cleanup.
+
+    The caller retains the operation deadline, diagnostics and materialization.
+    Adapters without this capability keep the ordinary cursor lifecycle.
+    """
+
+    async def execute_buffered_select(
+        self, sql: str, params: tuple[object, ...]
+    ) -> Sequence[Sequence[object]]: ...
 
 
 class LockingRuntimeConnection(Protocol):
@@ -1362,32 +1380,41 @@ class Transaction[FamilyT: BackendFamily]:
         self,
         query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT]
         | _ExecutableWrite[FamilyT, ResultT],
+        *,
+        format: ExplainFormat = "native",  # noqa: A002 - SQL format selection
     ) -> ExplainResult:
         """Inspect a built query's backend-native plan without executing its writes.
 
         SQLite uses `EXPLAIN QUERY PLAN`; MariaDB uses `EXPLAIN`.
-        Results contain native columns and rows, not the query's result type.
+        Results retain native columns/rows and add a typed `plan` for SQLite.
+        MariaDB `format="json"` adds a typed JSON plan instead of tabular output.
+        Traversal describes structure, not execution order or a performance verdict.
         MariaDB may acquire row locks while optimizing FOR UPDATE queries;
         those plans require a read-write Transaction. Use `compile()` for no IO.
         """
 
-        return await self._explain(query, analyze=False)
+        return await self._explain(query, analyze=False, plan_format=format)
 
     async def explain_analyze[ScopeT, RowT, ResultT](
         self,
         query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT]
         | _ExecutableWrite[FamilyT, ResultT],
+        *,
+        format: ExplainFormat = "native",  # noqa: A002 - SQL format selection
     ) -> ExplainResult:
         """Execute a query to collect MariaDB's actual optimizer statistics.
 
         Writes really run in this Transaction and commit on its normal exit.
         This method does not create a savepoint or automatically roll back.
+        Use MariaDB `format="json"` for typed actual rows, loops, and timings.
         SQLite and unsupported statement shapes raise `QueryCompilationError`.
         """
 
-        return await self._explain(query, analyze=True)
+        return await self._explain(query, analyze=True, plan_format=format)
 
-    async def _explain(self, query: object, *, analyze: bool) -> ExplainResult:
+    async def _explain(
+        self, query: object, *, analyze: bool, plan_format: ExplainFormat
+    ) -> ExplainResult:
         """Share transaction locking, deadlines, cleanup, and safe raw diagnostics."""
 
         self._check_nested_owner()
@@ -1395,7 +1422,10 @@ class Transaction[FamilyT: BackendFamily]:
             self._check_nested_owner()
             connection = self.require_connection()
             plan = compile_explain_plan(
-                query, backend=self.runtime.backend_family, analyze=analyze
+                query,
+                backend=self.runtime.backend_family,
+                analyze=analyze,
+                plan_format=plan_format,
             )
             _, rows = await self._execute_buffered(
                 connection,
@@ -1404,10 +1434,12 @@ class Transaction[FamilyT: BackendFamily]:
             )
             with self._measure("materialization", plan.diagnostics):
                 plan.check_shape()
-                return ExplainResult(
+                return materialize_explain(
                     backend=plan.backend,
                     columns=plan.columns or (),
                     rows=tuple(tuple(row) for row in rows),
+                    analyzed=analyze,
+                    plan_format=plan_format,
                 )
 
     def _check_nested_owner(self) -> None:
@@ -1530,6 +1562,12 @@ class Transaction[FamilyT: BackendFamily]:
         fetch_limit = plan.fetch_limit
 
         async def collect() -> tuple[int, Sequence[Sequence[object]]]:
+            if (
+                isinstance(plan, SelectPlan)
+                and fetch_limit is None
+                and isinstance(connection, BufferedSelectConnection)
+            ):
+                return -1, await connection.execute_buffered_select(sql, plan.params)
             cursor = await self._open_cursor(connection, plan)
             pending: BaseException | None = None
             try:
