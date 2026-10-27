@@ -1,0 +1,166 @@
+{
+  "candidate": "e96ff3146bbc7dfc58fccddd82e17c8d5495e915",
+  "runs": [
+    {
+      "label": "fault-checker-restored-fast",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sq572.sRZLaDUx/calibration-src",
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/c0",
+      "exit_code": 0,
+      "counts": {
+        "passed": 9,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.5521188830025494,
+      "report_sha256": "ab2b4fffb9de33cc9832cef5cd0b7eba77764783ed3fb7682794485a1fefe002",
+      "fault": "checker-restored-fast",
+      "expected_names": [
+        "tests/test_typing_assessment.py::consumer_mutation_cannot_change_the_next_observation",
+        "tests/test_typing_assessment.py::duplicate_observations_are_not_silently_selected",
+        "tests/test_typing_assessment.py::infrastructure_failure_is_not_an_empty_assessment",
+        "tests/test_typing_assessment.py::lookup_selects_the_named_backend_observation",
+        "tests/test_typing_assessment.py::missing_observation_cannot_pass_vacuously[missing-name]",
+        "tests/test_typing_assessment.py::missing_observation_cannot_pass_vacuously[missing-second-backend]",
+        "tests/test_typing_assessment.py::missing_observation_cannot_pass_vacuously[unknown-backend]",
+        "tests/test_typing_assessment.py::unowned_diagnostics_cannot_certify_a_clean_case"
+      ],
+      "extra_names": [
+        "tests/test_typing_compatibility.py::readiness_report_retains_checker_limits"
+      ],
+      "missing_names": [],
+      "routing_oracle_rejected": true,
+      "mutated_sha256": "19e674c476f7d32e2d03572232493ba06fd80ca49815219b2344df77d9ef02a5"
+    },
+    {
+      "label": "restored-checker-restored-fast",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sq572.sRZLaDUx/calibration-src",
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/c1",
+      "exit_code": 0,
+      "counts": {
+        "passed": 8,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.1849873210012447,
+      "report_sha256": "f83dc7f07c77ebf461b3084caf69c1359d0bfd2afbab8102ecc98641a8d6b221",
+      "routing_oracle_passed": true
+    },
+    {
+      "label": "fault-pure-demoted-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sq572.sRZLaDUx/calibration-src",
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/c2",
+      "exit_code": 0,
+      "counts": {
+        "passed": 7,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.17760200300836004,
+      "report_sha256": "f41ba5ed03e54194ecc887027c36e8d195cbeaac21eecba42086467f7ee42307",
+      "fault": "pure-demoted-slow",
+      "expected_names": [
+        "tests/test_typing_assessment.py::consumer_mutation_cannot_change_the_next_observation",
+        "tests/test_typing_assessment.py::duplicate_observations_are_not_silently_selected",
+        "tests/test_typing_assessment.py::infrastructure_failure_is_not_an_empty_assessment",
+        "tests/test_typing_assessment.py::lookup_selects_the_named_backend_observation",
+        "tests/test_typing_assessment.py::missing_observation_cannot_pass_vacuously[missing-name]",
+        "tests/test_typing_assessment.py::missing_observation_cannot_pass_vacuously[missing-second-backend]",
+        "tests/test_typing_assessment.py::missing_observation_cannot_pass_vacuously[unknown-backend]",
+        "tests/test_typing_assessment.py::unowned_diagnostics_cannot_certify_a_clean_case"
+      ],
+      "extra_names": [],
+      "missing_names": [
+        "tests/test_typing_assessment.py::lookup_selects_the_named_backend_observation"
+      ],
+      "routing_oracle_rejected": true,
+      "mutated_sha256": "466b69a8bb95c3b74be476e3128faf046d555a7841cf120a4a41b7acce3f9f2f"
+    },
+    {
+      "label": "restored-pure-demoted-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sq572.sRZLaDUx/calibration-src",
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/c3",
+      "exit_code": 0,
+      "counts": {
+        "passed": 8,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.1766822939971462,
+      "report_sha256": "24688b8ef5ccdd36c78fdd5399369f5145e5a4100933115a59b4ceafed20129d",
+      "routing_oracle_passed": true
+    },
+    {
+      "label": "calibration-restored-all",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--json-output"
+      ],
+      "cwd": "/home/crpier/.cache/sq572.sRZLaDUx/calibration-src",
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/c4",
+      "exit_code": 0,
+      "counts": {
+        "passed": 61,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 2.706665574994986,
+      "report_sha256": "581c21a924c959a6ddc545ff642df177516675f83e9c889b5be5fa5b695a6d94"
+    }
+  ],
+  "bytecode_policy": "Clear changed test-module pyc before each run and disable bytecode writes to avoid same-size/same-timestamp mutation aliases.",
+  "source_restored": true
+}

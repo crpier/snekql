@@ -1,0 +1,24 @@
+[
+  {
+    "original": "full-before.json",
+    "gzip": "full-before.json.gz",
+    "bytes": 763582,
+    "sha256": "9c3fa47aad8123b5523b13737693b559b509a7ec434428a0cebd20edec95498d",
+    "gzip_sha256": "9dd3a75f5804ad853b831ce69d04ad15edd3bb9c9c91537958c70065ecdb5b08"
+  },
+  {
+    "original": "full-after.json",
+    "gzip": "full-after.json.gz",
+    "bytes": 763783,
+    "sha256": "8c8000543e8bcf08a361562af01926a08e70ce52baac2b0a7f31844c77e89f6f",
+    "gzip_sha256": "a5a0aff992c242520d955463895b1abbd07e5b83710cb21f88f50f739a2a5052"
+  },
+  {
+    "original": "snektest-metadata.txt",
+    "gzip": "snektest-metadata.txt.gz",
+    "bytes": 15057,
+    "sha256": "9a8b015005e0b51d103ad70553e5ab8d86095f25314b370ceee76113ab2620b7",
+    "gzip_sha256": "527dfb36e56c98f44168c1e9542d5b1bb501fa6bccfc2a4e2312a349da067b22",
+    "scope": "Installed METADATA stdout retained byte-for-byte, including original trailing blank line."
+  }
+]

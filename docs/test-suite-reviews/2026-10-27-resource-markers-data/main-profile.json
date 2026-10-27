@@ -1,0 +1,94 @@
+{
+  "revision": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+  "full_run_report": "full-before.json.gz",
+  "command_wall_seconds": 1269.8040093750024,
+  "sum_case_seconds": 1264.501509954498,
+  "limitations": [
+    "Fresh explicit reusable MariaDB directory in the before worktree; not typical warm-run attribution.",
+    "Case times can charge session setup to the first consumer and omit fixture teardown; sums are not isolated phase measurements.",
+    "No concurrent suite/build by this agent; unrelated host activity and caches/frequency not isolated.",
+    "No optimization comparison: only 15 marker literals differ in candidate, and reusable data state differs."
+  ],
+  "largest_cases": [
+    {
+      "name": "tests/testing/mariadb/test_artifact_ownership.py::servers_sharing_a_runtime_base_have_independent_artifacts",
+      "seconds": 17.351354433005326
+    },
+    {
+      "name": "tests/test_fault_drills.py::owned_server_restart_interrupts_active_and_queued_load_without_replay",
+      "seconds": 12.567389146992355
+    },
+    {
+      "name": "tests/testing/mariadb/test_data_copy.py::data_copies_isolate_schema_history_and_accounts",
+      "seconds": 12.07253324300109
+    },
+    {
+      "name": "tests/test_soak_runner.py::service_soak_sustained_multislot_saturation_does_not_stall",
+      "seconds": 11.3725706779951
+    },
+    {
+      "name": "tests/runtime/test_migration_baseline_example.py::unreviewed_objects_are_rejected[mariadb, table]",
+      "seconds": 11.261906243002159
+    },
+    {
+      "name": "tests/test_comparative_benchmarks.py::streaming_comparison_consumes_partial_final_batch[sqlalchemy, mariadb]",
+      "seconds": 11.182951957991463
+    },
+    {
+      "name": "tests/runtime/test_migration_baseline_example.py::existing_history_is_not_rebaselined[mariadb]",
+      "seconds": 10.88330254999164
+    },
+    {
+      "name": "tests/mariadb/test_credential_rotation.py::replacement_pool_accepts_rotated_credentials",
+      "seconds": 10.83260592899751
+    },
+    {
+      "name": "tests/runtime/test_migration_baseline_example.py::unreviewed_objects_are_rejected[mariadb, reserved-prefix-lookalike]",
+      "seconds": 10.769564651011024
+    },
+    {
+      "name": "tests/test_fault_drills.py::stream_transport_cut_is_terminal_and_fresh_work_recovers",
+      "seconds": 10.68967531900853
+    },
+    {
+      "name": "tests/test_comparative_benchmarks.py::streaming_comparison_consumes_partial_final_batch[snekql, mariadb]",
+      "seconds": 10.684835958993062
+    },
+    {
+      "name": "tests/runtime/test_migration_baseline_example.py::unreviewed_check_is_rejected_before_history_creation[mariadb]",
+      "seconds": 10.666699823996169
+    },
+    {
+      "name": "tests/test_soak_runner.py::service_soak_recovers_from_repeated_saturation[mariadb, one]",
+      "seconds": 10.56820867699571
+    },
+    {
+      "name": "tests/testing/mariadb/test_password_confidentiality.py::bootstrap_credentials_remain_usable[named_test_generated]",
+      "seconds": 10.560781720007071
+    },
+    {
+      "name": "tests/test_comparative_benchmarks.py::streaming_comparison_consumes_partial_final_batch[raw, mariadb]",
+      "seconds": 10.559706445987104
+    },
+    {
+      "name": "tests/testing/mariadb/test_process_cleanup.py::reset_failure_reaps_server_before_entry_raises",
+      "seconds": 10.517201765993377
+    },
+    {
+      "name": "tests/testing/mariadb/test_password_literals.py::cli_environment_password_authenticates[NO_BACKSLASH_ESCAPES, worker]",
+      "seconds": 10.507435040999553
+    },
+    {
+      "name": "tests/test_comparative_benchmarks.py::streaming_comparison_does_not_fetch_all[raw, mariadb]",
+      "seconds": 10.384629499996663
+    },
+    {
+      "name": "tests/testing/mariadb/test_public_api.py::temporary_mariadb_server_reset_database_option_runs_before_yield",
+      "seconds": 10.377107375010382
+    },
+    {
+      "name": "tests/test_soak_runner.py::service_soak_recovers_from_repeated_saturation[mariadb, three]",
+      "seconds": 10.318662441000924
+    }
+  ]
+}
