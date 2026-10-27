@@ -9,7 +9,7 @@ from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
 from tests.helpers import provide_mariadb_server
-from tests.query.test_named_projection import (
+from tests.query.named_models import (
     OptionalPersonSummary,
     PeerRole,
     Person,

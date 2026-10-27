@@ -6,22 +6,7 @@ from pydantic import BaseModel, RootModel
 from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
-
-
-class Person[S = sqlite.Pending](sqlite.Model[S]):
-    """A table independent from its named result contract."""
-
-    __row_type__: ClassVar[sqlite.ReadType[Person[sqlite.Row]]]
-
-    id: Person.Col[int] = sqlite.Integer(primary_key=True)
-    name: Person.Col[str] = sqlite.Text()
-
-
-class PersonSummary(BaseModel):
-    """An application result contract, not a table declaration."""
-
-    id: int
-    name: str
+from tests.query.named_models import PeerRole, Person, PersonSummary
 
 
 @test(mark="fast")
@@ -44,17 +29,6 @@ def named_projection_rejects_incompatible_column_binding() -> None:
         sqlite.select(Person).project(PersonSummary, id=Person.name, name=Person.name)
 
 
-class OptionalPersonSummary(BaseModel):
-    """A result field that admits an unmatched joined row."""
-
-    id: int
-    name: str | None
-
-
-class PeerRole:
-    """A nominal role for a second occurrence of Person."""
-
-
 @test(mark="fast")
 def named_projection_requires_optional_left_join_field() -> None:
     """A NOT NULL storage column still becomes nullable after a LEFT join."""
@@ -65,20 +39,6 @@ def named_projection_requires_optional_left_join_field() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         query.project(PersonSummary, id=Person.id, name=peer.column(Person.name))
-
-
-class WidePerson(BaseModel):
-    """Nine independently named values exceed the positional overload ceiling."""
-
-    first: int
-    second: int
-    third: int
-    fourth: int
-    fifth: int
-    sixth: int
-    seventh: int
-    eighth: int
-    ninth: int
 
 
 @test(mark="fast")

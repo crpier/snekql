@@ -5,7 +5,7 @@ from typing import assert_type
 from snektest import assert_eq, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.query.test_named_projection import Person, PersonSummary, WidePerson
+from tests.query.named_models import Person, PersonSummary, WidePerson
 from tests.runtime.test_named_projection import (
     MariaPerson,
     provide_maria_people,

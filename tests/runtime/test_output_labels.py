@@ -7,7 +7,7 @@ from pydantic import BaseModel, field_validator
 from snektest import assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.query.test_named_projection import Person
+from tests.query.named_models import Person
 from tests.runtime.test_arithmetic import MariaInventory, provide_mariadb_inventory
 from tests.runtime.test_named_codecs import (
     DocumentResult,
