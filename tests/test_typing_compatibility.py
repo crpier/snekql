@@ -29,7 +29,7 @@ async def provide_probe_checkout() -> AsyncGenerator[Path]:
 
 @test(
     [Param("sqlite", name="sqlite"), Param("mariadb", name="mariadb")],
-    mark="fast",
+    mark="slow",
 )
 async def lifecycle_report_requires_positive_control(backend: str) -> None:
     """A generated-id rejection counts only beside correctly inferred states."""
@@ -67,7 +67,7 @@ async def lifecycle_report_requires_positive_control(backend: str) -> None:
         Param("missing-negative", name="unrejected-invalid-operation"),
         Param("off-marker", name="unrelated-negative-error"),
     ],
-    mark="fast",
+    mark="slow",
 )
 async def unrelated_errors_cannot_certify_rejection(mutation: str) -> None:
     """Rejecting another line or a broken control cannot satisfy the contract."""
@@ -102,7 +102,7 @@ async def unrelated_errors_cannot_certify_rejection(mutation: str) -> None:
     assert_eq(report["cases"][0]["conforms"], False)
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def missing_probe_is_infrastructure_failure() -> None:
     """Missing source input is not reported as checker incompatibility."""
     root = await load_fixture(provide_probe_checkout())
@@ -118,7 +118,7 @@ async def missing_probe_is_infrastructure_failure() -> None:
     assert_true(b"typing assessment unavailable" in completed.stderr)
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def readiness_report_retains_checker_limits() -> None:
     """Only a clean positive control can establish row-scope rejection."""
     assessment = await load_fixture(provide_typing_assessment())
@@ -130,7 +130,7 @@ async def readiness_report_retains_checker_limits() -> None:
     assert_eq(bool(case["positive_errors"]), False)
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def backend_identity_probe_rejects_cross_family_execution() -> None:
     """Each Transaction rejects an otherwise valid query from the other family."""
     assessment = await load_fixture(provide_typing_assessment())
@@ -140,7 +140,7 @@ async def backend_identity_probe_rejects_cross_family_execution() -> None:
     assert_true(all(case["conforms"] for case in observations))
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def positional_probe_rejects_ninth_projection() -> None:
     """Eight positional values retain types; a ninth exceeds the public overloads."""
     assessment = await load_fixture(provide_typing_assessment())
@@ -149,7 +149,7 @@ async def positional_probe_rejects_ninth_projection() -> None:
     assert_true(all(observation["conforms"] for observation in observations))
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def named_probe_preserves_nine_field_result() -> None:
     """Named rows exceed positional width without erasing the result class."""
     assessment = await load_fixture(provide_typing_assessment())
@@ -158,7 +158,7 @@ async def named_probe_preserves_nine_field_result() -> None:
     assert_true(all(observation["conforms"] for observation in observations))
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def join_probe_retains_nullable_right_model() -> None:
     """Left-join row inference must not silently remove right-side absence."""
     assessment = await load_fixture(provide_typing_assessment())
@@ -167,7 +167,7 @@ async def join_probe_retains_nullable_right_model() -> None:
     assert_true(all(observation["conforms"] for observation in observations))
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def raw_probe_rejects_consumption_time_validation_override() -> None:
     """A raw statement owns its validated result contract before consumption."""
     assessment = await load_fixture(provide_typing_assessment())
@@ -176,7 +176,7 @@ async def raw_probe_rejects_consumption_time_validation_override() -> None:
     assert_true(all(observation["conforms"] for observation in observations))
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def full_report_certifies_supported_ty_contracts() -> None:
     """The supported checker accepts every positive and rejects every negative."""
     assessment = await load_fixture(provide_typing_assessment())
@@ -207,7 +207,7 @@ async def full_report_certifies_supported_ty_contracts() -> None:
     assert_eq(failed, set())
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def report_identifies_environment_and_rendered_sources() -> None:
     """A saved assessment identifies its interpreter, checkout and actual inputs."""
     completed = await run_process(
@@ -236,7 +236,7 @@ async def report_identifies_environment_and_rendered_sources() -> None:
     assert_true(case["positive_sha256"] != case["negative_sha256"])
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def ty_probe_uses_declared_configuration() -> None:
     """An ambient configuration pointer cannot silently change the assessment."""
     completed = await run_process(
@@ -254,7 +254,7 @@ async def ty_probe_uses_declared_configuration() -> None:
     assert_true(loads(completed.stdout)["conforms"])
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def defaulted_fk_probe_preserves_target() -> None:
     """Nullable defaults retain constructor inference and reject other targets."""
     assessment = await load_fixture(provide_typing_assessment())
@@ -290,7 +290,7 @@ async def row_constructor_requires_valid_pending_control(backend: str) -> None:
             "bulk-source",
         )
     ],
-    mark="fast",
+    mark="slow",
 )
 async def explicit_batch_contract_requires_clean_control(name: str) -> None:
     """Each rejection has independent exact-type nonempty and empty controls."""
@@ -438,7 +438,7 @@ async def single_insert_contract_requires_clean_control(kind: str) -> None:
         assert_true(observation["conforms"])
 
 
-@test(mark="fast")
+@test(mark="slow")
 async def assessment_cli_has_no_checker_selection() -> None:
     """The assessment exposes consumer selection, not a choice of typing engine."""
     completed = await run_process(
