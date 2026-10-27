@@ -79,8 +79,10 @@ failure-path and composition checks and their limitations. The
 [third defensive review](security-review-2026-10-10-third-pass.md) covers
 malformed legacy timestamp diagnostics and migration cleanup ownership.
 
-Design records explain decisions; they are **not current usage instructions**:
+Design documents include working proposals and decision records; they are
+**not current usage instructions**:
 
+- [Working purpose and interface design brief](design-brief.md)
 - [Architecture decisions](adr/)
 - [Class-body proposal](class-body-interface-proposal.md)
 - [Query composition design](query-composition-design.md)
