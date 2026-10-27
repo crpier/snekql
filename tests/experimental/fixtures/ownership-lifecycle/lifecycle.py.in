@@ -1,0 +1,246 @@
+"""Ownership lifecycle through ordinary caller-owned database and migration interfaces."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+from typing import ClassVar
+
+import aiosqlite
+from models import Account, Initial
+
+from snekql import sqlite
+from snekql.errors import ExecutionError
+from snekql.experimental import migrations as m
+
+
+class Directory[S = sqlite.Pending](sqlite.Model[S]):
+    """Query mapping for a table that is never selected for migration ownership."""
+
+    __tablename__ = "directory"
+    __row_type__: ClassVar[sqlite.ReadType[Directory[sqlite.Row]]]
+    id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+    label: sqlite.Col[str] = sqlite.Text()
+
+
+class Notes[S = sqlite.Pending](sqlite.Model[S]):
+    """Query-only mapping for unmanaged additions on an otherwise managed table."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[sqlite.ReadType[Notes[sqlite.Row]]]
+    id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+    note: sqlite.Col[str] = sqlite.Text()
+    upper_note: sqlite.Col[str | None] = sqlite.Text(nullable=True)
+
+
+async def schema(config: sqlite.Config) -> list[dict[str, object]]:
+    """Inspect public SQLite schema observations, excluding runner metadata."""
+    async with await sqlite.Database.initialize(config) as db, db.transaction() as tx:
+        return await tx.fetch_all(
+            sqlite.raw(
+                "SELECT type,name,tbl_name,sql FROM sqlite_schema "
+                "WHERE name NOT LIKE 'snekql_%' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+            )
+        )
+
+
+async def revisions(config: sqlite.Config) -> list[str]:
+    """Observe durable history independently from application query mappings."""
+    async with m.connect(config) as target:
+        return sorted(item.revision for item in await target.status())
+
+
+async def main() -> None:
+    """Adopt, preserve a role migration, hand off, then prove/refuse strict re-adoption."""
+    payload = json.loads(sys.stdin.read())
+    config = sqlite.Config(database=Path(payload["database"]))
+    extended = payload["mode"] != "plain"
+    # External-owner fixture DDL, NOT migration SQL or a new construction path in snekql.
+    async with aiosqlite.connect(str(config.database)) as external:
+        await external.executescript(
+            "CREATE TABLE accounts(id INTEGER PRIMARY KEY,is_admin INTEGER NOT NULL) STRICT;"
+            "INSERT INTO accounts VALUES(1,1),(2,0);"
+            "CREATE TABLE directory(id INTEGER PRIMARY KEY,label TEXT NOT NULL) STRICT;"
+            "INSERT INTO directory VALUES(17,'external');"
+        )
+    before = await schema(config)
+    async with await sqlite.Database.initialize(config) as db, db.transaction() as tx:
+        directory = await tx.fetch_all(sqlite.select(Directory.label))
+        old = await tx.fetch_all(
+            sqlite.select(Initial.is_admin).order_by(Initial.id.asc())
+        )
+    assert directory == ["external"] and old == [True, False]
+    assert await schema(config) == before and await revisions(config) == []
+    adopt = m.Package.load(Path("001_adopt.json").read_text())
+    roles = m.Package.load(Path("002_roles.json").read_text())
+    handoff = m.Package.load(Path("003_handoff.json").read_text())
+    readopt = m.Package.load(Path("004_readopt.json").read_text())
+    assert [table.name for table in adopt.target.tables] == ["accounts"]
+    async with m.connect(config) as target:
+        plan = await target.prepare(adopt)
+        assert plan.statements == () and await target.status() == ()
+        await target.apply(plan)
+    assert await schema(config) == before
+    if extended:
+        async with aiosqlite.connect(str(config.database)) as external:
+            await external.executescript(
+                "ALTER TABLE accounts ADD COLUMN note TEXT NOT NULL DEFAULT 'kept';"
+                "ALTER TABLE accounts ADD COLUMN upper_note TEXT AS(upper(note)) VIRTUAL;"
+                "CREATE INDEX by_note ON accounts(note);"
+                "CREATE VIEW account_notes AS SELECT id,note,upper_note FROM accounts;"
+                "CREATE TABLE audit(account_id INTEGER,note TEXT);"
+                "CREATE TRIGGER note_write AFTER UPDATE OF note ON accounts BEGIN "
+                "INSERT INTO audit VALUES(NEW.id,NEW.note); END;"
+                "CREATE TABLE links(account_id INTEGER REFERENCES accounts(id));"
+                "INSERT INTO links VALUES(1);"
+            )
+    if payload["mode"] == "dependent":
+        async with aiosqlite.connect(str(config.database)) as external:
+            await external.execute(
+                "CREATE VIEW legacy_flags AS SELECT id,is_admin FROM accounts"
+            )
+    observed = await schema(config)
+    if payload["mode"] == "dependent":
+        async with m.connect(config) as target:
+            try:
+                await target.prepare(roles, preserve_unmanaged=True)
+            except m.PackageError as error:
+                blocked = str(error)
+                assert "depends on removed columns" in blocked
+            else:
+                raise AssertionError("unmanaged old-flag dependency silently destroyed")
+        assert await schema(config) == observed and await revisions(config) == [
+            "001_adopt"
+        ]
+        async with (
+            await sqlite.Database.initialize(config) as db,
+            db.transaction() as tx,
+        ):
+            assert await tx.fetch_all(
+                sqlite.select(Initial.is_admin).order_by(Initial.id.asc())
+            ) == [True, False]
+            assert await tx.fetch_all(
+                sqlite.raw("SELECT is_admin FROM legacy_flags ORDER BY id")
+            ) == [{"is_admin": 1}, {"is_admin": 0}]
+        print(
+            json.dumps(
+                {
+                    "mode": "dependent",
+                    "blocked": blocked,
+                    "query_only": directory,
+                    "revisions": await revisions(config),
+                    "lazy_imports": sys.get_lazy_imports(),
+                }
+            )
+        )
+        return
+    refusal = ""
+    async with m.connect(config) as target:
+        if extended:
+            try:
+                await target.prepare(roles)
+            except m.PackageError as error:
+                refusal = str(error)
+                assert "catalog differs" in refusal
+            else:
+                raise AssertionError("external additions silently accepted")
+        plan = await target.prepare(roles, preserve_unmanaged=extended)
+        assert await revisions(config) == ["001_adopt"]
+        role_plan = list(plan.statements)
+        await target.apply(plan)
+    after = await schema(config)
+    assert all(row in after for row in observed if row["name"] != "accounts")
+    async with await sqlite.Database.initialize(config) as db, db.transaction() as tx:
+        rows = await tx.fetch_all(sqlite.select(Account).order_by(Account.id.asc()))
+        assert [(row.id, row.role) for row in rows] == [(1, "admin"), (2, "user")]
+        if extended:
+            notes = await tx.fetch_all(sqlite.select(Notes).order_by(Notes.id.asc()))
+            assert [(n.note, n.upper_note) for n in notes] == [
+                ("kept", "KEPT"),
+                ("kept", "KEPT"),
+            ]
+            await tx.execute(
+                sqlite.update(Notes).set(Notes.note.to("changed")).where(Notes.id.eq(1))
+            )
+            assert await tx.fetch_all(
+                sqlite.raw("SELECT * FROM account_notes ORDER BY id")
+            ) == [
+                {"id": 1, "note": "changed", "upper_note": "CHANGED"},
+                {"id": 2, "note": "kept", "upper_note": "KEPT"},
+            ]
+            assert await tx.fetch_all(sqlite.raw("SELECT * FROM audit")) == [
+                {"account_id": 1, "note": "changed"}
+            ]
+            assert await tx.fetch_all(sqlite.raw("PRAGMA foreign_keys")) == [
+                {"foreign_keys": 1}
+            ]
+            assert await tx.fetch_all(sqlite.raw("PRAGMA foreign_key_check")) == []
+    if extended:
+        try:
+            async with (
+                await sqlite.Database.initialize(config) as db,
+                db.transaction() as tx,
+            ):
+                await tx.execute(sqlite.raw("INSERT INTO links VALUES(999)"))
+        except ExecutionError:
+            pass
+        else:
+            raise AssertionError("unmanaged child FK lost enforcement")
+    before_handoff = await schema(config)
+    async with m.connect(config) as target:
+        plan = await target.prepare(handoff)
+        assert plan.statements == () and handoff.target.tables == ()
+        await target.apply(plan)
+    assert await schema(config) == before_handoff
+    async with await sqlite.Database.initialize(config) as db, db.transaction() as tx:
+        assert await tx.fetch_all(
+            sqlite.select(Account.role).order_by(Account.id.asc())
+        ) == ["admin", "user"]
+        assert await tx.fetch_all(sqlite.select(Directory.label)) == ["external"]
+        if extended:
+            retained = await tx.fetch_all(sqlite.select(Notes).order_by(Notes.id.asc()))
+            assert [(n.note, n.upper_note) for n in retained] == [
+                ("changed", "CHANGED"),
+                ("kept", "KEPT"),
+            ]
+            assert await tx.fetch_all(sqlite.raw("SELECT * FROM audit")) == [
+                {"account_id": 1, "note": "changed"}
+            ]
+    readopt_refusal = ""
+    async with m.connect(config) as target:
+        if extended:
+            for preserve in (False, True):
+                try:
+                    await target.prepare(readopt, preserve_unmanaged=preserve)
+                except m.PackageError as error:
+                    readopt_refusal = str(error)
+                    assert "adoption cannot accept" in readopt_refusal
+                    assert (
+                        "index declarations" in readopt_refusal
+                        and "unmanaged triggers" in readopt_refusal
+                    )
+                else:
+                    raise AssertionError("strict re-adoption silently acquired extras")
+        else:
+            plan = await target.prepare(readopt)
+            assert plan.statements == ()
+            await target.apply(plan)
+    assert await schema(config) == before_handoff
+    print(
+        json.dumps(
+            {
+                "mode": payload["mode"],
+                "query_only": directory,
+                "roles": [[r.id, r.role] for r in rows],
+                "revisions": await revisions(config),
+                "role_plan": role_plan,
+                "drift_refusal": refusal,
+                "readopt_refusal": readopt_refusal,
+                "schema": await schema(config),
+                "lazy_imports": sys.get_lazy_imports(),
+            }
+        )
+    )
+
+
+asyncio.run(main())

@@ -54,6 +54,29 @@ def _sql_mode_has_required_flags(value: object) -> bool:
     return flags >= _REQUIRED_SQL_MODE_FLAGS
 
 
+_INNODB_STRICT_MODE_SETTING = ConnectionSetting(
+    name="sql_mode",
+    probe_sql="SELECT @@SESSION.sql_mode",
+    predicate=lambda value: (
+        isinstance(value, str)
+        and bool(
+            {"STRICT_ALL_TABLES", "STRICT_TRANS_TABLES"}.intersection(value.split(","))
+        )
+    ),
+    expectation="STRICT_ALL_TABLES or STRICT_TRANS_TABLES enabled (InnoDB migration work)",
+)
+"""Verify inherited InnoDB strictness, unlike ordinary all-table normalization."""
+
+
+_UTC_TIME_ZONE_SETTING = ConnectionSetting(
+    name="time_zone",
+    apply_statements=("SET time_zone = '+00:00'",),
+    probe_sql="SELECT @@SESSION.time_zone",
+    expected_value="+00:00",
+    expectation="'+00:00' (UTC)",
+)
+"""One shared UTC clock policy for ordinary and dedicated migration connections."""
+
 MARIADB_SESSION_SETTINGS: tuple[ConnectionSetting, ...] = (
     ConnectionSetting(
         name="sql_mode",
@@ -62,13 +85,7 @@ MARIADB_SESSION_SETTINGS: tuple[ConnectionSetting, ...] = (
         predicate=_sql_mode_has_required_flags,
         expectation="STRICT_ALL_TABLES and NO_ENGINE_SUBSTITUTION enabled",
     ),
-    ConnectionSetting(
-        name="time_zone",
-        apply_statements=("SET time_zone = '+00:00'",),
-        probe_sql="SELECT @@SESSION.time_zone",
-        expected_value="+00:00",
-        expectation="'+00:00' (UTC)",
-    ),
+    _UTC_TIME_ZONE_SETTING,
     ConnectionSetting(
         name="foreign_key_checks",
         apply_statements=("SET SESSION foreign_key_checks = 1",),

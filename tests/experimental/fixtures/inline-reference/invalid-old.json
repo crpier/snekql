@@ -1,0 +1,102 @@
+{
+  "bindings": [
+    [],
+    []
+  ],
+  "contractions": [
+    null,
+    null
+  ],
+  "digest": "90e56f66348fe21f7e5db99bf9a8dbe85e2e77e6e68879dad8bd836caa831c1c",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`id` INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "parents",
+          "quoted_name": "`parents`",
+          "sql": "CREATE TABLE `parents` (`id` INTEGER PRIMARY KEY) STRICT"
+        }
+      },
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`parent_id` INTEGER REFERENCES `parents` (`id`)",
+              "name": "parent_id",
+              "nullable": true,
+              "query_type": null,
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "children",
+          "quoted_name": "`children`",
+          "sql": "CREATE TABLE `children` (`parent_id` INTEGER) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "parents",
+          "quoted_name": "`parents`",
+          "sql": "CREATE TABLE `parents` (`id` INTEGER PRIMARY KEY) STRICT"
+        },
+        {
+          "columns": [
+            {
+              "definition": "`parent_id` INTEGER REFERENCES `parents` (`id`)",
+              "name": "parent_id",
+              "nullable": true,
+              "query_type": null,
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "children",
+          "quoted_name": "`children`",
+          "sql": "CREATE TABLE `children` (`parent_id` INTEGER) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE `parents` (`id` INTEGER PRIMARY KEY) STRICT",
+    "CREATE TABLE `children` (`parent_id` INTEGER) STRICT"
+  ],
+  "transactional": [
+    false,
+    false
+  ],
+  "version": 2
+}

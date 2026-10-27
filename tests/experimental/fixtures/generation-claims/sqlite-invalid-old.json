@@ -1,0 +1,79 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "a8c64b0572b425b151cbc92f8cb1842ca693a0e524f01ff0325b704bbdc5ec2a",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`base` INTEGER NOT NULL DEFAULT 7",
+              "name": "base",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`value` INTEGER AS (7) VIRTUAL",
+              "name": "value",
+              "nullable": true,
+              "query_type": "int | None",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE `entries` (`base` INTEGER NOT NULL DEFAULT 7, `value` INTEGER AS (8) VIRTUAL) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`base` INTEGER NOT NULL DEFAULT 7",
+              "name": "base",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`value` INTEGER AS (7) VIRTUAL",
+              "name": "value",
+              "nullable": true,
+              "query_type": "int | None",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE `entries` (`base` INTEGER NOT NULL DEFAULT 7, `value` INTEGER AS (8) VIRTUAL) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE `entries` (`base` INTEGER NOT NULL DEFAULT 7, `value` INTEGER AS (8) VIRTUAL) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

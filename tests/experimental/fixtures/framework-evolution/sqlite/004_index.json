@@ -1,0 +1,84 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "c0aa3ec80afe90ecc0835858d2218cabeb3c9c503a2a9481887c8de167aa3500",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"role\" TEXT NOT NULL",
+              "name": "role",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "\"accounts\"",
+          "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"role\" TEXT NOT NULL) STRICT"
+        }
+      ]
+    },
+    "operations": [
+      {
+        "kind": "create_index",
+        "sql": "CREATE INDEX \"accounts_by_role\" ON \"accounts\" (\"role\")",
+        "table_name": "accounts"
+      }
+    ],
+    "predecessor": "99d5bc77258623790522bcf4d17f51315506d650209805333de9332c2023af27",
+    "revision": "004_index",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"role\" TEXT NOT NULL",
+              "name": "role",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [
+            "CREATE INDEX \"accounts_by_role\" ON \"accounts\" (\"role\")"
+          ],
+          "name": "accounts",
+          "quoted_name": "\"accounts\"",
+          "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"role\" TEXT NOT NULL) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE INDEX \"accounts_by_role\" ON \"accounts\" (\"role\")"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 5
+}

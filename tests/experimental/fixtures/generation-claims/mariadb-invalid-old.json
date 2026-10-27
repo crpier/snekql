@@ -1,0 +1,79 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "0ce85ed5234d5d9005fc9e6b119ac0b9eb086f50ae9ac4d62240ecfcaeb80209",
+  "draft": {
+    "before": {
+      "backend": "mariadb",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`base` BIGINT NOT NULL DEFAULT 7",
+              "name": "base",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`value` BIGINT AS (7) VIRTUAL",
+              "name": "value",
+              "nullable": true,
+              "query_type": "int | None",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE `entries` (`base` BIGINT NOT NULL DEFAULT 7, `value` BIGINT AS (8) VIRTUAL) ENGINE=InnoDB"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`base` BIGINT NOT NULL DEFAULT 7",
+              "name": "base",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`value` BIGINT AS (7) VIRTUAL",
+              "name": "value",
+              "nullable": true,
+              "query_type": "int | None",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE `entries` (`base` BIGINT NOT NULL DEFAULT 7, `value` BIGINT AS (8) VIRTUAL) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE `entries` (`base` BIGINT NOT NULL DEFAULT 7, `value` BIGINT AS (8) VIRTUAL) ENGINE=InnoDB"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

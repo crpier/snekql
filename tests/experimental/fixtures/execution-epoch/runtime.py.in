@@ -1,0 +1,28 @@
+"""Historical runtime needs an execution interpreter, not the current authoring verb."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+from snekql import sqlite
+from snekql.experimental import migrations as m
+
+
+async def main() -> None:
+    """Revalidate retained bytes and compare read-only preparation before original apply."""
+    payload = json.loads(sys.stdin.read())
+    assert not hasattr(m, "compile")
+    wire = Path("original-plan.json").read_text()
+    plan = m.Prepared.load(wire)
+    assert plan.dump() == wire
+    assert m.Package.load(plan.package.dump()).execution_epoch == plan.execution_epoch == 1
+    async with m.connect(sqlite.Config(database=Path(payload["database"]))) as target:
+        assert await target.prepare(plan.package, preserve_unmanaged=True) == plan
+        outcome = await target.apply(plan)
+    assert not {"models", "historical", "backfill", "review", "app"} & sys.modules.keys()
+    print(json.dumps({"outcome": outcome, "epoch": plan.execution_epoch,
+                      "lazy_imports": sys.get_lazy_imports(), "library": m.__file__}))
+
+
+asyncio.run(main())

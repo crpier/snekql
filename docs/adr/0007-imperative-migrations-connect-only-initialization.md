@@ -86,3 +86,14 @@ it.
   `docs/adoption.md`, the `create_missing` schema-startup path, and the
   `initialize` / `migrate` signatures must all be updated, and the change noted
   in `CHANGELOG.md`.
+
+
+## Recorded-state scope amendment (#477)
+
+[ADR0023](0023-recorded-migration-ownership-and-execution.md) permits dedicated model-free
+recorded deployment through `migrations.connect(config)`, in addition to released Database
+migration methods. Its explicit Connection lifetime owns opening and post-exit cleanup; it is
+not an ordinary query pool or implicit initializer. Initialization remains schema-free and
+current application models remain separate from historical deployment authority. Separately
+approved explicit model construction is neither implemented nor revoked here, and cannot stamp
+a migration chain. G5 engineering acceptance is recorded in the ADR's decision review.

@@ -1,0 +1,74 @@
+"""Author the explicit representation migration using v2 application code."""
+
+import json
+from pathlib import Path
+from typing import ClassVar
+
+from author import package as candidate
+from models import Account
+from role_codec import EPOCH
+
+from snekql import BACKEND as db
+from snekql.experimental import migrations as m
+
+
+class WireAccount[S = db.Pending](db.Model[S]):
+    """Explicit physical-string adapter; it does NOT reconstruct a historical codec."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[WireAccount[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    role: db.Col[str] = db.Text()
+
+
+text = Path("002_roles.json").read_text()
+old = m.Package.load(text)
+assert EPOCH == "v2" and old.dump() == text
+assert m.contract_digest(candidate.draft, point="fill_roles") == m.contract_digest(
+    old.draft, point="fill_roles"
+)
+try:
+    old.check(candidate.draft)
+except m.PackageError as error:
+    assert "stale" in str(error)
+else:
+    raise AssertionError(
+        "changed encoded bindings were mistaken for the reviewed v1 route"
+    )
+# Opaque codec identity was not recorded: schema generation cannot infer this data rewrite.
+draft = m.generate("003_codec", [Account], backend="BACKEND", previous=old)
+assert draft.operations == () and draft.target == old.target
+draft = draft.then(m.Checkpoint(name="rewrite_roles"))
+digest = m.contract_digest(draft, point="rewrite_roles")
+# Explicit reviewed wire translation; current codec predicates cannot address v1 labels.
+rewrite = draft.then(
+    m.DataChange.from_query(
+        db.update(WireAccount)
+        .set(WireAccount.role.to("administrator"))
+        .where(WireAccount.role.eq("admin")),
+        checkpoint="rewrite_roles",
+        contract_digest=digest,
+    ),
+    m.DataChange.from_query(
+        db.update(WireAccount)
+        .set(WireAccount.role.to("member"))
+        .where(WireAccount.role.eq("user")),
+        checkpoint="rewrite_roles",
+        contract_digest=digest,
+    ),
+)
+package = m.compile(rewrite)
+Path("003_codec.json").write_text(package.dump())
+assert old.dump() == text
+print(
+    json.dumps(
+        {
+            "epoch": EPOCH,
+            "old_digest": old.digest,
+            "candidate_digest": candidate.digest,
+            "same_schema_contract": True,
+            "schema_changes": len(draft.operations) - 1,
+            "bindings": package.bindings,
+        }
+    )
+)

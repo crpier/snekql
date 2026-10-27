@@ -1,0 +1,60 @@
+"""Current model-free runner resumes an actual archived ledger or refuses it intact."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+from snekql import BACKEND as db
+from snekql.experimental import migrations as m
+
+
+async def main() -> None:
+    """Keep recorded receipts; do not rebuild or stamp history from endpoint similarity."""
+    payload = json.loads(sys.stdin.read())
+    config = CONFIG
+    async with m.connect(config) as target:
+        initial = await target.status()
+        initial_public = sorted((p.revision, p.phase, p.digest) for p in initial)
+        first = m.Package.load(Path("001_accounts.json").read_text())
+        assert (
+            await target.apply(
+                await target.prepare(first, schema_writers_excluded=NATIVE)
+            )
+            == "already_applied"
+        )
+        for name in ("002_roles", "003_contract", "004_index"):
+            package = m.Package.load(Path(f"{name}.json").read_text())
+            assert (
+                await target.apply(
+                    await target.prepare(package, schema_writers_excluded=NATIVE)
+                )
+                == "applied"
+            )
+            assert (
+                await target.apply(
+                    await target.prepare(package, schema_writers_excluded=NATIVE)
+                )
+                == "already_applied"
+            )
+        progress = sorted(
+            (p.revision, p.phase, p.digest) for p in await target.status()
+        )
+    assert progress[:1] == initial_public
+    assert not {"models", "author_old", "author_new", "historical"} & sys.modules.keys()
+    async with await db.Database.initialize(config) as app, app.transaction() as tx:
+        rows = await tx.fetch_all(db.raw("SELECT id,role FROM accounts ORDER BY id"))
+    print(
+        json.dumps(
+            {
+                "module": m.__file__,
+                "initial": initial_public,
+                "progress": progress,
+                "rows": rows,
+                "lazy_imports": sys.get_lazy_imports(),
+            }
+        )
+    )
+
+
+asyncio.run(main())

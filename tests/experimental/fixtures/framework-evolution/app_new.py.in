@@ -1,0 +1,45 @@
+"""Current ordinary application: the new index is declared, old data retains its meaning."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+from typing import ClassVar
+
+from snekql import BACKEND as db
+
+
+class Account[S = db.Pending](db.Model[S]):
+    """Current application mapping, independent of package/authoring imports."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Account[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    role: db.Col[str] = db.Text()
+    __indexes__: ClassVar = [db.Index(role, name="accounts_by_role")]
+
+
+async def main() -> None:
+    """Verify the desired structure, read the historical backfill and write a new row."""
+    payload = json.loads(sys.stdin.read())
+    config = CONFIG
+    async with await db.Database.initialize(config) as app:
+        await app.verify([Account])
+        async with app.transaction() as tx:
+            rows = await tx.fetch_all(db.select(Account).order_by(Account.id.asc()))
+            assert [(r.id, r.role) for r in rows] == [(1, "admin"), (2, "user")]
+            await tx.execute(db.insert(Account(id=3, role="user")))
+        async with app.transaction() as tx:
+            created = await tx.fetch_one(db.select(Account).where(Account.id.eq(3)))
+        assert created is not None and created.role == "user"
+    print(
+        json.dumps(
+            {
+                "rows": [[r.id, r.role] for r in rows],
+                "created": [created.id, created.role],
+            }
+        )
+    )
+
+
+asyncio.run(main())

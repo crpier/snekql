@@ -1,0 +1,202 @@
+{
+  "bindings": [
+    [],
+    [
+      "user"
+    ],
+    [
+      "admin",
+      true
+    ],
+    []
+  ],
+  "contractions": [
+    null,
+    null,
+    null,
+    {
+      "after": {
+        "columns": [
+          {
+            "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+            "name": "id",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
+            "name": "role",
+            "nullable": false,
+            "query_type": "str",
+            "storage": "TEXT"
+          }
+        ],
+        "indexes": [],
+        "name": "accounts",
+        "quoted_name": "`accounts`",
+        "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+      },
+      "before": {
+        "columns": [
+          {
+            "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+            "name": "id",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "`is_admin` BIGINT NOT NULL",
+            "name": "is_admin",
+            "nullable": false,
+            "query_type": "bool",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+            "name": "role",
+            "nullable": true,
+            "query_type": "str | None",
+            "storage": "TEXT"
+          }
+        ],
+        "indexes": [],
+        "name": "accounts",
+        "quoted_name": "`accounts`",
+        "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `is_admin` BIGINT NOT NULL, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin) ENGINE=InnoDB"
+      },
+      "dropped": [
+        "is_admin"
+      ],
+      "required": [
+        "role"
+      ]
+    }
+  ],
+  "digest": "d7c91170d245993bab78ed18f3279d4de6858af8ab6a18cef387eaa54d13ae93",
+  "draft": {
+    "before": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`is_admin` BIGINT NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "`accounts`",
+          "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `is_admin` BIGINT NOT NULL) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "operations": [
+      {
+        "column": {
+          "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+          "name": "role",
+          "nullable": true,
+          "query_type": "str | None",
+          "storage": "TEXT"
+        },
+        "kind": "add_column",
+        "table_name": "accounts"
+      },
+      {
+        "kind": "checkpoint",
+        "name": "fill_roles"
+      },
+      {
+        "backend": "mariadb",
+        "checkpoint": "fill_roles",
+        "contract_digest": "34b777ec336321361f36c59b588e642468762e42d0bbc78fb39f0ef3fdf64ea7",
+        "kind": "data_change",
+        "params": [
+          "user"
+        ],
+        "sql": "UPDATE `accounts` SET `role` = %s"
+      },
+      {
+        "backend": "mariadb",
+        "checkpoint": "fill_roles",
+        "contract_digest": "34b777ec336321361f36c59b588e642468762e42d0bbc78fb39f0ef3fdf64ea7",
+        "kind": "data_change",
+        "params": [
+          "admin",
+          true
+        ],
+        "sql": "UPDATE `accounts` SET `role` = %s WHERE (`is_admin` = %s)"
+      },
+      {
+        "column_name": "role",
+        "kind": "require_not_null",
+        "table_name": "accounts"
+      },
+      {
+        "column_name": "is_admin",
+        "kind": "drop_column",
+        "table_name": "accounts"
+      },
+      {
+        "kind": "checkpoint",
+        "name": "final"
+      }
+    ],
+    "predecessor": "dec34da87e5e3c5c968731668c307b5993b3c3cdf9e00956d6b44bf3b77bc6c7",
+    "revision": "002_roles",
+    "target": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
+              "name": "role",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "`accounts`",
+          "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "ALTER TABLE `accounts` ADD COLUMN `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+    "UPDATE `accounts` SET `role` = %s",
+    "UPDATE `accounts` SET `role` = %s WHERE (`is_admin` = %s)",
+    "ALTER TABLE `accounts` MODIFY COLUMN `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, DROP COLUMN `is_admin`"
+  ],
+  "transactional": [
+    false,
+    true,
+    true,
+    false
+  ],
+  "version": 2
+}

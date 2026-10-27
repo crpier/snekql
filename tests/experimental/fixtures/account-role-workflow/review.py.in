@@ -1,0 +1,36 @@
+"""Review one staged revision without intermediate packages or lineage stitching."""
+
+import json
+from pathlib import Path
+from models import Account
+from backfill import CHANGES
+from snekql.experimental import migrations as m
+
+from stage import expansion
+
+route = expansion.then(*CHANGES).advance(
+    [Account],
+    removals=(m.DropColumn(table_name="accounts", column_name="is_admin"),),
+).then(m.Checkpoint(name="final"))
+output = Path("002_roles.json")
+stale = False
+diagnostic = ""
+if output.exists():
+    previous = m.Package.load(output.read_text())
+    try:
+        previous.check(route)
+    except m.PackageError as error:
+        stale = True
+        diagnostic = str(error)
+package = m.compile(route)
+output.write_text(package.dump())
+print(
+    json.dumps(
+        {
+            "stale": stale,
+            "diagnostic": diagnostic,
+            "digest": package.digest,
+            "target": [t.name for t in package.target.tables],
+        }
+    )
+)

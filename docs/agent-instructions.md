@@ -58,7 +58,11 @@ by replacing `README.md` in the command above with its filename:
 - Models/columns: `models.md`, `storage.md`.
 - Queries/results: `queries.md`, `results.md`, `api-reference.md`.
 - Connections/transactions/shutdown: `transactions.md`, `connection-lifecycle.md`.
-- Migrations/upgrades: `migrations.md`, `class-body-migration.md`, `compatibility.md`.
+- Raw-SQL migrations/upgrades: `migrations.md`, `class-body-migration.md`,
+  `compatibility.md`.
+- Experimental recorded packages, original plans, lifetime joins or recovery:
+  `recorded-migrations.md`, `recorded-migration-recovery.md`. Identify the existing
+  runner family first; do not convert histories or share their deployment targets.
 - Typing/backend differences: `typing.md`, `typing-compatibility.md`,
   `backend-capabilities.md`.
 

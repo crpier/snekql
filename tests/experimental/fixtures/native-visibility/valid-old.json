@@ -1,0 +1,79 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "fe9f16f9103939d61fff632374bceb154015d039ee6dd1e5f9f2ea1edc55194f",
+  "draft": {
+    "before": {
+      "backend": "mariadb",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`value` BIGINT NOT NULL DEFAULT 7 INVISIBLE",
+              "name": "value",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE `entries` (`id` BIGINT NOT NULL PRIMARY KEY, `value` BIGINT NOT NULL DEFAULT 7 INVISIBLE) ENGINE=InnoDB"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`value` BIGINT NOT NULL DEFAULT 7 INVISIBLE",
+              "name": "value",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "`entries`",
+          "sql": "CREATE TABLE `entries` (`id` BIGINT NOT NULL PRIMARY KEY, `value` BIGINT NOT NULL DEFAULT 7 INVISIBLE) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE `entries` (`id` BIGINT NOT NULL PRIMARY KEY, `value` BIGINT NOT NULL DEFAULT 7 INVISIBLE) ENGINE=InnoDB"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

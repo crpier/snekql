@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "status": "finite engineering qualification including explicit connection lifetime; not publication approval",
+  "platform": "Linux x86_64, GIL CPython 3.15.0, default asyncio, disk-backed files",
+  "modes": [
+    "normal",
+    "all"
+  ],
+  "sqlite": [
+    "3.45.1",
+    "3.53.1"
+  ],
+  "sqlite_journals": [
+    "delete",
+    "wal"
+  ],
+  "sqlite_durability_requests": [
+    "normal",
+    "full"
+  ],
+  "native": [
+    "10.11.19",
+    "11.4.13",
+    "11.8.9",
+    "12.3.3"
+  ],
+  "native_engine": "InnoDB",
+  "native_transports": [
+    "owned local Unix socket",
+    "password-authenticated plaintext loopback TCP"
+  ],
+  "native_tests": [
+    "tests/experimental/test_migration_qualified_environment.py",
+    "tests/experimental/test_migration_authoring_journey.py",
+    "tests/experimental/test_migration_codec_evolution.py",
+    "tests/experimental/test_migration_commit_outcomes.py",
+    "tests/experimental/test_migration_ddl_outcomes.py",
+    "tests/experimental/test_migration_connection_lifetime.py"
+  ],
+  "sqlite_tests": [
+    "tests/experimental/test_migration_authoring_journey.py",
+    "tests/experimental/test_migration_codec_evolution.py",
+    "tests/experimental/test_migration_ownership_lifecycle.py",
+    "tests/experimental/test_migration_sqlite_durability.py",
+    "tests/experimental/test_migration_wal_interruption.py",
+    "tests/experimental/test_migration_connection_lifetime.py",
+    "tests/experimental/test_migration_retained_cleanup.py",
+    "tests/experimental/test_migration_sqlite_opening.py"
+  ],
+  "native_selector": "SNEKQL_TEST_MARIADB_HOME: verified external installation, never downloaded by tests",
+  "native_expectation": "SNEKQL_TEST_EXPECT_MARIADB: exact expected VERSION prefix",
+  "native_report": "SNEKQL_TEST_ENVIRONMENT_REPORT: optional actual proc executable/hash and public journey record",
+  "exclusions": [
+    "every patch/intervening release",
+    "in-place upgrades or downgrades",
+    "other OS/event loops/free-threaded Python",
+    "MySQL",
+    "all transports/TLS/version combinations",
+    "host/power/volume loss",
+    "global task or loop shutdown with pending cleanup",
+    "general physical-close recovery"
+  ]
+}

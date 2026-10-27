@@ -106,7 +106,8 @@ example. You can install plain `snekql` if you only need to build and inspect SQ
   [Raw SQL](docs/raw-sql.md)
 - **Make schema changes deliberately.** Commit migration SQL, apply it during
   deployment, and check the live schema against your models.
-  [Migrations](docs/migrations.md)
+  [Raw-SQL migrations](docs/migrations.md) ·
+  [Experimental recorded packages](docs/recorded-migrations.md)
 
 For longer queries, the builder supports [CTEs](docs/ctes.md),
 [UNION](docs/unions.md), and [recursive queries](docs/recursive-ctes.md).
@@ -118,8 +119,8 @@ Use snekql if you want async database access and typed queries without handing
 relationship loading or schema changes to an ORM. You still need to understand
 SQL, write migrations, and choose your transaction boundaries.
 
-It does not provide synchronous access, automatic migrations, or database
-backends other than SQLite and MariaDB. **ty 0.0.84 is the only supported checker**.
+It does not provide synchronous access, automatic schema alteration at startup,
+or database backends other than SQLite and MariaDB. **ty 0.0.84 is the only supported checker**.
 [Typing support and limits](docs/typing-compatibility.md)
 
 snekql is on **0.x**. Minor releases can break compatibility, so pin the minor

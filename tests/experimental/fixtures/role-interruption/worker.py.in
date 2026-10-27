@@ -1,0 +1,66 @@
+"""Model-free operator program; original prepared evidence survives process death."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+from snekql import BACKEND as db
+from snekql.experimental import migrations as m
+
+
+async def main() -> None:
+    """Wait on caller input only before execution, never inside a production step."""
+    payload = json.loads(await asyncio.to_thread(sys.stdin.readline))
+    config = CONFIG
+    async with m.connect(config) as target:
+        package = m.Package.load(Path(payload["package"]).read_text())
+        if payload["mode"] == "resume":
+            original = m.Prepared.load(Path("original-plan.json").read_text())
+            recovery = await target.inspect_recovery(
+                original, schema_writers_excluded=True
+            )
+            assert recovery.disposition == "retry_remaining"
+            plan = None
+        else:
+            recovery = None
+            plan = await target.prepare(package, schema_writers_excluded=NATIVE)
+            if payload.get("save"):
+                Path("original-plan.json").write_text(plan.dump())
+        print(
+            json.dumps({"ready": True, "lazy_imports": sys.get_lazy_imports()}),
+            flush=True,
+        )
+        assert (await asyncio.to_thread(sys.stdin.readline)).strip() == "go"
+        try:
+            if recovery is not None:
+                outcome = await target.resume(recovery, schema_writers_excluded=True)
+            else:
+                assert plan is not None
+                outcome = await target.apply(plan)
+            refusal = None
+        except m.PackageError as error:
+            outcome = "refused"
+            refusal = str(error)
+        status = sorted(
+            (p.revision, p.phase, p.acknowledged_steps, p.digest)
+            for p in await target.status()
+        )
+    assert (
+        not {"models", "stage", "historical", "backfill", "review", "app"}
+        & sys.modules.keys()
+    )
+    print(
+        json.dumps(
+            {
+                "outcome": outcome,
+                "refusal": refusal,
+                "status": status,
+                "lazy_imports": sys.get_lazy_imports(),
+            }
+        ),
+        flush=True,
+    )
+
+
+asyncio.run(main())

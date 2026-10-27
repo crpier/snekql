@@ -1,0 +1,65 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "7e1212b672040c56705052e4653c4cd4f544917c179b8f544f28c1094a1a9d3d",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "\"id\" TEXT PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"entries\" (\"id\" TEXT PRIMARY KEY)"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" TEXT PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"entries\" (\"id\" TEXT PRIMARY KEY)"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE \"entries\" (\"id\" TEXT PRIMARY KEY)"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

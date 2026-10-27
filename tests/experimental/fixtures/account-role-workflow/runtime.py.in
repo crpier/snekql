@@ -1,0 +1,48 @@
+"""Isolated deployment process: packages only, never authoring/application imports."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+from snekql import BACKEND as db
+from snekql.experimental import migrations as m
+
+
+async def main() -> None:
+    """Print the public plan/outcome for inspection by the caller."""
+    payload = json.loads(sys.stdin.read())
+    config = CONFIG
+    if payload["action"] == "seed":
+        async with await db.Database.initialize(config) as app, app.transaction() as tx:
+            await tx.execute(
+                db.raw("INSERT INTO accounts(id,is_admin) VALUES(1,1),(2,0)")
+            )
+        return
+    package = m.Package.load(Path(payload["package"]).read_text())
+    async with m.connect(config) as target:
+        before = await target.status()
+        plan = await target.prepare(package, schema_writers_excluded=NATIVE)
+        assert (
+            await target.status() == before
+        )  # Preparation does not record application.
+        statements = list(plan.statements)
+        required = [list(pair) for step in plan.steps for pair in step.required]
+        outcome = await target.apply(plan)
+        again = await target.apply(plan)
+        progress = [(p.revision, p.phase, p.digest) for p in await target.status()]
+    assert not {"models", "stage", "backfill", "historical", "app"} & sys.modules.keys()
+    print(
+        json.dumps(
+            {
+                "outcome": outcome, "lazy_imports": sys.get_lazy_imports(),
+                "again": again,
+                "statements": statements,
+                "required": required,
+                "progress": progress,
+                "digest": package.digest,
+            }
+        )
+    )
+
+
+asyncio.run(main())

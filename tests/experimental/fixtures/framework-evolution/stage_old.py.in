@@ -1,0 +1,16 @@
+"""Old public generation interface emits a real importable intermediate declaration."""
+
+from pathlib import Path
+
+from models import Expanded, Initial
+
+from snekql.experimental import migrations as m
+
+first = m.compile(m.generate("001_accounts", [Initial], backend="BACKEND"))
+expansion = m.generate("002_roles", [Expanded], backend="BACKEND", previous=first).then(
+    m.Checkpoint(name="fill_roles")
+)
+if __name__ == "__main__":
+    Path("historical.py").write_text(
+        m.contract_source(expansion, point="fill_roles", table="accounts")
+    )

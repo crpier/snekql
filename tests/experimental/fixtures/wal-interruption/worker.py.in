@@ -1,0 +1,48 @@
+"""Model-free ORIGINAL plan deployment, including an actual killed WAL writer."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+from snekql import sqlite
+from snekql.experimental import migrations as m
+
+
+async def main() -> None:
+    """Rendezvous only BEFORE apply, never intercept steps or fabricate an outcome."""
+    payload = json.loads(await asyncio.to_thread(sys.stdin.readline))
+    config = sqlite.Config(
+        database=Path(payload["database"]),
+        durability=payload["durability"],
+        acquire_timeout=10,
+        operation_timeout=20,
+    )
+    wire = await asyncio.to_thread(Path("original-plan.json").read_text)
+    original = m.Prepared.load(wire)
+    async with m.connect(config) as target:
+        print(
+            json.dumps({"ready": True, "lazy_imports": sys.get_lazy_imports()}),
+            flush=True,
+        )
+        assert (await asyncio.to_thread(sys.stdin.readline)).strip() == "go"
+        outcome = await target.apply(original)
+        status = sorted((p.revision, p.phase) for p in await target.status())
+    assert original.dump() == wire
+    assert (
+        not {"models", "stage", "historical", "backfill", "review", "app"}
+        & sys.modules.keys()
+    )
+    print(
+        json.dumps(
+            {
+                "outcome": outcome,
+                "status": status,
+                "lazy_imports": sys.get_lazy_imports(),
+            }
+        ),
+        flush=True,
+    )
+
+
+asyncio.run(main())

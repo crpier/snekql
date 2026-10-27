@@ -85,3 +85,14 @@ and "you rolled the app forward past the migration that feeds it."
   caller's topology (ADR 0007).
 - `docs/schema-drift.md` and `docs/migrations.md` are updated to describe `verify`
   as a separate, partial step and to relocate `schema_policy` onto it.
+
+
+## Recorded-state scope amendment (#477)
+
+[ADR0023](0023-recorded-migration-ownership-and-execution.md) adds an opt-in generated/reviewed
+recorded workflow, so the hand-authored-only rationale above applies to the released raw runner,
+not every possible migration. Separate application-model verification remains partial. Recorded
+postconditions, durable progress and structural reconciliation have different obligations and
+do not certify data/codecs/readiness or remove ordinary verification. Ordinary application
+credentials need not qualify as migration-authority credentials. G5 engineering acceptance is recorded in
+the ADR's decision review.

@@ -1,0 +1,79 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "c538bb8fa3a6961072c1bd6b21c8fa427a3bd37d3dc8a825dce961ef0a312d12",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"value\" INTEGER NOT NULL DEFAULT 7",
+              "name": "value",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"value\" INTEGER DEFAULT 7) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"value\" INTEGER NOT NULL DEFAULT 7",
+              "name": "value",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"value\" INTEGER DEFAULT 7) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"value\" INTEGER DEFAULT 7) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

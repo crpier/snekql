@@ -1,5 +1,11 @@
 # Reviewed baselines for existing databases
 
+This page covers the supported **raw-SQL runner** (`db.migrate(MIGRATIONS)`).
+For opt-in `snekql.experimental.migrations`, read the separate
+[recorded workflow](recorded-migrations.md) and
+[recorded recovery](recorded-migration-recovery.md). Use separate deployment
+targets; these are not interchangeable history or recovery APIs.
+
 Already have tables and data, but no snekql migration history? A baseline is an
 initial migration designed to work with that reviewed existing database and with
 an empty database. Both actually run the SQL; it does not pretend earlier

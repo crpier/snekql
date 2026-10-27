@@ -1,0 +1,79 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "1a63e1c9fd6b589be10c4a78c2a39f8daea38d0b172978fe0276eb438be847b6",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"is_admin\" INTEGER NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "\"accounts\"",
+          "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001_accounts",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"is_admin\" INTEGER NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "\"accounts\"",
+          "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

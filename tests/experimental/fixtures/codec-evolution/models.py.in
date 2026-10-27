@@ -1,0 +1,35 @@
+"""Same model source before/after replacement of the imported application codec."""
+
+from typing import ClassVar
+
+from role_codec import Role
+
+from snekql import BACKEND as db
+
+
+class Initial[S = db.Pending](db.Model[S]):
+    """The original boolean flag has no text-role codec dependency."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Initial[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    is_admin: db.Col[bool] = db.Integer()
+
+
+class Expanded[S = db.Pending](db.Model[S]):
+    """Custom role codec in the intermediate authoring contract."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Expanded[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    is_admin: db.Col[bool] = db.Integer()
+    role: db.Col[Role | None] = db.Text(nullable=True)
+
+
+class Account[S = db.Pending](db.Model[S]):
+    """The desired logical type is unchanged when the codec implementation evolves."""
+
+    __tablename__ = "accounts"
+    __row_type__: ClassVar[db.ReadType[Account[db.Row]]]
+    id: db.Col[int] = db.Integer(primary_key=True)
+    role: db.Col[Role] = db.Text()

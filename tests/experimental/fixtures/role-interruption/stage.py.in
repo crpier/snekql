@@ -1,0 +1,21 @@
+"""Three actual releases let the expanded schema remain durable across interruption."""
+
+from pathlib import Path
+
+from models import Expanded, Initial
+
+from snekql.experimental import migrations as m
+
+first = m.compile(m.generate("001_accounts", [Initial], backend="BACKEND"))
+second = m.compile(
+    m.generate("002_expand", [Expanded], backend="BACKEND", previous=first)
+)
+work = m.generate("003_roles", [Expanded], backend="BACKEND", previous=second).then(
+    m.Checkpoint(name="fill_roles")
+)
+if __name__ == "__main__":
+    Path("001_accounts.json").write_text(first.dump())
+    Path("002_expand.json").write_text(second.dump())
+    Path("historical.py").write_text(
+        m.contract_source(work, point="fill_roles", table="accounts")
+    )

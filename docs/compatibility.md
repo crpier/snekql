@@ -25,6 +25,25 @@ installed application APIs. Documented `snekql` and `snekql-mariadb-server` CLI
 commands, options and exit-code meanings are public; help layout and prose are
 not a machine-readable protocol.
 
+### Experimental recorded packages are a separate contract
+
+The opt-in [recorded workflow](recorded-migrations.md) stays in
+`snekql.experimental.migrations`. Its finite engineering acceptance is neither a
+stable namespace move nor an indefinite ABI promise for every exposed prototype
+value. The 1.x raw-history promise below does not automatically apply to its
+experimental ledger. Supported frozen formats/interpretations are read as defined
+or refused; there is no implicit conversion of unsupported ledgers, prepared
+plans, timestamps, codecs, or data. Retain original artifacts and evidence before
+upgrading; do not regenerate them to fit a new reader.
+
+The released raw-SQL runner remains supported unchanged, with no selected
+removal/deprecation. Keep the two runner families on separate deployment targets;
+there is no automatic raw-to-recorded history conversion, chain replacement,
+stamping, or cutover. Current application mapping and readiness are independent
+of either chain's ownership or completion. Consult the recorded guide's exact
+positive builds and exclusions rather than treating the ordinary backend matrix
+as a wider recorded-migration certificate.
+
 ### What stays compatible within 1.x
 
 | Area | Promise |
@@ -133,8 +152,10 @@ its inputs are unchanged.
 The release checklist in [adoption.md](adoption.md#release-checklist) supplies the
 commands. Required checks include the full snektest suite, ty, Ruff lint/format,
 lock consistency, generated interfaces, clean wheel/sdist builds and isolated
-artifact smoke tests. All required CI jobs must pass on the candidate, including
-SQLite OS/version coverage, selected native MariaDB versions and security checks.
+artifact smoke tests. When CI is enabled, required jobs must pass on the candidate, including SQLite
+OS/version coverage, selected native MariaDB versions and security checks. While
+Actions are maintainer-disabled, use completed local reports for the explicitly
+selected scope; do not request/poll Actions or describe unrun jobs as passing.
 Each exclusion needs an explicit release-blocking decision, not a green claim
 based on an unrun check. Publish known limits with their reproduction evidence.
 
@@ -145,26 +166,24 @@ migrations, identity maps and lazy relationships are not release gates. A featur
 enters the gate when its absence breaks an already promised contract, not merely
 because another library offers it.
 
-### Keep the existing release chain
+### Release authority and artifact provenance
 
-Do not replace [the release workflow](../.github/workflows/release.yml) or invent a
-second artifact pipeline for 1.0. It checks out the release tag, verifies exact
-tag/package-version equality, builds clean artifacts, runs the isolated artifact
-smoke test, attests the build and passes those same artifacts to the PyPI publish
-job. That job requests Trusted Publishing and PyPI attestations.
+Follow the repository's current maintainer-controlled release process in
+[the release checklist](adoption.md#release-checklist). Open a release PR, retain
+exact candidate/artifact identities and validation reports, and wait for explicit
+merge/publication authority. The human maintainer runs `uv publish`; documentation
+or local packaging work does not authorize that step, a version, a tag, or merge.
+Do not publish a GitHub release as a harmless announcement: the retained
+[release workflow](../.github/workflows/release.yml) can publish when enabled.
+Never reuse a release tag or publish the same version by both manual and automated
+paths.
 
-Before authorizing a tag or publication, verify the repository's `pypi`
-environment approval rules and PyPI Trusted Publisher configuration. A YAML
-environment name alone does not prove that human approval is configured. The
-release PR must record who checked those settings. PR artifact smoke tests and
-workflow lint do not prove that a publication attestation has been issued.
-After publication, verify provenance against the exact distributed artifact and
-run the published-package smoke test outside the checkout.
-
-Tagging, creating a published GitHub release and publishing require explicit
-maintainer authorization. Publishing a GitHub release triggers the existing
-workflow; it is not a harmless announcement step. Do not also run `uv publish`
-for the same version. Any authorized manual publishing alternative must document
-its artifact identity and provenance gap before use. Never reuse a release tag.
+Actions are currently maintainer-disabled. Do not infer a build attestation,
+Trusted Publishing approval, or PyPI attestation from a local artifact build or a
+workflow file. If a future release explicitly restores the automated path,
+separately verify tag/version equality, environment approval rules, Trusted
+Publisher configuration, and provenance for the exact distributed artifacts.
+A workflow environment name alone does not prove human approval. After authorized
+publication, run the published-package smoke outside the checkout.
 
 [All guides](README.md)

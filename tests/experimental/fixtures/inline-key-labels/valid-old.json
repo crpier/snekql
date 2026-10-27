@@ -1,0 +1,79 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    null
+  ],
+  "digest": "8233d25f2c8eb2bd3d75ca2abcbadc3736680148f781060b47e87e30bedc0d17",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": []
+    },
+    "operations": [
+      {
+        "kind": "create_table",
+        "table": {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER CONSTRAINT \"recorded\" PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"value\" INTEGER NOT NULL DEFAULT 7",
+              "name": "value",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"entries\" (\"id\" INTEGER CONSTRAINT \"recorded\" PRIMARY KEY, \"value\" INTEGER NOT NULL DEFAULT 7) STRICT"
+        }
+      }
+    ],
+    "predecessor": null,
+    "revision": "001",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER CONSTRAINT \"recorded\" PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"value\" INTEGER NOT NULL DEFAULT 7",
+              "name": "value",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "entries",
+          "quoted_name": "\"entries\"",
+          "sql": "CREATE TABLE \"entries\" (\"id\" INTEGER CONSTRAINT \"recorded\" PRIMARY KEY, \"value\" INTEGER NOT NULL DEFAULT 7) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "CREATE TABLE \"entries\" (\"id\" INTEGER CONSTRAINT \"recorded\" PRIMARY KEY, \"value\" INTEGER NOT NULL DEFAULT 7) STRICT"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

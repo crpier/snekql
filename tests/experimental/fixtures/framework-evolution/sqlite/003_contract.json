@@ -1,0 +1,152 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    {
+      "after": {
+        "columns": [
+          {
+            "definition": "\"id\" INTEGER PRIMARY KEY",
+            "name": "id",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "\"role\" TEXT NOT NULL",
+            "name": "role",
+            "nullable": false,
+            "query_type": "str",
+            "storage": "TEXT"
+          }
+        ],
+        "indexes": [],
+        "name": "accounts",
+        "quoted_name": "\"accounts\"",
+        "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"role\" TEXT NOT NULL) STRICT"
+      },
+      "before": {
+        "columns": [
+          {
+            "definition": "\"id\" INTEGER PRIMARY KEY",
+            "name": "id",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "\"is_admin\" INTEGER NOT NULL",
+            "name": "is_admin",
+            "nullable": false,
+            "query_type": "bool",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "\"role\" TEXT",
+            "name": "role",
+            "nullable": true,
+            "query_type": "str | None",
+            "storage": "TEXT"
+          }
+        ],
+        "indexes": [],
+        "name": "accounts",
+        "quoted_name": "\"accounts\"",
+        "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL, \"role\" TEXT) STRICT"
+      },
+      "dropped": [
+        "is_admin"
+      ],
+      "required": [
+        "role"
+      ]
+    }
+  ],
+  "digest": "99d5bc77258623790522bcf4d17f51315506d650209805333de9332c2023af27",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"is_admin\" INTEGER NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"role\" TEXT",
+              "name": "role",
+              "nullable": true,
+              "query_type": "str | None",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "\"accounts\"",
+          "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL, \"role\" TEXT) STRICT"
+        }
+      ]
+    },
+    "operations": [
+      {
+        "column_name": "role",
+        "kind": "require_not_null",
+        "table_name": "accounts"
+      },
+      {
+        "column_name": "is_admin",
+        "kind": "drop_column",
+        "table_name": "accounts"
+      }
+    ],
+    "predecessor": "3df9714ff4ba969a6eabce4aa292824b9e950ec22859e508e5e5979c942acd1f",
+    "revision": "003_contract",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"role\" TEXT NOT NULL",
+              "name": "role",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "\"accounts\"",
+          "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"role\" TEXT NOT NULL) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    null
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

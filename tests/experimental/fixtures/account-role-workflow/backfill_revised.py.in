@@ -1,0 +1,20 @@
+"""Edited route: initialize everyone, then classify administrators explicitly."""
+
+from snekql import BACKEND as db
+from snekql.experimental import migrations as m
+from historical import Historical as Accounts, CONTRACT_DIGEST
+
+CHANGES = (
+    m.DataChange.from_query(
+        db.update(Accounts).set(Accounts.role.to("user")).all(),
+        checkpoint="fill_roles",
+        contract_digest=CONTRACT_DIGEST,
+    ),
+    m.DataChange.from_query(
+        db.update(Accounts)
+        .set(Accounts.role.to("admin"))
+        .where(Accounts.is_admin.eq(True)),
+        checkpoint="fill_roles",
+        contract_digest=CONTRACT_DIGEST,
+    ),
+)

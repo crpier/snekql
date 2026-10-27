@@ -42,6 +42,64 @@
   Multi-lease saturation could otherwise strand sleeping waiters despite free
   capacity until acquisition timed out. Addresses #540.
 
+### Experimental recorded migrations (#477)
+
+- Add an opt-in workflow in `snekql.experimental.migrations`: ordinary historical
+  declarations select migration ownership; editable drafts and named intermediate
+  typed UPDATEs become frozen execution packages. `Draft.advance` composes stages
+  without manually stitching lineage or storing intermediate packages. Loading a
+  package requires neither authoring nor application models.
+- Support bounded creation, nullable additions, explicit required/drop-column
+  contraction, nullability/default changes, named indexes/CHECKs, and whole-table
+  relinquishment. Strict initial SQLite adoption claims matching existing facts,
+  not earlier execution history. Preservation is bounded and SQLite-only; native
+  and partial adoption remain unsupported. Unsupported declarations and dependencies
+  refuse rather than falling back to a general SQL parser or automatic live diff.
+- Separate read-only target preparation from application. Retain the original
+  target-bound `Prepared.dump()` envelope durably before applying; a new prepare
+  cannot reconstruct it. Frozen package formats 2–8 use defined execution epoch 1;
+  prepared wire format 1 checks integrity, not authenticity. Unsupported epochs or
+  ledger layouts refuse without conversion, re-lowering, stamping, or repair.
+- Record durable progress independently of caller acknowledgement. SQLite applies
+  transactionally within the qualified environment; MariaDB DDL can commit before
+  a later failure. Fresh-session inspection uses the saved original; explicit
+  `resume` continues only proved remaining work, while reviewed structural
+  reconciliation records acceptance without inventing a data-execution receipt.
+  Lost COMMIT/DDL acknowledgements do not authorize blind replay.
+- Return an inert, single-use `Connection` from `connect(config)` before opening.
+  `async with` yields a Target; post-failure/exit `wait_closed()` joins that
+  lifetime's known cleanup under a fresh operation budget. Timeout/cancellation
+  does not cancel the producer or other waiters. Keep the owning loop live;
+  there is no global drain, failed-close repair, or remote-quiescence guarantee.
+- Verify admitted session integrity and metadata authority without GLOBAL repair.
+  Preserve SQLite DELETE/WAL and apply requested NORMAL/FULL synchronization;
+  NORMAL deliberately replaces the earlier accidental FULL policy. MariaDB uses
+  its minimum 10.11 guard, UTC normalization, verified strict/integrity settings,
+  finite metadata visibility, and bounded migration-name lock ownership.
+- Qualify the finite Linux/GIL CPython 3.15/default-asyncio contract in normal and
+  forced-lazy modes: SQLite 3.45.1/3.53.1 and MariaDB 10.11.19/11.4.13/11.8.9/12.3.3,
+  with selected actual opening, worker, WAL client-death, COMMIT-loss, DDL-loss and
+  original-plan recovery journeys. This is not every patch/platform/transport,
+  in-place upgrade, host/power/volume-loss, or stopped-loop qualification.
+- Keep released raw-SQL `db.migrate`/`db.verify_migrations` supported and unchanged.
+  Use separate deployment targets for the two runner families; their separate
+  ledgers/locks do not coordinate each other. No raw-history conversion, automatic
+  cutover, stable namespace move, or indefinite prototype ABI promise is selected.
+  Query mapping, migration ownership, and application readiness remain independent.
+
+### Documentation and packaging
+
+- Add [recorded workflow](docs/recorded-migrations.md) and
+  [recorded recovery](docs/recorded-migration-recovery.md) consumer guides, including
+  connection-lifetime supervision, original evidence, finite support, and exclusions.
+- Bundle the guides and copyable role-authoring, original-storage, and ordinary
+  application recipes in wheel/sdist documentation resources. Route the installed
+  skill to the chosen migration family; keep internal proposals out of the bundle.
+- Validate actual installed-wheel authoring/type checking, stale-package refusal,
+  model-free deployment, retained originals and typed application use on both
+  backends. No version, tag, merge, publication, or Actions run is implied by this
+  documentation/packaging checkpoint.
+
 ## 0.9.0 - 2026-10-11
 
 ### Added

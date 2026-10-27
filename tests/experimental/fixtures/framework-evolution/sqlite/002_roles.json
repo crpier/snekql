@@ -1,0 +1,133 @@
+{
+  "bindings": [
+    [],
+    [
+      "user"
+    ],
+    [
+      "admin",
+      true
+    ]
+  ],
+  "contractions": [
+    null,
+    null,
+    null
+  ],
+  "digest": "3df9714ff4ba969a6eabce4aa292824b9e950ec22859e508e5e5979c942acd1f",
+  "draft": {
+    "before": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"is_admin\" INTEGER NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "\"accounts\"",
+          "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL) STRICT"
+        }
+      ]
+    },
+    "operations": [
+      {
+        "column": {
+          "definition": "\"role\" TEXT",
+          "name": "role",
+          "nullable": true,
+          "query_type": "str | None",
+          "storage": "TEXT"
+        },
+        "kind": "add_column",
+        "table_name": "accounts"
+      },
+      {
+        "kind": "checkpoint",
+        "name": "fill_roles"
+      },
+      {
+        "backend": "sqlite",
+        "checkpoint": "fill_roles",
+        "contract_digest": "fba20206731abb719669b5a902f9e2e2312c87867ccd33d1e5d39df996c83e4a",
+        "kind": "data_change",
+        "params": [
+          "user"
+        ],
+        "sql": "UPDATE \"accounts\" SET \"role\" = ?"
+      },
+      {
+        "backend": "sqlite",
+        "checkpoint": "fill_roles",
+        "contract_digest": "fba20206731abb719669b5a902f9e2e2312c87867ccd33d1e5d39df996c83e4a",
+        "kind": "data_change",
+        "params": [
+          "admin",
+          true
+        ],
+        "sql": "UPDATE \"accounts\" SET \"role\" = ? WHERE (\"is_admin\" = ?)"
+      }
+    ],
+    "predecessor": "1a63e1c9fd6b589be10c4a78c2a39f8daea38d0b172978fe0276eb438be847b6",
+    "revision": "002_roles",
+    "target": {
+      "backend": "sqlite",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "\"id\" INTEGER PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"is_admin\" INTEGER NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "\"role\" TEXT",
+              "name": "role",
+              "nullable": true,
+              "query_type": "str | None",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "\"accounts\"",
+          "sql": "CREATE TABLE \"accounts\" (\"id\" INTEGER PRIMARY KEY, \"is_admin\" INTEGER NOT NULL, \"role\" TEXT) STRICT"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "ALTER TABLE \"accounts\" ADD COLUMN \"role\" TEXT",
+    "UPDATE \"accounts\" SET \"role\" = ?",
+    "UPDATE \"accounts\" SET \"role\" = ? WHERE (\"is_admin\" = ?)"
+  ],
+  "transactional": [
+    false,
+    true,
+    true
+  ],
+  "version": 2
+}

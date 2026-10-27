@@ -1,0 +1,254 @@
+"""Actual model-free opening failure, late disposal, then frozen-role deployment."""
+
+import asyncio
+import json
+import os
+import sys
+import tempfile
+import time
+from dataclasses import replace
+from pathlib import Path
+from typing import ClassVar
+
+from anyio import CancelScope
+
+from snekql import sqlite
+from snekql.experimental import migrations as m
+
+
+class Initial[S = sqlite.Pending](sqlite.Model[S]):
+    """Ordinary typed application before the committed role transition."""
+
+    __tablename__: ClassVar[str] = "accounts"
+    __row_type__: ClassVar[sqlite.ReadType[Initial[sqlite.Row]]]
+    id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+    is_admin: sqlite.Col[bool] = sqlite.Integer()
+
+
+class Account[S = sqlite.Pending](sqlite.Model[S]):
+    """Ordinary typed application after the transition."""
+
+    __tablename__: ClassVar[str] = "accounts"
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
+    id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+    role: sqlite.Col[str] = sqlite.Text()
+
+
+def lease_waiters() -> list[int]:
+    """Observe Linux kernel waits, not library/driver task or thread names."""
+    result: list[int] = []
+    for thread in Path("/proc/self/task").iterdir():
+        try:
+            if thread.joinpath("wchan").read_text().strip().endswith("break_lease"):
+                result.append(int(thread.name))
+        except FileNotFoundError:
+            pass
+    return sorted(result)
+
+
+def database_descriptors(path: Path) -> list[int]:
+    """Inspect real process descriptors independently of connection/task flags."""
+    result: list[int] = []
+    for descriptor in Path("/proc/self/fd").iterdir():
+        try:
+            if descriptor.readlink() == path:
+                result.append(int(descriptor.name))
+        except FileNotFoundError:
+            pass
+    return result
+
+
+def emit(record: dict[str, object]) -> None:
+    """Publish observations to the owning test/operator."""
+    print(json.dumps(record), flush=True)
+
+
+def save_original(path: Path, wire: str) -> None:
+    """Persist the original BEFORE execution, including file and directory fsync."""
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as handle:
+        handle.write(wire)
+        handle.flush()
+        os.fsync(handle.fileno())
+        temporary = handle.name
+    try:
+        Path(temporary).replace(path)
+        descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+async def main() -> None:  # noqa: C901, PLR0912, PLR0915 - visible real opening/disposal/deployment journey
+    """Never infer physical disposal from the opening deadline alone."""
+    path, fixed = Path(sys.argv[1]), Path(sys.argv[2])
+    expected_lazy = sys.argv[3]
+    assert sys.get_lazy_imports() == expected_lazy
+    mode = sys.argv[4]
+    config = sqlite.Config(
+        database=path,
+        acquire_timeout=0.3 if mode == "deadline" else 3,
+        operation_timeout=0.15,
+    )
+    lifetime = m.connect(config)
+    yielded = False
+    scope = CancelScope()
+
+    async def open_target() -> None:
+        """No package work is admitted on this interrupted acquisition."""
+        nonlocal yielded
+        with scope:
+            async with lifetime:
+                yielded = True
+
+    start = time.perf_counter()
+    opening = asyncio.create_task(open_target())
+    if mode == "deadline":
+        try:
+            await opening
+        except sqlite.PoolTimeoutError as error:
+            message = str(error)
+        else:
+            msg = "target yielded instead of expiring blocked physical opening"
+            raise AssertionError(msg)
+    else:
+        assert await asyncio.to_thread(sys.stdin.readline) == "cancel\n"
+        assert not opening.done(), "opening charged to checked-out I/O budget"
+        if mode == "task":
+            opening.cancel()
+            try:
+                await opening
+            except asyncio.CancelledError:
+                message = "CancelledError"
+            else:
+                msg = "task cancellation was swallowed"
+                raise AssertionError(msg)
+        else:
+            assert mode == "scope"
+            scope.cancel()
+            await opening
+            assert scope.cancelled_caught
+            message = "caller scope caught cancellation"
+    emit(
+        {
+            "outcome": mode,
+            "message": message,
+            "yielded": yielded,
+            "waiters": await asyncio.to_thread(lease_waiters),
+            "elapsed": time.perf_counter() - start,
+            "lazy_imports": sys.get_lazy_imports(),
+        }
+    )
+
+    # A public join has its OWN fresh budget and cannot finish while open(2) waits.
+    try:
+        await lifetime.wait_closed()
+    except sqlite.DatabaseOperationTimeoutError as error:
+        assert (error.operation, error.timeout) == (
+            "migration close",
+            config.operation_timeout,
+        )
+    else:
+        msg = "wait_closed reported success with a physically blocked opening"
+        raise AssertionError(msg)
+    if mode == "task":
+        joining = asyncio.create_task(lifetime.wait_closed())
+        await asyncio.sleep(0)
+        joining.cancel()
+        try:
+            await joining
+        except asyncio.CancelledError:
+            pass
+        else:
+            msg = "cleanup waiter swallowed task cancellation"
+            raise AssertionError(msg)
+    elif mode == "scope":
+        with CancelScope() as cancelled_wait:
+            cancelled_wait.cancel()
+            await lifetime.wait_closed()
+        assert cancelled_wait.cancelled_caught
+    # Another connection's successful exit/join cannot drain this abandoned open.
+    other = m.connect(
+        replace(config, database=path.with_name("unrelated.db"), operation_timeout=1)
+    )
+    async with other as target:
+        assert await target.status() == ()
+    await other.wait_closed()
+    assert await asyncio.to_thread(lease_waiters)
+    emit({"join_expired": True, "other_lifetime_closed": True})
+
+    # The caller has stopped waiting while the real worker is still in open(2).
+    # Stay alive until the controller releases the actual kernel lease.
+    assert await asyncio.to_thread(sys.stdin.readline) == "released\n"
+    await lifetime.wait_closed()
+    async with asyncio.timeout(5):
+        while await asyncio.to_thread(lease_waiters):  # noqa: ASYNC110 - observe actual OS state, no event exists
+            await asyncio.sleep(0.02)
+    # Verify all formerly blocked worker TIDs exited, not just left the wait.
+    # The controller supplies its independent observation of those same TIDs.
+    tids = json.loads(await asyncio.to_thread(sys.stdin.readline))
+    async with asyncio.timeout(5):
+        while await asyncio.to_thread(  # noqa: ASYNC110 - independent OS thread disappearance
+            lambda: any(Path(f"/proc/self/task/{tid}").exists() for tid in tids)
+        ):
+            await asyncio.sleep(0.02)
+    async with asyncio.timeout(5):
+        while await asyncio.to_thread(database_descriptors, path):  # noqa: ASYNC110 - independent OS descriptor disappearance
+            await asyncio.sleep(0.02)
+    await lifetime.wait_closed()
+    emit(
+        {
+            "disposed": True,
+            "joined": True,
+            "worker_tids": tids,
+            "database_descriptors": [],
+        }
+    )
+
+    # Explicit fresh acquisition is a new caller decision, not late admission.
+    fresh = replace(config, acquire_timeout=3, operation_timeout=1)
+    first = m.Package.load((fixed / "001_accounts.json").read_text())
+    second = m.Package.load((fixed / "002_expand.json").read_text())
+    roles = m.Package.load((fixed / "003_roles.json").read_text())
+    originals = [package.dump() for package in (first, second, roles)]
+    async with m.connect(fresh) as target:
+        assert await target.status() == ()
+        assert await target.apply(await target.prepare(first)) == "applied"
+    async with await sqlite.Database.initialize(fresh) as app, app.transaction() as tx:
+        await tx.execute(
+            sqlite.insert_many(
+                Initial,
+                [
+                    Initial(id=1, is_admin=True),
+                    Initial(id=2, is_admin=False),
+                ],
+            )
+        )
+    async with m.connect(fresh) as target:
+        assert await target.apply(await target.prepare(second)) == "applied"
+        original = await target.prepare(roles)
+        wire = original.dump()
+        await asyncio.to_thread(
+            save_original, path.with_name("original-plan.json"), wire
+        )
+        assert await target.apply(m.Prepared.load(wire)) == "applied"
+        assert original.dump() == wire
+        assert await target.apply(await target.prepare(roles)) == "already_applied"
+        progress = sorted((p.revision, p.phase) for p in await target.status())
+    async with await sqlite.Database.initialize(fresh) as app, app.transaction() as tx:
+        await tx.execute(sqlite.insert(Account(id=3, role="user")))
+        rows = await tx.fetch_all(sqlite.select(Account).order_by(Account.id.asc()))
+    values = [(row.id, row.role) for row in rows]
+    assert values == [(1, "admin"), (2, "user"), (3, "user")]
+    assert progress == [
+        ("001_accounts", "complete"),
+        ("002_expand", "complete"),
+        ("003_roles", "complete"),
+    ]
+    assert [p.dump() for p in (first, second, roles)] == originals
+    emit({"rows": values, "progress": progress, "originals_unchanged": True})
+
+
+asyncio.run(main())

@@ -1,0 +1,152 @@
+{
+  "bindings": [
+    []
+  ],
+  "contractions": [
+    {
+      "after": {
+        "columns": [
+          {
+            "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+            "name": "id",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
+            "name": "role",
+            "nullable": false,
+            "query_type": "str",
+            "storage": "TEXT"
+          }
+        ],
+        "indexes": [],
+        "name": "accounts",
+        "quoted_name": "`accounts`",
+        "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+      },
+      "before": {
+        "columns": [
+          {
+            "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+            "name": "id",
+            "nullable": false,
+            "query_type": "int",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "`is_admin` BIGINT NOT NULL",
+            "name": "is_admin",
+            "nullable": false,
+            "query_type": "bool",
+            "storage": "INTEGER"
+          },
+          {
+            "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+            "name": "role",
+            "nullable": true,
+            "query_type": "str | None",
+            "storage": "TEXT"
+          }
+        ],
+        "indexes": [],
+        "name": "accounts",
+        "quoted_name": "`accounts`",
+        "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `is_admin` BIGINT NOT NULL, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin) ENGINE=InnoDB"
+      },
+      "dropped": [
+        "is_admin"
+      ],
+      "required": [
+        "role"
+      ]
+    }
+  ],
+  "digest": "6560200fc0290c3dc70030f702b75a196a57391e4bf1b0d9e595e1848186be98",
+  "draft": {
+    "before": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`is_admin` BIGINT NOT NULL",
+              "name": "is_admin",
+              "nullable": false,
+              "query_type": "bool",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+              "name": "role",
+              "nullable": true,
+              "query_type": "str | None",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "`accounts`",
+          "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `is_admin` BIGINT NOT NULL, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "operations": [
+      {
+        "column_name": "role",
+        "kind": "require_not_null",
+        "table_name": "accounts"
+      },
+      {
+        "column_name": "is_admin",
+        "kind": "drop_column",
+        "table_name": "accounts"
+      }
+    ],
+    "predecessor": "eee5bf585d1ad9c8196e488136048ba88ee3cdfec48a31fd52146c6cb8234214",
+    "revision": "003_contract",
+    "target": {
+      "backend": "mariadb",
+      "tables": [
+        {
+          "columns": [
+            {
+              "definition": "`id` BIGINT NOT NULL PRIMARY KEY",
+              "name": "id",
+              "nullable": false,
+              "query_type": "int",
+              "storage": "INTEGER"
+            },
+            {
+              "definition": "`role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
+              "name": "role",
+              "nullable": false,
+              "query_type": "str",
+              "storage": "TEXT"
+            }
+          ],
+          "indexes": [],
+          "name": "accounts",
+          "quoted_name": "`accounts`",
+          "sql": "CREATE TABLE `accounts` (`id` BIGINT NOT NULL PRIMARY KEY, `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+        }
+      ]
+    },
+    "unresolved": []
+  },
+  "statements": [
+    "ALTER TABLE `accounts` MODIFY COLUMN `role` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, DROP COLUMN `is_admin`"
+  ],
+  "transactional": [
+    false
+  ],
+  "version": 2
+}

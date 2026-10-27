@@ -78,3 +78,12 @@ history guarantees:
   MariaDB's unavoidable implicit-commit crash window.
   `verify_migrations(...)` checks the exact full head without mutation. Existing
   non-empty name-only history requires explicit adoption.
+
+
+## Recorded-state scope amendment (#477)
+
+[ADR0023](0023-recorded-migration-ownership-and-execution.md) records an additional opt-in
+recorded-state workflow; G5 engineering acceptance is recorded in its decision review. It permits generation
+against previous recorded intent and reviewed bounded SQLite rebuilds, not autonomous live-model
+schema synchronization. It does not change released raw-SQL execution/history or convert a raw
+chain. Query mapping is not migration ownership; current models are not deployment authority.

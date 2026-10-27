@@ -23,3 +23,13 @@ one-time workflow. Use normal migration or explicit legacy-history adoption
 instead. A deployed canonical chain must not be replaced with a baseline, and
 baseline adoption must not manufacture its earlier entries. A database with
 partially committed MariaDB DDL needs reconciliation, not history stamping.
+
+
+## Recorded-state scope amendment (#477)
+
+[ADR0023](0023-recorded-migration-ownership-and-execution.md) permits strict initial SQLite
+adoption as a newly proved recorded ownership claim. It is not a receipt for earlier data work,
+raw-history conversion, chain replacement or stamping. Released reviewed-baseline behavior
+above is unchanged; first promotion does not supply a raw→recorded cutover. Explicit structural
+reconciliation accepts only separately proved supported outcomes, with original evidence and
+a durable review reason, not ambiguous data replay. G5 engineering acceptance is recorded in the ADR's review.

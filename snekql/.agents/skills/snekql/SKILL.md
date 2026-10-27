@@ -46,9 +46,12 @@ support needed for the change. Consult the typing and backend references when
 annotations or SQLite/MariaDB differences affect it. Use the installed release's
 contracts rather than conventions from another query builder.
 
-For schema changes, consult the migration guides and review the explicit migration
-SQL alongside the application changes. Repository-only references require a
-matching source checkout; use the bundled usage guides for API decisions.
+For schema changes, identify the existing runner family first: read `migrations.md`
+for raw-SQL history, or `recorded-migrations.md` and `recorded-migration-recovery.md`
+for experimental packages/lifetime joins. Review the explicit SQL or frozen
+package alongside application changes. Preserve the chosen ownership boundary;
+do not convert histories or share deployment targets between runner families.
+Repository-only references require a matching source checkout; use the bundled usage guides for API decisions.
 
 ## 4. Validate in the consumer project
 

@@ -1,0 +1,73 @@
+"""Current application codec v2: schema compatibility is not logical-data readiness."""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+
+from models import Account
+from role_codec import EPOCH
+
+from snekql import BACKEND as db
+from snekql.errors import ModelValidationError
+
+
+async def main() -> None:
+    """Probe compatibility before explicit migration, then use the evolved codec."""
+    payload = json.loads(sys.stdin.read())
+    config = CONFIG
+    assert EPOCH == "v2"
+    # Same logical True now encodes differently; this is an actual serializer change.
+    encoded_true = (
+        db.update(Account).set(Account.role.to(True)).all().compile().params[0]
+    )
+    assert encoded_true == "administrator"
+    async with await db.Database.initialize(config) as app:
+        await app.verify([Account])
+        if payload["action"] == "probe":
+            try:
+                async with app.transaction() as tx:
+                    await tx.fetch_all(db.select(Account).order_by(Account.id.asc()))
+            except ModelValidationError:
+                readable = False
+            else:
+                readable = True
+            async with app.transaction() as tx:
+                matches = await tx.fetch_all(
+                    db.select(Account.id).where(Account.role.eq(True))
+                )
+            print(
+                json.dumps(
+                    {
+                        "epoch": EPOCH,
+                        "verified": True,
+                        "readable": readable,
+                        "matches": matches,
+                        "encoded_true": encoded_true,
+                    }
+                )
+            )
+            return
+        async with app.transaction() as tx:
+            rows = await tx.fetch_all(db.select(Account).order_by(Account.id.asc()))
+            assert [(r.id, r.role) for r in rows] == [(1, True), (2, False)]
+            await tx.execute(db.insert(Account(id=3, role=True)))
+        async with app.transaction() as tx:
+            created = await tx.fetch_one(db.select(Account).where(Account.id.eq(3)))
+            wire = await tx.fetch_all(
+                db.raw("SELECT id,role FROM accounts ORDER BY id")
+            )
+        assert created is not None and created.role is True
+    print(
+        json.dumps(
+            {
+                "epoch": EPOCH,
+                "logical": [[r.id, r.role] for r in rows],
+                "wire": wire,
+                "created": [created.id, created.role],
+            }
+        )
+    )
+
+
+asyncio.run(main())
