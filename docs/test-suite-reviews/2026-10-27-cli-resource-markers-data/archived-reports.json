@@ -1,0 +1,26 @@
+[
+  {
+    "original": "full-normal.json",
+    "gzip": "full-normal.json.gz",
+    "bytes": 764403,
+    "sha256": "9b31ab26a5c08980e807d3bb926cc0ec65d4809d4452cfd8d4b7d467c28eb9ab",
+    "gzip_sha256": "158ad9d55cce8d496691c321f1a57c9c8b06ec3beb1e0afb1671d1ced7375eec",
+    "scope": "Fresh candidate full normal execution by this session."
+  },
+  {
+    "original": "upstream-full-normal.json",
+    "gzip": "upstream-full-normal.json.gz",
+    "bytes": 764454,
+    "sha256": "0c72ddf641091c696502764dec097932f0f373840ba9aeb03a25e23cad0429d3",
+    "gzip_sha256": "db0d3fade04a51b98e637edd1aa156346041ee38d835fc1e1a851bad140f09bb",
+    "scope": "Historical #585 report; hash/source-verified inventory reference only, not a new baseline execution or candidate qualification."
+  },
+  {
+    "original": "snektest-metadata.txt",
+    "gzip": "snektest-metadata.txt.gz",
+    "bytes": 15057,
+    "sha256": "9a8b015005e0b51d103ad70553e5ab8d86095f25314b370ceee76113ab2620b7",
+    "gzip_sha256": "ade6edc7fbac0b939bbcee9fb14be11c88ae08c07b1282785cf0b609882f7c6d",
+    "scope": "Installed metadata, preserving captured bytes including trailing blank line."
+  }
+]

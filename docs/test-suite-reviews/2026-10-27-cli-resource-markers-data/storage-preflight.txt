@@ -1,0 +1,5 @@
+Filesystem       1B-blocks     Used   Available Use% Mounted on
+tmpfs          16727396352 75071488 16652324864   1% /dev/shm
+tmpfs rw,nosuid,nodev,inode64,huge=advise,usrquota
+MemTotal:       32670696 kB
+MemAvailable:   17354628 kB

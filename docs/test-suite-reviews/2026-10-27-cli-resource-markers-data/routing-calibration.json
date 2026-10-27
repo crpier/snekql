@@ -1,0 +1,167 @@
+{
+  "candidate": "a906d7b782f28e50745de018a5ee81fcd2cfc3f2",
+  "scope": "Marker metadata only in owned private worktree. Selected cases pass; independent routing oracle must reject wrong sets. Live SDK/test sources never mutated.",
+  "bytecode_policy": "Delete only changed test modules owned pyc before each command; PYTHONDONTWRITEBYTECODE=1 avoids same-sized/timestamp alias.",
+  "runs": [
+    {
+      "label": "fault-cli-fast",
+      "cwd": "/home/crpier/.cache/sq572-cli.AztcdH0g/calibration-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.2752105340041453,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/c00",
+      "counts": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "44edc3d9ba33a5e083cb58e37d183136b9d5d482170d7ff86be3c1e65b5dee24"
+    },
+    {
+      "label": "fault-cli-fast-restored",
+      "cwd": "/home/crpier/.cache/sq572-cli.AztcdH0g/calibration-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.2771480259980308,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/c01",
+      "counts": {
+        "passed": 2,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "9acf5815fd08c9a057dd3008237869b991afd661ecbb9c821b4f77caa8213aa6"
+    },
+    {
+      "label": "fault-pure-slow",
+      "cwd": "/home/crpier/.cache/sq572-cli.AztcdH0g/calibration-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.2715010019892361,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/c02",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "cf1d1f792739193c3a20753421e1b6b347aef5cd6da0697a4916fa999bea8c19"
+    },
+    {
+      "label": "fault-pure-slow-restored",
+      "cwd": "/home/crpier/.cache/sq572-cli.AztcdH0g/calibration-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.27059674500196707,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/c03",
+      "counts": {
+        "passed": 2,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "0b2ffe23f85ffd1a1c2225a7a229336fc874ad0858cf79fdd16a8e1da6e092b7"
+    },
+    {
+      "label": "restored-cold-cli",
+      "cwd": "/home/crpier/.cache/sq572-cli.AztcdH0g/calibration-src",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_prints_agent_docs",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.20545468998898286,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/c04",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "6de75113351eeb4b48115b0588f81c8bc4f0e3ea19ccba19feaa0fba98247efe"
+    }
+  ],
+  "faults": [
+    {
+      "label": "fault-cli-fast",
+      "oracle_rejected": "Wrong public fast selection",
+      "selected_names": [
+        "tests/test_docs_cli.py::docs_cli_prints_agent_docs",
+        "tests/test_runtime_selection.py::runtime_config_resolution_rejects_unsupported_or_ambiguous_input",
+        "tests/test_runtime_selection.py::runtime_config_resolution_returns_backend_configs"
+      ],
+      "missing": [],
+      "extra": [
+        "tests/test_docs_cli.py::docs_cli_prints_agent_docs"
+      ]
+    },
+    {
+      "label": "fault-pure-slow",
+      "oracle_rejected": "Wrong public fast selection",
+      "selected_names": [
+        "tests/test_runtime_selection.py::runtime_config_resolution_rejects_unsupported_or_ambiguous_input"
+      ],
+      "missing": [
+        "tests/test_runtime_selection.py::runtime_config_resolution_returns_backend_configs"
+      ],
+      "extra": []
+    }
+  ],
+  "restored_sha256": {
+    "tests/test_docs_cli.py": "797de75fc54e5f99835219cbd04f6257b70bc4990b4fce191421c2d0960bcc5c",
+    "tests/test_runtime_selection.py": "82c1e308cfcdba8e2653cf7518e6932a1cc84fef2f76fc67d812d56131aefccb",
+    "tests/testing/mariadb/test_cli.py": "2f6cc4435c69219fe6411420100320f188fef19f0c7941733af2f565dfc7cc7a"
+  },
+  "source_restored_byte_for_byte": true
+}

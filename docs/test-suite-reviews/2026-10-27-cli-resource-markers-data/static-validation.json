@@ -1,0 +1,68 @@
+{
+  "revision": "a906d7b782f28e50745de018a5ee81fcd2cfc3f2",
+  "source_clean": true,
+  "runs": [
+    {
+      "label": "ty",
+      "command": [
+        "uv",
+        "run",
+        "ty",
+        "check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "ruff",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "format",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "generated",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "scripts/generate_query_overloads.py",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "lock",
+      "command": [
+        "uv",
+        "lock",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "label": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "base": "3ed75324bbb12b189470f296e55faddf63d72b5b",
+  "changes": {
+    "tests/test_docs_cli.py": {
+      "old_sha256": "940dc5b86ae63c832880aac37579d949dd023ed094eb93f2352338eb4715ac06",
+      "new_sha256": "797de75fc54e5f99835219cbd04f6257b70bc4990b4fce191421c2d0960bcc5c",
+      "only_marker_ast_changed": true,
+      "functions": [
+        "docs_cli_prints_agent_docs",
+        "docs_cli_lists_bundled_examples",
+        "docs_cli_prints_named_example",
+        "docs_cli_accepts_positional_examples_command",
+        "docs_cli_accepts_positional_example_command",
+        "docs_cli_rejects_unknown_example",
+        "docs_cli_rejects_unknown_positional_command",
+        "documented_quick_start_runs",
+        "docs_cli_rejects_extra_example_arguments"
+      ]
+    },
+    "tests/test_runtime_selection.py": {
+      "old_sha256": "061f17882fc5160a6e8df2111a6878c535f98096c37076f91d04a17b9db50e5b",
+      "new_sha256": "82c1e308cfcdba8e2653cf7518e6932a1cc84fef2f76fc67d812d56131aefccb",
+      "only_marker_ast_changed": true,
+      "functions": [
+        "runtime_config_resolution_does_not_import_backend_runtime_modules"
+      ]
+    },
+    "tests/testing/mariadb/test_cli.py": {
+      "old_sha256": "c356603a6accc4b6a62e799b612b2d896015950981e6024015b1045cc8470619",
+      "new_sha256": "2f6cc4435c69219fe6411420100320f188fef19f0c7941733af2f565dfc7cc7a",
+      "only_marker_ast_changed": true,
+      "functions": [
+        "mariadb_server_cli_documents_foreground_options"
+      ]
+    }
+  },
+  "all_other_tracked_inputs_unchanged": true
+}

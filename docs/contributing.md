@@ -78,6 +78,44 @@ describes the distinction between requested metadata and observed work. The
 [benchmark test review](test-suite-reviews/2026-10-26-benchmark-planning.md)
 records the coverage map, matched timings and validation limits.
 
+## Resource-focused CLI checks
+
+Markers describe permitted test/fixture resources, not elapsed time. Even help,
+error and import-isolation checks are `slow` when they start a Python process.
+The broader resource audit remains incomplete; global `--mark fast` is not yet
+certified free of misclassified external-resource consumers.
+
+```sh
+# Two in-process configuration controls: no driver startup or child interpreter.
+uv run snektest tests/test_runtime_selection.py --mark fast
+
+# All 17 docs cases: real CLI output, copied SQLite examples and static typing.
+PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest tests/test_docs_cli.py --mark slow
+
+# A cold Python interpreter is essential to this optional-import guarantee.
+uv run snektest \
+  tests/test_runtime_selection.py::runtime_config_resolution_does_not_import_backend_runtime_modules \
+  --mark slow
+
+# Real Python CLI help, but no native server startup.
+uv run snektest \
+  tests/testing/mariadb/test_cli.py::mariadb_server_cli_documents_foreground_options \
+  --mark slow
+```
+
+The docs command runs copied SQLite programs and checker subprocesses but does
+not start MariaDB. The named help check does not prove real startup, password
+redaction or SIGINT cleanup: the complete MariaDB CLI file additionally runs two
+native foreground-server cases and needs the MariaDB tools. The complete
+three-file group has 23 cases. Unfiltered `snektest tests` still discovers every
+case; marker filtering is not a backend selector, resource sandbox or replacement
+for the remaining native/typing/lifecycle suite.
+
+The [CLI marker review](test-suite-reviews/2026-10-27-cli-resource-markers.md)
+records cold named execution, exact routing-fault rejection and unchanged complete
+inventory. Only marker literals change; no subprocess is removed or replaced by
+an in-process approximation.
+
 ## Focused typing checks
 
 ```sh
