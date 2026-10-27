@@ -19,7 +19,6 @@ from snekql.sqlite import (
     insert,
     insert_many,
 )
-from tests.helpers import SQLITE_CODEC
 
 
 class User[S = Pending](Model[S]):
@@ -49,47 +48,53 @@ class Account[S = Pending](Model[S]):
 def single_returning_appends_all_columns_in_declaration_order() -> None:
     """A single insert with returning() lists every column after RETURNING."""
 
-    sql, params = SQLITE_CODEC.compile_write_sql(
-        insert(User(email="a@example.com")).returning()
-    )
+    compiled = (insert(User(email="a@example.com")).returning()).compile()
 
     expected = 'INSERT INTO "user" ("email", "status") VALUES (?, ?)'
     expected += ' RETURNING "id", "email", "status"'
-    assert_eq(sql, expected)
-    assert_eq(params, ("a@example.com", "active"))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ("a@example.com", "active"))
+
+    assert_eq(compiled.backend, "sqlite")
 
 
 @test(mark="fast")
 def single_returning_columns_lists_only_named_columns() -> None:
     """returning(col, col) lists just those columns after RETURNING, in order."""
 
-    sql, params = SQLITE_CODEC.compile_write_sql(
+    compiled = (
         insert(User(email="a@example.com")).returning(User.id, User.email)
-    )
+    ).compile()
 
     expected = 'INSERT INTO "user" ("email", "status") VALUES (?, ?)'
     expected += ' RETURNING "id", "email"'
-    assert_eq(sql, expected)
-    assert_eq(params, ("a@example.com", "active"))
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ("a@example.com", "active"))
+
+    assert_eq(compiled.backend, "sqlite")
 
 
 @test(mark="fast")
 def bulk_returning_columns_lists_only_named_columns_once() -> None:
     """A bulk returning projection appends one RETURNING clause for the batch."""
 
-    sql, _ = SQLITE_CODEC.compile_write_sql(
+    compiled = (
         insert_many(
             User,
             [
                 User(email="a@example.com"),
                 User(email="b@example.com"),
             ],
-        ).returning(User.id)
+        )
+        .returning(User.id)
+        .compile()
     )
 
     expected = 'INSERT INTO "user" ("email", "status") VALUES (?, ?), (?, ?)'
     expected += ' RETURNING "id"'
-    assert_eq(sql, expected)
+    assert_eq(compiled.sql, expected)
+    assert_eq(compiled.params, ("a@example.com", "active", "b@example.com", "active"))
+    assert_eq(compiled.backend, "sqlite")
 
 
 @test(mark="fast")
@@ -108,7 +113,7 @@ def returning_rejects_a_column_from_another_model() -> None:
 def bulk_insert_compiles_one_multi_row_values_statement() -> None:
     """A bulk insert flattens homogeneous rows into one VALUES list."""
 
-    sql, params = SQLITE_CODEC.compile_write_sql(
+    compiled = (
         insert_many(
             User,
             [
@@ -116,13 +121,15 @@ def bulk_insert_compiles_one_multi_row_values_statement() -> None:
                 User(email="b@example.com", status="invited"),
             ],
         )
-    )
+    ).compile()
 
     assert_eq(
-        sql,
+        compiled.sql,
         'INSERT INTO "user" ("email", "status") VALUES (?, ?), (?, ?)',
     )
-    assert_eq(params, ("a@example.com", "active", "b@example.com", "invited"))
+    assert_eq(compiled.params, ("a@example.com", "active", "b@example.com", "invited"))
+
+    assert_eq(compiled.backend, "sqlite")
 
 
 @test(mark="fast")
@@ -155,7 +162,7 @@ def insert_rejects_uninitialized_model_instances() -> None:
 def bulk_insert_returning_appends_columns_once() -> None:
     """Bulk returning appends a single RETURNING clause for the whole statement."""
 
-    sql, params = SQLITE_CODEC.compile_write_sql(
+    compiled = (
         insert_many(
             User,
             [
@@ -163,15 +170,17 @@ def bulk_insert_returning_appends_columns_once() -> None:
                 User(email="b@example.com", status="active"),
             ],
         ).returning()
-    )
+    ).compile()
 
     expected = 'INSERT INTO "user" ("email", "status") VALUES (?, ?), (?, ?)'
     expected += ' RETURNING "id", "email", "status"'
-    assert_eq(sql, expected)
+    assert_eq(compiled.sql, expected)
     assert_eq(
-        params,
+        compiled.params,
         ("a@example.com", "active", "b@example.com", "active"),
     )
+
+    assert_eq(compiled.backend, "sqlite")
 
 
 @test(mark="fast")
@@ -187,4 +196,4 @@ def bulk_insert_rejects_heterogeneous_column_sets() -> None:
     )
 
     with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_write_sql(query)
+        _ = query.compile()
