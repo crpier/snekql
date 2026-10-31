@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 from snektest import Param, assert_eq, assert_in, test
 
 
-@test(mark="fast")
+@test(mark="slow")
 def mariadb_server_cli_documents_foreground_options() -> None:
     """The foreground CLI exposes the public test-server options."""
 

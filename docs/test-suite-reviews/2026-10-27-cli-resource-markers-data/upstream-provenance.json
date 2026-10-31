@@ -1,0 +1,21 @@
+{
+  "source_report": "docs/test-suite-reviews/2026-10-27-insert-compilation.json",
+  "source_report_sha256": "6e4441369c0c7085e720d4a0a1e8cc629a827ae769df5d59f0ede6311d2ce063",
+  "origin": "#585 historical full execution by the other session; used only as frozen baseline name/marker reference, not a new run or borrowed candidate validation.",
+  "frozen_base": "3ed75324bbb12b189470f296e55faddf63d72b5b",
+  "verified_raw_artifacts": {
+    "full-normal.json": {
+      "sha256": "0c72ddf641091c696502764dec097932f0f373840ba9aeb03a25e23cad0429d3",
+      "bytes": 764454
+    },
+    "full-normal.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "full-source.json": {
+      "sha256": "d75139d605d66c0faeb32f9e0bed753971d63225cd75b8449d0bcf192c13d377",
+      "bytes": 49617
+    }
+  },
+  "verified_source_paths": 455
+}

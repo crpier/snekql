@@ -1,0 +1,6 @@
+{
+  "revision": "3ed75324bbb12b189470f296e55faddf63d72b5b",
+  "branch": "test/cli-resource-markers-572",
+  "status": "",
+  "fetch_transport_note": "SSH agent refused signing; fetched repository URL queried through gh using ephemeral gh HTTPS credential helper, no remote/global auth changes."
+}

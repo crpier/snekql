@@ -78,7 +78,7 @@ def runtime_config_resolution_rejects_unsupported_or_ambiguous_input() -> None:
         )
 
 
-@test(mark="fast")
+@test(mark="slow")
 def runtime_config_resolution_does_not_import_backend_runtime_modules() -> None:
     """Resolving a backend config avoids optional runtime imports."""
 

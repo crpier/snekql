@@ -1,0 +1,1120 @@
+{
+  "base": "3ed75324bbb12b189470f296e55faddf63d72b5b",
+  "scope": "Reuse confirmed public CLI/filter/mark/JSON seam; routing reds reject selection while original assertions pass. No speedup claim.",
+  "controls": [
+    "tests/test_runtime_selection.py::runtime_config_resolution_rejects_unsupported_or_ambiguous_input",
+    "tests/test_runtime_selection.py::runtime_config_resolution_returns_backend_configs"
+  ],
+  "runs": [
+    {
+      "label": "before-all",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 14.098500615000376,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q000",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 23,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "bc0f21f4c0593e73af190db0e595b69fbf0c971c63c6e444f36befefbc5367c2"
+    },
+    {
+      "label": "before-fast",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 1.0281874849897576,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q001",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 15,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "2076c3f01bab3281071534ef0f15f78172361de76139f1aefffce946d38d8823"
+    },
+    {
+      "label": "route-00-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 1.0171871649945388,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q002",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 15,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "3654844f374a624d22ef22826e320f51c0d9dc8b7157bed4e07c229969555142"
+    },
+    {
+      "label": "route-00-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9892408640007488,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q003",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 14,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "1079707e0965f34ec11ea927b75fad8e4ad15449a927b5a080b54e3cbc00f0f9"
+    },
+    {
+      "label": "route-00-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_prints_agent_docs",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.18474329299351666,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q004",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "7a6c24b8e714444fb48470d1deb9a8d31e2755550f8677eba45c549a3305b61a"
+    },
+    {
+      "label": "route-01-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9963554860005388,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q005",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 14,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "0250bc53083cb1e02f4d0d1a418bca8ea6e21f617ba114c0909a82df56bc2768"
+    },
+    {
+      "label": "route-01-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9707397269958165,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q006",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 13,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "402f67c768ce3a010f5b18566fe83e23fcfc714f0cd9449bf5a6ca12d759ffdc"
+    },
+    {
+      "label": "route-01-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_lists_bundled_examples",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.18300436600111425,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q007",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "956624019f4436b164e13f18411114f3e49b7d4194eba9e83a23045b56408e1d"
+    },
+    {
+      "label": "route-02-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.959045371011598,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q008",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 13,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "b67918a6fdebb6be4ec0d9594d3e7a2030c9cf8ce424643fef4d848e9a306395"
+    },
+    {
+      "label": "route-02-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9668488019960932,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q009",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 12,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "375e3ce243d6502e425befad381920edb4dbb938a190b27251ea10ad5ab5c84a"
+    },
+    {
+      "label": "route-02-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_prints_named_example",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.19517871699645184,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q010",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "33f30c5a622d159948d5c2151e8fd83606e2460975bb27e8c978334add7ba77f"
+    },
+    {
+      "label": "route-03-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.965499057987472,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q011",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 12,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "ef8bf9d4c9bc86b9ff75b5e66aa054eaac8ba8a3bc613e44b966b1f8eef82ec5"
+    },
+    {
+      "label": "route-03-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9440357889980078,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q012",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 11,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "af4643279ef919783b1cc8e9d2e7ff37af8a7656143d02667eebd347db73b2bf"
+    },
+    {
+      "label": "route-03-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_accepts_positional_examples_command",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.1950379600020824,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q013",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "2773cae2c221eca4b13597aed798ce4d8d15a08c905a1efcbdf3d390e498d054"
+    },
+    {
+      "label": "route-04-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9256481499905931,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q014",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 11,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "ce5465d3a89fa60be1b228c731da4b11feda86a38a47b75a3ca8265e0df20c91"
+    },
+    {
+      "label": "route-04-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9025891159981256,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q015",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 10,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "2be98b39ae8db54d107fb8b775a1e06f25c7290236f2ddd142d689d225018f44"
+    },
+    {
+      "label": "route-04-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_accepts_positional_example_command",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.19665908100432716,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q016",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "be93ed7300900a81ecd0932cfcb4b5008798fb9d8a77f46c6b5ab799db1a39bd"
+    },
+    {
+      "label": "route-05-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.8985679909965256,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q017",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 10,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "a71673f64587df015d826fb497f3017a53e2d14d8728df6ae038ab6acd2c0dcc"
+    },
+    {
+      "label": "route-05-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.8899785829999018,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q018",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 9,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "9685b1f1274a942c66e5939465e72a94ec91b442551557fe0bf3710522d9d996"
+    },
+    {
+      "label": "route-05-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_rejects_unknown_example",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.18583761900663376,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q019",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "bd364a17369a0dffb341a9a384067bc754c32c31deb9e053f4c5b17e8e092bc1"
+    },
+    {
+      "label": "route-06-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.8736700360022951,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q020",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 9,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "385d9989c914dc949035755e768d733ad261a6a78da3b4c5dc9e0f3953e30573"
+    },
+    {
+      "label": "route-06-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.8731188679957995,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q021",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 8,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "a5771d7956e03bd287f56e641dfbe6371e901ceb7d108d418d85759bfaa88c0d"
+    },
+    {
+      "label": "route-06-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_rejects_unknown_positional_command",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.18347492099564988,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q022",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "82c294f728710b29b77373d4574dd7c49ceb3665ea23f6d3537b71f5355427f8"
+    },
+    {
+      "label": "route-07-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.866333294994547,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q023",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 8,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "18604fdd2b65da8b888a226be07f80c5880fb4744a40aade90677c816381ef38"
+    },
+    {
+      "label": "route-07-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.37256970499583986,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q024",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "e6d50a1ce14252e305e44e0d189348d4802994c291bde4c5236182cfddd82aa8"
+    },
+    {
+      "label": "route-07-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::documented_quick_start_runs",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.6624034010019386,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q025",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "653272a0d9bbc8079b4104c1cbf87dcbaa3f8ac683223dd321871875aba36d6a"
+    },
+    {
+      "label": "route-08-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.37334112499956973,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q026",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 5,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "9e1887c54bdbc930bf086c4d307b644f02a6d9dd5ee183b99974b74e9d6acb12"
+    },
+    {
+      "label": "route-08-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.3603121710038977,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q027",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 4,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "32d570269a13d4c3924b6c64266bdd96d7ca8340c1a5d1c64b2b48e2da1bcd54"
+    },
+    {
+      "label": "route-08-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py::docs_cli_rejects_extra_example_arguments",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.1931696959945839,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q028",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "1558fb0cd74dc6d01dc3fd72d273cd29aa6194425ff0aac79f077b11b30f3b39"
+    },
+    {
+      "label": "route-09-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.35310835600830615,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q029",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 4,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "219f13f24941f3167ad08a115999a9e067d93376fb7039cd9b684e353c9c9b44"
+    },
+    {
+      "label": "route-09-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.25603259199124295,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q030",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "6a2a9ec3316612d53630b7761bf94d7c9fad92fb0ab8434fb619bcfb0cdfc972"
+    },
+    {
+      "label": "route-09-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_runtime_selection.py::runtime_config_resolution_does_not_import_backend_runtime_modules",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.28346266600419767,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q031",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "71166f1040abbf439ed2b09774089cf6f5384e1c2e5aa00edb5d10eacfbe127a"
+    },
+    {
+      "label": "route-10-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.2577845499909017,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q032",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "f70a46f0d7cec28eb17bc73dde08f07073db66f146f9fc81181c8b208fa039b6"
+    },
+    {
+      "label": "route-10-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.19906182600243483,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q033",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 2,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "a8149642868b839a74bfd574c292294f1048eabe2abb4b896a1e05a5203ff3e9"
+    },
+    {
+      "label": "route-10-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/testing/mariadb/test_cli.py::mariadb_server_cli_documents_foreground_options",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.21470077999401838,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q034",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "1348b94fbb6403e76747a7a8b2c32a0c198c0fe9f9966c66bafd3d07b947f96e"
+    },
+    {
+      "label": "after-all",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 13.937070197003777,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q035",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 23,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "e868aa860760683a9a78790bc051d3060c3872d75fa8b6fdbb09270690ebb101"
+    },
+    {
+      "label": "after-fast",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.2000671129935654,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q036",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 2,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "b340ea3b2a5fb929b59bc00b5a30ab6e00e5248175d181ca8c8c65905a4b1974"
+    },
+    {
+      "label": "after-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 14.848391015999368,
+      "TMPDIR": "/home/crpier/.cache/sq572-cli.AztcdH0g/q037",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "counts": {
+        "passed": 21,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "b622dda7826ea8103ab1d48454c63938219f4d9fca5d83aaba5bf24d8b281660"
+    }
+  ],
+  "cycles": [
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "docs_cli_prints_agent_docs",
+      "case_names": [
+        "tests/test_docs_cli.py::docs_cli_prints_agent_docs"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "docs_cli_lists_bundled_examples",
+      "case_names": [
+        "tests/test_docs_cli.py::docs_cli_lists_bundled_examples"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "docs_cli_prints_named_example",
+      "case_names": [
+        "tests/test_docs_cli.py::docs_cli_prints_named_example"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "docs_cli_accepts_positional_examples_command",
+      "case_names": [
+        "tests/test_docs_cli.py::docs_cli_accepts_positional_examples_command"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "docs_cli_accepts_positional_example_command",
+      "case_names": [
+        "tests/test_docs_cli.py::docs_cli_accepts_positional_example_command"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "docs_cli_rejects_unknown_example",
+      "case_names": [
+        "tests/test_docs_cli.py::docs_cli_rejects_unknown_example"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "docs_cli_rejects_unknown_positional_command",
+      "case_names": [
+        "tests/test_docs_cli.py::docs_cli_rejects_unknown_positional_command"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "documented_quick_start_runs",
+      "case_names": [
+        "tests/test_docs_cli.py::documented_quick_start_runs[README]",
+        "tests/test_docs_cli.py::documented_quick_start_runs[agent-docs]",
+        "tests/test_docs_cli.py::documented_quick_start_runs[getting-started]"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_docs_cli.py",
+      "function": "docs_cli_rejects_extra_example_arguments",
+      "case_names": [
+        "tests/test_docs_cli.py::docs_cli_rejects_extra_example_arguments"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/test_runtime_selection.py",
+      "function": "runtime_config_resolution_does_not_import_backend_runtime_modules",
+      "case_names": [
+        "tests/test_runtime_selection.py::runtime_config_resolution_does_not_import_backend_runtime_modules"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    },
+    {
+      "file": "tests/testing/mariadb/test_cli.py",
+      "function": "mariadb_server_cli_documents_foreground_options",
+      "case_names": [
+        "tests/testing/mariadb/test_cli.py::mariadb_server_cli_documents_foreground_options"
+      ],
+      "routing_red": "Subprocess-backed producer is still selected by --mark fast"
+    }
+  ],
+  "original_sha256": {
+    "tests/test_docs_cli.py": "940dc5b86ae63c832880aac37579d949dd023ed094eb93f2352338eb4715ac06",
+    "tests/test_runtime_selection.py": "061f17882fc5160a6e8df2111a6878c535f98096c37076f91d04a17b9db50e5b",
+    "tests/testing/mariadb/test_cli.py": "c356603a6accc4b6a62e799b612b2d896015950981e6024015b1045cc8470619"
+  },
+  "final": {
+    "unfiltered": 23,
+    "fast": 2,
+    "slow": 21,
+    "identical_names": true,
+    "partition_complete_disjoint": true,
+    "only_marker_ast_changed": true,
+    "new_sha256": {
+      "tests/test_docs_cli.py": "797de75fc54e5f99835219cbd04f6257b70bc4990b4fce191421c2d0960bcc5c",
+      "tests/test_runtime_selection.py": "82c1e308cfcdba8e2653cf7518e6932a1cc84fef2f76fc67d812d56131aefccb",
+      "tests/testing/mariadb/test_cli.py": "2f6cc4435c69219fe6411420100320f188fef19f0c7941733af2f565dfc7cc7a"
+    }
+  }
+}

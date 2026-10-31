@@ -1,0 +1,177 @@
+{
+  "candidate": "a906d7b782f28e50745de018a5ee81fcd2cfc3f2",
+  "scope": "Fresh candidate full-normal and affected parent-forced-lazy correctness. Historical #585 report is name/marker reference only, not a fresh baseline run or a performance comparison.",
+  "storage": "Private owned /dev/shm TMPDIR. Mount has usrquota; quota utility unavailable. df/memory observations are not quota-headroom guarantees. No quota/mount changes.",
+  "runs": [
+    {
+      "label": "full-normal",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "TMPDIR": "/dev/shm/sq572-cli-1hovgd0f",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "wall_seconds": 353.18109499500133,
+      "exit_code": 0,
+      "counts": {
+        "passed": 4269,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "9b31ab26a5c08980e807d3bb926cc0ec65d4809d4452cfd8d4b7d467c28eb9ab",
+      "stderr_bytes": 0,
+      "source_clean_after": true,
+      "remaining_tmp_entries": [],
+      "tmpdir_removed_after_inactivity_check": true
+    },
+    {
+      "label": "cli-parent-forced-lazy",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests/test_docs_cli.py",
+        "tests/test_runtime_selection.py",
+        "tests/testing/mariadb/test_cli.py",
+        "--json-output"
+      ],
+      "TMPDIR": "/dev/shm/sq572-cli-jrl4i63w",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "wall_seconds": 5.539272718000575,
+      "exit_code": 0,
+      "counts": {
+        "passed": 23,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "7557ea7ed4817ee2f809f57bc55649742ae4f535e563551969aa51cdd03ed212",
+      "stderr_bytes": 0,
+      "source_clean_after": true,
+      "remaining_tmp_entries": [],
+      "tmpdir_removed_after_inactivity_check": true
+    }
+  ],
+  "inventory": {
+    "baseline_origin": "Historical #585 raw report, independently hash/source verified; inventory only.",
+    "unique_names_before": 4269,
+    "unique_names_after": 4269,
+    "identical_unique_names": true,
+    "only_marker_differences": {
+      "tests/test_docs_cli.py::docs_cli_accepts_positional_example_command": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::docs_cli_accepts_positional_examples_command": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::docs_cli_lists_bundled_examples": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::docs_cli_prints_agent_docs": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::docs_cli_prints_named_example": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::docs_cli_rejects_extra_example_arguments": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::docs_cli_rejects_unknown_example": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::docs_cli_rejects_unknown_positional_command": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::documented_quick_start_runs[agent-docs]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::documented_quick_start_runs[README]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_docs_cli.py::documented_quick_start_runs[getting-started]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_runtime_selection.py::runtime_config_resolution_does_not_import_backend_runtime_modules": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/testing/mariadb/test_cli.py::mariadb_server_cli_documents_foreground_options": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      }
+    },
+    "focused_lazy_names_and_markers_equal": true
+  }
+}
