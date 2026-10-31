@@ -1,0 +1,1309 @@
+{
+  "base_revision": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+  "scope": "Public CLI routing red/green per named producer; passing CLI reports can still fail the independent routing expectation. Not product-defect or timing evidence.",
+  "original_sha256": "a6c3b81e142d7460caca8ad22c6d1b25d13d45e70502ff4f27e4863fa21f63e0",
+  "runs": [
+    {
+      "label": "route-00-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 29,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 2.409593424992636,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q0",
+      "report_sha256": "a9675bee89574cdb73e032dcc8958a501a02584d40cefb9d1adaec80f055bd88"
+    },
+    {
+      "label": "route-00-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 27,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 2.102468905999558,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q1",
+      "report_sha256": "45551934735cbf7f6eaa40c76e36038e9b3c87c7d1b0927fd345d8cde434de95"
+    },
+    {
+      "label": "route-00-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::lifecycle_report_requires_positive_control",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 2,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.5298477340111276,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q2",
+      "report_sha256": "be9ce0aaa9be6c347524d9b75b0ae08ff83bfd2e7037a2ff9a2c596f562915ab"
+    },
+    {
+      "label": "route-01-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 27,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 2.0637088600051356,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q3",
+      "report_sha256": "99dffbe4ef5510fac0b723987901efc1f70b9fe7db7afbef5cbdd1fea74e948b"
+    },
+    {
+      "label": "route-01-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 24,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.049405204001232,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q4",
+      "report_sha256": "895341fc1b4cd822bc2a59065d3ce918dabefd897fca4346408544c1e0d50850"
+    },
+    {
+      "label": "route-01-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 3,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.196083112998167,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q5",
+      "report_sha256": "a4cc083b499ffb3c9f7ab4b7acfd8a6d1a203d8dc36a0cddf472aa2dcb8d007b"
+    },
+    {
+      "label": "route-02-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 24,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.076273819009657,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q6",
+      "report_sha256": "548b567277fa78e2f28958fdec6ba676060743257b89770abc769f38630aa3ac"
+    },
+    {
+      "label": "route-02-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 23,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.9333943459932925,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q7",
+      "report_sha256": "e208c598a1f7715ba6ff653d1785f218e43d918b31c5a3ab3d514efaaf950849"
+    },
+    {
+      "label": "route-02-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::missing_probe_is_infrastructure_failure",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.28577833699819166,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q8",
+      "report_sha256": "bb408e4c1afd8c2535f552e05f37055f5f9d58345e83ea482d84f178975c7b4c"
+    },
+    {
+      "label": "route-03-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 23,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.9546186590014258,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q9",
+      "report_sha256": "de36da94956c143377b576228205beb06f4c1ece7e78970c23aa35d5404a0a7a"
+    },
+    {
+      "label": "route-03-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.9643537390074925,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q10",
+      "report_sha256": "2ea7c3afa479b95a131526bf94061a9ad270366351dc8cd6d6cf1e5bc8c54348"
+    },
+    {
+      "label": "route-03-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::readiness_report_retains_checker_limits",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.5118416559998877,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q11",
+      "report_sha256": "dbc488289c59f69b8e85261e256981f450907e2dc4365b8eeca792edaa51e0a5"
+    },
+    {
+      "label": "route-04-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 22,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.9377453810011502,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q12",
+      "report_sha256": "2965bd846d6a83d1d78f9495e46c90f0cd5434d8ff31fc017159ae5172d68115"
+    },
+    {
+      "label": "route-04-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 21,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.0195070920017315,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q13",
+      "report_sha256": "134dc64b78a24e894f1fea4be47aec13a8f66f5100234532fecdd95156996298"
+    },
+    {
+      "label": "route-04-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::backend_identity_probe_rejects_cross_family_execution",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.5677692799945362,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q14",
+      "report_sha256": "d5f0e7f3a95cc493d614e4ade099ef40374d08e3d77d359bafe99599d5fbea68"
+    },
+    {
+      "label": "route-05-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 21,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.0114612309989752,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q15",
+      "report_sha256": "6680ab2f1b8d7e030c9347f290a5a741d1872f88ee3878344e391241f961d338"
+    },
+    {
+      "label": "route-05-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.0150172930007102,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q16",
+      "report_sha256": "07f94a6cb9df5a57788893baa8b4f34d3972b9ebe74657644ab41d8ed7936910"
+    },
+    {
+      "label": "route-05-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::positional_probe_rejects_ninth_projection",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.5598243069980526,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q17",
+      "report_sha256": "17ad1ebc733c80360505254836f0503cfd8101771a0d3ec237ea09243b660491"
+    },
+    {
+      "label": "route-06-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 20,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.069380129003548,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q18",
+      "report_sha256": "0290417dcfa0d169a86d0414e5dcff2f7f770b2ba0b7728a2bb74f13dd46e9c4"
+    },
+    {
+      "label": "route-06-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 19,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.0661279269988881,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q19",
+      "report_sha256": "a3040bc45265f7dd84fdb0f57cfd694b688b6e1ab77e1529c45481b448765350"
+    },
+    {
+      "label": "route-06-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::named_probe_preserves_nine_field_result",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.5803281419939594,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q20",
+      "report_sha256": "ca188b779c01b5838b2bc9c63a9f6926f466ba4c9e667fa505fcdd503b81dd28"
+    },
+    {
+      "label": "route-07-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 19,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.0287701839988586,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q21",
+      "report_sha256": "99a099497323f1036540c5e922cd89a858b9995539275ca9e0e092403fd49abc"
+    },
+    {
+      "label": "route-07-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.1151272599963704,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q22",
+      "report_sha256": "78550fd3fed341ad489f42c27c5972b020ddc1ff7bf5d2b53574a66ae5e99e2f"
+    },
+    {
+      "label": "route-07-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::join_probe_retains_nullable_right_model",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.580525324010523,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q23",
+      "report_sha256": "531c5371a9d81aa53fccbf08c31793851f10c8bbc6b63915d24f2176c7083f9c"
+    },
+    {
+      "label": "route-08-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.005514297998161,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q24",
+      "report_sha256": "b98cb84531bd4cd33171e07408f51851eef67d21f269db10193efd159982104b"
+    },
+    {
+      "label": "route-08-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 17,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.0494034169969382,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q25",
+      "report_sha256": "dda62e1dc0170697ea00ba7619d5570c4b1723ccab6967dd3367fbcc30c2e73b"
+    },
+    {
+      "label": "route-08-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::raw_probe_rejects_consumption_time_validation_override",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.6130348259903258,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q26",
+      "report_sha256": "e7daab7c349636887c9da0f0e253395bb32f4ac7f7e133bbd940d87aabcfd567"
+    },
+    {
+      "label": "route-09-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 17,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.11436847600271,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q27",
+      "report_sha256": "8a1927fe516f9c2c206ba975afe561218b97a6efd2e15d6808e9fc28a70dae90"
+    },
+    {
+      "label": "route-09-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.0901903649937594,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q28",
+      "report_sha256": "47c772774e09e627a38f15acda63b0e72f7a5eddbbe4524f343614419f023fff"
+    },
+    {
+      "label": "route-09-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::full_report_certifies_supported_ty_contracts",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.6002862119930796,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q29",
+      "report_sha256": "228d547197bbdb2a702c32a2df7df9ce5c980e2573fd587e751684ddcb96e06a"
+    },
+    {
+      "label": "route-10-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.010112937001395,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q30",
+      "report_sha256": "b441022475d7b2401ff58ae90f045fdb2cd1263e9c2623d3b61fe913cab3f100"
+    },
+    {
+      "label": "route-10-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 15,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.8691634870046983,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q31",
+      "report_sha256": "4476f0b707b006738adc55c07a9e0b7b75ffc45242c6283bcb5aa584b5ec8f50"
+    },
+    {
+      "label": "route-10-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::report_identifies_environment_and_rendered_sources",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.3543098480004119,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q32",
+      "report_sha256": "e3686bce5279ce9a1ecebad06775256a505a27a81c0b38ded2d106ac827c7155"
+    },
+    {
+      "label": "route-11-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 15,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.8731606420042226,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q33",
+      "report_sha256": "2ae9be0f2fa91ea3cbc3c13cfc0bdc68df1448b6125969ea48663a2e9d0b40ef"
+    },
+    {
+      "label": "route-11-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 14,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.6915714830101933,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q34",
+      "report_sha256": "b6f593611953f19180e2d552d857f284892efda0b5a08e26910818f8a938bc8f"
+    },
+    {
+      "label": "route-11-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::ty_probe_uses_declared_configuration",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.367029947010451,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q35",
+      "report_sha256": "4b73e632aece38b0eb2a4c02ada4f7cfc98516af49bd5395b193bfda788bf96d"
+    },
+    {
+      "label": "route-12-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 14,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.7105026670033112,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q36",
+      "report_sha256": "51868720267999083c5fbfcda2030660a016db11695bb4550416e56bd8e25b2e"
+    },
+    {
+      "label": "route-12-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 13,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.6807647880050354,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q37",
+      "report_sha256": "c0035337f0780f94950848653037017c41a25479d0458358c5cbb7474664f9db"
+    },
+    {
+      "label": "route-12-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::defaulted_fk_probe_preserves_target",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.5617329060041811,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q38",
+      "report_sha256": "0b72ee2fe9fa76a5484910187ff7f1e1564d2bfb2aafb423269bea81a5cc08e5"
+    },
+    {
+      "label": "route-13-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 13,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 1.0599770480039297,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q39",
+      "report_sha256": "45f068542d87f3f76d485ebd5232fda59ba4d761c81bb459dde8877e57f591ed"
+    },
+    {
+      "label": "route-13-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 9,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.2802138590050163,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q40",
+      "report_sha256": "1c9f75204f27fca31e3e74350525ff732b65d23b75922b481696bbcea3193e67"
+    },
+    {
+      "label": "route-13-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 4,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.6047266779933125,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q41",
+      "report_sha256": "fa83a56d59b7f234af982c75e4fb5f892da8f3fb5bc5dfeaf1aaade028022b15"
+    },
+    {
+      "label": "route-14-red",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 9,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.28841939401172567,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q42",
+      "report_sha256": "843711e6d77611cbd7fc9a88bc6fb7946e541a3f33af803028f979adbd11962e"
+    },
+    {
+      "label": "route-14-green",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 8,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.19024202799482737,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q43",
+      "report_sha256": "dcd0566c50c17cc2b21bc000e034d5048aed4800d59c1ee6a8d024e906db1d8f"
+    },
+    {
+      "label": "route-14-cold-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py::assessment_cli_has_no_checker_selection",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.28580850099388044,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q44",
+      "report_sha256": "1caa7904cc00ff237f03322e72cbf3a7db0da97be6af5b551655613aef9ae010"
+    },
+    {
+      "label": "after-typing-all",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 61,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 2.807682974002091,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q45",
+      "report_sha256": "7f3a41463f6ec45656bdbab8c402ca1991488c43fe76926a6346f81b9cb3a4a5"
+    },
+    {
+      "label": "after-typing-fast",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "fast",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 8,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 0.17018275200098287,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q46",
+      "report_sha256": "41874694be346433983752816e433c2929aa8d69b25832c262071ed05c8179d1"
+    },
+    {
+      "label": "after-typing-slow",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--mark",
+        "slow",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "counts": {
+        "passed": 53,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "wall_seconds": 2.678647684995667,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/q47",
+      "report_sha256": "55be2c3fc120c30b378673aac2427bd855bc5a2f743060e08198a2f5172d7db1"
+    }
+  ],
+  "cycles": [
+    {
+      "function": "lifecycle_report_requires_positive_control",
+      "case_names": [
+        "tests/test_typing_compatibility.py::lifecycle_report_requires_positive_control[mariadb]",
+        "tests/test_typing_compatibility.py::lifecycle_report_requires_positive_control[sqlite]"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-00-red.json",
+      "green_report": "route-00-green.json",
+      "cold_slow_report": "route-00-cold-slow.json"
+    },
+    {
+      "function": "unrelated_errors_cannot_certify_rejection",
+      "case_names": [
+        "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[broken-positive-control]",
+        "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[unrejected-invalid-operation]",
+        "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[unrelated-negative-error]"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-01-red.json",
+      "green_report": "route-01-green.json",
+      "cold_slow_report": "route-01-cold-slow.json"
+    },
+    {
+      "function": "missing_probe_is_infrastructure_failure",
+      "case_names": [
+        "tests/test_typing_compatibility.py::missing_probe_is_infrastructure_failure"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-02-red.json",
+      "green_report": "route-02-green.json",
+      "cold_slow_report": "route-02-cold-slow.json"
+    },
+    {
+      "function": "readiness_report_retains_checker_limits",
+      "case_names": [
+        "tests/test_typing_compatibility.py::readiness_report_retains_checker_limits"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-03-red.json",
+      "green_report": "route-03-green.json",
+      "cold_slow_report": "route-03-cold-slow.json"
+    },
+    {
+      "function": "backend_identity_probe_rejects_cross_family_execution",
+      "case_names": [
+        "tests/test_typing_compatibility.py::backend_identity_probe_rejects_cross_family_execution"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-04-red.json",
+      "green_report": "route-04-green.json",
+      "cold_slow_report": "route-04-cold-slow.json"
+    },
+    {
+      "function": "positional_probe_rejects_ninth_projection",
+      "case_names": [
+        "tests/test_typing_compatibility.py::positional_probe_rejects_ninth_projection"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-05-red.json",
+      "green_report": "route-05-green.json",
+      "cold_slow_report": "route-05-cold-slow.json"
+    },
+    {
+      "function": "named_probe_preserves_nine_field_result",
+      "case_names": [
+        "tests/test_typing_compatibility.py::named_probe_preserves_nine_field_result"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-06-red.json",
+      "green_report": "route-06-green.json",
+      "cold_slow_report": "route-06-cold-slow.json"
+    },
+    {
+      "function": "join_probe_retains_nullable_right_model",
+      "case_names": [
+        "tests/test_typing_compatibility.py::join_probe_retains_nullable_right_model"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-07-red.json",
+      "green_report": "route-07-green.json",
+      "cold_slow_report": "route-07-cold-slow.json"
+    },
+    {
+      "function": "raw_probe_rejects_consumption_time_validation_override",
+      "case_names": [
+        "tests/test_typing_compatibility.py::raw_probe_rejects_consumption_time_validation_override"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-08-red.json",
+      "green_report": "route-08-green.json",
+      "cold_slow_report": "route-08-cold-slow.json"
+    },
+    {
+      "function": "full_report_certifies_supported_ty_contracts",
+      "case_names": [
+        "tests/test_typing_compatibility.py::full_report_certifies_supported_ty_contracts"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-09-red.json",
+      "green_report": "route-09-green.json",
+      "cold_slow_report": "route-09-cold-slow.json"
+    },
+    {
+      "function": "report_identifies_environment_and_rendered_sources",
+      "case_names": [
+        "tests/test_typing_compatibility.py::report_identifies_environment_and_rendered_sources"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-10-red.json",
+      "green_report": "route-10-green.json",
+      "cold_slow_report": "route-10-cold-slow.json"
+    },
+    {
+      "function": "ty_probe_uses_declared_configuration",
+      "case_names": [
+        "tests/test_typing_compatibility.py::ty_probe_uses_declared_configuration"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-11-red.json",
+      "green_report": "route-11-green.json",
+      "cold_slow_report": "route-11-cold-slow.json"
+    },
+    {
+      "function": "defaulted_fk_probe_preserves_target",
+      "case_names": [
+        "tests/test_typing_compatibility.py::defaulted_fk_probe_preserves_target"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-12-red.json",
+      "green_report": "route-12-green.json",
+      "cold_slow_report": "route-12-cold-slow.json"
+    },
+    {
+      "function": "explicit_batch_contract_requires_clean_control",
+      "case_names": [
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-backend]",
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-destination]",
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-row-state]",
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-source]"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-13-red.json",
+      "green_report": "route-13-green.json",
+      "cold_slow_report": "route-13-cold-slow.json"
+    },
+    {
+      "function": "assessment_cli_has_no_checker_selection",
+      "case_names": [
+        "tests/test_typing_compatibility.py::assessment_cli_has_no_checker_selection"
+      ],
+      "routing_red": "Checker-backed producer is still selected by --mark fast",
+      "red_report": "route-14-red.json",
+      "green_report": "route-14-green.json",
+      "cold_slow_report": "route-14-cold-slow.json"
+    }
+  ],
+  "final": {
+    "unfiltered": 61,
+    "fast": 8,
+    "slow": 53,
+    "names_unchanged": true,
+    "partition_disjoint_complete": true,
+    "only_marker_ast_changed": true,
+    "source_sha256": "dce94a340b0d0de791ac2287e385abc8b38a8bd95e4e727d1c9fbd1d278ab962"
+  }
+}

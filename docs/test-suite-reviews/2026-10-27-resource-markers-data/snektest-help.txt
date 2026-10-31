@@ -1,0 +1,28 @@
+Usage: snektest [OPTIONS] [FILTER ...]
+
+Run snektest tests.
+
+Filters:
+  .                                      Run tests below current directory
+  tests/test_file.py                     Run one test file
+  tests/test_file.py::test_name          Run one test function
+  tests/test_file.py::test_name[param]   Run one parameterized case
+
+Options:
+  -h, --help        Show this help message
+  -s                Disable stdout/stderr capture
+  --agent-docs      Print AI-agent usage guide
+  --llms            Alias for --agent-docs
+  --examples        List bundled examples
+  --example NAME    Print a bundled example
+  --json-output     Print machine-readable JSON summary
+  --mark MARK       Run tests marked fast, medium, or slow; marking tests is recommended
+  --pdb             Drop into post-mortem debugger on first failure
+
+Example commands:
+  snektest --agent-docs
+  snektest --examples
+  snektest --example async
+  snektest examples
+  snektest example async
+  python -m snektest --agent-docs

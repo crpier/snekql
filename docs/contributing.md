@@ -148,6 +148,44 @@ The [dynamic typing batch review](test-suite-reviews/2026-10-26-dynamic-typing-b
 records group savings and the small additional focused setup cost. Challenge
 names, expression strings and expected rules live in `tests/typing_variants.py`.
 
+### Resource-focused typing feedback
+
+Markers describe permitted **test and fixture resources**, not time limits:
+`fast` permits in-memory work, `medium` local IO/threads, and `slow` external
+resources such as subprocesses or network IO. A cached fixture still needs its
+cold resource classification when selected independently. Markers are not backend
+selectors or an OS sandbox.
+
+For literal report ownership, cardinality and copy-isolation checks without a
+real checker launch:
+
+```sh
+PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest \
+  tests/test_typing_assessment.py --mark fast
+```
+
+That selects eight report-only cases. To run all 52 real compatibility cases,
+including checker subprocesses and source/configuration challenges:
+
+```sh
+PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest \
+  tests/test_typing_compatibility.py --mark slow
+```
+
+These are static checks for SQLite and MariaDB types; they do not start a native
+MariaDB server. The pure report group does not establish actual inference, and
+neither group replaces native execution/lifecycle checks or the other typing
+batches. Select both files without `--mark` for their complete 61-case set.
+
+The broader marker audit is incomplete: known IO/thread/subprocess consumers
+elsewhere still need corrections, so do not treat the global fast group as a
+verified no-external-resources selection yet. Unmarked checks are also included
+by default in unfiltered `snektest tests`. The
+[resource-marker review](test-suite-reviews/2026-10-27-resource-markers.md)
+records unchanged complete discovery, routing fault proofs, remaining candidates
+and the initial documentation-only CI overlap assessment. No matrix coverage or
+workflow behavior changes with these marker corrections.
+
 ### Explicit checker batches
 
 The repository-only checker script also accepts a JSON manifest, for example

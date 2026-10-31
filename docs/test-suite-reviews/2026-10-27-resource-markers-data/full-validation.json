@@ -1,0 +1,260 @@
+{
+  "scope": "Full normal inventories before/after a marker-only change and focused forced-lazy correctness. Not a performance comparison: explicit reusable data starts fresh in the before worktree and pre-exists in the candidate checkout.",
+  "runs": [
+    {
+      "label": "full-before",
+      "cwd": "/home/crpier/.cache/sq572.sRZLaDUx/before-src",
+      "revision": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 1269.8040093750024,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/v0",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "counts": {
+        "passed": 4267,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "9c3fa47aad8123b5523b13737693b559b509a7ec434428a0cebd20edec95498d",
+      "remaining_tmp_entries": [],
+      "source_clean_after": true
+    },
+    {
+      "label": "full-after",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "revision": "e96ff3146bbc7dfc58fccddd82e17c8d5495e915",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-m",
+        "snektest",
+        "tests",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 1043.2799342020007,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/v1",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "counts": {
+        "passed": 4267,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "8c8000543e8bcf08a361562af01926a08e70ce52baac2b0a7f31844c77e89f6f",
+      "remaining_tmp_entries": [],
+      "source_clean_after": true
+    },
+    {
+      "label": "typing-forced-lazy",
+      "cwd": "/home/crpier/Projects/fourth-snekql",
+      "revision": "e96ff3146bbc7dfc58fccddd82e17c8d5495e915",
+      "command": [
+        "/home/crpier/Projects/fourth-snekql/.venv/bin/python",
+        "-X",
+        "lazy_imports=all",
+        "scripts/run_lazy_tests.py",
+        "tests/test_typing_compatibility.py",
+        "tests/test_typing_assessment.py",
+        "--json-output"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 2.5386938889860176,
+      "TMPDIR": "/home/crpier/.cache/sq572.sRZLaDUx/v2",
+      "PYTHON_CONTEXT_AWARE_WARNINGS": "1",
+      "counts": {
+        "passed": 61,
+        "failed": 0,
+        "errors": 0,
+        "fixture_teardown_failed": 0,
+        "session_teardown_failed": 0
+      },
+      "report_sha256": "804f76e22553a94ae6f4f250e3faccebf60e845c6c439150f49c1d4a025754b9",
+      "remaining_tmp_entries": [],
+      "source_clean_after": true
+    }
+  ],
+  "full_inventory": {
+    "names_before": 4267,
+    "names_after": 4267,
+    "identical_unique_names": true,
+    "only_marker_differences": {
+      "tests/test_typing_compatibility.py::assessment_cli_has_no_checker_selection": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::backend_identity_probe_rejects_cross_family_execution": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::defaulted_fk_probe_preserves_target": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-destination]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-row-state]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-backend]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-source]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::full_report_certifies_supported_ty_contracts": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::join_probe_retains_nullable_right_model": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::lifecycle_report_requires_positive_control[sqlite]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::lifecycle_report_requires_positive_control[mariadb]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::missing_probe_is_infrastructure_failure": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::named_probe_preserves_nine_field_result": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::positional_probe_rejects_ninth_projection": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::raw_probe_rejects_consumption_time_validation_override": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::readiness_report_retains_checker_limits": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::report_identifies_environment_and_rendered_sources": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::ty_probe_uses_declared_configuration": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[broken-positive-control]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[unrejected-invalid-operation]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      },
+      "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[unrelated-negative-error]": {
+        "before": [
+          "fast"
+        ],
+        "after": [
+          "slow"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "base": "e8eda1ab0f7b1c27c9fc34433e678ee9f9f1c89c",
+  "only_changed_input": "tests/test_typing_compatibility.py",
+  "all_other_recorded_inputs_unchanged": true,
+  "only_markers_changed_ast": true,
+  "changes": "15\t15\ttests/test_typing_compatibility.py",
+  "changed_functions": [
+    {
+      "lifecycle_report_requires_positive_control": [
+        "tests/test_typing_compatibility.py::lifecycle_report_requires_positive_control[mariadb]",
+        "tests/test_typing_compatibility.py::lifecycle_report_requires_positive_control[sqlite]"
+      ]
+    },
+    {
+      "unrelated_errors_cannot_certify_rejection": [
+        "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[broken-positive-control]",
+        "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[unrejected-invalid-operation]",
+        "tests/test_typing_compatibility.py::unrelated_errors_cannot_certify_rejection[unrelated-negative-error]"
+      ]
+    },
+    {
+      "missing_probe_is_infrastructure_failure": [
+        "tests/test_typing_compatibility.py::missing_probe_is_infrastructure_failure"
+      ]
+    },
+    {
+      "readiness_report_retains_checker_limits": [
+        "tests/test_typing_compatibility.py::readiness_report_retains_checker_limits"
+      ]
+    },
+    {
+      "backend_identity_probe_rejects_cross_family_execution": [
+        "tests/test_typing_compatibility.py::backend_identity_probe_rejects_cross_family_execution"
+      ]
+    },
+    {
+      "positional_probe_rejects_ninth_projection": [
+        "tests/test_typing_compatibility.py::positional_probe_rejects_ninth_projection"
+      ]
+    },
+    {
+      "named_probe_preserves_nine_field_result": [
+        "tests/test_typing_compatibility.py::named_probe_preserves_nine_field_result"
+      ]
+    },
+    {
+      "join_probe_retains_nullable_right_model": [
+        "tests/test_typing_compatibility.py::join_probe_retains_nullable_right_model"
+      ]
+    },
+    {
+      "raw_probe_rejects_consumption_time_validation_override": [
+        "tests/test_typing_compatibility.py::raw_probe_rejects_consumption_time_validation_override"
+      ]
+    },
+    {
+      "full_report_certifies_supported_ty_contracts": [
+        "tests/test_typing_compatibility.py::full_report_certifies_supported_ty_contracts"
+      ]
+    },
+    {
+      "report_identifies_environment_and_rendered_sources": [
+        "tests/test_typing_compatibility.py::report_identifies_environment_and_rendered_sources"
+      ]
+    },
+    {
+      "ty_probe_uses_declared_configuration": [
+        "tests/test_typing_compatibility.py::ty_probe_uses_declared_configuration"
+      ]
+    },
+    {
+      "defaulted_fk_probe_preserves_target": [
+        "tests/test_typing_compatibility.py::defaulted_fk_probe_preserves_target"
+      ]
+    },
+    {
+      "explicit_batch_contract_requires_clean_control": [
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-backend]",
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-destination]",
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-row-state]",
+        "tests/test_typing_compatibility.py::explicit_batch_contract_requires_clean_control[bulk-source]"
+      ]
+    },
+    {
+      "assessment_cli_has_no_checker_selection": [
+        "tests/test_typing_compatibility.py::assessment_cli_has_no_checker_selection"
+      ]
+    }
+  ],
+  "new_sha256": "dce94a340b0d0de791ac2287e385abc8b38a8bd95e4e727d1c9fbd1d278ab962"
+}
