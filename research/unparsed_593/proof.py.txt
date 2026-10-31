@@ -1,0 +1,31 @@
+"""Standalone attribute proof for #593; no snekql imports or public syntax."""
+
+from typing import assert_type, cast
+
+from pydantic import TypeAdapter
+
+
+class Unparsed[T]:
+    """Static provenance marker; never instantiated in this proof."""
+
+
+original = cast("object", 42)
+raw_age = cast("Unparsed[int]", original)
+assert_type(raw_age, Unparsed[int])
+
+parsed_age = TypeAdapter(int).validate_python(raw_age)
+assert_type(parsed_age, int)
+
+text = cast("object", "42")
+raw_text = cast("Unparsed[int]", text)
+assert_type(raw_text, Unparsed[int])
+
+parsed_text = TypeAdapter(int).validate_python(raw_text)
+assert_type(parsed_text, int)
+
+print(
+    raw_age is original, type(raw_age).__name__, parsed_age, type(parsed_age).__name__
+)
+print(
+    raw_text is text, type(raw_text).__name__, parsed_text, type(parsed_text).__name__
+)
