@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, assert_type
 from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
-from tests.query.test_named_projection import Person, PersonSummary
+from tests.query.named_models import Person, PersonSummary
 
 
 @test(mark="fast")
