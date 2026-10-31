@@ -1,7 +1,7 @@
 # snekql design brief
 
-**Status:** Working draft for maintainer review, 2026-10-27. Repository-only design
-material, not current usage instructions or an adopted redesign.
+**Status:** Working draft for maintainer review, updated 2026-10-31. Repository-only
+design material, not current usage instructions or an adopted redesign.
 
 This brief records the maintainer's requirements and proposes principles for
 reviewing interfaces. It follows the defaults/nullability discussion in #473,
@@ -54,6 +54,11 @@ These are desired outcomes, not claims that all are implemented or supported.
 - **R8 — Application-owned frameworks.** Expose enough coherent model metadata to
   help applications build their own CRUD frameworks, without supplying REST
   endpoint generation as a library responsibility.
+- **R9 — Useful defaults and supported adjustment.** Provide an integrated,
+  plug-and-play default path for common supported workflows. Applications must
+  also be able to adjust or replace deliberately supported pieces, such as
+  Logical Types, without forking the library or assembling the surrounding
+  workflow themselves.
 
 The adoption target is the workplace's actual SQLAlchemy workflows, not an
 unbounded promise of SQLAlchemy feature parity.
@@ -121,13 +126,29 @@ code writing. Record model/tool/doc versions and repeated trials; retain held-ou
 tasks and human review so hill-climbing does not become benchmark memorization.
 Agent patience is not evidence that duplicated facts or obscure code are safe.
 
-### P8. Spend complexity where it buys the purpose — R2–R8
+### P8. Spend complexity where it buys the purpose — R2–R9
 
 Prefer deep modules with a small coherent interface over configuration that
 merely exposes implementation machinery. Account for interacting options,
 diagnostics, documentation and maintenance, not only call-site convenience.
 Provide supported metadata seams for application-owned frameworks rather than
 requiring them to depend on private typing machinery.
+
+### P9. Coherent defaults, deliberate flexibility — R1, R2, R8, R9
+
+Provide a documented default path that works end-to-end for common supported
+workflows, without requiring users to understand or configure internal machinery.
+Ordinary users should not pay an assembly tax for flexibility they do not need.
+
+Allow applications to replace or extend Logical Types and other deliberately
+supported policies through clear interfaces, without forking the library or
+rebuilding the surrounding workflow. Keep customization local, explicit and
+compatible with the rest of the library. Expose useful extension seams, not every
+implementation choice or a promise that every possible combination interoperates.
+
+Defaults must not conceal data mismatches or backend limitations. Customizations
+must uphold their advertised guarantees, or make different guarantees explicit.
+Convenience comes from well-chosen, documented behavior, not silent data repair.
 
 ## Proposed non-goals
 
@@ -156,8 +177,9 @@ These are scope proposals, not authorization to remove existing capabilities.
 4. **Verification and performance:** which focused checks consumers need, how to
    preserve backend fidelity, and how to measure validation cost on representative
    workloads without weakening typed promises accidentally.
-5. **Extension and deployment scope:** the metadata seam for external frameworks
-   and the feasibility of restricted serverless runtimes.
+5. **Extension and deployment scope:** which replaceable types/policies and
+   extension seams support a coherent default path, the metadata seam for external
+   frameworks, and the feasibility of restricted serverless runtimes.
 6. **Compatibility and evolution:** how adopted principles would change existing
    behavior, how users migrate, and which alternatives representative tasks favor.
    Coordinate migration requirements with the work already underway; do not
@@ -177,6 +199,7 @@ Use the same intent, data and success criteria across candidate interfaces.
 | Give agents equivalent implementation and repair tasks | Semantic success, verification effort, retries and human review |
 | Exercise upgraded, fresh and branch-divergent installations | Explicit schema/data expectations and recovery steps, coordinated with migration work |
 | Build an application-owned CRUD helper from metadata | Supported imports, coherent facts and no private-implementation dependency |
+| Complete a common default-path workflow, then replace a logical type or supported policy | End-to-end correctness, setup effort, local changes through supported interfaces and explicit guarantees; no reconstruction of the surrounding workflow |
 
 For agent comparisons, separate candidate-development tasks from held-out
 assessment tasks and vary models/runs. Keep documentation/tool access and budgets
