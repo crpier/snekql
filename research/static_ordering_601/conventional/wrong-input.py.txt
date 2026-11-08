@@ -1,0 +1,39 @@
+from positive import Event
+from capsql import sqlite as db
+
+def bad(z: db.ZonedDatetime, u: db.UtcDatetime, l: db.LocalDatetime) -> None:
+    Event.n.gt("wrong")
+    Event.n.between(1, "wrong")
+    Event.u.gt(l)
+    Event.n.eq("wrong")
+    Event.z.eq(u)
+    Event.z.in_(z, u)
+    Event.nz.eq(None)
+    Event.nn.gt(None)
+    Event.mixed.gt(u)
+    Event.ordered_mix.gt(l)
+
+def column_errors() -> None:
+    Event.z.gt_col(Event.z)
+    Event.z.gte_col(Event.z)
+    Event.z.lt_col(Event.z)
+    Event.z.lte_col(Event.z)
+    Event.nz.gt_col(Event.z)
+    Event.mixed.gt_col(Event.mixed)
+    Event.n.gt_col(Event.u)
+
+from typing import ClassVar
+from capsql import mariadb as other
+
+class Other[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[Other[db.Row]]]
+    n: db.Col[int] = db.Integer()
+
+class Foreign[S = other.Pending](other.Model[S]):
+    __row_type__: ClassVar[other.ReadType[Foreign[other.Row]]]
+    n: other.Col[int] = other.Integer()
+
+def scope() -> None:
+    wrong_owner: db.Predicate[Other[db.Pending]] = Event.n.gt(1)
+    wrong_aggregate: db.Aggregate[Other[db.Pending], int | None, int] = Event.n.min()
+    Event.n.gt_col(Foreign.n)

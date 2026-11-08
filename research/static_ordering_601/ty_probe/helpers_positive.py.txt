@@ -1,0 +1,38 @@
+from typing import TYPE_CHECKING, Literal, Protocol, assert_type
+from snekql import sqlite as db
+from snekql.storage import Attr
+from snekql.model import Table
+from snekql.expressions import Comparable, Predicate, Aggregate
+from positive import Event
+if TYPE_CHECKING:
+    from ty_extensions import Intersection, Not
+
+type A[O, T, C = T] = Attr[Table[db.Pending], Table[db.Row], O, T, T, T, C, Literal['sqlite']]
+
+class Domain[T](Protocol):
+    def __column_value_type__(self) -> T: ...
+
+def sort[O, T: Not[db.ZonedDatetime], C](a: A[O, T, C]) -> db.OrderBy[O]:
+    return a.asc()
+
+def minimum[O, T: Not[db.ZonedDatetime], C](a: A[O, T, C]) -> Aggregate[O, T | None, C, Literal['sqlite']]:
+    return a.min()
+
+def lower[O, T, F](a: Intersection[Comparable[O, T, T, F], Domain[Not[db.ZonedDatetime]]], value: T) -> Predicate[O, F]:
+    return a.lt(value)
+
+def equality[O, T, F](a: Comparable[O, T, T, F], value: T) -> Predicate[O, F]:
+    return a.eq(value)
+
+def check(z: db.ZonedDatetime, u: db.UtcDatetime):
+    assert_type(sort(Event.n), db.OrderBy[Event])
+    assert_type(sort(Event.u), db.OrderBy[Event])
+    assert_type(sort(Event.nu), db.OrderBy[Event])
+    assert_type(minimum(Event.n), Aggregate[Event, int | None, int, Literal['sqlite']])
+    assert_type(lower(Event.n, 1), Predicate[Event, Literal['sqlite']])
+    assert_type(lower(Event.u, u), Predicate[Event, Literal['sqlite']])
+    assert_type(equality(Event.z, z), Predicate[Event, Literal['sqlite']])
+
+def allowed_union(a: A[Event, int | db.UtcDatetime]):
+    sort(a)
+    a.asc()
