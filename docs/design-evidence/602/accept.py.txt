@@ -1,0 +1,23 @@
+"""Run from project root; every marked negative must produce a diagnostic."""
+from pathlib import Path
+import re
+import subprocess
+import sys
+ROOT = Path(__file__).parent
+extra = ['--extra-search-path', str(ROOT)]
+if '--overlay' in sys.argv:
+    extra = ['--extra-search-path', str(ROOT / 'overlay'), *extra]
+mode = 'restricted' if '--overlay' in sys.argv else 'baseline'
+failed = False
+for name in ['positive', 'negative']:
+    source = ROOT / f'{name}.py'
+    command = ['uv', 'run', 'ty', 'check', '--project', '.', '--output-format', 'concise', *extra, str(source)]
+    run = subprocess.run(command, capture_output=True, text=True)
+    (ROOT / f'{mode}-{name}.log').write_text(run.stdout + run.stderr)
+    print(' '.join(command))
+    expected = {i for i, line in enumerate(source.read_text().splitlines(), 1) if '# REJECT' in line}
+    actual = {int(n) for n in re.findall(re.escape(str(source)) + r':(\d+):\d+: error', run.stdout + run.stderr)}
+    missing, unexpected = expected - actual, actual - expected
+    print(f'{name}: exit={run.returncode}; expected={len(expected)} diagnosed={len(actual)} missing={sorted(missing)} unexpected={sorted(unexpected)}')
+    failed |= bool(missing or unexpected or (name == 'positive' and run.returncode != 0))
+sys.exit(int(failed))

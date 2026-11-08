@@ -1,0 +1,32 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Purpose\n\nContinue the maintainer-directed design reassessment after #588 / draft #589. Start with the central requirement: trustworthy query-result shapes over imperfect schemas and other writers, without silently repairing unexpected data.\n\n## Deliverable\n\nA bounded source-and-existing-test assessment of current validated query-result behavior, plus concrete acceptance tasks for evaluating alternatives. Distinguish:\n\n- result-shape guarantees from policies about accepted input representations;\n- declared storage decoding/normalization from permissive coercion;\n- model, scalar/computed, named, raw, streaming and RETURNING paths;\n- absent rows, stored NULL, query-induced NULL and unchecked reads;\n- source observations, existing test assertions and newly executed evidence.\n\nIdentify strengths as well as gaps, prioritize the next design decision, and record evidence/limits. Do not present static checks as runtime proof or assume that all Pydantic validation is lax/strict uniformly.\n\nRelated but separate: #579 explores boolean/integer semantics; #556 explores additional development/staging verification. Do not implement or independently select their policies here.\n\n## Scope\n\nAssessment and task design only. No production/dependency changes, new public syntax, checker changes, migration work, model/template execution, backend suites or benchmark implementation. Leave draft #589 unmerged unless the maintainer explicitly requests a merge. Any later behavioral prototype requires separately scoped TDD and appropriate native validation.\n",
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABgJxCYQ",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming #590 for session `result-contract-assessment-2026-10-27`, continuing this conversation's design brief in #588 / #589.\n\nBranch: `research/query-result-contracts`, based on freshly fetched `origin/main` at `3ed75324bbb12b189470f296e55faddf63d72b5b`. Scope: source/existing-test inspection and bounded evaluation tasks only. No production changes or model/backend execution; migration and other sessions' claimed work remain untouched. #579 and #556 are related context, not implementation work claimed by this session. Draft #589 stays unmerged.\n",
+      "createdAt": "2026-10-27T20:24:08Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/590#issuecomment-6452691553",
+      "viewerDidAuthor": true
+    }
+  ],
+  "number": 590,
+  "state": "OPEN",
+  "title": "Assess query-result contracts against the draft design principles",
+  "url": "https://github.com/crpier/snekql/issues/590"
+}

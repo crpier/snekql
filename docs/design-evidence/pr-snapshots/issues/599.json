@@ -1,0 +1,32 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Purpose\n\nFollow up the maintainer's design discussion on precision loss: compare existing Pydantic contracts, explicit declaration recipes/helpers, and narrowly scoped checks on final serialized values.\n\nCases: Decimal to fixed-scale MariaDB storage, datetime to lower-precision legacy storage, and exact decimal representation for SQLite.\n\nResearch only: isolated public TypeAdapter probes and TDD for experimental validators; no production API/dependency changes, native backend suites, or migrations. Distinguish observed Python/Pydantic behavior from database documentation. Keep driver values going directly to Pydantic; do not introduce hidden rounding.\n\nDeliver an evidence-backed report and runnable experiments, not a selected public API.\n",
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABkKUA7Q",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming #599 for session `da58eec6-bf55-4414-99f3-e87a3ee3bee5`, branch `research/precision-loss-contracts`, based on freshly fetched `origin/main`.\n\nMaintainer authorized the three-case investigation in this conversation. Public seams: TypeAdapter validation/serialization with explicit Decimal and datetime contracts, final serialized scalar checks, and isolated SQLite decimal representation recipes. TDD for research-only policies. No production/dependency changes or backend suites. This is separate from the earlier session's assigned #596 research.\n",
+      "createdAt": "2026-11-08T12:49:47Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/599#issuecomment-6721700077",
+      "viewerDidAuthor": true
+    }
+  ],
+  "number": 599,
+  "state": "OPEN",
+  "title": "Research explicit protection against write-time precision loss",
+  "url": "https://github.com/crpier/snekql/issues/599"
+}

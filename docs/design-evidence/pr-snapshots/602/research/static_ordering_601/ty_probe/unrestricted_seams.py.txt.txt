@@ -1,0 +1,11 @@
+"""Deliberately UNPATCHED surfaces: not a complete implementation."""
+from positive import Event
+from snekql import sqlite as db
+from snekql.expressions import Aggregate
+from typing import Literal
+
+def unchecked(z: Aggregate[Event, db.ZonedDatetime, db.ZonedDatetime, Literal['sqlite']]):
+    # These are still accepted by the minimal overlay.
+    Event.z.lt_col(Event.z)
+    Event.z.gte_col(Event.z)
+    z.asc()

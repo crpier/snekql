@@ -1,0 +1,295 @@
+{
+  "baseRefOid": "395f731c58916109a21b606777fb1729543e92a8",
+  "body": "## Purpose and latest direction\n\nRefs #473. Static-only interface research, not an accepted public design, production implementation, breaking-change authorization or issue closure.\n\nThe maintainer now considers a defaults interface change worthwhile and favors **separate Python `default` / SQL `server_default` parameters** for brownfield flexibility. Python is not necessarily the database's only writer. Python False and SQL True can be intentional, type-coherent independent policies. The earlier conservative keep-current recommendation is historical and superseded by that reprioritization; final spelling, semantics, compatibility and implementation remain unselected.\n\nThe existing shortlist remains current / separate parameters / selector / lower-preference server prefixes. Do not expand it. Symmetric prefixes, policies, outer wrappers and namespaces remain historical evidence. The annotation-left / SQL-right and generated-constructor route remain abandoned.\n\n## New native omission prototype\n\n`research/defaults_473/callable-intersections.md` and `intersection_declarations.py.txt` demonstrate a **stock ty 0.0.84** route for common generated declarations without repeated pending defaults:\n\n```python\nvalue: db.GenCol[bool] = Integer(server_default=False)\nclock: db.GenCol[db.UtcDatetime] = Text(server_default=db.CurrentTimestamp)\nid: db.GenCol[int] = Integer(primary_key=True, auto_increment=True)\n```\n\nThese are proposed signatures, not installed functions. All eleven core scenarios pass the shared exact constructor/Pending/Row controls on both backends. Ordinary required and nullable inputs, and defaultless GenCol inputs, remain required. Explicit overrides, wrong inputs, Pending-only construction, frozen fields and INSERT RETURNING typing are retained. Imported factories, imported models and postponed annotations are checked too. This is not a claim that all GenCol fields become optional or that generation without a source will succeed.\n\n### Important trade-off\n\nIndependent Python and SQL defaults work naturally:\n\n```python\nvalue: db.Col[bool] = Integer(default=False, server_default=True)\nlabel: db.Col[str] = Text(default_factory=lambda: \"client\", server_default=\"server\")\n```\n\nThe required-Python-input / SQL-default contrast needs an explicit override:\n\n```python\nvalue: db.Col[bool] = Integer(server_default=False, required=True)\n```\n\n`required=True` is a **research-only constructor-required marker**, not SQL NOT NULL and not a selected public name. The bare plain-Col server-only declaration is rejected rather than silently made optional. Thus this alternative moves the marker to the exceptional required-input policy; it does **not** implement the earlier exact rule of switching requiredness solely according to Col versus GenCol.\n\n### Mechanism and caution\n\nA narrowed callable intersection combines a registered function for required/Python-default cases with an unregistered protocol view for server/identity cases. It avoids the previous failure where unregistering the whole helper made every defaultless field optional.\n\nThis is a checker-sensitive typing trick, not a standardized new field-specifier feature. Runtime-checkable protocols do not validate overload signatures or semantics: narrowing supplies a trusted producer contract, while the tests validate consumers. Bodies raise and neither bodies nor assertions are executed. Production implementation conformance, runtime lowering and future checker stability are unproven. The explicit required branch still accepts tested SQL-default compatibility gaps. Some invalid intersection calls emit two diagnostics on one line; the paired helper now checks exact multiple rules/count/order rather than discarding them.\n\n`tests/research/test_split_intersections.py` adds **14 paired checks**, seven per backend. These include positive contracts and explicit accepted-gap witnesses, not a complete storage/configuration or runtime proof. New constructor behavior failed before composition and passed after it. No checker patch, plugin, dependency change or new generated constructor is used by this candidate.\n\n## Source-informed limitation controls\n\n`research/defaults_473/native-omission-hooks.md` traces the published release source and records another **14 paired observations**: five mechanisms per backend plus four identity controls. Implicit defaults, callable registration and optional kwargs do not supply the missing registered-function metadata. An actual typed argument pack works only by repeating the explicit default, so it is a diagnostic control, not a proposed shorthand. These limitations explain those routes, not an impossibility claim about all native typing mechanisms. The later intersection candidate combines different routes.\n\nThe preceding six-mechanism report, `implicit-server-omission.md`, remains historical evidence with a pointer to the new result.\n\n## Nullability handoff\n\n`research/defaults_473/nullability-handoff.md` is a self-contained prompt for another agent to investigate SQL-nullability declarations in an independent worktree. It covers current annotation-derived behavior, explicit-nullable assertions, brownfield policies, truthful inputs/Rows, external NULLs, defaults/generation, joins, codecs, keys, backend differences and static-only validation. No nullability design or production change is selected here.\n\n## Existing comparison evidence\n\n- `research/defaults_473/README.md`: latest direction and historical links.\n- `shortlist-comparison.md`: four-way scenario/nonsense/compatibility comparison; earlier recommendation explicitly marked superseded.\n- `review-sheet.md`: eleven core scenarios plus required-input and independent-default contrasts.\n- `scenarios.py`: scenario-first current/separate/selector visualization. It deliberately retains the earlier split-signature snapshot and links to the new variant. It is not itself typing evidence; six paired extraction checks validate its core declarations through the older native fixtures.\n\nAll four still accept Python-only `Integer(default=False)`, so none makes the original #473 misunderstanding statically impossible. Current ty clock gaps, split required-input SQL-default gaps and source-less generation routes remain documented. Syntax merits are separate from stricter overloads; existing runtime guards are source evidence, not newly executed proof.\n\n## Local validation\n\nPassed on CPython 3.15.0, ty 0.0.84, snekql 0.9.0:\n\n```sh\nuv run snektest tests/research\nuv run ty check\nuv run ruff check .\nuv run ruff format --check .\ngit diff --check\ngit diff --cached --check\n```\n\n**224 research tests passed in 31.47 seconds: 214 paired static checks plus 10 historical parser rejection cases.** Independently clean controls and exact challenge lines/rules/counts are required. Green accepted-gap observations are not reported as rejection or implementation success.\n\nNo model templates, factories, generated callers, INSERT/DDL/database workflows or SQLite/MariaDB runtime suites were executed. Representative Integer/Text and lifecycle types are covered, not every constructor, option, FK, codec, identity configuration or inheritance pattern. No production/dependency changes or issue closure. GitHub Actions are disabled; validation is local.\n",
+  "files": [
+    {
+      "path": "research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/README.md",
+      "additions": 273,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/annotation_signatures.py",
+      "additions": 215,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/callable-intersections.md",
+      "additions": 172,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/consumer.py.txt",
+      "additions": 31,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/declarations.py.txt",
+      "additions": 91,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/examples.py.txt",
+      "additions": 68,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/excluded.py.txt",
+      "additions": 21,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/explicit-policies.md",
+      "additions": 170,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/flat-declarations.md",
+      "additions": 183,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/flat_declarations.py.txt",
+      "additions": 208,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/fluent_blocked.py.txt",
+      "additions": 18,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/implicit-server-omission.md",
+      "additions": 96,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/intersection_declarations.py.txt",
+      "additions": 116,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/left-python-right-sql.md",
+      "additions": 217,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/left_basic.py.txt",
+      "additions": 13,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/left_declarations.py.txt",
+      "additions": 80,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/left_factories.py.txt",
+      "additions": 37,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/left_generated.py.txt",
+      "additions": 31,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/left_invalid_defaults.py.txt",
+      "additions": 49,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/left_sql_independence.py.txt",
+      "additions": 44,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/native-omission-hooks.md",
+      "additions": 138,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/nullability-handoff.md",
+      "additions": 89,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/policy_basic.py.txt",
+      "additions": 38,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/policy_declarations.py.txt",
+      "additions": 96,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/policy_factories.py.txt",
+      "additions": 34,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/policy_required.py.txt",
+      "additions": 16,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/policy_server.py.txt",
+      "additions": 33,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/review-results.md",
+      "additions": 345,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/review-sheet.md",
+      "additions": 93,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/review_baseline.py.txt",
+      "additions": 73,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/review_declarations.py.txt",
+      "additions": 184,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/review_misuse.py.txt",
+      "additions": 14,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/review_split_contrasts.py.txt",
+      "additions": 54,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/scenarios.py",
+      "additions": 539,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/selector_modes.py.txt",
+      "additions": 36,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/defaults_473/shortlist-comparison.md",
+      "additions": 388,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_default_declarations.py",
+      "additions": 212,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_defaults_review.py",
+      "additions": 512,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_flat_defaults.py",
+      "additions": 218,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_left_defaults.py",
+      "additions": 333,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_policy_defaults.py",
+      "additions": 117,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_split_intersections.py",
+      "additions": 195,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_split_omission.py",
+      "additions": 168,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_split_omission_hooks.py",
+      "additions": 150,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/473-default-declarations",
+  "headRefOid": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+  "isDraft": true,
+  "number": 539,
+  "state": "OPEN",
+  "title": "Research default declaration typing (#473)",
+  "url": "https://github.com/crpier/snekql/pull/539"
+}

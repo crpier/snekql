@@ -1,0 +1,37 @@
+{
+  "baseRefOid": "a1cf31d8dba78f9ddf0a2b687f5c188649c14391",
+  "body": "## Purpose\n\nRefs #593. The maintainer explicitly requested executed code proving direct `TypeAdapter.validate_python` conversion from a zero-wrapper `Unparsed[T]` marker to `T`, including native type checking. This extends the earlier source-only investigation in draft #594, without integrating a new snekql interface.\n\n## Proof\n\n- A generic nominal marker is never instantiated. Producer-side `typing.cast` preserves the actual driver value and its identity; no `.raw`, unwrapping hook or parsing helper is required.\n- Direct `TypeAdapter(int).validate_python(...)` validates integer 42 and parses string `\"42\"` into integer 42.\n- Native ty exact-type assertions establish `Unparsed[int]` before parsing and `int` afterward.\n- A paired negative consumer yields exactly three `invalid-assignment` diagnostics, at the expected file and lines: unchecked-to-int use, a different unchecked contract, and assigning the parsed integer to a string.\n- Important limit: the output type comes from the selected adapter, not the unchecked marker. Pydantic does not infer or enforce agreement with the marker's expected `T`.\n\nOnly isolated research files/tests are added. The standalone source is `research/unparsed_593/proof.py.txt`; the README explains reproduction and limits. No production/dependency/backend/aggregate/migration changes, and no public syntax adopted.\n\n## TDD and validation\n\nThe runtime test first failed without the proof source. A transparent `type Unparsed[T] = T` candidate passed runtime and positive static checks but failed the negative consumer because unchecked-to-int assignment was accepted. Replacing that alias with the never-instantiated nominal marker made both tests pass. Ty literal narrowing required explicit `object` inputs in the demonstration; no checker suppressions or patches were used.\n\nExecuted with Python 3.15.0, Pydantic 2.14.0, pydantic-core 2.50.0, ty 0.0.84 and snektest 0.16.0:\n\n- `uv run snektest tests/research/test_unparsed_type_adapter.py`: **2 passed in 0.14s**.\n- Standalone runtime output: `True int 42 int` and `True str 42 int`.\n- Standalone native `ty check`: passed.\n- Project `uv run ty check`, `uv run ruff check .`, and `uv run ruff format --check .`: passed (814 files formatted).\n- Standalone source explicitly linted/formatted; package-only `INP001` excluded for that non-package script.\n- Source AST, report relative links and staged diff checks: passed.\n\nThe proof does not cover whole-model field transformation, JSON contracts, query result typing, native backends, streaming, RETURNING or mode integration. No full suite or benchmark was run. Validation is local; no Actions wait, merge or issue closure requested.\n",
+  "files": [
+    {
+      "path": "research/unparsed_593/README.md",
+      "additions": 93,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/unparsed_593/proof.py.txt",
+      "additions": 31,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_unparsed_type_adapter.py",
+      "additions": 73,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/593-unparsed-type-adapter-proof",
+  "headRefOid": "2f8206dd0062afb516c46017899b0c84f8f0a194",
+  "isDraft": true,
+  "number": 595,
+  "state": "OPEN",
+  "title": "Prove zero-wrapper Unparsed values through direct TypeAdapter validation",
+  "url": "https://github.com/crpier/snekql/pull/595"
+}

@@ -1,0 +1,32 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Goal\n\nMaintainer-authorized, narrowly scoped proof: can ty statically reject unsupported ordering/range operations (starting with ZonedDatetime) without unacceptable declaration or typing drawbacks?\n\nUse subagents for isolated positive/negative consumer probes. Investigate ty intersections/narrowing and conventional descriptor/capability/self typing. Preserve equality/membership, supported-column ordering, field value/result types, and ordinary declaration ergonomics. Check exact diagnostics; no Any-based evasion, blanket optionality, or runtime-only guard presented as static success.\n\nResearch only, no production API changes, backend execution, or broad capability redesign. Start from current origin/main. Deliver evidence, limitations and a promising minimal direction, not a full implementation.\n",
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABkKuWqg",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming #601 for session `da58eec6-bf55-4414-99f3-e87a3ee3bee5`, branch `research/601-static-ordering`, freshly fetched origin/main.\n\nThe maintainer explicitly requested subagent-led feasibility research. Public seams are ty-checked positive/negative consumer examples for column declarations, field/result typing, equality/membership and ordering/range/aggregate calls. No production changes or backend tests. Two independent angles: ty intersections/narrowing and conventional restricted-self/capability/descriptor typing. Child work is isolated to temporary probe directories; durable findings will be recorded on this branch.\n",
+      "createdAt": "2026-11-08T13:32:38Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/601#issuecomment-6722131626",
+      "viewerDidAuthor": true
+    }
+  ],
+  "number": 601,
+  "state": "OPEN",
+  "title": "Prove static rejection of unsupported column ordering with ty",
+  "url": "https://github.com/crpier/snekql/issues/601"
+}

@@ -1,0 +1,31 @@
+"""Generated shape and Python omission are independent left-hand decisions."""
+
+
+class Generated[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[Generated[database.Row]]]
+    required: database.GenCol[int] = Integer()
+    id: Annotated[database.GenCol[int], Default(database.PENDING_GENERATION)] = Integer(primary_key=True, auto_increment=True)
+    done: Annotated[database.GenCol[bool], Default(database.PENDING_GENERATION)] = Integer(server_default=False)
+
+
+pending = Generated(required=3)
+assert_type(pending, Generated[database.Pending])
+assert_type(pending.required, int | database.PENDING_GENERATION)
+assert_type(pending.id, int | database.PENDING_GENERATION)
+assert_type(pending.done, bool | database.PENDING_GENERATION)
+Generated(required=database.PENDING_GENERATION, id=4, done=True)
+
+
+def row_types(row: Generated[database.Row]) -> None:
+    assert_type(row.required, int)
+    assert_type(row.id, int)
+    assert_type(row.done, bool)
+
+
+write: database.Write[Generated[database.Row]] = database.insert(pending).returning()
+
+Generated()  # error: missing-argument
+Generated(required="wrong")  # error: invalid-argument-type
+Generated(required=3, done=None)  # error: invalid-argument-type
+Generated[database.Row](required=3)  # error: invalid-argument-type
+pending.done = False  # error: invalid-assignment

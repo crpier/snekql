@@ -1,0 +1,43 @@
+{
+  "baseRefOid": "a1cf31d8dba78f9ddf0a2b687f5c188649c14391",
+  "body": "## Purpose\n\nRefs #596; continues the maintainer-directed snekql design investigation after #593 and the separate scalar proof in draft #595. Evaluate ordinary mappings and trustworthy results rather than extending the generic parser-helper discussion.\n\nWorking direction: whole-operation no parsing / declared parsing (`strict=None`, likely default) / strict parsing (`strict=True`), with explicit validators active. Aggregates and finer-grained overrides remain deferred.\n\n## Findings\n\n- Pydantic ownership is viable, but not a mechanical deletion of codecs. Much of today's primitive/JSON path already delegates to Pydantic; the opportunity is coherent operation policy, explicit native-value interpretation and honest unchecked results.\n- The synthetic matrix demonstrates ordinary versus strict integer, Boolean, date/datetime, UUID and JSON acceptance. Standard types alone do not make whole-operation strict reads portable across storage representations.\n- Two small research-only Annotated contracts explicitly accept SQL integer 0/1 or canonical date text while rejecting unwanted nearby forms, including under `strict=True`.\n- JSON can use one payload adapter with distinct Python/JSON entry points. Using the full `Json[T]` read adapter everywhere would reject already-logical constructor values. SQL NULL versus JSON null must remain deliberate.\n- Canonical storage and UTC/civil interpretation do not disappear when Pydantic owns validation. Shared read-input callbacks can also broaden constructor acceptance; this needs a substantive input/read policy decision.\n- No-parsing whole-model shape/typing and model-hook policy remain unresolved. Preserve expected-contract provenance rather than assuming normal Row models or retreating to Any.\n- Failure redaction, row presence, source splitting, streaming, RETURNING and transaction semantics remain snekql responsibilities.\n\n## Evidence and scope\n\nOnly `research/attribute_contracts_596/README.md` and four research test/helper files are added: 653 lines total. No production, dependency, public-interface, migration or deployment changes.\n\nExecuted public Pydantic probes with synthetic inputs, not database results: **120 cases passed in 0.02s** = 57 input/contract examples \u00d7 two modes, plus three two-mode checks. The two custom contracts were developed through red/green against their initially strict built-in types.\n\nSQLite/MariaDB connection/driver source, temporal schemas, materializers and named existing tests were inspected, not executed. The report records installed driver versions and source fingerprints. No native backend, SQL, application Table Model, full suite, benchmark or new consumer result-typing prototype ran. The earlier Unparsed proof is not included in the test count. No native parity or performance claim.\n\n## Validation\n\n- `uv run snektest tests/research/test_attribute_contracts.py tests/research/test_pydantic_attribute_matrix.py`: 120 passed.\n- `uv run ty check`: passed.\n- `uv run ruff check .`: passed.\n- `uv run ruff format --check .`: passed; 816 files formatted.\n- Report checks: 23 relative targets, 19 source-line bounds, 17 linked Python files parsed, seven named existing-test references and 57 matrix inputs checked by AST/text without importing those modules.\n- Working/staged whitespace checks passed.\n\nFresh main baseline: `a1cf31d8dba78f9ddf0a2b687f5c188649c14391`. Environment: Python 3.15.0, Pydantic 2.14.0, pydantic-core 2.50.0, ty 0.0.84, snektest 0.16.0. Driver versions: aiosqlite 0.22.1, aiomysql 0.3.2, PyMySQL 1.2.0.\n\nValidation was local; no Actions wait. No interface adoption, merge or issue closure requested. Next decisions are JSON input/read contract selection, strict storage interpretation without weakening nominal construction, and whole-row unchecked shape/typing; native Transaction tests would be separately scoped.\n",
+  "files": [
+    {
+      "path": "research/attribute_contracts_596/README.md",
+      "additions": 358,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/attribute_contracts.py",
+      "additions": 26,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_attribute_contracts.py",
+      "additions": 42,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_pydantic_attribute_matrix.py",
+      "additions": 226,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/pydantic-attribute-contracts",
+  "headRefOid": "f8902a2e7e2addb8e1a97665a3ac544d8472fe66",
+  "isDraft": true,
+  "number": 597,
+  "state": "OPEN",
+  "title": "Evaluate Pydantic-owned attribute contracts for trustworthy reads",
+  "url": "https://github.com/crpier/snekql/pull/597"
+}

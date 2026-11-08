@@ -1,0 +1,27 @@
+from typing import TYPE_CHECKING, Any
+from snekql import sqlite as db
+from snekql.expressions import Comparable
+from helpers_positive import A, sort, minimum, lower
+from positive import Event
+if TYPE_CHECKING:
+    from ty_extensions import Not
+
+def consumer(z: db.ZonedDatetime):
+    sort(Event.z)  # REJECT
+    sort(Event.nz)  # REJECT
+    minimum(Event.z)  # REJECT
+    lower(Event.z, z)  # REJECT
+    lower(Event.n, 'bad')  # REJECT
+
+def unconstrained[O, T](a: A[O, T]):
+    a.asc()  # REJECT: must provide bound or intersection evidence
+
+def comparable_bound[O, T: Not[db.ZonedDatetime], F](a: Comparable[O, T, T, F], v: T):
+    a.lt(v)  # REJECT: bare Comparable lacks decoded-domain witness
+
+def broad[O](a: A[O, object]):
+    a.asc()  # REJECT: object could contain ZonedDatetime
+
+# Explicitly gradual escape: standard Any limitation, not an acceptance success.
+def gradual[O](a: A[O, Any]):
+    a.asc()

@@ -1,0 +1,21 @@
+"""Explore PEP 681 init=False: omission works, but explicit overrides disappear."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Entry[S = database.Pending](ProbeModel[S]):
+    __row_type__: ClassVar[database.ReadType[Entry[database.Row]]]
+    name: database.Col[str] = database.Text()
+    id: database.GenCol[int] = Excluded(database.Integer())
+
+
+assert_type(Entry(name="Ada").id, int | database.PENDING_GENERATION)
+
+
+def row_types(row: Entry[database.Row]) -> None:
+    assert_type(row.id, int)
+
+
+Entry()  # error: missing-argument
+Entry(name="Ada", id=3)  # error: unknown-argument

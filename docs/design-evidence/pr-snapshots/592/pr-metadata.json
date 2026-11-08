@@ -1,0 +1,19 @@
+{
+  "baseRefOid": "3ed75324bbb12b189470f296e55faddf63d72b5b",
+  "body": "## Purpose\n\nRefs #590; continues the maintainer's design reassessment after #588 / draft #589. This is the first bounded assessment against the brief, not a proposed field interface or implementation.\n\n## Main findings\n\nProducing the advertised Python type and rejecting an unexpected stored representation are different guarantees. Current validation policies deliberately differ:\n\n- ordinary fetched columns use lax logical decoding;\n- construction uses strict validation with explicit exceptions;\n- named results validate strictly after column decoding;\n- raw Pydantic contracts intentionally allow contract-controlled coercion, aliases, defaults and extra-field policies;\n- native computed expressions/literals can require exact types;\n- numeric aggregates normalize independently of source constraints.\n\nThe report preserves strengths: NULL/absence distinctions, presence witnesses, refusal of unsupported projection LEFT JOIN, constraints, execution-local validation policy, shared SELECT/RETURNING materialization, unchecked-read widening, pure compilation and public validated Row snapshots.\n\nIt records a source-implied fractional Integer-SUM normalization counterexample, not a newly reproduced backend bug. Native aggregate output domains and storage/logical pair coverage need targeted evidence rather than a blanket claim.\n\n## Deliverable\n\n`research/query_result_contracts/README.md` contains:\n\n- baseline-pinned source map for model, scalar, JSON, named, raw, derived, streamed and RETURNING paths;\n- concrete contrasts with existing named test assertions;\n- failure/diagnostic, extension-trust and verification limits;\n- six bounded evaluation tasks, including representation matching, JSON payloads, aggregates, NULL/absence, streaming/RETURNING failure handling and practical human/agent verification;\n- recommendation to agree permitted representations/conversions before choosing new constructor syntax or a global strict flag.\n\nThe brief in #589 is linked, not transplanted or merged. Migration work, #579's boolean/integer policy and #556's extra verification remain separate. No public spelling, compatibility change or strictness implementation is selected.\n\n## Evidence and validation\n\nSource and existing tests were **read, not executed**. No models, templates, factories, backends, runtime suites, new static test suites or benchmarks were executed. Source-implied behavior is distinguished from assertions already present in tests; neither is labeled new runtime proof.\n\nLocal checks passed:\n\n- 32 relative link targets and 17 source-line bounds;\n- AST checks for 11 named test references and parsing of 13 linked production files with the project interpreter, without importing project/test modules;\n- `uv run ty check`;\n- `uv run ruff check .`;\n- `uv run ruff format --check .` (636 files already formatted);\n- working/staged diff whitespace checks.\n\nDocumentation-only change, based on main at `3ed75324bbb12b189470f296e55faddf63d72b5b`. GitHub Actions are disabled; validation is local. No dependency, production, migration or schema changes; no merge or issue closure requested.\n",
+  "files": [
+    {
+      "path": "research/query_result_contracts/README.md",
+      "additions": 248,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/query-result-contracts",
+  "headRefOid": "0724c6ae74321e60d510431bf9b72643a61e3477",
+  "isDraft": true,
+  "number": 592,
+  "state": "OPEN",
+  "title": "Assess query-result contracts and decoding policy (#590)",
+  "url": "https://github.com/crpier/snekql/pull/592"
+}

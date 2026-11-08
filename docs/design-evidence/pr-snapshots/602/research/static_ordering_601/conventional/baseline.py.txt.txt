@@ -1,0 +1,55 @@
+from typing import ClassVar, assert_type
+from snekql import sqlite as db
+
+class Event[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[Event[db.Row]]]
+    z: db.Col[db.ZonedDatetime] = db.Text()
+    nz: db.Col[db.ZonedDatetime | None] = db.Text(nullable=True)
+    mixed: db.Col[db.UtcDatetime | db.ZonedDatetime] = db.Text()
+    n: db.Col[int] = db.Integer()
+    u: db.Col[db.UtcDatetime] = db.Text()
+    l: db.Col[db.LocalDatetime] = db.Text()
+
+def forbidden(z: db.ZonedDatetime) -> None:
+    Event.z.gt(z)
+    Event.z.gte(z)
+    Event.z.lt(z)
+    Event.z.lte(z)
+    Event.z.between(z, z)
+    Event.z.asc()
+    Event.z.desc()
+    Event.z.min()
+    Event.z.max()
+    Event.nz.gt(z)
+    Event.nz.min()
+    Event.mixed.gt(z)
+    Event.mixed.min()
+
+def good(z: db.ZonedDatetime, u: db.UtcDatetime, l: db.LocalDatetime, pending: Event[db.Pending], row: Event[db.Row]) -> None:
+    Event.z.eq(z)
+    Event.z.ne(z)
+    Event.z.in_(z, z)
+    Event.z.not_in(z)
+    Event.nz.eq(z)
+    Event.nz.is_null()
+    Event.mixed.eq(z)
+    Event.mixed.eq(u)
+    Event.n.gt(1)
+    Event.n.between(1, 2)
+    Event.n.asc()
+    Event.n.min()
+    Event.u.gt(u)
+    Event.u.between(u, u)
+    Event.u.max()
+    Event.l.lt(l)
+    Event.l.between(l, l)
+    Event.l.min()
+    assert_type(pending.z, db.ZonedDatetime)
+    assert_type(row.z, db.ZonedDatetime)
+    assert_type(row.nz, db.ZonedDatetime | None)
+    assert_type(Event.z.eq(z), db.Predicate[Event[db.Pending]])
+    assert_type(Event.n.min(), db.Aggregate[Event[db.Pending], int | None, int])
+    query: db.ClosedRead[Event[db.Row]] = db.ready(db.select(Event))
+
+async def rows(tx: db.Transaction) -> None:
+    assert_type(await tx.fetch_all(db.ready(db.select(Event))), list[Event[db.Row]])

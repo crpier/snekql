@@ -1,0 +1,45 @@
+--- snekql/storage.py	2026-10-31 17:11:05.848347864 +0200
++++ /tmp/snekql-601-ty-uFNOB7/overlay/snekql/storage.py	2026-11-08 15:36:49.731672987 +0200
+@@ -70,6 +70,10 @@
+     _OrderBy,
+ )
+ 
++if TYPE_CHECKING:
++    from ty_extensions import Intersection, Not
++    from snekql.expressions import _OrderingDomain
++
+ type StorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
+ type StorageBackend = Literal["mariadb", "sqlite"]
+ 
+@@ -2122,7 +2126,7 @@
+             msg = f"{func}() is only valid for numeric columns"
+             raise QueryConstructionError(msg)
+ 
+-    def min(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
++    def min(self: Intersection[Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, CompareT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]]) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
+         """Aggregate this column as ``MIN(col)`` (``None`` over an empty set)."""
+ 
+         self._require_ordering()
+@@ -2131,7 +2135,7 @@
+             _Aggregate(func="MIN", column=self, owner=self.owner),
+         )
+ 
+-    def max(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
++    def max(self: Intersection[Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, CompareT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]]) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
+         """Aggregate this column as ``MAX(col)`` (``None`` over an empty set)."""
+ 
+         self._require_ordering()
+@@ -2140,11 +2144,11 @@
+             _Aggregate(func="MAX", column=self, owner=self.owner),
+         )
+ 
+-    def asc(self) -> OrderBy[OwnerT]:
++    def asc(self: Intersection[Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, CompareT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]]) -> OrderBy[OwnerT]:
+         self._require_ordering()
+         return _OrderBy(column=self, direction="ASC")
+ 
+-    def desc(self) -> OrderBy[OwnerT]:
++    def desc(self: Intersection[Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, CompareT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]]) -> OrderBy[OwnerT]:
+         self._require_ordering()
+         return _OrderBy(column=self, direction="DESC")
+ 

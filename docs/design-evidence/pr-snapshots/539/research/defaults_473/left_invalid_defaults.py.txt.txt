@@ -1,0 +1,49 @@
+"""Metadata needs type validation as well as constructor optionality."""
+
+
+def good_token() -> str:
+    raise NotImplementedError
+
+
+def bad_token() -> int:
+    raise NotImplementedError
+
+
+class Good[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[Good[database.Row]]]
+    count: Annotated[database.Col[int], Default(7)] = Integer()
+    token: Annotated[database.Col[str], Factory(good_token)] = Text()
+
+
+assert_type(Good().count, int)
+assert_type(Good().token, str)
+
+
+class BadValue[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadValue[database.Row]]]
+    done: Annotated[database.Col[bool], Default("wrong")] = Integer()  # default-error: invalid-argument-type
+
+
+class BadNone[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadNone[database.Row]]]
+    count: Annotated[database.Col[int], Default(None)] = Integer()  # default-error: invalid-argument-type
+
+
+class BadFactory[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadFactory[database.Row]]]
+    token: Annotated[database.Col[str], Factory(bad_token)] = Text()  # default-error: invalid-argument-type
+
+
+class BadPending[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadPending[database.Row]]]
+    count: Annotated[database.Col[int], Default(database.PENDING_GENERATION)] = Integer()  # default-error: invalid-argument-type
+
+
+class BadSql[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadSql[database.Row]]]
+    count: database.Col[int] = Integer(server_default="wrong")  # sql-error: invalid-argument-type
+
+
+class BadClock[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadClock[database.Row]]]
+    label: database.Col[str] = Text(server_default=database.CurrentTimestamp)  # sql-error: invalid-argument-type

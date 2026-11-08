@@ -1,0 +1,13 @@
+"""Only left-hand annotation metadata requests a Python construction default."""
+
+
+class Entry[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[Entry[database.Row]]]
+    name: database.Col[str] = Text()
+    done: Annotated[database.Col[bool], __DEFAULT_METADATA__] = Integer()
+
+
+assert_type(Entry(name="Ada", done=False).done, bool)
+Entry(name="Ada")  # omission-probe
+Entry(done=False)  # required-probe
+Entry(name="Ada", done="wrong")  # error: invalid-argument-type

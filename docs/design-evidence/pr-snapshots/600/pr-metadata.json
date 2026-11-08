@@ -1,0 +1,43 @@
+{
+  "baseRefOid": "18b16c2c80c93f9ce5d6f841c4fac0055950e125",
+  "body": "## Summary\n\nResearch for #599, following the maintainer's approved three-case investigation:\n\n- Existing Pydantic decimal/integer constraints and a TDD millisecond-datetime rejection policy.\n- A TDD, deliberately narrow final Decimal/text parameter check showing the custom-serializer gap.\n- SQLite decimal TEXT/integer-minor-unit recipes and their comparison/storage limits.\n- Source audit of existing snekql decimal/temporal fit protections, which must not be accidentally removed in a Pydantic-owned redesign.\n\nReport: `research/precision_loss_599/README.md`.\n\nNo public API selected, production/dependency changes, backend suites, native database execution or migrations. Column helper discussion remains a recipe recommendation, not an implemented helper. Final checks are callable experiments, not integrated write hooks. Documentation-derived database facts are separated from executed Python evidence.\n\n## Validation\n\n- `uv run snektest research/precision_loss_599`: 30 passed.\n- `uv run ty check`: passed.\n- `uv run ruff check .`: passed.\n- `uv run ruff format --check .`: passed.\n- `git diff --cached --check`: passed before commit.\n\nExisting backend/runtime suites were intentionally not run for this isolated research. No lossless-storage guarantee is inferred from these probes.\n",
+  "files": [
+    {
+      "path": "research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/precision_loss_599/README.md",
+      "additions": 241,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/precision_loss_599/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/precision_loss_599/policies.py",
+      "additions": 28,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/precision_loss_599/test_contracts.py",
+      "additions": 203,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/precision-loss-contracts",
+  "headRefOid": "c526cf13b3fefb790f758a0ae58f838be2dec492",
+  "isDraft": true,
+  "number": 600,
+  "state": "OPEN",
+  "title": "Research explicit precision-loss protection (#599)",
+  "url": "https://github.com/crpier/snekql/pull/600"
+}
