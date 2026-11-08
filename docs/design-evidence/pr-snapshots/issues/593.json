@@ -1,0 +1,47 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Purpose\n\nContinue the maintainer-directed design investigation after #590 / draft #592. The maintainer proposes individual Pydantic attribute contracts (`StrictInt`, ordinary types, custom `Annotated` validators/serializers) and prefers driver-value reads over best-effort unchecked decoding. Investigate using the same declared attribute with strict or ordinary validation in different operations.\n\n## Deliverable\n\nA bounded research report covering Pydantic's per-call strictness precedence, explicit strict annotations, constraints, custom validators, JSON/Python representation differences, operation-local policy, raw driver bypass and truthful result typing. Identify current snekql integration obstacles and unresolved decisions without selecting public syntax. Leave aggregate redesign for later.\n\n## Scope\n\nSource/documentation and existing-test inspection only, including installed Pydantic's public interfaces and upstream tests if available. No production/dependency changes, project/Pydantic model or validator execution, backend suites, benchmarks, new public settings, migration work or implementation. Clearly distinguish documented/source-supported behavior from newly executed behavioral evidence (none planned). A later characterization prototype needs separately confirmed public seams and TDD.\n",
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABgK9l_A",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming this issue for session `pydantic-operation-policy-2026-10-27`, continuing this conversation's #590 / #592 assessment.\n\nBranch: `research/pydantic-operation-policy`, based on freshly fetched `origin/main` at `3ed75324bbb12b189470f296e55faddf63d72b5b`. Scope: source/documentation and existing-test inspection of per-call Pydantic strictness and genuine driver-value bypass. No project/Pydantic model or validator execution, production/dependency changes, runtime/backend suites, benchmarks, public syntax selection or migration work. Aggregates stay deferred. A behavioral prototype requires confirmed public seams and separately scoped TDD. Earlier draft PRs remain unmerged.\n",
+      "createdAt": "2026-10-27T21:25:20Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/593#issuecomment-6453945852",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABhggR_A",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Continuing this session's own claim for #593 with the maintainer's explicit request for an executed proof of direct `TypeAdapter.validate_python` conversion, including native type checking.\n\nBranch: `research/593-unparsed-type-adapter-proof`, from freshly fetched `origin/main`. Confirmed seams: public Pydantic `TypeAdapter.validate_python` at runtime and native `ty` static checking of a zero-wrapper `Unparsed[T]` marker and parsed outputs. This extends the earlier source-only scope solely for an isolated proof: no snekql production, backend, dependency, aggregate or migration changes. It does not authorize integrating a new public result type. Draft #594 remains a historical source-only report.\n",
+      "createdAt": "2026-10-31T12:56:22Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/593#issuecomment-6543643132",
+      "viewerDidAuthor": true
+    }
+  ],
+  "number": 593,
+  "state": "OPEN",
+  "title": "Investigate per-operation Pydantic validation and driver-value reads",
+  "url": "https://github.com/crpier/snekql/issues/593"
+}

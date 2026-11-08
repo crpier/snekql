@@ -21,6 +21,9 @@ position is in the [design checkpoint](../../design-checkpoint.md); the
 - [manifest.json](manifest.json): PR, commit, original path, archive path and SHA-256
   for every file. All 90 were verified against both manifest hashes and original git
   blobs before retirement.
+- `issues/`: pre-closure bodies, comments and metadata for completed research/documentation
+  issues #588, #590, #593, #596, #599 and #601. These preserve their original bounded
+  deliverables and claims separately from any later implementation work.
 
 No changed path was deleted at these heads, so there is no omitted deletion payload.
 Overlapping files are intentionally preserved per PR, rather than silently combining

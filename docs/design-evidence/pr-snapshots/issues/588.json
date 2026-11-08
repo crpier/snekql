@@ -1,0 +1,47 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Context\n\nThe maintainer has asked to step back from the declaration/default/nullability experiments in #473, #539 and #583 and reassess snekql's purpose and interface principles for mature brownfield use without losing its identity.\n\nThe primary motivation is trustworthy typed query results even when production schema and other writers cannot be trusted. Unexpected data should be handled intentionally, not silently coerced into an expected shape. Further requirements include reading-first interfaces, pragmatic multi-layer verification, measurable agent usability, SQL diagnosis, testability, migrations across long-lived/fresh/team installations, and metadata suitable for application-owned CRUD frameworks.\n\n## Deliverable\n\nA short repository-only working design brief, clearly separating:\n\n- maintainer-stated requirements;\n- proposed purpose and derived design principles;\n- proposed non-goals;\n- unresolved choices and representative evaluation tasks.\n\nLink it from the repository's design-document index. Preserve current usage documentation and adopted decisions; do not treat the brief as a shipped guarantee or an accepted redesign.\n\n## Scope limits\n\nDocumentation only. No production/dependency changes, new column syntax, checker changes, benchmark implementation, migration implementation, schema changes or deployment support claims. Migration work is underway in another session and must not be duplicated. Cloudflare Workers is an aspiration requiring feasibility assessment, not an assumed Python 3.15 deployment target.\n\n## Review criteria\n\n- Query-result trust is central; static checks, runtime data validation and partial structural schema verification remain distinct.\n- Permitted storage decoding versus undesired coercion is an explicit open question, not a claim that current code is already wholly strict.\n- Readability does not become arbitrary verbosity or duplicated semantic authority.\n- Agent benchmarks assess semantic success, verification and reviewability, with held-out tasks and repeated/model-varied trials.\n- Performance diagnosis does not become a promise of automatic query optimization.\n- Requirements are not mistaken for evidence that every workflow is currently supported.\n- The brief leaves public syntax, compatibility and migrations for separately authorized decisions.\n",
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABgJgnUw",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming #588 for the current design-brief session, continuing the maintainer conversation behind #473 and draft #583.\n\nSession label: design-brief-2026-10-27. Branch: `docs/design-brief`, based on freshly fetched `origin/main` at `3ed7532`.\n\nScope: working design brief plus repository index link only. No runtime/interface changes, migration implementation, dependency work or agent-benchmark implementation. Migration work in other sessions remains untouched. I will open a draft PR for maintainer review and will not merge it.\n",
+      "createdAt": "2026-10-27T20:10:32Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/588#issuecomment-6452422483",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABhh_JNg",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Continuing this session's recorded `design-brief-2026-10-27` claim on #588 and existing draft PR #589, branch `docs/design-brief`.\n\nThe maintainer requested a documentation refinement: a coherent plug-and-play default path, with supported flexibility and replaceable logical types/policies. Add an explicit maintainer requirement, corresponding proposed principle and representative evaluation task. Keep current trust/readability principles and draft status; no runtime/interface/dependency changes, migration work or benchmark implementation. The current result-contract research remains separate. This continues the existing design-brief draft rather than opening a competing brief or rewriting branch history.\n",
+      "createdAt": "2026-10-31T15:11:10Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/588#issuecomment-6545197366",
+      "viewerDidAuthor": true
+    }
+  ],
+  "number": 588,
+  "state": "OPEN",
+  "title": "Draft snekql purpose and interface design brief",
+  "url": "https://github.com/crpier/snekql/issues/588"
+}

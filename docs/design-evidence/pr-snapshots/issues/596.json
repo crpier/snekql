@@ -1,0 +1,47 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Purpose\n\nEvaluate the maintainer-directed snekql design: application-declared Pydantic attribute contracts own value interpretation; snekql owns relational execution and result structure. Continue #593 and its isolated TypeAdapter proof without expanding into a parser-helper project.\n\nWorking direction: whole-operation no parsing / declared parsing (`strict=None`, likely default) / strict parsing (`strict=True`). Explicit validators remain active; aggregates and finer-grained overrides are deferred. No-parsing results should retain expected-contract provenance without claiming that logical validation occurred.\n\n## Investigation\n\n- Integers, booleans, dates/datetimes, UUIDs and JSON: driver representations, accepted inputs, successful logical values and mismatches from independent writers.\n- Execute focused probes only at the already discussed public Pydantic TypeAdapter seam; source-inspect current SQLite/MariaDB driver paths and existing tests, clearly separating that evidence from native execution.\n- Compare standard Pydantic types with small explicit Annotated contracts; use TDD for any research-only custom validator.\n- Evaluate declaration/query readability, no-parsing result shape and typing requirements, NULL versus presence, failure handling, and remaining storage/wire responsibilities.\n\nResearch only: no production/dependency/public-interface changes, native backend suites, benchmarks, aggregate design or migration work. No merge or issue closure without instruction. The deliverable is a reviewable assessment plus isolated reproducible evidence, not an adopted redesign.\n",
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABhgvt4Q",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming this issue for session `pydantic-attribute-contracts-2026-10-31`.\n\nBranch: `research/pydantic-attribute-contracts`, from freshly fetched `origin/main` at `a1cf31d8dba78f9ddf0a2b687f5c188649c14391`.\n\nScope follows the maintainer's authorization in this conversation: focused public Pydantic TypeAdapter probes and TDD for isolated research-only Annotated validators; source/documentation/existing-test inspection for driver forms and snekql integration. No backend suites, production/dependency/public-interface changes, benchmarks, aggregates or migration work. Source-implied behavior will not be reported as native runtime evidence. Continues this session's #593 research; no other issue's work is claimed.\n",
+      "createdAt": "2026-10-31T13:20:35Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/596#issuecomment-6543896033",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABhhdYPQ",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Continuing this session's own claim for #596: `pydantic-attribute-contracts-2026-10-31`.\n\nFollow-up branch: `research/596-construction-read-contracts`, freshly fetched main baseline `a1cf31d8dba78f9ddf0a2b687f5c188649c14391`.\n\nThe maintainer approved comparing the construction/read distinction before raw whole-row typing. Keep the previously confirmed public Pydantic TypeAdapter seam: isolated synthetic JSON, Boolean and nominal temporal probes, with TDD for research-only policies. Compare shared input policy, explicit read adapters and phase-aware context without selecting new snekql syntax. Source inspection only for snekql integration; no native backend suites, production/dependency changes, benchmarks, generic parser-helper expansion or migrations. PR #597 remains separate, draft and unmerged.\n\nThe temporal probes will execute the existing public UtcDatetime/LocalDatetime logical-value schemas through TypeAdapter. This does not instantiate application Table Models or exercise query/runtime/backend integration.\n",
+      "createdAt": "2026-10-31T14:24:02Z",
+      "includesCreatedEdit": true,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/596#issuecomment-6544644157",
+      "viewerDidAuthor": true
+    }
+  ],
+  "number": 596,
+  "state": "OPEN",
+  "title": "Evaluate Pydantic-owned attribute contracts for trustworthy snekql reads",
+  "url": "https://github.com/crpier/snekql/issues/596"
+}
