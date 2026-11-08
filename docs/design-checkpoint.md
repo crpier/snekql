@@ -289,8 +289,10 @@ See the [research index](design-research-index.md) for reproducible/pinned refer
 
 ## What happens next
 
-1. Review this checkpoint for misclassified decisions and omissions. Agree on the
-   preservation/disposition plan before retiring research drafts.
+1. Review this checkpoint for misclassified decisions and omissions. The maintainer
+   subsequently authorized consolidating and closing the nine research drafts; all
+   changed files were archived in #604 before closure. Review that preservation here,
+   rather than treating the retired branches as competing specifications.
 2. Resolve one concrete declaration comparison across the same scenarios: Python/SQL
    defaults, constructor omission and SQL nullability. Don't select syntax from a
    checker workaround alone.
@@ -305,4 +307,7 @@ See the [research index](design-research-index.md) for reproducible/pinned refer
    guarantees. Keep migration implementation separate.
 
 This is a short dependency order, not authorization to implement every item or reopen
-all abandoned designs. No existing draft PR is merged or closed by this checkpoint.
+all abandoned designs. Under the maintainer's subsequent explicit authorization, the
+nine related research drafts were closed without merging after complete artifact
+preservation in #604. The [inventory](design-research-index.md) records that retirement.
+The separate migration implementation PR remains open; no runtime changes were made.

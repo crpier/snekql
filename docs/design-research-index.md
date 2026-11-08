@@ -1,37 +1,34 @@
 # Design research inventory — 2026-11-08
 
-**Status:** Evidence inventory and disposition recommendations for #603, not PR
-closure/merge authorization. Read the [design checkpoint](design-checkpoint.md) for
-current decisions and the [design brief](design-brief.md) for higher-level goals.
+**Status:** Consolidated evidence inventory for #603/#604. On 2026-11-08, the
+maintainer authorized retiring the nine related research drafts. All nine were
+archived and **closed without merging**, with comments pointing to #604. Read the
+[design checkpoint](design-checkpoint.md) for current decisions and the
+[design brief](design-brief.md) for higher-level goals.
 
-GitHub PR state and head commits were queried with `gh` on 2026-11-08. Reports are
-linked at the recorded commit, not a mutable branch name. Counts/validation below
-are historical evidence from those reports; this documentation pass does not claim
-to rerun every experiment. No existing PR was merged, closed or rewritten.
+GitHub PR state and head commits were queried with `gh` before closure on 2026-11-08.
+The OPEN/draft snapshots below are historical capture metadata, **not current state**.
+Closure was verified separately in the [retirement record](design-evidence/pr-snapshots/retirement.json).
+Reports are linked at recorded commits, not mutable branches. Historical validation
+results were not rerun by this consolidation. Branches and associated issues were
+left intact; migration PR #476 remains separate and open.
 
 ## Preservation policy
 
 The checkpoint preserves current reasoning in the repository. The
 [evidence capsules](design-evidence/README.md) preserve concrete scenarios, known gaps
-and byte-preserved #595/#602 fixtures, with a source/hash manifest. The records below
-preserve where the experimental evidence came from. Old reports are historical:
-their recommendations do not override later maintainer decisions.
+and convenient #595/#602 fixtures. The [complete archive](design-evidence/pr-snapshots/README.md)
+now preserves all **90 changed files**, plus each PR's pre-closure metadata/body,
+with original commits/paths and SHA-256 records. Every archived file was compared
+with its original git blob before closure.
 
-Recommended retirement sequence, **subject to maintainer approval**:
+The nine drafts were closed only after this archive was pushed to #604. No experimental
+code was merged into the runtime or supported test suite. Old reports remain historical;
+their recommendations don't override later maintainer decisions. The per-PR disposition
+notes explain why each draft was retired, not proposals to close still-open PRs.
 
-1. Review and merge the documentation checkpoint if accurate.
-2. Before closing a draft, decide whether its runnable probes need a durable archive
-   or a small selective transfer to a future implementation PR. Pinned source/report
-   references below retain discoverability; they are not a claim that the experiments
-   have been integrated into the supported test suite.
-3. Close superseded research drafts as completed research, pointing to this checkpoint
-   and identifying anything deliberately retained. Don't merge whole exploratory
-   branches simply to save their conclusions or use close-as-fixed for absent code.
-4. Keep any still-needed proof open only for a named remaining question. Don't treat
-   its existence as an implementation backlog commitment.
-
-No branch-deletion recommendation is made before required artifacts are preserved.
-Existing issue assignments/claims must be checked before any future implementation.
+No branches or associated issues were deleted/closed. Existing issue assignments and
+claims must be checked before any future implementation.
 
 ## Defaults and nullability
 
@@ -53,9 +50,9 @@ required-input trade-off. It is relevant to the next declaration comparison.
 to keep the current API unchanged, and any treatment of independent defaults as
 inherently invalid. Prefixes and selectors are comparison evidence, not selected APIs.
 
-**Recommendation:** retire as research after extracting the review criteria and any
-needed runnable omission controls; don't merge all candidate declarations. Exact
-replacement defaults syntax is still open.
+**Disposition:** closed as consolidated research after preserving all changed files,
+including the review criteria and runnable omission controls. Candidate declarations
+were not merged. Exact replacement defaults syntax is still open.
 
 ### [#583 — Research nullability and input/read contracts](https://github.com/crpier/snekql/pull/583)
 
@@ -72,8 +69,8 @@ Django-inspired defaults or required=True as the final interface. The 18 reporte
 paired tests also exposed accepted mismatches and over-rejection of a valid schema-
 only NULL fallback; the evidence capsule preserves that distinction.
 
-**Recommendation:** retire after preserving the scenario matrix; use it alongside
-#539 for a focused future declaration decision, not as an implementation to merge.
+**Disposition:** closed after archiving its complete changed-file set. Use the scenario
+matrix alongside #539 for a future declaration decision, not as a selected implementation.
 
 ## Purpose and existing behavior
 
@@ -98,8 +95,8 @@ It explains why a final strict validator alone cannot undo earlier implicit deco
 **Limit:** source assessment, not a new runtime implementation or a permanent inventory
 of current code. Recheck changed paths before implementation.
 
-**Recommendation:** retire as an assessment after checkpoint acceptance; retain its
-path-level audit as historical implementation planning evidence.
+**Disposition:** closed as a consolidated assessment; its complete report is archived
+as historical implementation-planning evidence.
 
 ## Pydantic policy and unchecked results
 
@@ -116,8 +113,8 @@ between lax validation and bypass. This PR itself did not execute local probes.
 **Later decision:** three modes, not four. Declared mode respects explicit strict
 annotations; no forced-lax public mode was selected. Whole-operation scope first.
 
-**Recommendation:** retire after preserving the policy findings; don't merge an older
-menu of unresolved options as if still undecided.
+**Disposition:** closed after preserving its full report. Its older menu of unresolved
+options does not override later mode decisions.
 
 ### [#595 — Prove zero-wrapper Unparsed values through direct TypeAdapter validation](https://github.com/crpier/snekql/pull/595)
 
@@ -133,9 +130,9 @@ their erased type argument or the complete original contract at runtime.
 generic Unparsed[T]→T parser or safe model revalidation proof. The later choice is a
 marker per complete result, preserving list/cardinality structure.
 
-**Recommendation:** the [proof and harness](design-evidence/README.md) are now archived
-in this documentation branch. After their preservation/checkpoint is accepted, retire
-the draft as evidence rather than merge an incomplete raw-results feature.
+**Disposition:** closed after archiving the full changed-file set. The
+[proof and harness](design-evidence/README.md) remain convenient evidence entry points;
+no incomplete raw-results feature was merged.
 
 ## Attribute and construction/read experiments
 
@@ -152,8 +149,8 @@ correct SQL comparison/storage representation.
 **Limit:** synthetic inputs are not newly executed backend queries. Helper contracts in
 the report are not new public types or a selected automatic-decoding policy.
 
-**Recommendation:** retire after preserving the behavior matrix; use selected controls
-when implementing the direct-driver boundary.
+**Disposition:** closed after archiving the full report, fixtures and controls. Reuse
+appropriate controls when implementing the direct-driver boundary.
 
 ### [#598 — Compare construction and SQL read contracts without duplicate logical rules](https://github.com/crpier/snekql/pull/598)
 
@@ -169,8 +166,8 @@ into nested JSON validation.
 explicit driver→Pydantic decision forbids inserting a competing hidden pre-decoder.
 The construction/JSON boundary still needs a concrete design.
 
-**Recommendation:** preserve these counterexamples, then retire as comparison research;
-don't merge the report's favored adapter direction as a selected interface.
+**Disposition:** closed as comparison research after archiving all changed files and
+counterexamples. The favored adapter direction was not merged as a selected interface.
 
 ## Precision and static operation restrictions
 
@@ -194,8 +191,9 @@ runtime layer. Integer-minor-unit versus text recipes were challenged as an unsa
 single-type experience. The report does not select SQLite's decimal mapping. Existing
 encode checks are compatibility facts, not a requirement to keep that architecture.
 
-**Recommendation:** preserve existing-type and serializer counterexamples, retire the
-experimental checking hooks; don't merge them as production safeguards.
+**Disposition:** closed after archiving the complete experiment, including existing-type
+and serializer counterexamples. Its rejected checking hooks remain historical text,
+not production safeguards.
 
 ### [#602 — Research static rejection of ZonedDatetime ordering with ty (#601)](https://github.com/crpier/snekql/pull/602)
 
@@ -216,10 +214,9 @@ column/aggregate/derived-query seams remain real limits.
 **Not proven:** general type-plus-storage capabilities, arbitrary Annotated markers,
 complete static enforcement or permission to remove all runtime checks immediately.
 
-**Recommendation:** the [ty replay fixtures](design-evidence/README.md) and known-hole
-controls are now archived in this documentation branch. After preservation is accepted,
-retire the draft as completed research or keep it only for a named question. Don't
-expand or merge it as a production fix merely to retain it.
+**Disposition:** closed after archiving the complete changed-file set. The
+[ty replay fixtures](design-evidence/README.md) and known-hole controls remain accessible;
+experimental overlay patches were not applied to production.
 
 ## Separate work: don't absorb or retire it here
 
@@ -231,9 +228,9 @@ assignment, authority or implementation recommendation for it.
 ## What is preserved without merging the drafts
 
 The checkpoint records the actual directions and rejected approaches, the evidence
-capsules retain concrete examples and #595/#602 fixtures, and commit-pinned reports
-retain provenance. This avoids treating draft branches as competing specifications.
-It does not pretend that every useful executable fixture has already been transferred
-into main. Decide
-which fixtures to archive before any branch cleanup; issue/PR retirement remains a
-separate authorized action after documentation review.
+capsules retain concrete examples, and the full per-PR archive preserves all changed
+files and pre-closure metadata. Commit-pinned reports retain external provenance too.
+This avoids treating retired draft branches as competing specifications. Preservation
+is part of #604, not yet merged into main; archived sources are not supported runtime
+modules or automatically maintained tests. Future branch/issue cleanup requires its
+own authorization.
