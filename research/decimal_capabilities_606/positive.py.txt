@@ -1,0 +1,93 @@
+from decimal import Decimal
+from typing import TYPE_CHECKING, ClassVar, Literal, assert_type
+from pydantic import BaseModel
+from snekql import mariadb, sqlite
+from snekql.expressions import Aggregate, Predicate
+
+if TYPE_CHECKING:
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
+        amount: mariadb.Col[Decimal, Literal["numeric"]] = mariadb.Decimal(12, 2)
+        text: mariadb.Col[mariadb.CanonicalDecimal, Literal["text"]] = mariadb.Text()
+
+    class Text[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Text[sqlite.Row]]]
+        amount: sqlite.Col[sqlite.CanonicalDecimal, Literal["text"]] = sqlite.Text()
+
+    class Pair(BaseModel):
+        native: Decimal
+        text: Decimal
+
+    class Single(BaseModel):
+        amount: Decimal
+
+    class Role:
+        pass
+
+    a = Native.amount.label("native")
+    b = Native.text.label("text")
+    amounts = mariadb.select(Native).project(Pair, native=a, text=b).cte(Role, name="amounts")
+    native = amounts.column(a)
+    text = amounts.column(b)
+    token = Text.amount.label("amount")
+    sqlite_amounts = sqlite.select(Text).project(Single, amount=token).cte(Role, name="sqlite_amounts")
+    sqlite_text = sqlite_amounts.column(token)
+
+    assert_type(Native(amount=Decimal("1"), text=Decimal("2")).amount, Decimal)
+    assert_type(Text(amount=Decimal("1")).amount, Decimal)
+    assert_type(Native.amount.gt(Decimal("1")), Predicate[Native[mariadb.Pending], Literal["mariadb"]])
+    assert_type(Native.amount.sum(), Aggregate[Native[mariadb.Pending], Decimal | None, Decimal, Literal["mariadb"]])
+    assert_type(Native.amount.avg(), Aggregate[Native[mariadb.Pending], float | None, float, Literal["mariadb"]])
+    assert_type(Native.text.count(), Aggregate[Native[mariadb.Pending], int, int, Literal["mariadb"]])
+
+    Native.amount.eq(Decimal("1"))
+    Native.amount.in_(Decimal("1"), Decimal("2"))
+    Native.amount.gt(Decimal("1"))
+    Native.amount.gte(Decimal("1"))
+    Native.amount.lt(Decimal("1"))
+    Native.amount.lte(Decimal("1"))
+    Native.amount.between(Decimal("1"), Decimal("2"))
+    Native.amount.asc()
+    Native.amount.desc()
+    Native.amount.min()
+    Native.amount.max()
+    Native.amount.sum()
+    Native.amount.avg()
+    Native.text.eq(Decimal("1"))
+    Native.text.ne(Decimal("1"))
+    Native.text.in_(Decimal("1"), Decimal("2"))
+    Native.text.not_in(Decimal("1"))
+    Native.text.count()
+    Text.amount.eq(Decimal("1"))
+    Text.amount.in_(Decimal("1"))
+    Text.amount.count()
+    native.gt(Decimal("1"))
+    native.gte(Decimal("1"))
+    native.lt(Decimal("1"))
+    native.lte(Decimal("1"))
+    native.between(Decimal("1"), Decimal("2"))
+    native.asc()
+    native.desc()
+    native.min()
+    native.max()
+    native.sum()
+    native.avg()
+    text.eq(Decimal("1"))
+    text.in_(Decimal("1"), Decimal("2"))
+    text.count()
+    sqlite_text.eq(Decimal("1"))
+    sqlite_text.in_(Decimal("1"))
+    sqlite_text.count()
+
+    async def read_native(transaction: mariadb.Transaction) -> None:
+        assert_type(await transaction.fetch_all(mariadb.select(Native.amount)), list[Decimal])
+        assert_type(await transaction.fetch_all(mariadb.select(Native.text)), list[Decimal])
+        assert_type(await transaction.fetch_all(mariadb.select(amounts)), list[Pair])
+        assert_type(await transaction.fetch_all(mariadb.select(native)), list[Decimal])
+        assert_type(await transaction.fetch_all(mariadb.select(text)), list[Decimal])
+        assert_type(await transaction.fetch_all(mariadb.select(native.sum())), list[Decimal | None])
+
+    async def read_text(transaction: sqlite.Transaction) -> None:
+        assert_type(await transaction.fetch_all(sqlite.select(Text.amount)), list[Decimal])
+        assert_type(await transaction.fetch_all(sqlite.select(sqlite_amounts)), list[Single])
+        assert_type(await transaction.fetch_all(sqlite.select(sqlite_text)), list[Decimal])

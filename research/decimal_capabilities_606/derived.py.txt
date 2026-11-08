@@ -1,0 +1,41 @@
+from decimal import Decimal
+from typing import TYPE_CHECKING, ClassVar, Literal
+from pydantic import BaseModel
+from snekql import mariadb, sqlite
+
+if TYPE_CHECKING:
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
+        amount: mariadb.Col[Decimal, Literal["numeric"]] = mariadb.Decimal(12, 2)
+        text: mariadb.Col[mariadb.CanonicalDecimal, Literal["text"]] = mariadb.Text()
+
+    class Text[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Text[sqlite.Row]]]
+        amount: sqlite.Col[sqlite.CanonicalDecimal, Literal["text"]] = sqlite.Text()
+
+    class Pair(BaseModel):
+        native: Decimal
+        text: Decimal
+
+    class Single(BaseModel):
+        amount: Decimal
+
+    class Role:
+        pass
+
+    a = Native.amount.label("native")
+    b = Native.text.label("text")
+    amounts = mariadb.select(Native).project(Pair, native=a, text=b).cte(Role, name="amounts")
+    native = amounts.column(a)
+    text = amounts.column(b)
+    native.gt(Decimal("1"))
+    native.sum()
+    text.eq(Decimal("1"))
+    text.in_(Decimal("1"), Decimal("2"))
+    text.gt(Decimal("1"))  # error: invalid-argument-type
+
+    token = Text.amount.label("amount")
+    sqlite_amounts = sqlite.select(Text).project(Single, amount=token).cte(Role, name="sqlite_amounts")
+    sqlite_text = sqlite_amounts.column(token)
+    sqlite_text.eq(Decimal("1"))
+    sqlite_text.gt(Decimal("1"))  # error: invalid-argument-type
