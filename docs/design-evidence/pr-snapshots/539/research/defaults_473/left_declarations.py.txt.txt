@@ -1,0 +1,80 @@
+"""Static signatures only; none of these declarations is executed."""
+
+from collections.abc import Callable
+from dataclasses import field
+from typing import Annotated, Any, ClassVar, Literal, assert_type, dataclass_transform, overload
+
+from pydantic import Field
+from snekql import __BACKEND__ as database
+from __META_MODULE__ import ModelMeta as BaseMeta
+from snekql.model import Table
+from snekql.storage import Attr, _UnboundOwner
+
+
+class Default[T]:
+    def __init__(self, value: T) -> None:
+        raise NotImplementedError
+
+
+class Factory[T]:
+    def __init__(self, factory: Callable[[], T]) -> None:
+        raise NotImplementedError
+
+
+type SqlColumn[Write, Read] = Attr[
+    Table[database.Pending], Table[database.Row], _UnboundOwner,
+    Write, Read, Write, Any, Literal["__BACKEND__"]
+]
+
+
+@overload
+def Integer[Write, Read](
+    *, server_default: Read, primary_key: bool = False, auto_increment: bool = False
+) -> SqlColumn[Write, Read]: ...
+
+
+@overload
+def Integer[Write, Read](
+    *, primary_key: bool = False, auto_increment: bool = False
+) -> SqlColumn[Write, Read]: ...
+
+
+def Integer(
+    *, server_default: object = ..., primary_key: bool = False, auto_increment: bool = False
+) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def Text[Write](
+    *, server_default: type[database.CurrentTimestamp]
+) -> SqlColumn[Write, database.UtcDatetime]: ...
+
+
+@overload
+def Text[Write, Read](*, server_default: None) -> SqlColumn[Write, Read | None]: ...
+
+
+@overload
+def Text[Write, Read](*, server_default: Read) -> SqlColumn[Write, Read]: ...
+
+
+@overload
+def Text[Write, Read]() -> SqlColumn[Write, Read]: ...
+
+
+def Text(*, server_default: object = ...) -> Any:
+    raise NotImplementedError
+
+
+@dataclass_transform(
+    field_specifiers=(Integer, Text, field, Field),
+    kw_only_default=True,
+    frozen_default=True,
+)
+class LeftMeta(BaseMeta):
+    pass
+
+
+class LeftModel[S](database.Model[S], metaclass=LeftMeta):
+    pass

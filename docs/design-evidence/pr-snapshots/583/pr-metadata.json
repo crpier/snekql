@@ -1,0 +1,49 @@
+{
+  "baseRefOid": "65c553f3773935ee36c733cccb27edab421e98e3",
+  "body": "## Purpose\n\nRefs #473; follows the defaults research in #539. This is the **first nullability/construction research pass**, not an accepted interface, production implementation, migration authorization or issue closure.\n\nStarted from current `origin/main` at `46b2342` in a separate branch. The previous defaults research is preserved. No production/dependency changes.\n\n## Maintainer direction\n\nThe standalone callable-intersection `required=True` exception is not worthwhile if the rest of the interface stays unchanged. Investigate whether a coherent overall nullability/construction design changes that judgment, without designing nullability merely to preserve the workaround. Separate Python/SQL defaults still lead for brownfield independence; no final spelling or compatibility policy is selected.\n\n## Findings\n\n- Constructor keyword presence, input None acceptance, successful Row None acceptance and physical SQL NULL permission are distinct. A required nullable input and an omittable non-null input are both valid. One boolean cannot represent all four.\n- Current nullability coupling extends beyond schema inference: validated None paths use the same physical nullable flag and bypass the logical adapter. Merely relaxing the declaration guard would leak None into a non-null Row.\n- **Independent schema, one application domain:** a nullable SQL column with non-null application values can have truthful non-null Rows if NULL materialization raises. Structural schema verification can match while incompatible data fails decoding, just as constrained logical domains need not decode all physical TEXT values.\n- **Independent schema, separate input/read domains:** rejecting None on construction while accepting externally stored NULL on reads needs a different contract. A narrow native `Col[Input, Read=Input]` / `GenCol[...]` probe represents this through existing Attr coordinates, real backend Model bases, typed producers and independent consumers. This notation is research-only, not selected public arity.\n- These policies can coexist per field. Neither makes requiredness and nullability synonymous, nor automatically rescues the rejected required-input exception. The prototype retains explicit pending defaults; shorter generated omission is not claimed.\n\n## Artifacts\n\n- `research/nullability_473/README.md`: dated source audit, small comparison, native evidence, gaps, runtime/compatibility obligations and first-pass recommendation.\n- `research/nullability_473/scenarios.md`: ten scenario-first comparisons covering defaults, strict subsets versus broader reads, input None against NOT NULL, generation, joins, FKs, keys, codecs and backend/catalog distinctions. Conceptual examples are distinguished from checked subsets.\n- `research/nullability_473/declarations.py.txt`: narrow, unimplemented native signatures; never executed.\n- `tests/research/test_nullability_declarations.py`: nine scenarios on both backends, 18 exact positive/challenge pairs.\n- `tests/research/typing_support.py`: standalone exact checker runner copied from the defaults research, without importing historical experiments.\n\n## Evidence and limitations\n\nInitial single-domain tracers failed nullable-Row assertions. Changing aliases alone also failed current generated-default producer assignments. Dedicated separate-domain producer signatures passed. A later tracer failed when nullable schema forced nullable application reads; independent read coordinates passed instead. Required SQL fallbacks, Python defaults/factories, SQL NULL generation, explicit overrides, frozen fields and Pending-only construction remain distinct.\n\nImported factories/models preserve scalar/model query types, raw-object widening, RETURNING and whole-model LEFT JOIN optionality. Queries, constructors, defaults, factories, codecs and model modules are **never executed**; static consumer checks do not prove runtime implementation conformance.\n\nAccepted gaps are explicit: current schema/type mismatches pass ty but runtime declaration guards reject them; required/no-Python-default prototype calls can hide SQL/descriptor-return incompatibility. The narrow prototype also **over-rejects a valid schema-only SQL NULL fallback with a non-null Python default** under the strict-subset policy. That is not inherent incoherence or an impossibility result. General constructor, clock, FK, codec, identity and inheritance acceptance is unproven.\n\nThe report distinguishes schema-only defaults for other writers from this application's own generation: a strict application subset may legitimately describe SQL DEFAULT NULL while rejecting NULL rows written by others. Do not silently equate Python None, SQL NULL, omitted input and pending generation.\n\n## Local validation\n\nOn CPython 3.15.0 and ty 0.0.84:\n\n```sh\nuv run snektest tests/research\nuv run ty check\nuv run ruff check .\nuv run ruff format --check .\ngit diff --check\ngit diff --cached --check\n```\n\n**18 paired static tests passed in 2.68 seconds**, with independently clean controls and exact diagnostic lines/rules/counts. Typing/style/diff checks passed. This branch starts from main; the previous defaults branch's historical 224 tests are not transplanted or claimed as a new combined run.\n\nNo SQLite/MariaDB runtime suites, model/template execution, generated constructors, dependency changes, automatic schema changes, merges or issue closure. GitHub Actions are disabled; validation is local.\n\n## Next design question\n\nShould strict input plus nullable successful reads have first-class support, beyond independently declaring a nullable schema and failing materialization for values outside a strict application subset? Both are coherent. Decide the value of that distinction before choosing annotation vocabulary or reconsidering uniform constructor-required policy.\n",
+  "files": [
+    {
+      "path": "research/nullability_473/README.md",
+      "additions": 313,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/nullability_473/declarations.py.txt",
+      "additions": 46,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/nullability_473/scenarios.md",
+      "additions": 217,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_nullability_declarations.py",
+      "additions": 379,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/typing_support.py",
+      "additions": 67,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/473-nullability-construction",
+  "headRefOid": "84e79599283a844b5515f670327ab838539220ec",
+  "isDraft": true,
+  "number": 583,
+  "state": "OPEN",
+  "title": "Research nullability and input/read contracts (#473)",
+  "url": "https://github.com/crpier/snekql/pull/583"
+}

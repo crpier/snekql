@@ -1,0 +1,184 @@
+"""Native signatures only, deliberately unimplemented and never executed."""
+
+from collections.abc import Callable
+from typing import Any, Literal, dataclass_transform, overload
+
+from snekql import __BACKEND__ as database
+from __META_MODULE__ import ModelMeta as BaseMeta
+from snekql.model import Table
+from snekql.storage import Attr, _UnboundOwner
+
+
+type RequiredColumn[Write, Read] = Attr[
+    Table[database.Pending], Table[database.Row], _UnboundOwner,
+    Write, Read, Write, Any, Literal["__BACKEND__"]
+]
+
+
+@overload
+def TwinInteger[Write, Read]() -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def TwinInteger[Write, Read](*, server_default: Read) -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def TwinInteger(*, primary_key: Literal[True], auto_increment: Literal[True]) -> database.GenCol[int]: ...
+
+
+@overload
+def TwinInteger(*, default: type[database.PENDING_GENERATION], primary_key: Literal[True], auto_increment: Literal[True]) -> database.GenCol[int]: ...
+
+
+@overload
+def TwinInteger[Write, Read](*, default: Write, server_default: Read) -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def TwinInteger[T](*, default: T) -> database.Col[T]: ...
+
+
+def TwinInteger(*, default: object = ..., server_default: object = ..., primary_key: bool = False, auto_increment: bool = False) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def TwinText[Write, Read]() -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def TwinText[Write](*, server_default: type[database.CurrentTimestamp]) -> RequiredColumn[Write, database.UtcDatetime]: ...
+
+
+@overload
+def TwinText[Write, Read](*, server_default: Read) -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def TwinText[Write, Null: None](*, default: Write, server_default: type[database.CurrentTimestamp]) -> RequiredColumn[Write, database.UtcDatetime | Null]: ...
+
+
+@overload
+def TwinText[Write, Read](*, default: Write, server_default: None) -> RequiredColumn[Write, Read | None]: ...
+
+
+@overload
+def TwinText[Write, Read](*, default: Write, server_default: Read) -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def TwinText[T](*, default: T) -> database.Col[T]: ...
+
+
+@overload
+def TwinText[T](*, default_factory: Callable[[], T], server_default: T = ...) -> database.Col[T]: ...
+
+
+def TwinText(*, default: object = ..., server_default: object = ..., default_factory: object = ...) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def ChoiceInteger[Write, Read](*, default_on: Literal["python"] = "python") -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def ChoiceInteger(*, default: type[database.PENDING_GENERATION], primary_key: Literal[True], auto_increment: Literal[True], default_on: Literal["python"] = "python") -> database.GenCol[int]: ...
+
+
+@overload
+def ChoiceInteger[T](*, default: T, default_on: Literal["server"]) -> database.GenCol[T]: ...
+
+
+@overload
+def ChoiceInteger[T](*, default: T, default_on: Literal["python"] = "python") -> database.Col[T]: ...
+
+
+def ChoiceInteger(*, default: object = ..., default_on: str = "python", primary_key: bool = False, auto_increment: bool = False) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def ChoiceText[Write, Read](*, default_on: Literal["python"] = "python") -> RequiredColumn[Write, Read]: ...
+
+
+@overload
+def ChoiceText[Null: None](*, default: type[database.CurrentTimestamp], default_on: Literal["server"]) -> database.GenCol[database.UtcDatetime | Null]: ...
+
+
+@overload
+def ChoiceText[T](*, default: None, default_on: Literal["server"]) -> database.GenCol[T | None]: ...
+
+
+@overload
+def ChoiceText[T](*, default: T, default_on: Literal["server"]) -> database.GenCol[T]: ...
+
+
+@overload
+def ChoiceText[T](*, default: T, default_on: Literal["python"] = "python") -> database.Col[T]: ...
+
+
+@overload
+def ChoiceText[T](*, default_factory: Callable[[], T], default_on: Literal["python"] = "python") -> database.Col[T]: ...
+
+
+def ChoiceText(*, default: object = ..., default_factory: object = ..., default_on: str = "python") -> Any:
+    raise NotImplementedError
+
+
+@overload
+def ServerInteger[T](server_default: T) -> database.GenCol[T]: ...
+
+
+@overload
+def ServerInteger(*, primary_key: Literal[True], auto_increment: Literal[True]) -> database.GenCol[int]: ...
+
+
+def ServerInteger(server_default: object = ..., *, primary_key: bool = False, auto_increment: bool = False) -> Any:
+    raise NotImplementedError
+
+
+@overload
+def ServerText[Null: None](server_default: type[database.CurrentTimestamp]) -> database.GenCol[database.UtcDatetime | Null]: ...
+
+
+@overload
+def ServerText[T](server_default: None) -> database.GenCol[T | None]: ...
+
+
+@overload
+def ServerText[T](server_default: T) -> database.GenCol[T]: ...
+
+
+def ServerText(server_default: object) -> Any:
+    raise NotImplementedError
+
+
+def PythonInteger[T](value: T) -> database.Col[T]:
+    raise NotImplementedError
+
+
+@overload
+def PythonText[T](value: T) -> database.Col[T]: ...
+
+
+@overload
+def PythonText[T](*, factory: Callable[[], T]) -> database.Col[T]: ...
+
+
+def PythonText(value: object = ..., *, factory: object = ...) -> Any:
+    raise NotImplementedError
+
+
+@dataclass_transform(
+    field_specifiers=(ChoiceInteger, ChoiceText, TwinInteger, TwinText, database.Integer, database.Text),
+    kw_only_default=True,
+    frozen_default=True,
+)
+class ReviewMeta(BaseMeta):
+    pass
+
+
+class ReviewModel[S](database.Model[S], metaclass=ReviewMeta):
+    pass

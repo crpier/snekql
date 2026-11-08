@@ -1,0 +1,115 @@
+{
+  "baseRefOid": "18b16c2c80c93f9ce5d6f841c4fac0055950e125",
+  "body": "## Result\n\nResearch for #601: two independent subagents demonstrated call-site static rejection of ZonedDatetime ordering with ty 0.0.84 against temporary copies of the real package. No production source or dependencies changed.\n\n- ty Intersection/Not plus the existing column value witness preserves ordinary declarations and selected exact field/query result types without assuming Python comparability implies database order safety.\n- A conventional restricted-self/Python-ordering protocol independently proves the checker/descriptor bridge, but is not a sound general storage capability policy.\n- Parent reproduced the baseline (13 forbidden ordering calls accepted), the restricted acceptance (all 20 expected negative sites diagnosed, positive examples pass), and replayed the retained fixtures from a fresh temp directory.\n\n## Scope limits\n\nThis is a narrow feasibility proof, not complete enforcement. Experimental ty-specific API, generic-helper constraints and runtime annotation introspection require further assessment. Some column-comparison/aggregate/derived-query paths remain open, explicitly demonstrated by fixtures. Arbitrary Annotated storage capabilities are not inferred. No backend suites or runtime API implementation.\n\nReport and replay instructions: `research/static_ordering_601/README.md`.\n\n## Validation\n\n- Replayed positive/negative fixture acceptance: passed as described above.\n- `uv run ty check`: passed.\n- `uv run ruff check .`: passed.\n- `uv run ruff format --check .`: passed.\n\nOriginal experimental `.patch` artifacts retain unified-diff blank context lines; these generate whitespace-check notices when treated as newly added text. They are not production patches to apply as-is. Executable probe builder edits only a fresh temporary copy.\n",
+  "files": [
+    {
+      "path": "research/static_ordering_601/README.md",
+      "additions": 105,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/conventional-findings.md",
+      "additions": 73,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/conventional/baseline.py.txt",
+      "additions": 55,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/conventional/positive.py.txt",
+      "additions": 60,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/conventional/restricted.py.txt",
+      "additions": 55,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/conventional/restriction.patch",
+      "additions": 188,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/conventional/wrong-input.py.txt",
+      "additions": 39,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty-findings.md",
+      "additions": 88,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/accept.py.txt",
+      "additions": 23,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/expressions.patch",
+      "additions": 58,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/helpers_negative.py.txt",
+      "additions": 27,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/helpers_positive.py.txt",
+      "additions": 38,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/make_overlay.py.txt",
+      "additions": 38,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/negative.py.txt",
+      "additions": 26,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/positive.py.txt",
+      "additions": 47,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/storage.patch",
+      "additions": 45,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/static_ordering_601/ty_probe/unrestricted_seams.py.txt",
+      "additions": 11,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/601-static-ordering",
+  "headRefOid": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+  "isDraft": true,
+  "number": 602,
+  "state": "OPEN",
+  "title": "Research static rejection of ZonedDatetime ordering with ty (#601)",
+  "url": "https://github.com/crpier/snekql/pull/602"
+}

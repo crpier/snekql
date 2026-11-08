@@ -1,0 +1,632 @@
+[
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/__init__.py",
+    "archive": "539/research/__init__.py.txt",
+    "sha256": "e46ed8a62e4a782717ffa9d969276b20f22d311df6edf7c02d7bef1d43cff9ce"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/README.md",
+    "archive": "539/research/defaults_473/README.md.txt",
+    "sha256": "02442baa0ab076d1b1c446d4a0485834dc038d66435a7ba7f6a68aa742b7fa0d"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/__init__.py",
+    "archive": "539/research/defaults_473/__init__.py.txt",
+    "sha256": "64b961d40b06190f5677ff9abeabea647e1f99dbd6c3b966fb3874f22ca9f289"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/annotation_signatures.py",
+    "archive": "539/research/defaults_473/annotation_signatures.py.txt",
+    "sha256": "06e2c93eb3b32880981f4f2042e6b3d8faa72b269d0180a6560156b54e356b2b"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/callable-intersections.md",
+    "archive": "539/research/defaults_473/callable-intersections.md.txt",
+    "sha256": "3072a27c5036446809f64af5a00dc3e9a0374f2bc1eb183e07cb3d08587cefc8"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/consumer.py.txt",
+    "archive": "539/research/defaults_473/consumer.py.txt.txt",
+    "sha256": "be3a546501b6e708374e6b0cd04ab9d98adb4502954230733b48580e2161fbd8"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/declarations.py.txt",
+    "archive": "539/research/defaults_473/declarations.py.txt.txt",
+    "sha256": "02080c61b1eb9cc6ebce3f466ee6db8f65f9d570db17bdbf202666b54f7ad0db"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/examples.py.txt",
+    "archive": "539/research/defaults_473/examples.py.txt.txt",
+    "sha256": "7a8ba8008faa94ef630b25d4e2043cd5f724e64b3510d4fc2d519cb2ed5d101d"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/excluded.py.txt",
+    "archive": "539/research/defaults_473/excluded.py.txt.txt",
+    "sha256": "c5155b0aaf042fbcc21766999b9a07d194beb4d673ed1392508fb57f94fb3041"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/explicit-policies.md",
+    "archive": "539/research/defaults_473/explicit-policies.md.txt",
+    "sha256": "abd918e1bae9651c3974b089fa68fe6d035fe5a2bcb1688f0d81f4ee3363b251"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/flat-declarations.md",
+    "archive": "539/research/defaults_473/flat-declarations.md.txt",
+    "sha256": "ef9b708a94a044c569b947c35178b0804d8a37193066eaac5895a06f58d8b40a"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/flat_declarations.py.txt",
+    "archive": "539/research/defaults_473/flat_declarations.py.txt.txt",
+    "sha256": "0458cf39bbb855d375899b5a515962c8b54fa9053b1eb3512cdef9463c5e1f62"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/fluent_blocked.py.txt",
+    "archive": "539/research/defaults_473/fluent_blocked.py.txt.txt",
+    "sha256": "faa884f417f37bf7a6cd22f005da891a89d70ff593c334c4132a114686d9764a"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/implicit-server-omission.md",
+    "archive": "539/research/defaults_473/implicit-server-omission.md.txt",
+    "sha256": "307feefc72dcc9f5a467f448ddb457014f77b33a6fc05c84e6183bdbb23e7c9c"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/intersection_declarations.py.txt",
+    "archive": "539/research/defaults_473/intersection_declarations.py.txt.txt",
+    "sha256": "6ff40dad7be96690816ac11948863b3d0da683662398a15c6db38503f2d5204b"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/left-python-right-sql.md",
+    "archive": "539/research/defaults_473/left-python-right-sql.md.txt",
+    "sha256": "8861d26aee2b840a6cd31176d7e64fb7cef7d46847a7ccebe665789ced181678"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/left_basic.py.txt",
+    "archive": "539/research/defaults_473/left_basic.py.txt.txt",
+    "sha256": "f42c0e1e3c537e57d89c41c8bc815b772288c4e5853efe08a2acd6c7420c76b4"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/left_declarations.py.txt",
+    "archive": "539/research/defaults_473/left_declarations.py.txt.txt",
+    "sha256": "69d4e573bfbf7b380494c5d9d4998244c836401e20b8d82afdb1207d42397c9e"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/left_factories.py.txt",
+    "archive": "539/research/defaults_473/left_factories.py.txt.txt",
+    "sha256": "bbc003d8c8745144c949e64bc3ffde88eeb1cb8b1aa63388685b2290252e57b6"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/left_generated.py.txt",
+    "archive": "539/research/defaults_473/left_generated.py.txt.txt",
+    "sha256": "6e93750eae37d9ad0ef9c795ad95486dfbee63bb8c85437a38c6e98679ccbf51"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/left_invalid_defaults.py.txt",
+    "archive": "539/research/defaults_473/left_invalid_defaults.py.txt.txt",
+    "sha256": "ea61a7b4bb684128ea63d3aebfa1ae35b7342af200d44459f877aa5b2b44ecc1"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/left_sql_independence.py.txt",
+    "archive": "539/research/defaults_473/left_sql_independence.py.txt.txt",
+    "sha256": "9e92b5ff4b3524190127ee3fa7993eb66d8680136aa20fd1328a9440e8c11de9"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/native-omission-hooks.md",
+    "archive": "539/research/defaults_473/native-omission-hooks.md.txt",
+    "sha256": "c480a9ac36548bf4c5d84090ae30f937cf0294d3d24ac71a9daf102a97c8cd78"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/nullability-handoff.md",
+    "archive": "539/research/defaults_473/nullability-handoff.md.txt",
+    "sha256": "5ba1cc210229a7ad87a12b35328efccd1deb7d9eb3652dde3eb37a564876d21d"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/policy_basic.py.txt",
+    "archive": "539/research/defaults_473/policy_basic.py.txt.txt",
+    "sha256": "108ba5cd49f3112adf69918e7314b648cce6710546c95e1ae42b4fc33a953b10"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/policy_declarations.py.txt",
+    "archive": "539/research/defaults_473/policy_declarations.py.txt.txt",
+    "sha256": "12c11394b46891f0bc595249115ae01c90f13b9fbbf184f658260721b1671950"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/policy_factories.py.txt",
+    "archive": "539/research/defaults_473/policy_factories.py.txt.txt",
+    "sha256": "d05542e2d741bc83e75278636398d3fb5735669680fdaa9707e4f770902330a3"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/policy_required.py.txt",
+    "archive": "539/research/defaults_473/policy_required.py.txt.txt",
+    "sha256": "87668e42969092bfdea42093c35745cef46f4c8d69d61f2e62a01eb6eb8fc468"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/policy_server.py.txt",
+    "archive": "539/research/defaults_473/policy_server.py.txt.txt",
+    "sha256": "8f85a86448cf6155a4c82c006665b909c9140f979d91c50bc50569a6f82a940d"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/review-results.md",
+    "archive": "539/research/defaults_473/review-results.md.txt",
+    "sha256": "56f8505aae84a1924bdd22f6ae9bcb9ad856c2e38c1374e5f497d48c6943582d"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/review-sheet.md",
+    "archive": "539/research/defaults_473/review-sheet.md.txt",
+    "sha256": "93bc190797736164c13f5a051d423665e662eef27d91d637ca08ae2fe6e7908d"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/review_baseline.py.txt",
+    "archive": "539/research/defaults_473/review_baseline.py.txt.txt",
+    "sha256": "f1193a35257ee9c70dd854b017e1d830ba4c41457de55fc779fa1951d551c7ad"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/review_declarations.py.txt",
+    "archive": "539/research/defaults_473/review_declarations.py.txt.txt",
+    "sha256": "9ad22a36de9696144086c0c188a0fb575a53a3491cfbd2360c8d3b82976d10ab"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/review_misuse.py.txt",
+    "archive": "539/research/defaults_473/review_misuse.py.txt.txt",
+    "sha256": "c289c20bddddd66fe2c6f723fb3cc356387dcab5f9ecc9b8340516c3b441ab35"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/review_split_contrasts.py.txt",
+    "archive": "539/research/defaults_473/review_split_contrasts.py.txt.txt",
+    "sha256": "71d1e86e085e1f817179cda0cbf263e3607b6cf49dfd191a83d9a0987cbc28a7"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/scenarios.py",
+    "archive": "539/research/defaults_473/scenarios.py.txt",
+    "sha256": "05e687e8393a8f5311ff3bf72de8b33f327f7d23a7fc4a8da261b9d2b3fe0bbe"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/selector_modes.py.txt",
+    "archive": "539/research/defaults_473/selector_modes.py.txt.txt",
+    "sha256": "cc09617ebfc005e731729c5253dc2bc5f43882264ac92f4de28b8facad84a7c5"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "research/defaults_473/shortlist-comparison.md",
+    "archive": "539/research/defaults_473/shortlist-comparison.md.txt",
+    "sha256": "50c322c8cfae47445ca1f7b4f9668a01f6977975c19135a0d2bf9a0f92bc3435"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/__init__.py",
+    "archive": "539/tests/research/__init__.py.txt",
+    "sha256": "eb136b57e10987c4c4992b0112954e7e274a98b23d806b88dfa00f83a1509333"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/test_default_declarations.py",
+    "archive": "539/tests/research/test_default_declarations.py.txt",
+    "sha256": "b6cd6dce4dbd0767818e73c2ee252072c7524dec6869a87ba00835598b559920"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/test_defaults_review.py",
+    "archive": "539/tests/research/test_defaults_review.py.txt",
+    "sha256": "78950dd44b71c16c51cf4fb83bf91c261b7097d0a6647063b0a9f298c1bfa424"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/test_flat_defaults.py",
+    "archive": "539/tests/research/test_flat_defaults.py.txt",
+    "sha256": "349ab1c26580f2b3fdc743cd365c2a7ac5d07a6f9984cc40afe753724fe50798"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/test_left_defaults.py",
+    "archive": "539/tests/research/test_left_defaults.py.txt",
+    "sha256": "cdaac40b237d93d438664c91be1164fd91eb9cc3fa1e7f116fa002a400a7b8e0"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/test_policy_defaults.py",
+    "archive": "539/tests/research/test_policy_defaults.py.txt",
+    "sha256": "31cca107415845222436361c4591e3be9323bca0673a331ca773dd5657a2e2f5"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/test_split_intersections.py",
+    "archive": "539/tests/research/test_split_intersections.py.txt",
+    "sha256": "ff6b5e659f3a2a91dce8786f36f1416f955d5d6e2f0b5f18c697f51793319173"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/test_split_omission.py",
+    "archive": "539/tests/research/test_split_omission.py.txt",
+    "sha256": "93cc444fdcbedaec52aff64276e887b972dc6e28ab4d8776e6edc8aa12f858c5"
+  },
+  {
+    "pr": 539,
+    "commit": "851a6447838b8fcb4079649e08f2dd191a60dae8",
+    "source": "tests/research/test_split_omission_hooks.py",
+    "archive": "539/tests/research/test_split_omission_hooks.py.txt",
+    "sha256": "7b4b7faeca60a35c5302627af18eed6fde2dffb95b84fb06cde1b1cb3c3f5982"
+  },
+  {
+    "pr": 583,
+    "commit": "84e79599283a844b5515f670327ab838539220ec",
+    "source": "research/nullability_473/README.md",
+    "archive": "583/research/nullability_473/README.md.txt",
+    "sha256": "853e214bfb42a0552fd76fc178cfccc7a16ef4da5f9a0c2411966bab1fee76fa"
+  },
+  {
+    "pr": 583,
+    "commit": "84e79599283a844b5515f670327ab838539220ec",
+    "source": "research/nullability_473/declarations.py.txt",
+    "archive": "583/research/nullability_473/declarations.py.txt.txt",
+    "sha256": "7282b9c8d2c2d885406baa514834b7eedeecc4203d0b8a7677fb506ec7abfe0b"
+  },
+  {
+    "pr": 583,
+    "commit": "84e79599283a844b5515f670327ab838539220ec",
+    "source": "research/nullability_473/scenarios.md",
+    "archive": "583/research/nullability_473/scenarios.md.txt",
+    "sha256": "2f41455003817c6bba482fbc6a73a39f713fe9b632ae219eedadd3a753fa2236"
+  },
+  {
+    "pr": 583,
+    "commit": "84e79599283a844b5515f670327ab838539220ec",
+    "source": "tests/research/__init__.py",
+    "archive": "583/tests/research/__init__.py.txt",
+    "sha256": "fd278dc061364fe241eb871f0623529e1a2a1c8316dd99b596ad90d2a076d64f"
+  },
+  {
+    "pr": 583,
+    "commit": "84e79599283a844b5515f670327ab838539220ec",
+    "source": "tests/research/test_nullability_declarations.py",
+    "archive": "583/tests/research/test_nullability_declarations.py.txt",
+    "sha256": "2f5a24e86425ee1644fac7e3fb23f5a1819a3f3b39d746c238e229144ddfc5ef"
+  },
+  {
+    "pr": 583,
+    "commit": "84e79599283a844b5515f670327ab838539220ec",
+    "source": "tests/research/typing_support.py",
+    "archive": "583/tests/research/typing_support.py.txt",
+    "sha256": "79efda7ed97bc550292f779d93fc6cd9bd1e223d36b04ef41115951e3d2a5dcd"
+  },
+  {
+    "pr": 592,
+    "commit": "0724c6ae74321e60d510431bf9b72643a61e3477",
+    "source": "research/query_result_contracts/README.md",
+    "archive": "592/research/query_result_contracts/README.md.txt",
+    "sha256": "450cf44d97e11b7742761529d53c58a6dfbce1a6ef45991ff228c3b92d8bc488"
+  },
+  {
+    "pr": 594,
+    "commit": "7cb258bf26bc4ed7829a30fc007fe8a7060cc433",
+    "source": "research/pydantic_operation_policy/README.md",
+    "archive": "594/research/pydantic_operation_policy/README.md.txt",
+    "sha256": "0e2fbd8b7c39e6516f690eb33862f7c0a85f24b4c7412533bc1eaa5748491168"
+  },
+  {
+    "pr": 595,
+    "commit": "2f8206dd0062afb516c46017899b0c84f8f0a194",
+    "source": "research/unparsed_593/README.md",
+    "archive": "595/research/unparsed_593/README.md.txt",
+    "sha256": "df1f8e1012999c40c6caa77b98109c4900bf0f2b97df8f903d2dba159c83fb51"
+  },
+  {
+    "pr": 595,
+    "commit": "2f8206dd0062afb516c46017899b0c84f8f0a194",
+    "source": "research/unparsed_593/proof.py.txt",
+    "archive": "595/research/unparsed_593/proof.py.txt.txt",
+    "sha256": "2d04e94cda7209de89ca0d157bb1021af29d621dca7296103b870e7da6be20df"
+  },
+  {
+    "pr": 595,
+    "commit": "2f8206dd0062afb516c46017899b0c84f8f0a194",
+    "source": "tests/research/__init__.py",
+    "archive": "595/tests/research/__init__.py.txt",
+    "sha256": "829088fe9047a166cb4bcf5b1980af3b3c6b8b67cd1aef4d69bb78005b6c6b76"
+  },
+  {
+    "pr": 595,
+    "commit": "2f8206dd0062afb516c46017899b0c84f8f0a194",
+    "source": "tests/research/test_unparsed_type_adapter.py",
+    "archive": "595/tests/research/test_unparsed_type_adapter.py.txt",
+    "sha256": "bbc84cb95db9b2a18326d921c6f4a00abb1616228b9043b8b45fa0374b28f15c"
+  },
+  {
+    "pr": 597,
+    "commit": "f8902a2e7e2addb8e1a97665a3ac544d8472fe66",
+    "source": "research/attribute_contracts_596/README.md",
+    "archive": "597/research/attribute_contracts_596/README.md.txt",
+    "sha256": "c7f47e93fa24e98e213540da28b525d6b378ac7df7b3cd34451e1777a0fb60d0"
+  },
+  {
+    "pr": 597,
+    "commit": "f8902a2e7e2addb8e1a97665a3ac544d8472fe66",
+    "source": "tests/research/__init__.py",
+    "archive": "597/tests/research/__init__.py.txt",
+    "sha256": "b6bd989753a801afb445abc15c57c66e7e89047b18dc04cec0029fe917c50f67"
+  },
+  {
+    "pr": 597,
+    "commit": "f8902a2e7e2addb8e1a97665a3ac544d8472fe66",
+    "source": "tests/research/attribute_contracts.py",
+    "archive": "597/tests/research/attribute_contracts.py.txt",
+    "sha256": "fc45918b142b53ecfb5dd4700cc78d02bb0f83b0efc4d9bab43d6893ab14d897"
+  },
+  {
+    "pr": 597,
+    "commit": "f8902a2e7e2addb8e1a97665a3ac544d8472fe66",
+    "source": "tests/research/test_attribute_contracts.py",
+    "archive": "597/tests/research/test_attribute_contracts.py.txt",
+    "sha256": "0cf3e6ea1c087052198af6996173e7d17cd9de3f2608552da1eb51eb4259fd9d"
+  },
+  {
+    "pr": 597,
+    "commit": "f8902a2e7e2addb8e1a97665a3ac544d8472fe66",
+    "source": "tests/research/test_pydantic_attribute_matrix.py",
+    "archive": "597/tests/research/test_pydantic_attribute_matrix.py.txt",
+    "sha256": "6808d0b4e62605f3e870cbc977ee95b9e17af31b12f07fba8814b49b8eb0d3e8"
+  },
+  {
+    "pr": 598,
+    "commit": "64c7d1549dc648337e5d1a70fb4cde7f2720ae8e",
+    "source": "research/input_read_596/README.md",
+    "archive": "598/research/input_read_596/README.md.txt",
+    "sha256": "fe189feaa07287cf6e80d1d1dcb8e162d3d8187b3661926f0bb9231438c2f147"
+  },
+  {
+    "pr": 598,
+    "commit": "64c7d1549dc648337e5d1a70fb4cde7f2720ae8e",
+    "source": "tests/research/__init__.py",
+    "archive": "598/tests/research/__init__.py.txt",
+    "sha256": "7d1ef8e4422fd3bc45a8d297f3a76372c19c26f6b43bd7ca2ec4bca2a7f19215"
+  },
+  {
+    "pr": 598,
+    "commit": "64c7d1549dc648337e5d1a70fb4cde7f2720ae8e",
+    "source": "tests/research/input_contracts.py",
+    "archive": "598/tests/research/input_contracts.py.txt",
+    "sha256": "fefab4ea75c645cc44a76a698d690ce9b3baa1c39c38433295b13959c24014a0"
+  },
+  {
+    "pr": 598,
+    "commit": "64c7d1549dc648337e5d1a70fb4cde7f2720ae8e",
+    "source": "tests/research/test_input_read_contracts.py",
+    "archive": "598/tests/research/test_input_read_contracts.py.txt",
+    "sha256": "2d3bea96da8ea4a2e43e91b04995ea4a63924da0b546c34eef7c1f6ef4ff2d16"
+  },
+  {
+    "pr": 600,
+    "commit": "c526cf13b3fefb790f758a0ae58f838be2dec492",
+    "source": "research/__init__.py",
+    "archive": "600/research/__init__.py.txt",
+    "sha256": "e77415a177dae26aa4ffc91fe1aff4b516c12c2c0b1b7bd32f25518880852625"
+  },
+  {
+    "pr": 600,
+    "commit": "c526cf13b3fefb790f758a0ae58f838be2dec492",
+    "source": "research/precision_loss_599/README.md",
+    "archive": "600/research/precision_loss_599/README.md.txt",
+    "sha256": "f32130493667ced54368710c9e0629e9099c9d87d99f59a95645ce12b67a5ffa"
+  },
+  {
+    "pr": 600,
+    "commit": "c526cf13b3fefb790f758a0ae58f838be2dec492",
+    "source": "research/precision_loss_599/__init__.py",
+    "archive": "600/research/precision_loss_599/__init__.py.txt",
+    "sha256": "fa010d88668b30b74eff009d617dfd711fda2fc17fb832f6f0378768b8a76604"
+  },
+  {
+    "pr": 600,
+    "commit": "c526cf13b3fefb790f758a0ae58f838be2dec492",
+    "source": "research/precision_loss_599/policies.py",
+    "archive": "600/research/precision_loss_599/policies.py.txt",
+    "sha256": "d939c4351e822da473b3a3c4df75cda634c0ac1ce0d07f22a420d9b082e2c3f5"
+  },
+  {
+    "pr": 600,
+    "commit": "c526cf13b3fefb790f758a0ae58f838be2dec492",
+    "source": "research/precision_loss_599/test_contracts.py",
+    "archive": "600/research/precision_loss_599/test_contracts.py.txt",
+    "sha256": "e657205231833523f0f4dc9a0cbe980cf7e2677579206d5678f431a5419a90b6"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/README.md",
+    "archive": "602/research/static_ordering_601/README.md.txt",
+    "sha256": "dee3ef68754e35ebbcfb81415059822b9a85cf7bcf3d70b2b0383bee86b4339a"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/conventional-findings.md",
+    "archive": "602/research/static_ordering_601/conventional-findings.md.txt",
+    "sha256": "33fa18c06187247a5fac48cc75c3e5f753bfdf62c695bcd652f3784fe3990753"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/conventional/baseline.py.txt",
+    "archive": "602/research/static_ordering_601/conventional/baseline.py.txt.txt",
+    "sha256": "469b264d07c069fa239d18f02bef69387cc417f909d67717276fdb4079fde82c"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/conventional/positive.py.txt",
+    "archive": "602/research/static_ordering_601/conventional/positive.py.txt.txt",
+    "sha256": "fe8e53d0ed76c5348e3f9284f143db382aa5056fcfde347597e7738f988867c8"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/conventional/restricted.py.txt",
+    "archive": "602/research/static_ordering_601/conventional/restricted.py.txt.txt",
+    "sha256": "ac7a1005ab5be78fae4f733f85730e00d9ca77ec2d6eaa93a0005afe7d34e1e5"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/conventional/restriction.patch",
+    "archive": "602/research/static_ordering_601/conventional/restriction.patch.txt",
+    "sha256": "e6b27f9cd690151061ced848143191fc54d4fcffc62c30b7c188d9d784a62500"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/conventional/wrong-input.py.txt",
+    "archive": "602/research/static_ordering_601/conventional/wrong-input.py.txt.txt",
+    "sha256": "bb4de8779c0b915ea1639002a07e019e708ccc7b3c62a1885ad7b0fd6063554b"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty-findings.md",
+    "archive": "602/research/static_ordering_601/ty-findings.md.txt",
+    "sha256": "fb5714f3d43dd43ac8875517738dd92541329b60a09e8df99a9ff51f0088a1ae"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/accept.py.txt",
+    "archive": "602/research/static_ordering_601/ty_probe/accept.py.txt.txt",
+    "sha256": "561b27544ad9e517e5e8a20faaab23d975d6c1e521f27253e0b155abe8b0e9c5"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/expressions.patch",
+    "archive": "602/research/static_ordering_601/ty_probe/expressions.patch.txt",
+    "sha256": "e3a2113305f7755a0d9ac9eb74d7a6cc59754ddcec6c6b41bc3fbf9a71884b83"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/helpers_negative.py.txt",
+    "archive": "602/research/static_ordering_601/ty_probe/helpers_negative.py.txt.txt",
+    "sha256": "ff576ba45b624c4849aa700964afebd7a0f85792df1c3a350a5246e17a926163"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/helpers_positive.py.txt",
+    "archive": "602/research/static_ordering_601/ty_probe/helpers_positive.py.txt.txt",
+    "sha256": "a1e35a85554e57d44b39db6ffdbd2a832285c15b6a8d244caeddd8f7d2adce1b"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/make_overlay.py.txt",
+    "archive": "602/research/static_ordering_601/ty_probe/make_overlay.py.txt.txt",
+    "sha256": "12c9be4bb0fe0f6f07565ec0e7db70fa918d524a65c5bcecf4bfe8144b473fd6"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/negative.py.txt",
+    "archive": "602/research/static_ordering_601/ty_probe/negative.py.txt.txt",
+    "sha256": "8c7a1196e4ed38348e3719b99949364a855fe9c8e07330a57344cbdaa42d219c"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/positive.py.txt",
+    "archive": "602/research/static_ordering_601/ty_probe/positive.py.txt.txt",
+    "sha256": "1d45464fe11802f9a978744f60c925ae7eb2fd61922a56b093a6abe68b3b7159"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/storage.patch",
+    "archive": "602/research/static_ordering_601/ty_probe/storage.patch.txt",
+    "sha256": "ce09cfd07b747d89514c38e3cc2794a34cd8fc12a84071a0915c17e95be9a8a9"
+  },
+  {
+    "pr": 602,
+    "commit": "e3a9310aa88f3f674b3ed48eba1562eecf44ee6c",
+    "source": "research/static_ordering_601/ty_probe/unrestricted_seams.py.txt",
+    "archive": "602/research/static_ordering_601/ty_probe/unrestricted_seams.py.txt.txt",
+    "sha256": "ed5627477e3dc36a8adf7b364f36f2ccb0380e960040bb8f11a93d0bab37b68a"
+  }
+]

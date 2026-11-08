@@ -1,0 +1,31 @@
+"""Baseline: default markers remain omittable and preserve exact field types."""
+
+from typing import ClassVar, assert_type
+
+from snekql import __BACKEND__ as database
+
+
+class Entry[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Entry[database.Row]]]
+    name: database.Col[str] = database.Text()
+    attempts: database.GenCol[int] = __DECLARATION__
+
+
+pending = Entry(name="Ada", attempts=3)
+assert_type(pending, Entry[database.Pending])
+assert_type(pending.attempts, int | database.PENDING_GENERATION)
+Entry(name="Ada")  # omission-probe
+
+
+def fetched(row: Entry[database.Row]) -> None:
+    assert_type(row.attempts, int)
+
+
+Entry(attempts=3)  # error: missing-argument
+Entry(name="Ada", attempts="wrong")  # error: invalid-argument-type
+Entry(name="Ada", attempts=None)  # error: invalid-argument-type
+
+
+class BadDefault[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[BadDefault[database.Row]]]
+    attempts: database.GenCol[int] = __BAD_DEFAULT__  # error: invalid-assignment

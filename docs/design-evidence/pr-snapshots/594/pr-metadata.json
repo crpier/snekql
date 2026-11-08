@@ -1,0 +1,19 @@
+{
+  "baseRefOid": "9b20255768daf2b0457eaa486897481e403c6592",
+  "body": "## Purpose\n\nRefs #593. Continues the maintainer-directed investigation after #590 / draft #592 and the purpose brief in draft #589. The maintainer proposes Pydantic-owned individual attribute contracts, prefers driver values over best-effort unchecked decoding, and asks whether the same field can use ordinary or strict validation in different operations.\n\n## Findings\n\n- Pydantic already supports per-call `strict: bool | None` on the same `TypeAdapter`; no Table Model annotation mutation or duplicated table declaration is required just to switch built-in acceptance policy.\n- Explicit `strict=False` can relax even `StrictInt`; `None` preserves annotation/configuration defaults; `True` can tighten fields explicitly marked permissive. This precedence is covered by upstream integer tests and source, not newly executed tests here.\n- Lax validation retains constraints and does not mean bypass. Custom validators can explicitly convert values even during strict validation; JSON and Python input have intentionally different strict rules.\n- Whole-operation strictness also affects the other fields. Attribute-selective changes require a further design decision.\n- True driver-value reads must avoid remaining JSON/native/expression decoding, named validation and logical-model hooks, and cannot retain the normal logical Row type promise. Current raw SQL without a contract already provides unvalidated driver-value containers; its operation flag currently cannot bypass a declared contract.\n\nNo public setting, override precedence, raw output shape, compatibility policy or implementation is selected. Aggregates remain deferred.\n\n## Deliverable\n\nOnly `research/pydantic_operation_policy/README.md` is added: a 266-line research report with version-pinned Pydantic evidence, a strictness matrix, current snekql integration map, trade-offs and proposed seams requiring confirmation before behavioral tests.\n\nFresh main baseline: `3ed75324bbb12b189470f296e55faddf63d72b5b`. Pydantic 2.14.0 / pydantic-core 2.50.0 were identified through installed distribution metadata. Two installed public Pydantic source files match the pinned upstream release byte for byte; binary provenance was not independently established.\n\n## Validation and limits\n\nSource, documentation and existing tests were inspected, not executed. No project/Pydantic models, validators, queries, runtime/backend suites, benchmarks or new typing tests were run. An upstream JSON adapter test is explicitly marked xfail and is not cited as passing evidence; the integer matrix is separately covered upstream.\n\nLocal checks passed:\n\n- 13 relative link targets and 12 source-line bounds;\n- seven linked production files parsed with the project interpreter;\n- four upstream test-name references and the JSON adapter xfail marker checked by AST;\n- pinned upstream source URLs verified against GitHub metadata;\n- `uv run ty check`;\n- `uv run ruff check .`;\n- `uv run ruff format --check .` (636 files formatted);\n- working/staged diff whitespace checks.\n\nThese checks are not runtime proof. No production, dependency, migration or public-interface changes. GitHub Actions are disabled; validation was local. Earlier draft PRs remain unmerged; no merge or issue closure requested.\n",
+  "files": [
+    {
+      "path": "research/pydantic_operation_policy/README.md",
+      "additions": 266,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/pydantic-operation-policy",
+  "headRefOid": "7cb258bf26bc4ed7829a30fc007fe8a7060cc433",
+  "isDraft": true,
+  "number": 594,
+  "state": "OPEN",
+  "title": "Research per-operation Pydantic validation and driver-value reads",
+  "url": "https://github.com/crpier/snekql/pull/594"
+}

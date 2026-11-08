@@ -1,0 +1,58 @@
+--- snekql/expressions.py	2026-10-10 01:39:46.279701265 +0300
++++ /tmp/snekql-601-ty-uFNOB7/overlay/snekql/expressions.py	2026-11-08 15:36:49.731224018 +0200
+@@ -18,6 +18,14 @@
+ lazy from snekql._query_readiness import _ExecutableQuery
+ lazy from snekql.errors import QueryCompilationError, QueryConstructionError
+ 
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from ty_extensions import Intersection, Not
++    from snekql._temporal import ZonedDatetime
++
++class _OrderingDomain[T](Protocol):
++    def __column_value_type__(self) -> T: ...
++
+ type AggregateFunction = Literal["AVG", "COUNT", "MAX", "MIN", "SUM"]
+ 
+ 
+@@ -665,35 +673,35 @@
+             raise QueryConstructionError(msg)
+         return MembershipPredicate(operand=self, values=values, negated=True)
+ 
+-    def gt(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def gt(self: Intersection[Comparable[OwnerT, ValueT, ColumnValueT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]], value: ValueT) -> Predicate[OwnerT, FamilyT]:
+         if value is None:
+             msg = "gt(None) is invalid; use is_not_null()"
+             raise QueryConstructionError(msg)
+         self._require_ordering()
+         return ComparisonPredicate(operand=self, operator="gt", value=value)
+ 
+-    def gte(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def gte(self: Intersection[Comparable[OwnerT, ValueT, ColumnValueT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]], value: ValueT) -> Predicate[OwnerT, FamilyT]:
+         if value is None:
+             msg = "gte(None) is invalid; use is_not_null()"
+             raise QueryConstructionError(msg)
+         self._require_ordering()
+         return ComparisonPredicate(operand=self, operator="gte", value=value)
+ 
+-    def lt(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def lt(self: Intersection[Comparable[OwnerT, ValueT, ColumnValueT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]], value: ValueT) -> Predicate[OwnerT, FamilyT]:
+         if value is None:
+             msg = "lt(None) is invalid; use is_not_null()"
+             raise QueryConstructionError(msg)
+         self._require_ordering()
+         return ComparisonPredicate(operand=self, operator="lt", value=value)
+ 
+-    def lte(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def lte(self: Intersection[Comparable[OwnerT, ValueT, ColumnValueT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]], value: ValueT) -> Predicate[OwnerT, FamilyT]:
+         if value is None:
+             msg = "lte(None) is invalid; use is_not_null()"
+             raise QueryConstructionError(msg)
+         self._require_ordering()
+         return ComparisonPredicate(operand=self, operator="lte", value=value)
+ 
+-    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def between(self: Intersection[Comparable[OwnerT, ValueT, ColumnValueT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]], low: ValueT, high: ValueT) -> Predicate[OwnerT, FamilyT]:
+         if low is None or high is None:
+             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
+             raise QueryConstructionError(msg)

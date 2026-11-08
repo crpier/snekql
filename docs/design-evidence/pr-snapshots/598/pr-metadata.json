@@ -1,0 +1,37 @@
+{
+  "baseRefOid": "18b16c2c80c93f9ce5d6f841c4fac0055950e125",
+  "body": "## Purpose\n\nRefs #596. Follow the maintainer-approved construction/read comparison after the separate assessment in draft #597. This is isolated evidence and design evaluation, not adoption of a public interface or production integration.\n\n## Findings\n\n- Prefer one complete logical contract with explicit input entry points. Standard Python/JSON entry points suffice for the JSON payload case; explicit read composition accommodates selected SQL Boolean and nominal temporal representations without broadening strict application input.\n- The read adapter reuses the complete logical annotation. Tested element/container/custom constraints remain effective; deliberate non-idempotent after-validators expose accidental repeated logical validation through observable values rather than call counters.\n- Sharing the entire SQL-input annotation also broadens application acceptance, even with `strict=True`. This may be intentional, but should not be an accidental consequence of simplifying internal adapter management.\n- One phase-aware context token works without mutating its adapter, but also reaches reused contracts inside JSON. The tested SQL-read token makes JSON `[1]` pass a context-sensitive strict-Boolean contract. More sophisticated scoped context is possible, but a global read flag is not a sufficient grammar distinction.\n- A before-validator adds to, rather than automatically narrows, the base type's declared acceptance. Exact storage-carrier whitelisting requires an explicit choice too.\n- These results do not justify hidden physical-column-driven interpretation, a forced-lax fourth operation mode, public write/read generic parameters or a generic parser framework. Application declaration syntax and raw whole-row typing remain undecided.\n\n## Changes and evidence\n\nFour new research-only files, 638 lines:\n\n- `research/input_read_596/README.md`: comparison, recommendation, source map and limits.\n- `tests/research/input_contracts.py`: five small research-only callbacks plus a context token; not library exports.\n- `tests/research/test_input_read_contracts.py`: 57 focused cases across 16 test functions.\n- `tests/research/__init__.py`.\n\nExecuted the public Pydantic TypeAdapter seam with synthetic inputs and existing public UtcDatetime/LocalDatetime values. Canonical parsing, nominal value construction and Pydantic schemas really execute. No application Table Models, SQL, backend connections, runtime operations or consumer result-typing prototypes execute. Five callbacks used individual red/green slices; the rest are alternative/negative/metadata/grammar observations.\n\nSource-inspected existing construction, JSON dispatch, timestamp interpretation and Materialization. Source-derived findings are not presented as newly executed Table Model/backend evidence. The earlier 120-case assessment is separate and not included in this test count.\n\n## Validation\n\n- `uv run snektest tests/research/test_input_read_contracts.py`: **57 passed in 0.04s**.\n- `uv run ty check`: passed.\n- `uv run ruff check .`: passed.\n- `uv run ruff format --check .`: passed; 815 files checked.\n- Report text/AST checks: 12 local targets, eight source-line bounds, six linked Python files, 16 test functions and nine named controls; no linked-module imports in that checker.\n- Working/staged whitespace checks: passed.\n\nEnvironment: Python 3.15.0, Pydantic 2.14.0, pydantic-core 2.50.0, ty 0.0.84, snektest 0.16.0. Fresh main baseline: `a1cf31d8dba78f9ddf0a2b687f5c188649c14391`.\n\nNo full suite, native backend test, benchmark, production/dependency change, public interface selection, issue closure or merge. Validation was local; no Actions wait. Next design work remains unchecked whole-row shape/typing and deliberate contract retention before separately scoped native Transaction integration.\n",
+  "files": [
+    {
+      "path": "research/input_read_596/README.md",
+      "additions": 263,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/input_contracts.py",
+      "additions": 42,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/research/test_input_read_contracts.py",
+      "additions": 332,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/596-construction-read-contracts",
+  "headRefOid": "64c7d1549dc648337e5d1a70fb4cde7f2720ae8e",
+  "isDraft": true,
+  "number": 598,
+  "state": "OPEN",
+  "title": "Compare construction and SQL read contracts without duplicate logical rules",
+  "url": "https://github.com/crpier/snekql/pull/598"
+}

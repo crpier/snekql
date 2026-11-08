@@ -1,0 +1,18 @@
+"""Registered field calls cannot be fluently chained in this ty experiment."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Required[S = database.Pending](FlatModel[S]):
+    __row_type__: ClassVar[database.ReadType[Required[database.Row]]]
+    number: database.Col[int] = ChainInteger()
+
+
+assert_type(Required(number=3).number, int)
+Required()  # error: missing-argument
+
+
+class Chained[S = database.Pending](FlatModel[S]):
+    __row_type__: ClassVar[database.ReadType[Chained[database.Row]]]
+    number: database.GenCol[int] = ChainInteger().db_default(7)  # error: unresolved-attribute

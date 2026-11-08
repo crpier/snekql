@@ -1,0 +1,188 @@
+--- snekql/expressions.py
++++ snekql/expressions.py
+@@ -1,3 +1,8 @@
++from typing import Protocol as _OrderingProtocol, Self as _OrderingSelf
++
++class _PythonOrdered(_OrderingProtocol):
++    def __lt__(self, other: _OrderingSelf, /) -> bool: ...
++
+ """Query Builder expression objects shared by fields and queries."""
+ 
+ lazy from abc import ABC, abstractmethod
+@@ -665,35 +670,35 @@
+             raise QueryConstructionError(msg)
+         return MembershipPredicate(operand=self, values=values, negated=True)
+ 
+-    def gt(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def gt[_OT: _PythonOrdered](self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], value: _OT) -> Predicate[OwnerT, FamilyT]:
+         if value is None:
+             msg = "gt(None) is invalid; use is_not_null()"
+             raise QueryConstructionError(msg)
+         self._require_ordering()
+         return ComparisonPredicate(operand=self, operator="gt", value=value)
+ 
+-    def gte(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def gte[_OT: _PythonOrdered](self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], value: _OT) -> Predicate[OwnerT, FamilyT]:
+         if value is None:
+             msg = "gte(None) is invalid; use is_not_null()"
+             raise QueryConstructionError(msg)
+         self._require_ordering()
+         return ComparisonPredicate(operand=self, operator="gte", value=value)
+ 
+-    def lt(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def lt[_OT: _PythonOrdered](self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], value: _OT) -> Predicate[OwnerT, FamilyT]:
+         if value is None:
+             msg = "lt(None) is invalid; use is_not_null()"
+             raise QueryConstructionError(msg)
+         self._require_ordering()
+         return ComparisonPredicate(operand=self, operator="lt", value=value)
+ 
+-    def lte(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def lte[_OT: _PythonOrdered](self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], value: _OT) -> Predicate[OwnerT, FamilyT]:
+         if value is None:
+             msg = "lte(None) is invalid; use is_not_null()"
+             raise QueryConstructionError(msg)
+         self._require_ordering()
+         return ComparisonPredicate(operand=self, operator="lte", value=value)
+ 
+-    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT, FamilyT]:
++    def between[_OT: _PythonOrdered](self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], low: _OT, high: _OT) -> Predicate[OwnerT, FamilyT]:
+         if low is None or high is None:
+             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
+             raise QueryConstructionError(msg)
+@@ -747,17 +752,17 @@
+         return ColumnComparisonPredicate(operand=self, operator="ne", other=other)
+ 
+     @overload
+-    def gt_col(
+-        self, other: Scalar[Any, Any, ValueT, FamilyT]
++    def gt_col[_OT: _PythonOrdered](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], other: Scalar[Any, Any, ValueT, FamilyT]
+     ) -> Predicate[OwnerT, FamilyT]: ...
+ 
+     @overload
+-    def gt_col[OtherOwner](
+-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
++    def gt_col[_OT: _PythonOrdered, OtherOwner](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+     ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
+ 
+-    def gt_col(
+-        self,
++    def gt_col[_OT: _PythonOrdered](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT],
+         other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+         | Scalar[Any, Any, ValueT, FamilyT],
+     ) -> Predicate[Any, FamilyT]:
+@@ -766,17 +771,17 @@
+         return ColumnComparisonPredicate(operand=self, operator="gt", other=other)
+ 
+     @overload
+-    def gte_col(
+-        self, other: Scalar[Any, Any, ValueT, FamilyT]
++    def gte_col[_OT: _PythonOrdered](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], other: Scalar[Any, Any, ValueT, FamilyT]
+     ) -> Predicate[OwnerT, FamilyT]: ...
+ 
+     @overload
+-    def gte_col[OtherOwner](
+-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
++    def gte_col[_OT: _PythonOrdered, OtherOwner](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+     ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
+ 
+-    def gte_col(
+-        self,
++    def gte_col[_OT: _PythonOrdered](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT],
+         other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+         | Scalar[Any, Any, ValueT, FamilyT],
+     ) -> Predicate[Any, FamilyT]:
+@@ -785,17 +790,17 @@
+         return ColumnComparisonPredicate(operand=self, operator="gte", other=other)
+ 
+     @overload
+-    def lt_col(
+-        self, other: Scalar[Any, Any, ValueT, FamilyT]
++    def lt_col[_OT: _PythonOrdered](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], other: Scalar[Any, Any, ValueT, FamilyT]
+     ) -> Predicate[OwnerT, FamilyT]: ...
+ 
+     @overload
+-    def lt_col[OtherOwner](
+-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
++    def lt_col[_OT: _PythonOrdered, OtherOwner](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+     ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
+ 
+-    def lt_col(
+-        self,
++    def lt_col[_OT: _PythonOrdered](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT],
+         other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+         | Scalar[Any, Any, ValueT, FamilyT],
+     ) -> Predicate[Any, FamilyT]:
+@@ -804,17 +809,17 @@
+         return ColumnComparisonPredicate(operand=self, operator="lt", other=other)
+ 
+     @overload
+-    def lte_col(
+-        self, other: Scalar[Any, Any, ValueT, FamilyT]
++    def lte_col[_OT: _PythonOrdered](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], other: Scalar[Any, Any, ValueT, FamilyT]
+     ) -> Predicate[OwnerT, FamilyT]: ...
+ 
+     @overload
+-    def lte_col[OtherOwner](
+-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
++    def lte_col[_OT: _PythonOrdered, OtherOwner](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT], other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+     ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
+ 
+-    def lte_col(
+-        self,
++    def lte_col[_OT: _PythonOrdered](
++        self: Comparable[OwnerT, _OT, ColumnValueT, FamilyT],
+         other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+         | Scalar[Any, Any, ValueT, FamilyT],
+     ) -> Predicate[Any, FamilyT]:
+--- snekql/storage.py
++++ snekql/storage.py
+@@ -1,3 +1,5 @@
++from snekql.expressions import _PythonOrdered
++
+ """Physical storage declarations and derived value codecs for table models."""
+ 
+ lazy import annotationlib
+@@ -2122,7 +2124,7 @@
+             msg = f"{func}() is only valid for numeric columns"
+             raise QueryConstructionError(msg)
+ 
+-    def min(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
++    def min[_OT: _PythonOrdered](self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, _OT, FamilyT]) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
+         """Aggregate this column as ``MIN(col)`` (``None`` over an empty set)."""
+ 
+         self._require_ordering()
+@@ -2131,7 +2133,7 @@
+             _Aggregate(func="MIN", column=self, owner=self.owner),
+         )
+ 
+-    def max(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
++    def max[_OT: _PythonOrdered](self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, _OT, FamilyT]) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
+         """Aggregate this column as ``MAX(col)`` (``None`` over an empty set)."""
+ 
+         self._require_ordering()
+@@ -2140,11 +2142,11 @@
+             _Aggregate(func="MAX", column=self, owner=self.owner),
+         )
+ 
+-    def asc(self) -> OrderBy[OwnerT]:
++    def asc[_OT: _PythonOrdered](self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, _OT, FamilyT]) -> OrderBy[OwnerT]:
+         self._require_ordering()
+         return _OrderBy(column=self, direction="ASC")
+ 
+-    def desc(self) -> OrderBy[OwnerT]:
++    def desc[_OT: _PythonOrdered](self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, _OT, FamilyT]) -> OrderBy[OwnerT]:
+         self._require_ordering()
+         return _OrderBy(column=self, direction="DESC")
+ 

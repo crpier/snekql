@@ -1,0 +1,68 @@
+"""Static consumers only: no database is created and no generated caller is run."""
+
+from typing import ClassVar, assert_type
+
+from snekql import __BACKEND__ as database
+
+
+class Example[S = database.Pending](__BASE__[S]):
+    __row_type__: ClassVar[database.ReadType[Example[database.Row]]]
+    id: database.GenCol[int] = database.Integer(
+        primary_key=True, auto_increment=True, default=database.PENDING_GENERATION
+    )
+    done: database.Col[bool] = database.Integer(default=False)
+    token: database.Col[str] = database.Text(default_factory=lambda: "new")
+    attempts: database.GenCol[int] = __LITERAL__
+    server_done: database.GenCol[bool] = __BOOL__
+    created_at: database.GenCol[database.UtcDatetime] = __CLOCK__
+    note: database.Col[str | None] = database.Text(default=None)
+    nullable: database.GenCol[str | None] = __NULLABLE__
+    null_default: database.GenCol[str | None] = __NULL_DEFAULT__
+    required_nullable: database.Col[str | None] = database.Text()
+
+
+pending = Example(required_nullable=None)
+assert_type(pending, Example[database.Pending])
+assert_type(pending.id, int | database.PENDING_GENERATION)
+assert_type(pending.done, bool)
+assert_type(pending.server_done, bool | database.PENDING_GENERATION)
+assert_type(pending.token, str)
+assert_type(pending.attempts, int | database.PENDING_GENERATION)
+assert_type(pending.created_at, database.UtcDatetime | database.PENDING_GENERATION)
+assert_type(pending.note, str | None)
+assert_type(pending.nullable, str | None | database.PENDING_GENERATION)
+assert_type(pending.null_default, str | None | database.PENDING_GENERATION)
+
+Example(
+    required_nullable=None, id=12, attempts=3, nullable=None, null_default="override"
+)
+Example(required_nullable="present", note="note", token="explicit", done=True)
+
+
+def row_types(row: Example[database.Row]) -> None:
+    assert_type(row.id, int)
+    assert_type(row.done, bool)
+    assert_type(row.server_done, bool)
+    assert_type(row.token, str)
+    assert_type(row.attempts, int)
+    assert_type(row.created_at, database.UtcDatetime)
+    assert_type(row.note, str | None)
+    assert_type(row.nullable, str | None)
+    assert_type(row.null_default, str | None)
+
+
+write: database.Write[Example[database.Row]] = database.insert(pending).returning()
+
+Example()  # error: missing-argument
+Example(required_nullable=None, server_done=0)  # error: invalid-argument-type
+Example(required_nullable=None, done=None)  # error: invalid-argument-type
+Example(required_nullable=None, token=42)  # error: invalid-argument-type
+Example(required_nullable=None, attempts=None)  # error: invalid-argument-type
+Example(required_nullable=None, created_at="now")  # error: invalid-argument-type
+Example(required_nullable=None, nullable=42)  # error: invalid-argument-type
+Example(required_nullable=None, id="wrong")  # error: invalid-argument-type
+
+
+class BadFactory[S = database.Pending](__BASE__[S]):
+    __row_type__: ClassVar[database.ReadType[BadFactory[database.Row]]]
+    token: database.Col[str] = database.Text(default_factory=lambda: 42)  # error: invalid-assignment

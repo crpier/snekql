@@ -9,6 +9,8 @@ proofs plus concrete failure examples available without merging exploratory bran
 
 [manifest.json](manifest.json) records each original commit/path, archive path and
 SHA-256. The nine fixture files are byte-preserving copies from the recorded PR heads.
+A [complete per-PR archive](pr-snapshots/README.md) additionally preserves all 90
+changed files and pre-closure PR metadata from the nine retired research drafts.
 They use `.txt` extensions because some deliberately contain invalid consumer code or
 experimental copied-source edits. They are not discovered as supported package tests.
 
@@ -199,6 +201,6 @@ proof is not the general rule: Python comparability doesn't establish storage or
 
 Use these observations as regression oracles and design constraints, not final public
 signatures. Exact full report revisions and additional fixture paths are in the
-[research inventory](../design-research-index.md). Before retiring other drafts,
-select any additional executable controls worth keeping. No raw research archive here
-changes runtime behavior, extends backend support or authorizes PR retirement.
+[research inventory](../design-research-index.md). The complete per-PR archive preserves the remaining changed-file evidence before
+maintainer-authorized retirement. No raw research archive here changes runtime
+behavior, extends backend support or implements its historical proposals.

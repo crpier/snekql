@@ -1,0 +1,37 @@
+"""Factories and nullable defaults belong to Python-side annotation metadata."""
+
+from uuid import UUID, uuid4
+
+
+def make_token() -> str:
+    raise NotImplementedError
+
+
+class Application[S = database.Pending](LeftModel[S]):
+    __row_type__: ClassVar[database.ReadType[Application[database.Row]]]
+    required_nullable: database.Col[str | None] = Text()
+    token: Annotated[database.Col[str], Factory(make_token)] = Text()
+    identifier: Annotated[database.Col[UUID], Factory(uuid4)] = Text()
+    fixed_identifier: Annotated[database.Col[UUID], Default(UUID("12345678-1234-5678-1234-567812345678"))] = Text()
+    optional: Annotated[database.Col[str | None], Default(None)] = Text()
+
+
+pending = Application(required_nullable=None)
+assert_type(pending, Application[database.Pending])
+assert_type(pending.token, str)
+assert_type(pending.identifier, UUID)
+assert_type(pending.fixed_identifier, UUID)
+assert_type(pending.optional, str | None)
+Application(required_nullable="present", token="explicit", optional=None)
+
+
+def row_types(row: Application[database.Row]) -> None:
+    assert_type(row.token, str)
+    assert_type(row.identifier, UUID)
+    assert_type(row.optional, str | None)
+
+
+Application()  # error: missing-argument
+Application(required_nullable=None, identifier="wrong")  # error: invalid-argument-type
+Application(required_nullable=None, token=None)  # error: invalid-argument-type
+Application(required_nullable=None, optional=database.PENDING_GENERATION)  # error: invalid-argument-type

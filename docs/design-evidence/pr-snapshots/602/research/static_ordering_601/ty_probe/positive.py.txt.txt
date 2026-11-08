@@ -1,0 +1,47 @@
+from typing import TYPE_CHECKING, ClassVar, Literal, assert_type, Annotated
+from snekql import sqlite as db
+from snekql.expressions import Comparable, Predicate, Aggregate
+from snekql.storage import Attr
+if TYPE_CHECKING:
+    from ty_extensions import Intersection, Not
+
+class Event[State = db.Pending](db.Model[State]):
+    __row_type__: ClassVar[db.ReadType[Event[db.Row]]]
+    n: db.Col[int] = db.Integer()
+    z: db.Col[db.ZonedDatetime] = db.Text()
+    nz: db.Col[db.ZonedDatetime | None] = db.Text(nullable=True)
+    u: db.Col[db.UtcDatetime] = db.Text()
+    l: db.Col[db.LocalDatetime] = db.Text()
+    nu: db.Col[db.UtcDatetime | None] = db.Text(nullable=True)
+    mixed: db.Col[int | db.ZonedDatetime] = db.Text()
+    annotated: db.Col[Annotated[db.ZonedDatetime, db.OrderPreserving]] = db.Text()
+
+def controls(z: db.ZonedDatetime, u: db.UtcDatetime, l: db.LocalDatetime, row: Event[db.Row], pending: Event[db.Pending]):
+    assert_type(Event.n.asc(), db.OrderBy[Event])
+    assert_type(Event.n.desc(), db.OrderBy[Event])
+    assert_type(Event.n.lt(1), Predicate[Event, Literal['sqlite']])
+    assert_type(Event.n.between(1, 2), Predicate[Event, Literal['sqlite']])
+    assert_type(Event.n.min(), Aggregate[Event, int | None, int, Literal['sqlite']])
+    assert_type(Event.u.lt(u), Predicate[Event, Literal['sqlite']])
+    assert_type(Event.l.gte(l), Predicate[Event, Literal['sqlite']])
+    Event.u.max()
+    Event.l.min()
+    Event.nu.asc()
+    Event.nu.lt(u)
+    Event.z.eq(z)
+    Event.z.in_(z, z)
+    Event.nz.eq(z)
+    Event.nz.in_(z)
+    Event.nz.is_null()
+    assert_type(row.z, db.ZonedDatetime)
+    assert_type(pending.z, db.ZonedDatetime)
+    assert_type(row.nz, db.ZonedDatetime | None)
+    assert_type(pending.nz, db.ZonedDatetime | None)
+    Event.z.to(z)
+    db.select(Event.z, Event.n).where(Event.z.eq(z)).order_by(Event.n.asc())
+
+async def results(transaction: db.Transaction, z: db.ZonedDatetime):
+    query = db.select(Event.z, Event.n).where(Event.z.eq(z)).order_by(Event.n.asc())
+    assert_type(await transaction.fetch_all(query), list[tuple[db.ZonedDatetime, int]])
+    rows = db.select(Event).where(Event.z.in_(z)).order_by(Event.u.desc())
+    assert_type(await transaction.fetch_all(rows), list[Event[db.Row]])

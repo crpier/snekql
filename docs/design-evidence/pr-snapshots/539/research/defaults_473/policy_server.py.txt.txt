@@ -1,0 +1,33 @@
+class ServerValues[S = database.Pending](PolicyModel[S]):
+    __row_type__: ClassVar[database.ReadType[ServerValues[database.Row]]]
+    required: database.Col[int] = database.Integer()
+    required_generated: database.GenCol[int] = database.Integer()
+    id: database.GenCol[int] = database.Integer(primary_key=True, auto_increment=True, default=database.PENDING_GENERATION)
+    created: database.GenCol[database.UtcDatetime] = PolicyText(default=ServerDefault(database.CurrentTimestamp))
+    nullable: database.GenCol[str | None] = PolicyText(default=ServerDefault("fallback"))
+    sql_null: database.GenCol[str | None] = PolicyText(default=ServerDefault(None))
+
+
+pending_server = ServerValues(required=3, required_generated=database.PENDING_GENERATION)
+assert_type(pending_server.id, int | database.PENDING_GENERATION)
+assert_type(pending_server.created, database.UtcDatetime | database.PENDING_GENERATION)
+assert_type(pending_server.nullable, str | None | database.PENDING_GENERATION)
+assert_type(pending_server.sql_null, str | None | database.PENDING_GENERATION)
+ServerValues(required=3, required_generated=7, nullable=None, sql_null="override", id=42)
+ServerValues(required_generated=7)  # error: missing-argument
+ServerValues(required=3)  # error: missing-argument
+ServerValues(required=3, required_generated=7, created="wrong")  # error: invalid-argument-type
+ServerValues(required=3, required_generated=7, nullable=42)  # error: invalid-argument-type
+
+
+def server_row_types(row: ServerValues[database.Row]) -> None:
+    assert_type(row.id, int)
+    assert_type(row.created, database.UtcDatetime)
+    assert_type(row.nullable, str | None)
+    assert_type(row.sql_null, str | None)
+
+
+class BadServerValue[S = database.Pending](PolicyModel[S]):
+    __row_type__: ClassVar[database.ReadType[BadServerValue[database.Row]]]
+    clock_as_string: database.GenCol[str] = PolicyText(default=ServerDefault(database.CurrentTimestamp))  # error: invalid-assignment
+    null_as_string: database.GenCol[str] = PolicyText(default=ServerDefault(None))  # error: invalid-assignment

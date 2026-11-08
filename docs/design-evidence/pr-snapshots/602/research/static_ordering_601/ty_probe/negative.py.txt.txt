@@ -1,0 +1,26 @@
+from positive import Event
+from snekql import sqlite as db
+
+def reject(z: db.ZonedDatetime, u: db.UtcDatetime, row: Event[db.Row], pending: Event[db.Pending]):
+    Event.z.asc()  # REJECT
+    Event.z.desc()  # REJECT
+    Event.z.min()  # REJECT
+    Event.z.max()  # REJECT
+    Event.z.lt(z)  # REJECT
+    Event.z.lte(z)  # REJECT
+    Event.z.gt(z)  # REJECT
+    Event.z.gte(z)  # REJECT
+    Event.z.between(z, z)  # REJECT
+    Event.nz.asc()  # REJECT
+    Event.nz.lt(z)  # REJECT
+    Event.mixed.asc()  # REJECT
+    Event.annotated.asc()  # REJECT (Annotated must not magic away nominal exclusion)
+
+def wrong_values(z: db.ZonedDatetime, u: db.UtcDatetime, row: Event[db.Row], pending: Event[db.Pending]):
+    Event.n.lt('bad')  # REJECT
+    Event.u.lt(z)  # REJECT
+    Event.z.eq(u)  # REJECT
+    Event.z.in_(u)  # REJECT
+    Event.nz.lt(None)  # REJECT
+    pending.z = u  # REJECT
+    row.z = z  # REJECT
