@@ -10,8 +10,11 @@ GitHub PR state and head commits were queried with `gh` before closure on 2026-1
 The OPEN/draft snapshots below are historical capture metadata, **not current state**.
 Closure was verified separately in the [retirement record](design-evidence/pr-snapshots/retirement.json).
 Reports are linked at recorded commits, not mutable branches. Historical validation
-results were not rerun by this consolidation. Branches and associated issues were
-left intact; migration PR #476 remains separate and open.
+results were not rerun by this consolidation. Branches remain intact. Subsequently,
+the maintainer also authorized closing completed research/documentation issues #588,
+#590, #593, #596, #599 and #601; see the
+[issue retirement record](design-evidence/pr-snapshots/issue-retirement.json).
+Migration PR #476 remains separate and open.
 
 ## Preservation policy
 
@@ -27,8 +30,11 @@ code was merged into the runtime or supported test suite. Old reports remain his
 their recommendations don't override later maintainer decisions. The per-PR disposition
 notes explain why each draft was retired, not proposals to close still-open PRs.
 
-No branches or associated issues were deleted/closed. Existing issue assignments and
-claims must be checked before any future implementation.
+No branches were deleted. The six completed research/documentation issues were closed
+only after preserving their original context and recording their bounded completion.
+Defaults issue #473 and ergonomics issue #474 remain open for unresolved design work;
+#603 remains open while #604 awaits review/merge. Other issues were not retired.
+Existing issue assignments and claims must be checked before any future implementation.
 
 ## Defaults and nullability
 

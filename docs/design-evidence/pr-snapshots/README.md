@@ -24,6 +24,9 @@ position is in the [design checkpoint](../../design-checkpoint.md); the
 - `issues/`: pre-closure bodies, comments and metadata for completed research/documentation
   issues #588, #590, #593, #596, #599 and #601. These preserve their original bounded
   deliverables and claims separately from any later implementation work.
+- [issue-retirement.json](issue-retirement.json): verified closure records for those six
+  completed deliverables. Defaults #473, ergonomics #474 and consolidation #603 remain
+  open; closing a research task does not claim its proposed API is implemented.
 
 No changed path was deleted at these heads, so there is no omitted deletion payload.
 Overlapping files are intentionally preserved per PR, rather than silently combining

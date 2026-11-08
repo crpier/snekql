@@ -1,0 +1,44 @@
+[
+  {
+    "number": 588,
+    "title": "Draft snekql purpose and interface design brief",
+    "state": "CLOSED",
+    "url": "https://github.com/crpier/snekql/issues/588",
+    "closedAt": "2026-11-08T14:13:37Z"
+  },
+  {
+    "number": 590,
+    "title": "Assess query-result contracts against the draft design principles",
+    "state": "CLOSED",
+    "url": "https://github.com/crpier/snekql/issues/590",
+    "closedAt": "2026-11-08T14:13:41Z"
+  },
+  {
+    "number": 593,
+    "title": "Investigate per-operation Pydantic validation and driver-value reads",
+    "state": "CLOSED",
+    "url": "https://github.com/crpier/snekql/issues/593",
+    "closedAt": "2026-11-08T14:13:44Z"
+  },
+  {
+    "number": 596,
+    "title": "Evaluate Pydantic-owned attribute contracts for trustworthy snekql reads",
+    "state": "CLOSED",
+    "url": "https://github.com/crpier/snekql/issues/596",
+    "closedAt": "2026-11-08T14:13:48Z"
+  },
+  {
+    "number": 599,
+    "title": "Research explicit protection against write-time precision loss",
+    "state": "CLOSED",
+    "url": "https://github.com/crpier/snekql/issues/599",
+    "closedAt": "2026-11-08T14:13:51Z"
+  },
+  {
+    "number": 601,
+    "title": "Prove static rejection of unsupported column ordering with ty",
+    "state": "CLOSED",
+    "url": "https://github.com/crpier/snekql/issues/601",
+    "closedAt": "2026-11-08T14:13:55Z"
+  }
+]
