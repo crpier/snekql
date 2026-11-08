@@ -1,11 +1,17 @@
 # snekql design brief
 
-**Status:** Working draft for maintainer review, updated 2026-10-31. Repository-only
-design material, not current usage instructions or an adopted redesign.
+**Status:** Working design brief, updated 2026-11-08. Repository-only design
+material, not current usage instructions or an implemented redesign.
 
 This brief records the maintainer's requirements and proposes principles for
 reviewing interfaces. It follows the defaults/nullability discussion in #473,
 #539 and #583; it does not select their proposed syntax. Tracking: #588.
+
+The [2026-11-08 design checkpoint](design-checkpoint.md) records subsequent maintainer
+decisions, working directions, prototype limits and remaining questions. Its
+[research index](design-research-index.md) consolidates the related draft PRs. This
+brief remains the higher-level purpose/principles document; a merged documentation
+checkpoint is not an implementation or a blanket adoption of every derived proposal.
 
 ## Proposed purpose
 
@@ -165,12 +171,18 @@ These are scope proposals, not authorization to remove existing capabilities.
 
 ## Decisions still open
 
-1. **Matching and decoding:** which representations and normalizations are
-   intentional, which conversions count as unwanted coercion, and how strictness
-   is expressed and audited across every result path, including custom validators.
-2. **Failure handling:** what information makes contract mismatches actionable,
-   how callers recover, and what happens after partial stream consumption or a
-   write that completed before RETURNING validation failed.
+The checkpoint narrows these questions; don't treat this list as permission to
+reopen settled directions. In particular, the maintainer selected direct
+driver-to-Pydantic value handling, three operation-level parsing modes and ordinary
+transaction behavior after validation failures.
+
+1. **Matching and decoding:** how to implement the selected boundary consistently,
+   including JSON input grammar, serialization formats, structured unchecked results
+   and deliberate validators. Exact operation syntax remains open; hidden snekql
+   decoding before Pydantic is not the selected direction.
+2. **Failure handling:** exact safe diagnostics and error interfaces, and how to
+   implement the selected list/stream/RETURNING failure behavior. Invalid data is not
+   no-row; catching a validation error inside a transaction doesn't force rollback.
 3. **Model responsibilities:** which facts belong to read, construction and
    physical-schema contracts; whether separate input/read domains are worthwhile;
    which declaration ceremony earns its cost.

@@ -1,0 +1,38 @@
+"""Research-only copied source; run AFTER observing red acceptance."""
+from pathlib import Path
+import shutil
+ROOT = Path(__file__).parent
+out = ROOT / 'overlay' / 'snekql'
+shutil.copytree(Path.cwd() / 'snekql', out, ignore=shutil.ignore_patterns('__pycache__'), dirs_exist_ok=True)
+p = out / 'expressions.py'
+s = p.read_text()
+needle = 'type AggregateFunction ='
+policy = '''from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ty_extensions import Intersection, Not
+    from snekql._temporal import ZonedDatetime
+
+class _OrderingDomain[T](Protocol):
+    def __column_value_type__(self) -> T: ...
+
+'''
+s = s.replace(needle, policy + needle, 1)
+for method in ['lt', 'lte', 'gt', 'gte', 'between']:
+    old = f'def {method}(self,'
+    new = f'def {method}(self: Intersection[Comparable[OwnerT, ValueT, ColumnValueT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]],'
+    assert s.count(old) == 1, (method, s.count(old))
+    s = s.replace(old, new)
+p.write_text(s)
+p = out / 'storage.py'
+s = p.read_text()
+s = s.replace('type StorageClass =', '''if TYPE_CHECKING:
+    from ty_extensions import Intersection, Not
+    from snekql.expressions import _OrderingDomain
+
+type StorageClass =''', 1)
+for method in ['asc', 'desc', 'min', 'max']:
+    old = f'def {method}(self)'
+    new = f'def {method}(self: Intersection[Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT, CompareT, FamilyT], _OrderingDomain[Not[ZonedDatetime]]])'
+    assert s.count(old) == 1
+    s = s.replace(old, new)
+p.write_text(s)
