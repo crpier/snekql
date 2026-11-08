@@ -1,0 +1,127 @@
+tests/experimental/test_decimal_storage_capabilities_606.py::forbidden_operations_and_false_capability_claims_are_rejected ... FAIL (0.16s)
+
+=================================== FAILURES ===================================
+
+tests/experimental/test_decimal_storage_capabilities_606.py::forbidden_operations_and_false_capability_claims_are_rejected ... FAIL (0.16s)
+Traceback (most recent call last):
+  File
+"/home/crpier/Projects/snekql/tests/experimental/test_decimal_storage_capabiliti
+es_606.py", line 96, in
+forbidden_operations_and_false_capability_claims_are_rejected
+        assert_eq(_observed(_check(source, overlay=True)), _expected(source))
+E       [(34, 'invalid-argument-type'), (35, 'invalid-argument-type'), (36,
+'invalid-argument-type'), (37, 'invalid-argument-type'), (38,
+'invalid-argument-type'), (39, 'invalid-argument-type'), (40,
+'invalid-argument-type'), (41, 'invalid-argument-type'), (42,
+'invalid-argument-type'), (43, 'invalid-argument-type'), (44,
+'invalid-argument-type'), (45, 'invalid-argument-type'), (46,
+'invalid-argument-type'), (47, 'invalid-argument-type'), (48,
+'invalid-argument-type'), (49, 'invalid-argument-type'), (50,
+'invalid-argument-type'), (51, 'invalid-argument-type'), (52,
+'invalid-argument-type'), (53, 'invalid-argument-type'), (54,
+'invalid-argument-type'), (55, 'invalid-argument-type'), (56,
+'invalid-argument-type'), (57, 'invalid-argument-type'), (58,
+'invalid-argument-type'), (59, 'invalid-argument-type'), (60,
+'invalid-argument-type'), (61, 'invalid-argument-type'), (62,
+'invalid-argument-type'), (63, 'invalid-argument-type'), (64,
+'invalid-argument-type'), (65, 'invalid-argument-type'), (66,
+'invalid-argument-type'), (67, 'invalid-argument-type'), (68,
+'invalid-argument-type'), (69, 'invalid-argument-type'), (70,
+'invalid-argument-type'), (71, 'invalid-argument-type'), (72,
+'invalid-argument-type'), (73, 'invalid-argument-type'), (74,
+'invalid-argument-type'), (75, 'invalid-argument-type'), (76,
+'invalid-argument-type'), (77, 'invalid-argument-type'), (79,
+'invalid-argument-type'), (80, 'invalid-argument-type'), (81,
+'invalid-argument-type'), (82, 'invalid-argument-type'), (83,
+'invalid-argument-type'), (84, 'invalid-argument-type')] != [(34,
+'invalid-argument-type'), (35, 'invalid-argument-type'), (36,
+'invalid-argument-type'), (37, 'invalid-argument-type'), (38,
+'invalid-argument-type'), (39, 'invalid-argument-type'), (40,
+'invalid-argument-type'), (41, 'invalid-argument-type'), (42,
+'invalid-argument-type'), (43, 'invalid-argument-type'), (44,
+'invalid-argument-type'), (45, 'invalid-argument-type'), (46,
+'invalid-argument-type'), (47, 'invalid-argument-type'), (48,
+'invalid-argument-type'), (49, 'invalid-argument-type'), (50,
+'invalid-argument-type'), (51, 'invalid-argument-type'), (52,
+'invalid-argument-type'), (53, 'invalid-argument-type'), (54,
+'invalid-argument-type'), (55, 'invalid-argument-type'), (56,
+'invalid-argument-type'), (57, 'invalid-argument-type'), (58,
+'invalid-argument-type'), (59, 'invalid-argument-type'), (60,
+'invalid-argument-type'), (61, 'invalid-argument-type'), (62,
+'invalid-argument-type'), (63, 'invalid-argument-type'), (64,
+'invalid-argument-type'), (65, 'invalid-argument-type'), (66,
+'invalid-argument-type'), (67, 'invalid-argument-type'), (68,
+'invalid-argument-type'), (69, 'invalid-argument-type'), (70,
+'invalid-argument-type'), (71, 'invalid-argument-type'), (72,
+'invalid-argument-type'), (73, 'invalid-argument-type'), (74,
+'invalid-argument-type'), (75, 'invalid-argument-type'), (76,
+'invalid-argument-type'), (77, 'invalid-argument-type'), (79,
+'invalid-argument-type'), (80, 'invalid-argument-type'), (81,
+'invalid-argument-type'), (82, 'invalid-argument-type'), (83,
+'invalid-argument-type'), (84, 'invalid-argument-type'), (88,
+'invalid-assignment'), (92, 'invalid-assignment')]
+
+E       Right contains 2 more items
+E
+E         [(34, 'invalid-argument-type'),
+E          (35, 'invalid-argument-type'),
+E          (36, 'invalid-argument-type'),
+E          (37, 'invalid-argument-type'),
+E          (38, 'invalid-argument-type'),
+E          (39, 'invalid-argument-type'),
+E          (40, 'invalid-argument-type'),
+E          (41, 'invalid-argument-type'),
+E          (42, 'invalid-argument-type'),
+E          (43, 'invalid-argument-type'),
+E          (44, 'invalid-argument-type'),
+E          (45, 'invalid-argument-type'),
+E          (46, 'invalid-argument-type'),
+E          (47, 'invalid-argument-type'),
+E          (48, 'invalid-argument-type'),
+E          (49, 'invalid-argument-type'),
+E          (50, 'invalid-argument-type'),
+E          (51, 'invalid-argument-type'),
+E          (52, 'invalid-argument-type'),
+E          (53, 'invalid-argument-type'),
+E          (54, 'invalid-argument-type'),
+E          (55, 'invalid-argument-type'),
+E          (56, 'invalid-argument-type'),
+E          (57, 'invalid-argument-type'),
+E          (58, 'invalid-argument-type'),
+E          (59, 'invalid-argument-type'),
+E          (60, 'invalid-argument-type'),
+E          (61, 'invalid-argument-type'),
+E          (62, 'invalid-argument-type'),
+E          (63, 'invalid-argument-type'),
+E          (64, 'invalid-argument-type'),
+E          (65, 'invalid-argument-type'),
+E          (66, 'invalid-argument-type'),
+E          (67, 'invalid-argument-type'),
+E          (68, 'invalid-argument-type'),
+E          (69, 'invalid-argument-type'),
+E          (70, 'invalid-argument-type'),
+E          (71, 'invalid-argument-type'),
+E          (72, 'invalid-argument-type'),
+E          (73, 'invalid-argument-type'),
+E          (74, 'invalid-argument-type'),
+E          (75, 'invalid-argument-type'),
+E          (76, 'invalid-argument-type'),
+E          (77, 'invalid-argument-type'),
+E          (79, 'invalid-argument-type'),
+E          (80, 'invalid-argument-type'),
+E          (81, 'invalid-argument-type'),
+E          (82, 'invalid-argument-type'),
+E          (83, 'invalid-argument-type'),
+E       -  (84, 'invalid-argument-type'),
+E       ?                               ^
+
+E       +  (84, 'invalid-argument-type')]
+E       ?                               ^
+
+E       -  (88, 'invalid-assignment'),
+E       -  (92, 'invalid-assignment')]
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/experimental/test_decimal_storage_capabilities_606.py::forbidden_operations_and_false_capability_claims_are_rejected - …
+
+───────────────────────── 1 failed, 0 passed in 0.16s ──────────────────────────

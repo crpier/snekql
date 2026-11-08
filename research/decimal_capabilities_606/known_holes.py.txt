@@ -1,0 +1,70 @@
+"""Deliberate counterexamples, not supported recipes or successful enforcement."""
+from decimal import Decimal
+from typing import TYPE_CHECKING, ClassVar, Literal
+from pydantic import BaseModel
+from snekql import mariadb, sqlite
+
+if TYPE_CHECKING:
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
+        amount: mariadb.Col[Decimal, Literal["numeric"]] = mariadb.Decimal(12, 2)
+        text: mariadb.Col[mariadb.CanonicalDecimal, Literal["text"]] = mariadb.Text()
+
+    class Text[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Text[sqlite.Row]]]
+        amount: sqlite.Col[sqlite.CanonicalDecimal, Literal["text"]] = sqlite.Text()
+
+    class Pair(BaseModel):
+        native: Decimal
+        text: Decimal
+
+    class Role:
+        pass
+
+    a = Native.amount.label("native")
+    b = Native.text.label("text")
+    amounts = mariadb.select(Native).project(Pair, native=a, text=b).cte(Role, name="amounts")
+    native = amounts.column(a)
+    text = amounts.column(b)
+
+    # These invalid ordered comparisons still pass; they use unmodified overloads.
+    Native.text.gt_col(Native.text)
+    Text.amount.gt_col(Text.amount)
+    text.gt_col(text)
+
+    # There is no static check that the class-body capability matches its RHS.
+    class FalseClaim[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[FalseClaim[sqlite.Row]]]
+        amount: sqlite.Col[Decimal, Literal["numeric"]] = sqlite.Text()
+
+    class FalseNativeClaim[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[FalseNativeClaim[mariadb.Row]]]
+        amount: mariadb.Col[Decimal, Literal["text"]] = mariadb.Decimal(12, 2)
+
+    FalseClaim.amount.gt(Decimal("1"))  # accepted even though storage is text
+    # Ordinary assignment DOES check the specialized factory return capability.
+    lie: sqlite.Col[Decimal, Literal["numeric"]] = sqlite.Text()  # error: invalid-assignment
+
+    # Unannotated capability cannot be recovered from the constructor.
+    class Legacy[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Legacy[mariadb.Row]]]
+        amount: mariadb.Col[Decimal] = mariadb.Decimal(12, 2)
+
+    Legacy.amount.gt(Decimal("1"))  # error: invalid-argument-type
+
+    # The global constraints also regress ordinary, non-Decimal columns.
+    class Ordinary[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Ordinary[sqlite.Row]]]
+        amount: sqlite.Col[int] = sqlite.Integer()
+
+    Ordinary.amount.gt(1)  # error: invalid-argument-type
+    Ordinary.amount.sum()  # error: invalid-argument-type
+
+    # The narrow witness does not propagate into aggregate comparison receivers.
+    Native.amount.sum().gt(Decimal("1"))  # error: invalid-argument-type
+    native.sum().gt(Decimal("1"))  # error: invalid-argument-type
+
+    # Existing arithmetic overloads support int/float, not native Decimal.
+    # These are pre-existing missing capabilities, not successful discrimination.
+    Native.amount.add(Decimal("1"))  # error: no-matching-overload
+    native.add(Decimal("1"))  # error: no-matching-overload
