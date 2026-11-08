@@ -1,0 +1,21 @@
+from decimal import Decimal
+from typing import TYPE_CHECKING, ClassVar, assert_type
+from snekql import mariadb, sqlite
+
+if TYPE_CHECKING:
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
+        amount: mariadb.Col[Decimal] = mariadb.Decimal(12, 2)
+
+    class Text[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Text[sqlite.Row]]]
+        amount: sqlite.Col[sqlite.CanonicalDecimal] = sqlite.Text()
+
+    def values(native: Native[mariadb.Row], text: Text[sqlite.Row]) -> None:
+        assert_type(native.amount, Decimal)
+        assert_type(text.amount, Decimal)
+
+    Native.amount.gt(Decimal("1"))
+    Text.amount.eq(Decimal("1"))
+    Text.amount.in_(Decimal("1"), Decimal("2"))
+    Text.amount.gt(Decimal("1"))  # reject-order

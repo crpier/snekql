@@ -1,0 +1,84 @@
+from decimal import Decimal
+from typing import TYPE_CHECKING, ClassVar, Literal
+from pydantic import BaseModel
+from snekql import mariadb, sqlite
+
+if TYPE_CHECKING:
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
+        amount: mariadb.Col[Decimal, Literal["numeric"]] = mariadb.Decimal(12, 2)
+        text: mariadb.Col[mariadb.CanonicalDecimal, Literal["text"]] = mariadb.Text()
+
+    class Text[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Text[sqlite.Row]]]
+        amount: sqlite.Col[sqlite.CanonicalDecimal, Literal["text"]] = sqlite.Text()
+
+    class Pair(BaseModel):
+        native: Decimal
+        text: Decimal
+
+    class Single(BaseModel):
+        amount: Decimal
+
+    class Role:
+        pass
+
+    a = Native.amount.label("native")
+    b = Native.text.label("text")
+    amounts = mariadb.select(Native).project(Pair, native=a, text=b).cte(Role, name="amounts")
+    text = amounts.column(b)
+    token = Text.amount.label("amount")
+    sqlite_amounts = sqlite.select(Text).project(Single, amount=token).cte(Role, name="sqlite_amounts")
+    sqlite_text = sqlite_amounts.column(token)
+
+    Text.amount.gt(Decimal("1"))  # error: invalid-argument-type
+    Text.amount.gte(Decimal("1"))  # error: invalid-argument-type
+    Text.amount.lt(Decimal("1"))  # error: invalid-argument-type
+    Text.amount.lte(Decimal("1"))  # error: invalid-argument-type
+    Text.amount.between(Decimal("1"), Decimal("2"))  # error: invalid-argument-type
+    Text.amount.asc()  # error: invalid-argument-type
+    Text.amount.desc()  # error: invalid-argument-type
+    Text.amount.min()  # error: invalid-argument-type
+    Text.amount.max()  # error: invalid-argument-type
+    Text.amount.sum()  # error: invalid-argument-type
+    Text.amount.avg()  # error: invalid-argument-type
+    Native.text.gt(Decimal("1"))  # error: invalid-argument-type
+    Native.text.gte(Decimal("1"))  # error: invalid-argument-type
+    Native.text.lt(Decimal("1"))  # error: invalid-argument-type
+    Native.text.lte(Decimal("1"))  # error: invalid-argument-type
+    Native.text.between(Decimal("1"), Decimal("2"))  # error: invalid-argument-type
+    Native.text.asc()  # error: invalid-argument-type
+    Native.text.desc()  # error: invalid-argument-type
+    Native.text.min()  # error: invalid-argument-type
+    Native.text.max()  # error: invalid-argument-type
+    Native.text.sum()  # error: invalid-argument-type
+    Native.text.avg()  # error: invalid-argument-type
+    text.gt(Decimal("1"))  # error: invalid-argument-type
+    text.gte(Decimal("1"))  # error: invalid-argument-type
+    text.lt(Decimal("1"))  # error: invalid-argument-type
+    text.lte(Decimal("1"))  # error: invalid-argument-type
+    text.between(Decimal("1"), Decimal("2"))  # error: invalid-argument-type
+    text.asc()  # error: invalid-argument-type
+    text.desc()  # error: invalid-argument-type
+    text.min()  # error: invalid-argument-type
+    text.max()  # error: invalid-argument-type
+    text.sum()  # error: invalid-argument-type
+    text.avg()  # error: invalid-argument-type
+    sqlite_text.gt(Decimal("1"))  # error: invalid-argument-type
+    sqlite_text.gte(Decimal("1"))  # error: invalid-argument-type
+    sqlite_text.lt(Decimal("1"))  # error: invalid-argument-type
+    sqlite_text.lte(Decimal("1"))  # error: invalid-argument-type
+    sqlite_text.between(Decimal("1"), Decimal("2"))  # error: invalid-argument-type
+    sqlite_text.asc()  # error: invalid-argument-type
+    sqlite_text.desc()  # error: invalid-argument-type
+    sqlite_text.min()  # error: invalid-argument-type
+    sqlite_text.max()  # error: invalid-argument-type
+    sqlite_text.sum()  # error: invalid-argument-type
+    sqlite_text.avg()  # error: invalid-argument-type
+
+    Native.amount.eq("not a decimal")  # error: invalid-argument-type
+    Native.text.eq("not a decimal")  # error: invalid-argument-type
+    Text.amount.eq("not a decimal")  # error: invalid-argument-type
+    amounts.column(a).eq("not a decimal")  # error: invalid-argument-type
+    text.eq("not a decimal")  # error: invalid-argument-type
+    sqlite_text.eq("not a decimal")  # error: invalid-argument-type

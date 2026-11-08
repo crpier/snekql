@@ -1,0 +1,40 @@
+[
+  {
+    "check_name": "invalid-argument-type",
+    "description": "invalid-argument-type: Argument to bound method `Attr.sum` is incorrect: Expected `Attr[Any, Any, Any, Any, Any, Any, Any, Any, object] & _StorageCapability[Literal[\"numeric\"]]`, found `Attr[Any, Any, Any, Any, Any, Any, Any, Any, object]`",
+    "severity": "major",
+    "fingerprint": "49cc0c5cfd84334c",
+    "location": {
+      "path": "snekql/_output_provenance.py",
+      "positions": {
+        "begin": {
+          "line": 152,
+          "column": 13
+        },
+        "end": {
+          "line": 152,
+          "column": 38
+        }
+      }
+    }
+  },
+  {
+    "check_name": "invalid-argument-type",
+    "description": "invalid-argument-type: Argument to bound method `Attr.asc` is incorrect: Expected `Attr[Any, Any, Any, Any, Any, Any, Any, Any, object] & _StorageCapability[Literal[\"numeric\"]]`, found `Attr[Any, Any, Any, Any, Any, Any, Any, Any, object]`",
+    "severity": "major",
+    "fingerprint": "36185b5ce846fb4",
+    "location": {
+      "path": "snekql/_output_provenance.py",
+      "positions": {
+        "begin": {
+          "line": 162,
+          "column": 13
+        },
+        "end": {
+          "line": 162,
+          "column": 39
+        }
+      }
+    }
+  }
+]
