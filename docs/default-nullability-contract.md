@@ -1,7 +1,8 @@
 # Defaults, nullability and migration: recommended contract
 
-**2026-11-15 — #612 under #603. Recommendations awaiting maintainer decision,
-not implemented behavior or permission to implement.**
+**2026-11-15 — #612 under #603. SQL-style nullability default and separation
+accepted; other contract/migration details remain recommendations. Unimplemented;
+no implementation or merge authorized.**
 
 The core declaration direction is already accepted in [PR #609](https://github.com/crpier/snekql/pull/609):
 separate Python `default`/`default_factory` and SQL `server_default` parameters;
@@ -9,13 +10,14 @@ retain Col/GenCol, Pending/Row, the Row witness and explicit pending defaults.
 Repeated `default=PENDING_GENERATION` is an accepted cost. Do not reopen it here.
 The [static proof in draft PR #611](https://github.com/crpier/snekql/pull/611)
 supports the three anchor forms on real Text declarations on both backends. It
-proves neither runtime behavior nor the nullability/migration proposals below.
+proves neither runtime behavior nor the nullability/migration contract below.
 
-## Recommendations in brief
+## Accepted nullability direction and remaining recommendations
 
-1. **Keep annotation-derived physical nullability when unspecified.** A field-level
-   `T | None` implies nullable storage by default; `T` implies non-null storage.
-   Explicit `nullable=` overrides that physical choice without rewriting Python types.
+1. **Accepted: ordinary SQL columns permit NULL when nullable is omitted.**
+   `nullable=False` requests NOT NULL; `nullable=True` explicitly permits NULL.
+   Python annotations do not determine SQL nullability. The maintainer selected this
+   after rejecting both annotation-derived inference and mandatory nullable arguments.
 2. **Permit both explicit mismatches.** Non-null Python over nullable SQL is useful
    for brownfield mappings. Nullable Python over non-null SQL is also allowed, but
    validating a value does not promise that the database will accept a write.
@@ -27,8 +29,10 @@ proves neither runtime behavior nor the nullability/migration proposals below.
    old/new default semantics. Retain LiteralDefault only temporarily as a diagnostic
    token, not as an accepted recipe; move literals and clocks to `server_default`.
 
-These choices minimize changes beyond the accepted separation while preserving
-brownfield flexibility. They are recommendations, not four new recorded decisions.
+The maintainer confirmed the SQL-style default with “cool, that's what we're going
+with”. This supersedes this document's original recommendation to retain annotation
+inference. It does not approve every SQL-literal restriction, diagnostic or migration
+proposal below. Requiring nullable on every column is also not the chosen direction.
 
 ## Status and scope
 
@@ -64,28 +68,36 @@ preconversion or changes the logical contract.
 
 ## 2. Nullability rules
 
-### Unspecified nullable keeps the current inference
+### Accepted: unspecified nullable follows SQL, not the annotation
 
 ```python
 required: db.Col[str] = db.Text()
 nullable_but_required: db.Col[str | None] = db.Text()
 nullable_and_omittable: db.Col[str | None] = db.Text(default=None)
+not_null: db.Col[str] = db.Text(nullable=False)
 ```
 
-The first requires a string and declares TEXT NOT NULL. The second requires a
-string or None and declares nullable TEXT. Only the third permits constructor
-omission, supplying None. These statements assume plain annotations without
+All first three columns permit SQL NULL. Their Python contracts differ: the first
+requires a string, the second requires a string or None, and only the third permits
+constructor omission, supplying None. The fourth explicitly declares NOT NULL and
+requires a Python string. These statements assume plain annotations without
 additional validators. Pending and Row value types follow the annotations.
 
-Infer physical nullability from resolved field-level None membership, including
-ordinary aliases/Annotated wrappers, not by executing validators or factories.
-None nested inside `list[str | None]` does not make the list field nullable.
-If the annotation cannot be resolved safely, require explicit physical nullability
-or fail declaration rather than guess. This does not resolve JSON null versus SQL
-NULL; JSON input/serialization grammar remains a separate #603 question.
+Do not inspect annotations, aliases, Annotated metadata or nested None membership
+to choose physical nullability. Do not run validators or factories to choose it.
+Unresolved annotations still need resolution for logical validation, but are not a
+reason to require a nullable argument: the ordinary SQL default remains nullable.
+This does not resolve JSON null versus SQL NULL; JSON input/serialization grammar
+remains a separate #603 question.
 
-Primary-key/identity restrictions remain in force: no nullable primary-key contract
-or None-based implicit generation. Generated IDs use the pending marker. Backend
+This follows ordinary column behavior in [SQLite](https://sqlite.org/lang_createtable.html)
+and [MariaDB](https://mariadb.com/docs/server/server-usage/tables/create-table), not
+ORM-derived schema inference.
+
+The ordinary-column default does not override primary-key/identity constraints;
+omitting nullable on a primary key is not an explicit request for nullable=True.
+Existing restrictions remain in force: no nullable primary-key contract or None-based
+implicit generation. Generated IDs use the pending marker. Backend
 DDL/catalog peculiarities still need their existing backend-specific handling;
 this proposal does not pretend that every SQLite primary-key form has identical
 physical semantics.
@@ -113,8 +125,9 @@ This combination is rarely useful, but rejecting it would recouple contracts
 without establishing any general guarantee that all validated values persist.
 Do not add an extra per-write NULL checker or an automatic runtime warning.
 
-**Both mismatches currently fail model declaration.** Allowing them is a proposed
-change. It does not imply that schema verification should ignore actual SQL drift.
+**Both mismatches currently fail model declaration.** The accepted separation does
+not make them shipped behavior or imply that schema verification should ignore
+actual SQL drift.
 
 ## 3. Omission, defaults and generation
 
@@ -210,8 +223,8 @@ if a particular database permits such a self-conflicting schema declaration.
 ## 5. Declarations, DDL and verification must agree on physical facts
 
 A Python default/factory alone declares **no SQL DEFAULT**. Explicit `nullable=`
-controls the expected physical NULL permission; the annotation-derived value applies
-only when no override is given. Scaffold and schema verification must consume the
+controls the expected physical NULL permission; ordinary columns permit NULL when
+it is omitted, independently of the annotation. Scaffold and schema verification must consume the
 same declared physical facts, not infer different policies independently.
 
 Verification checks the live column against those physical expectations, not whether
@@ -244,13 +257,15 @@ Migration recipes preserve behavior where it was previously supported:
 # Old SQL literal default: implicitly made constructor input omittable.
 attempts: db.GenCol[int] = db.Integer(default=db.LiteralDefault(0))
 # New: state the Python omission and SQL default separately.
-attempts: db.GenCol[int] = db.Integer(default=db.PENDING_GENERATION, server_default=0)
+attempts: db.GenCol[int] = db.Integer(
+    nullable=False, default=db.PENDING_GENERATION, server_default=0
+)
 
 # Old SQL clock default.
 created: db.GenCol[db.UtcDatetime] = db.Text(default=db.CurrentTimestamp)
 # New: preserve omission explicitly, retain the SQL clock.
 created: db.GenCol[db.UtcDatetime] = db.Text(
-    default=db.PENDING_GENERATION, server_default=db.CurrentTimestamp
+    nullable=False, default=db.PENDING_GENERATION, server_default=db.CurrentTimestamp
 )
 ```
 
@@ -273,9 +288,18 @@ The same migration applies to old LiteralDefault(None), with explicit
 - Static checks must reject typed legacy uses where possible; runtime declaration
   rejection still covers dynamically supplied options. #611 does not prove this
   rejection because its overlay intentionally retained legacy overloads.
-- Previously matching explicit nullable flags retain their physical meaning. Formerly
-  rejected mismatches become available; omission still uses the same inference.
-  Do not weaken their new behavior through a silent nullable/type reconciliation.
+- Existing explicit Boolean nullable flags retain their physical meaning, subject
+  to existing primary-key restrictions. **Ordinary columns previously inferred NOT NULL from an
+  annotation now need explicit nullable=False to preserve that schema expectation.**
+  This includes non-null GenCol payloads and constrained/aliased types. Inventory
+  these fields even when they use no legacy default marker. Do not silently relax
+  a live constraint or rewrite migrations to match the new declaration default.
+- Legacy explicit nullable=None requested inference just like omission; include it
+  in the same schema-preserving inventory. It must not retain annotation inference.
+  Whether the new interface rejects explicit None or treats it as omission remains
+  an unapproved compatibility detail, not an alternative nullability policy.
+- Formerly rejected mismatches become available through independent physical/logical
+  choices. Never restore annotation-derived inference as a compatibility fallback.
 
 Applications should pin their old release, inventory marker uses and generated
 fields, then update declarations and run typing/constructor/query/schema checks
@@ -304,6 +328,9 @@ new declarations. Rolling back code does not undo a schema/data change.
 
 At separately agreed test seams, later evidence must establish:
 
+- Ordinary columns with omitted nullable permit SQL NULL regardless of T versus
+  T | None; explicit nullable=False declares NOT NULL. Neither changes logical types
+  or constructor requiredness. Preserve old NOT NULL expectations with explicit flags.
 - Omitted nullable input without a Python default is rejected; default=None permits
   omission only when the declared value contract accepts the resulting value.
 - Required SQL-defaulted Col and GenCol remain required. Explicit pending permits
@@ -321,8 +348,8 @@ At separately agreed test seams, later evidence must establish:
   or fail with an actionable diagnostic. No legacy marker is silently reinterpreted
   as a Python value. Existing explicit clock assignments remain unchanged.
 
-This is a proposed contract for maintainer approval, not authorization for those
-implementation tests or code. JSON/serialization grammar, independent input/read
+This records the accepted nullability direction plus remaining proposals for
+maintainer approval, not authorization for implementation tests or code. JSON/serialization grammar, independent input/read
 generics, integer/bool policy, structured Unparsed, SQLite Decimal and broader
 verification tooling remain separate #603 work.
 
@@ -332,6 +359,7 @@ Current behavior was inspected in `snekql/model.py` (server-marker lowering and
 nullability checks), `snekql/_server_defaults.py` (literal validation/lowering),
 `snekql/storage.py` (field-level None/clock handling), backend schema declaration
 and verification code, and the [typing guide's server-default section](typing.md#literal-server-defaults).
-The [design checkpoint](design-checkpoint.md) records accepted value ownership,
-brownfield separation, transaction semantics and the outstanding nullability choice.
-It predates the subsequent declaration acceptance and static proof cited above.
+The [design checkpoint](design-checkpoint.md) records value ownership, brownfield
+separation, transaction semantics and the dated nullability decision. Current runtime
+source still couples annotation and SQL nullability; the new accepted direction is
+unimplemented. The static proof above does not establish the new SQL behavior.
