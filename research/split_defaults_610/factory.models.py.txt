@@ -1,0 +1,40 @@
+from typing import ClassVar
+
+from snekql import __BACKEND__ as db
+
+
+def text_factory() -> str:
+    return "draft"
+
+
+def integer_factory() -> int:
+    return 17
+
+
+class FactoryState[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[FactoryState[db.Row]]]
+    state: db.Col[str] = db.Text(default_factory=text_factory, server_default="queued")
+
+
+class BadDefault[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[BadDefault[db.Row]]]
+    state: db.Col[str] = db.Text(default=17, server_default="queued")  # error: invalid-assignment
+
+
+class BadFactory[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[BadFactory[db.Row]]]
+    state: db.Col[str] = db.Text(default_factory=integer_factory, server_default="queued")  # error: invalid-assignment
+
+
+def argument_factory(value: str) -> str:
+    return value
+
+
+class BadFactoryArity[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[BadFactoryArity[db.Row]]]
+    state: db.Col[str] = db.Text(default_factory=argument_factory, server_default="queued")  # error: no-matching-overload
+
+
+class ConflictingDefaults[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[ConflictingDefaults[db.Row]]]
+    state: db.Col[str] = db.Text(default="draft", default_factory=text_factory, server_default="queued")  # error: no-matching-overload

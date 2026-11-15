@@ -1,0 +1,44 @@
+tests/experimental/test_split_defaults_610.py::python_default_coexists_with_independent_sql_default[sqlite] ... FAIL (0.08s)
+tests/experimental/test_split_defaults_610.py::python_default_coexists_with_independent_sql_default[mariadb] ... FAIL (0.08s)
+
+=================================== FAILURES ===================================
+
+tests/experimental/test_split_defaults_610.py::python_default_coexists_with_independent_sql_default[sqlite] ... FAIL (0.08s)
+Traceback (most recent call last):
+  File
+"/home/crpier/Projects/snekql/tests/experimental/test_split_defaults_610.py",
+line 98, in python_default_coexists_with_independent_sql_default
+        check_case(backend, "python_default")
+  File
+"/home/crpier/Projects/snekql/tests/experimental/test_split_defaults_610.py",
+line 91, in check_case
+            assert_eq(sorted(actual), sorted(expected))
+E       [('models.py', 8, 'no-matching-overload')] != []
+
+E       Left contains 1 more items
+E
+E       - []
+E       + [('models.py', 8, 'no-matching-overload')]
+
+tests/experimental/test_split_defaults_610.py::python_default_coexists_with_independent_sql_default[mariadb] ... FAIL (0.08s)
+Traceback (most recent call last):
+  File
+"/home/crpier/Projects/snekql/tests/experimental/test_split_defaults_610.py",
+line 98, in python_default_coexists_with_independent_sql_default
+        check_case(backend, "python_default")
+  File
+"/home/crpier/Projects/snekql/tests/experimental/test_split_defaults_610.py",
+line 91, in check_case
+            assert_eq(sorted(actual), sorted(expected))
+E       [('models.py', 8, 'no-matching-overload')] != []
+
+E       Left contains 1 more items
+E
+E       - []
+E       + [('models.py', 8, 'no-matching-overload')]
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/experimental/test_split_defaults_610.py::python_default_coexists_with_independent_sql_default[sqlite] - …
+FAILED tests/experimental/test_split_defaults_610.py::python_default_coexists_with_independent_sql_default[mariadb] - …
+
+───────────────────────── 2 failed, 0 passed in 0.16s ──────────────────────────

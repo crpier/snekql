@@ -1,0 +1,11 @@
+tests/experimental/test_split_defaults_610.py::baseline_does_not_have_the_proposed_sql_parameter[sqlite] ... OK (0.08s)
+tests/experimental/test_split_defaults_610.py::baseline_does_not_have_the_proposed_sql_parameter[mariadb] ... OK (0.08s)
+tests/experimental/test_split_defaults_610.py::explicit_python_default_alone_controls_omission[sqlite] ... OK (0.18s)
+tests/experimental/test_split_defaults_610.py::explicit_python_default_alone_controls_omission[mariadb] ... OK (0.18s)
+tests/experimental/test_split_defaults_610.py::public_queries_keep_complete_rows_and_marker_free_values[sqlite] ... OK (0.28s)
+tests/experimental/test_split_defaults_610.py::public_queries_keep_complete_rows_and_marker_free_values[mariadb] ... OK (0.28s)
+tests/experimental/test_split_defaults_610.py::python_default_coexists_with_independent_sql_default[sqlite] ... OK (0.09s)
+tests/experimental/test_split_defaults_610.py::python_default_coexists_with_independent_sql_default[mariadb] ... OK (0.09s)
+tests/experimental/test_split_defaults_610.py::python_factory_and_default_domains_remain_precise[sqlite] ... OK (0.18s)
+tests/experimental/test_split_defaults_610.py::python_factory_and_default_domains_remain_precise[mariadb] ... OK (0.18s)
+────────────────────────────── 10 passed in 1.61s ──────────────────────────────

@@ -1,0 +1,26 @@
+from typing import assert_type
+
+from snekql import __BACKEND__ as db
+
+from models import GeneratedState, PythonDefault, RequiredState, SourceLess
+
+
+async def query_results(tx: db.Transaction) -> None:
+    assert_type(await tx.fetch_all(db.select(PythonDefault)), list[PythonDefault[db.Row]])
+    assert_type(await tx.fetch_all(db.select(RequiredState)), list[RequiredState[db.Row]])
+    assert_type(await tx.fetch_all(db.select(GeneratedState)), list[GeneratedState[db.Row]])
+    assert_type(await tx.fetch_all(db.select(SourceLess)), list[SourceLess[db.Row]])
+    row = await tx.fetch_one(db.select(GeneratedState))
+    assert_type(row, GeneratedState[db.Row])
+    assert_type(row.state, str)
+    assert_type(await tx.fetch_one_or_none(db.select(GeneratedState)), GeneratedState[db.Row] | None)
+    assert_type(await tx.fetch_all(db.select(PythonDefault.state)), list[str])
+    assert_type(await tx.fetch_all(db.select(RequiredState.state)), list[str])
+    assert_type(await tx.fetch_all(db.select(GeneratedState.state)), list[str])
+    assert_type(await tx.fetch_all(db.select(SourceLess.state)), list[str])
+    assert_type(await tx.fetch_all(db.select(GeneratedState.state, GeneratedState.state)), list[tuple[str, str]])
+    assert_type(await tx.execute(db.insert(GeneratedState()).returning()), GeneratedState[db.Row])
+    assert_type(await tx.execute(db.insert(GeneratedState()).returning(GeneratedState.state)), str)
+    assert_type(await tx.fetch_all(db.select(GeneratedState)), list[GeneratedState[db.Pending]])  # error: type-assertion-failure
+    assert_type(await tx.fetch_all(db.select(GeneratedState.state)), list[str | db.PENDING_GENERATION])  # error: type-assertion-failure
+    await tx.execute(db.insert(row).returning())  # error: invalid-argument-type

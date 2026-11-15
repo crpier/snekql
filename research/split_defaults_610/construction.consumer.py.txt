@@ -1,0 +1,54 @@
+from typing import assert_type
+
+from snekql import __BACKEND__ as db
+
+from models import GeneratedState, PythonDefault, RequiredGenerated, RequiredState, SourceLess
+
+
+client = PythonDefault()
+assert_type(client, PythonDefault[db.Pending])
+assert_type(client.state, str)
+PythonDefault(state="override")
+required = RequiredState(state="explicit")
+assert_type(required.state, str)
+pending = GeneratedState()
+assert_type(pending, GeneratedState[db.Pending])
+assert_type(pending.state, str | db.PENDING_GENERATION)
+GeneratedState(state="override")
+GeneratedState(state=db.PENDING_GENERATION)
+SourceLess(state="explicit")
+SourceLess(state=db.PENDING_GENERATION)
+required_generated = RequiredGenerated(state="explicit")
+RequiredGenerated(state=db.PENDING_GENERATION)
+assert_type(required_generated.state, str | db.PENDING_GENERATION)
+
+
+def row_values(
+    client_row: PythonDefault[db.Row],
+    required_row: RequiredState[db.Row],
+    generated_row: GeneratedState[db.Row],
+    source_less_row: SourceLess[db.Row],
+    required_generated_row: RequiredGenerated[db.Row],
+) -> None:
+    assert_type(client_row.state, str)
+    assert_type(required_row.state, str)
+    assert_type(generated_row.state, str)
+    assert_type(source_less_row.state, str)
+    assert_type(required_generated_row.state, str)
+
+
+RequiredGenerated()  # error: missing-argument
+RequiredGenerated(state=None)  # error: invalid-argument-type
+RequiredGenerated(state=17)  # error: invalid-argument-type
+RequiredState()  # error: missing-argument
+SourceLess()  # error: missing-argument
+PythonDefault(state=None)  # error: invalid-argument-type
+PythonDefault(state=17)  # error: invalid-argument-type
+PythonDefault(state=db.PENDING_GENERATION)  # error: invalid-argument-type
+RequiredState(state=None)  # error: invalid-argument-type
+RequiredState(state=17)  # error: invalid-argument-type
+RequiredState(state=db.PENDING_GENERATION)  # error: invalid-argument-type
+GeneratedState(state=None)  # error: invalid-argument-type
+GeneratedState(state=17)  # error: invalid-argument-type
+SourceLess(state=None)  # error: invalid-argument-type
+SourceLess(state=17)  # error: invalid-argument-type

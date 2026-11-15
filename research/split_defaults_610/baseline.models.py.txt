@@ -1,0 +1,8 @@
+from typing import ClassVar
+
+from snekql import __BACKEND__ as db
+
+
+class PythonDefault[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[PythonDefault[db.Row]]]
+    state: db.Col[str] = db.Text(default="draft", server_default="queued")  # error: no-matching-overload
