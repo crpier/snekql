@@ -1,0 +1,153 @@
+{
+  "assignees": [],
+  "baseRefName": "main",
+  "baseRefOid": "5f4dd8189c529a99713b629a71e60088c6974204",
+  "body": "## Purpose\n\nRefs #610 and #603; follows the declaration direction accepted in PR #609. The user confirmed model declaration/construction and public query-result typing as the two test seams before tests.\n\n**Result: the chosen explicit-pending forms work with real-package declarations in this narrow static proof on both SQLite and MariaDB.** No wrapper, required=True workaround, callable intersection or new descriptor coordinate was needed.\n\n## Evidence\n\n- Copy the actual package; add an independent optional `server_default` argument to the seven existing Text overloads and implementation signature in each backend's storage file.\n- Leave bodies, return types, models/descriptors, field-specifier registration, query/transaction declarations and the explicit Row witness unchanged.\n- Separate importing consumers check omission, overrides, rejected values, default/factory domains and exact Pending/Row types.\n- SQL defaults alone keep inputs required, including GenCol without a Python default. Explicit `default=PENDING_GENERATION` permits omission without leaking pending markers into Row results.\n- SELECT model/scalar/tuple results and single INSERT RETURNING preserve exact public shapes, including Row input rejection for INSERT.\n- 10 focused parameterized checks pass: five per backend, covering the baseline rejection, clean anchor and paired clean-positive/exact-negative constructor, factory and query consumers.\n- 50 marked negative diagnostic sites are rejected across both modified-package backends, plus two exact baseline declaration rejections.\n- Whole copied-package ty audit: zero diagnostics. This is distinct from ordinary repository validation.\n- Read-only independent evidence audit replayed all 10 checks and found no consequential missing control or overclaim.\n\nStart at `research/split_defaults_610/README.md`. The report includes scope, replay commands, red/green evidence, the complete zero-context overlay diff and copied-package diagnostics. Harness: `tests/experimental/test_split_defaults_610.py`.\n\n## Important limits\n\n**Static proof only. The copied function bodies ignore the new argument; the copied package and models are never imported/executed.** Nothing here proves runtime defaults, factories, INSERT omission, metadata/DDL, database behavior, schema verification or driver/Pydantic interpretation.\n\nThe overlay retains legacy default-marker overloads. Their removal/rejection and migration behavior remain unfinished. The provisional SQL argument annotation is not a SQL compatibility validator or a newly selected schema/nullability contract. Only Text and the listed consumer cases are covered; no broader storage-capability proof or runtime-guard removal.\n\nNo production/dependency changes, per-model generated constructors, consumer Any/casts/suppression, runtime models or backend suites. The sole harness cast describes external checker JSON only. Do not merge #607 or #609 as part of this work.\n\n## Validation\n\n- `uv run snektest tests/experimental/test_split_defaults_610.py` \u2014 10 passed.\n- Copied-package `ty check snekql` under the repository-equivalent all-error policy \u2014 0 diagnostics.\n- `uv run ty check` \u2014 passed.\n- `uv run ruff check .` \u2014 passed.\n- `uv run ruff format --check .` \u2014 passed.\n- Whitespace checks and all four local report links \u2014 passed.\n\n## Proposed next step\u2014not started\n\nResolve the remaining default/nullability contract and legacy-marker compatibility plan before scoping runtime implementation. The accepted pending-marker repetition is no longer an interface blocker. This research does not authorize production changes or merges.\n",
+  "closedAt": null,
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-11-15T17:24:34Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-11-15T17:24:34Z",
+      "messageBody": "",
+      "messageHeadline": "research: prove split defaults with explicit pending (#610)",
+      "oid": "a04405f9d3ced041a9031ee39641b770444b6da0"
+    }
+  ],
+  "createdAt": "2026-11-15T17:25:24Z",
+  "files": [
+    {
+      "path": "research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/README.md",
+      "additions": 214,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/baseline.consumer.py.txt",
+      "additions": 16,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/baseline.models.py.txt",
+      "additions": 8,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/construction.consumer.py.txt",
+      "additions": 54,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/construction.models.py.txt",
+      "additions": 30,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/factory.consumer.py.txt",
+      "additions": 20,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/factory.models.py.txt",
+      "additions": 40,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/make_overlay.py",
+      "additions": 45,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/python_default.consumer.py.txt",
+      "additions": 16,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/python_default.models.py.txt",
+      "additions": 8,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/queries.consumer.py.txt",
+      "additions": 26,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/queries.models.py.txt",
+      "additions": 25,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/runs/green.txt",
+      "additions": 11,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/runs/overlay-package-diagnostics.json",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/runs/overlay.patch",
+      "additions": 36,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/split_defaults_610/runs/red-python-default.txt",
+      "additions": 44,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/experimental/test_split_defaults_610.py",
+      "additions": 132,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/split-default-declarations",
+  "headRefOid": "a04405f9d3ced041a9031ee39641b770444b6da0",
+  "isDraft": true,
+  "labels": [],
+  "mergedAt": null,
+  "number": 611,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Prove split-default declarations with explicit pending (#610)",
+  "updatedAt": "2026-11-15T17:25:24Z",
+  "url": "https://github.com/crpier/snekql/pull/611"
+}

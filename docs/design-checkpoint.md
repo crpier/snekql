@@ -1,7 +1,9 @@
 # Interface design checkpoint — 2026-11-08
 
-**Status:** Consolidation for maintainer review, tracking #603. Repository-only design
-material, **not current usage instructions or an implemented redesign**.
+**Status:** Current redesign record, maintained in **issue #603 and draft PR #609
+only**. Repository-only design/research material, **not current usage instructions
+or an implemented redesign**. Work in this redesign continues in that same pair;
+do not create an issue/PR for each discussion, experiment or document.
 
 This is the current checkpoint for the defaults/nullability discussion begun under
 #473 and the subsequent query-value and static-operation investigations. It combines
@@ -19,8 +21,12 @@ contracts; this checkpoint does not silently amend them.
 [declaration design sheet](declaration-design-sheet.md) compares the current form
 with two alternatives following #606/#607's partial storage-typing experiment.
 Its core recommendation—separate default channels, existing lifecycle/Row declarations
-and explicit pending defaults—was accepted on 2026-11-15. The full contract remains
-unfinished; other proposals in the sheet are not automatically decisions or implemented.
+and explicit pending defaults—was accepted on 2026-11-15. The SQL-style nullability
+default was subsequently accepted (D3). The full contract remains unfinished; other
+proposals are not automatically decisions or implemented. The later
+[split-default proof](../research/split_defaults_610/README.md) establishes bounded
+static feasibility. The [consolidation record](design-evidence/redesign-consolidation-2026-11-15/README.md)
+preserves the separately opened PRs/issues; they are not separate ongoing work streams.
 
 ## In one page
 
@@ -311,16 +317,17 @@ See the [research index](design-research-index.md) for reproducible/pinned refer
 
 ## What happens next
 
-1. Review this checkpoint for misclassified decisions and omissions. The maintainer
-   subsequently authorized consolidating and closing the nine research drafts; all
-   changed files were archived in #604 before closure. Review that preservation here,
-   rather than treating the retired branches as competing specifications.
-2. Resolve one concrete declaration comparison across the same scenarios: Python/SQL
-   defaults, constructor omission and SQL nullability. Don't select syntax from a
-   checker workaround alone.
-3. Prove a minimal storage-capability distinction: one logical Decimal type over native
-   numeric versus canonical text storage, with supported and rejected operations and
-   exact result types. Carry it through one derived-query path before broadening.
+1. Continue the redesign in issue #603 and draft PR #609 only. The older nine drafts
+   were archived in merged #604; later separately opened tasks/PRs are preserved in
+   the current consolidation record, not competing specifications or work queues.
+2. Review the remaining default/nullability compatibility proposals in the current
+   contract. The separate-default direction, explicit pending cost and ordinary
+   SQL nullable default are settled; do not redo those decisions or the completed
+   declaration/construction typing proof.
+3. Keep the completed Decimal capability experiment's limits visible: propagation
+   was conditional, declaration claims were unsound and ordinary integer operations
+   regressed. It is not a completed sound capability system. Do not expand that
+   overlay or remove runtime guards without a separately agreed scope.
 4. Close the remaining value-handling boundaries with one representative workflow:
    construction, serialization, driver→Pydantic reads, JSON and Unparsed structured
    results. Reuse full declared constraints; no hidden competing conversion layer.

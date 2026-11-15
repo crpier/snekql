@@ -1,0 +1,67 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Purpose\n\nRefs #603 and the partial evidence in #606 / draft PR #607. Maintainer-authorized next step: a caller-facing declaration design sheet, not implementation or another typing experiment.\n\nCompare the current declaration form with at most two alternatives using the same concrete cases: required value, Python default/factory, server default with constructor omission, generated primary key, nullable field and Decimal stored natively versus canonical text.\n\nFor each case, show declaration spelling, constructor omission/accepted values, successful-read type and physical SQL storage policy. Keep explicit user decisions, current behavior, hypothetical syntax, historical evidence and unresolved questions distinct.\n\nAssess readability, repetition, typing feasibility and compatibility. Recommend one direction, not another open-ended option menu. Do not require a separately self-certified operation capability alongside storage. Be willing to retain runtime operation checks if type visibility would impose an unacceptable declaration API.\n\n## Scope\n\nDocumentation only. No runtime/public API/dependency changes, native database execution, new typing proofs or selected SQLite decimal mapping. Carry forward #603's independent Python/schema policies and Pydantic ownership; generated-field lifecycle and existing adopted ADRs must not be silently discarded.\n\nThe proposed syntax is a design candidate, not supported code. New experiments or implementation require separate scoping and confirmed test seams. Open a documentation PR against main; do not merge without explicit authorization.\n",
+  "closedAt": null,
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABmv0fzw",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming #608 for continuing session `da58eec6-bf55-4414-99f3-e87a3ee3bee5`, branch `docs/declaration-design-sheet`, freshly fetched origin/main.\n\nDocumentation-only comparison of the current form and at most two alternatives, with concrete constructor/read/storage behavior and a recommended direction. No production changes, new checker probes or API adoption. Continue from #603 and #606/#607 evidence without merging the research overlay.\n",
+      "createdAt": "2026-11-15T13:46:07Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/608#issuecomment-6895247311",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABmwAXHg",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Design sheet delivered in PR #609, under #608 / umbrella #603. No implementation or new typing experiment.\n\nIt compares the current declaration form with exactly two alternatives and recommends separate Python/SQL default parameters on existing constructors, retaining lifecycle/Row declarations and explicit pending defaults for now. The field-wrapper alternative does not earn its additional caller cost. Independent nullability overrides are explicitly proposals, not current behavior or selected policy.\n\nThe document covers shared field cases plus required Python input despite SQL defaults, different Python/SQL defaults, nullable server omission versus explicit NULL (including DEFAULT NULL), existing clock defaults and native/text Decimal limits. It carries forward the #607 finding that a wrapper or extra self-certified capability marker does not solve trusted storage discovery.\n\nThe decision still needed is whether clearer ownership and brownfield independence justify retaining explicit pending markers at this stage. This is an author recommendation for review, not a maintainer decision. No required=True workaround, generator or broader implementation is authorized by the sheet.\n\nRepository typing/lint/format, whitespace and 86 local documentation link targets/fragments checked. No runtime/backend tests or checker probes; those checks do not establish the hypothetical interface. #608 and #603 stay open for review, and #607 remains separate unmerged research.\n",
+      "createdAt": "2026-11-15T13:59:24Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/608#issuecomment-6895441694",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABmwPWlQ",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "## Maintainer decision \u2014 2026-11-15\n\nThe maintainer explicitly accepted PR #609's core recommendation:\n\n> yeah I agree with the recommendations; I'm ok with eating the cost of declaring db.PENDING_GENERATION often\n\nRecorded in the declaration sheet and checkpoint:\n\n- Separate Python `default`/`default_factory` and SQL `server_default` parameters on existing storage constructors.\n- Retain `Col`, `GenCol`, the explicit Row declaration and explicit `default=PENDING_GENERATION` where omission should leave a field pending.\n- Repeated pending markers are an accepted cost, not an open blocker. No field-wrapper alternative or required=True workaround is chosen to hide them.\n\nThe full contract and compatibility plan are unfinished. Remaining nullability details are not implicitly settled, no new typing proof or implementation has started, and this approval is not merge authorization. PR #609 remains open/unmerged; this issue and umbrella #603 remain open. This comment supersedes the earlier statement that accepting the pending-marker cost was still the next decision.\n",
+      "createdAt": "2026-11-15T14:09:39Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/608#issuecomment-6895687317",
+      "viewerDidAuthor": true
+    }
+  ],
+  "createdAt": "2026-11-15T13:45:45Z",
+  "labels": [],
+  "number": 608,
+  "state": "OPEN",
+  "stateReason": "",
+  "title": "Compare caller-facing model declarations and recommend a coherent direction",
+  "updatedAt": "2026-11-15T14:09:39Z",
+  "url": "https://github.com/crpier/snekql/issues/608"
+}

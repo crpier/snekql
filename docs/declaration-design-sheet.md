@@ -3,9 +3,18 @@
 **2026-11-15 — core direction accepted; full contract unfinished and unimplemented.
 Not a current usage guide.**
 
-Tracks #608 under #603. This follows the merged [design checkpoint](design-checkpoint.md)
-and the partial storage-typing experiment in [draft PR #607](https://github.com/crpier/snekql/pull/607).
-No new typing proof, model execution or database tests were performed for this sheet.
+Now maintained under the single redesign issue #603 and PR #609. Former task numbers
+below are provenance, not separate work queues. This follows the merged
+[design checkpoint](design-checkpoint.md) and the
+[partial storage-typing experiment](../research/decimal_capabilities_606/README.md).
+No typing proof, model execution or database tests were performed for this comparison.
+The later [split-default proof](../research/split_defaults_610/README.md) is separate evidence.
+
+**Comparison-time SQL assumptions:** the shared examples below originally preserved
+main's inferred NOT NULL behavior. The later accepted [SQL-style nullability rule](default-nullability-contract.md)
+supersedes that assumption: ordinary columns permit NULL unless nullable=False is
+specified. To preserve a comparison example's old NOT NULL schema, add that explicit
+flag. The current-implementation reference remains historical at its stated revision.
 
 ## Accepted direction
 
@@ -17,8 +26,8 @@ core recommendation (alternative A below), including its repeated sentinel cost:
 > yeah I agree with the recommendations; I'm ok with eating the cost of declaring db.PENDING_GENERATION often
 
 This records a design decision, not permission to implement or merge, or a claim
-that the complete contract already works. Remaining nullability details and the
-compatibility plan are not settled by that acceptance.
+that the complete contract already works. The later SQL-style nullability decision
+and remaining compatibility proposals are recorded in the linked contract.
 
 That is an intentionally limited decision. It makes default ownership clear
 and supports independent application/schema policies without a wrapper on every
@@ -39,9 +48,9 @@ normal declarations worse, elimination is not worth that price.
 - **Current implementation:** described below at `5f4dd8189c529a99713b629a71e60088c6974204`,
   using the [model guide](models.md), [typing reference](typing.md) and source inspection.
   Existing hidden value conversions are not endorsed by showing current declarations.
-- **Remaining proposal:** the physical-nullability override described below is
-  still comparison material; the final nullability rules are not selected here.
-  Alternative B remains an unselected comparison, not a second supported recipe.
+- **Subsequent decision:** ordinary SQL columns permit NULL by default, independently
+  of Python annotations. The original inference-preserving comparison assumption is
+  superseded. Alternative B remains unselected, not a second supported recipe.
 - **Historical evidence:** narrow defaults prototypes exist, and #607 demonstrated
   conditional propagation of a storage marker through a CTE. Neither proves these
   complete proposed declarations, their runtime behavior or a sound capability model.
@@ -276,10 +285,11 @@ There is no default and no implicit omission. **Current snekql rejects this
 annotation/flag mismatch.** This is a proposed change, grounded in the agreed
 brownfield requirement, not existing support.
 
-For the common examples, this sheet retains today's annotation-derived physical
-nullability when `nullable=` is absent. That keeps the comparison controlled; it
-does not select the final SQL-nullability default. Proposed explicit `nullable=`
-would describe a physical fact rather than merely assert agreement with Python.
+The comparison originally retained annotation-derived physical nullability to
+control its examples. That recommendation was rejected. The accepted rule is now
+SQL-style: ordinary columns permit NULL when nullable is omitted; nullable=False
+requests NOT NULL. The annotation does not choose the SQL fact. See the current
+contract for the schema-preserving explicit flags needed when migrating these examples.
 
 The reverse case—Python accepts `None`, SQL forbids it—must not be silently narrowed
 into a different input type. A contract may validate a value that the database
@@ -376,12 +386,14 @@ and JSON entry-point selection are still #603 questions, not silently solved her
 ownership and brownfield independence at the cost of repeating
 `default=db.PENDING_GENERATION` where needed. Do not keep treating removal of that
 repetition as a blocker, add a wrapper merely to hide it, or reintroduce `required=True`.
-That does not settle every nullability or compatibility detail or complete the redesign.
+That does not settle every compatibility detail or complete the redesign. The later
+ordinary-column nullable-by-default decision is recorded in the current contract.
 
-The next proposed step is to scope one new proof at the declaration and constructor
-seam, confirming its exact tests before writing them. It should check the hardest independent-default/omission case
-and exact Pending/Row types, including negative controls—not expand the #607 overlay.
-No such proof or implementation is authorized or performed by this design sheet.
+The proposed declaration/construction and query-result typing proof was subsequently
+authorized and completed at user-confirmed seams. Its
+[report and controls](../research/split_defaults_610/README.md) are now preserved in
+this same PR. It establishes narrow static feasibility, not runtime implementation.
+No production work is authorized by this sheet.
 
 ## Evidence and validation limits
 
@@ -391,8 +403,10 @@ are archived research, not current usage instructions. The
 [left/right report](design-evidence/pr-snapshots/539/research/defaults_473/left-python-right-sql.md.txt)
 records why that generated route was abandoned. The current nullability/default
 observations were checked against `snekql/model.py` declaration validation and the
-typing guide at the baseline revision above. #607 remains separate research; it
-was not merged into this document's branch or rerun here.
+typing guide at the baseline revision above. Both experiments are now consolidated
+in this branch as isolated research; they are not production runtime changes. The
+[consolidation record](design-evidence/redesign-consolidation-2026-11-15/README.md)
+preserves their original heads, documents and issue/PR context.
 
 This work changes documentation only. Static repository/style and local-link checks
 validate the edit, not the hypothetical examples' typing, runtime, SQL or usability.

@@ -1,0 +1,27 @@
+tests/experimental/test_decimal_storage_capabilities_606.py::canonical_text_rejects_ordering ... OK (0.10s)
+tests/experimental/test_decimal_storage_capabilities_606.py::storage_restrictions_survive_a_cte ... FAIL (0.15s)
+
+=================================== FAILURES ===================================
+
+tests/experimental/test_decimal_storage_capabilities_606.py::storage_restrictions_survive_a_cte ... FAIL (0.15s)
+Traceback (most recent call last):
+  File
+"/home/crpier/Projects/snekql/tests/experimental/test_decimal_storage_capabiliti
+es_606.py", line 91, in storage_restrictions_survive_a_cte
+        assert_eq(_observed(_check(source, overlay=True)), _expected(source))
+E       [(33, 'invalid-argument-type'), (37, 'invalid-argument-type'), (44,
+'invalid-argument-type')] != [(37, 'invalid-argument-type'), (44,
+'invalid-argument-type')]
+
+E       At index 0 diff: (33, 'invalid-argument-type') != (37,
+'invalid-argument-type')
+E
+E       - [(37, 'invalid-argument-type'), (44, 'invalid-argument-type')]
+E       + [(33, 'invalid-argument-type'),
+E       +  (37, 'invalid-argument-type'),
+E       +  (44, 'invalid-argument-type')]
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+FAILED tests/experimental/test_decimal_storage_capabilities_606.py::storage_restrictions_survive_a_cte - …
+
+───────────────────────── 1 failed, 1 passed in 0.25s ──────────────────────────

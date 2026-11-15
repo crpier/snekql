@@ -1,0 +1,52 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Purpose\n\nFollow the maintainer-accepted declaration direction in #603 / PR #609 with a narrow real-package typing proof. The maintainer approved the two test seams below before tests.\n\nAccepted direction: separate Python default/default_factory and SQL server_default parameters on existing storage constructors; preserve Col/GenCol, Pending/Row and the explicit Row witness. Repeated default=PENDING_GENERATION is an accepted cost. No wrapper, required=True workaround, duplicate capability claim or generated per-model constructors.\n\n## Confirmed seams\n\n1. Public model declaration/construction: required versus optional inputs, explicit overrides, rejected wrong values, exact Pending/Row field types.\n2. Public query-result typing: selected fields and whole-model results retain the expected types.\n\nAnchor cases:\n\n```python\nstate: db.Col[str] = db.Text(default=\"draft\", server_default=\"queued\")\nstate: db.Col[str] = db.Text(server_default=\"queued\")\nstate: db.GenCol[str] = db.Text(\n    default=db.PENDING_GENERATION, server_default=\"queued\",\n)\n```\n\nCases are separate fields/models, not duplicate declarations. Cover Python factories and appropriate negative controls incrementally as the core evidence permits.\n\n## Method and limits\n\nUse real package declarations copied to a temporary research overlay; no toy replacement Model/Col interfaces, consumer Any/casts/suppression, per-model generated constructors or dependency changes. First record a failing consumer check, then minimally change the copied package annotations for one vertical slice at a time. Verify imported consumers with exact diagnostics/result types. Audit the copied package too and report any remaining errors or accepted false claims honestly.\n\nNo production implementation, runtime model/constructor execution, SQL default/DDL checks, backend execution, broader nullability-policy selection, or migration plan. This proves static behavior only; constructor acceptance means checker acceptance, not executed runtime behavior. Do not merge #607 or #609, close umbrella issues, or start production changes. Deliver replayable tests, report and research PR against main; no merge without authorization.\n",
+  "closedAt": null,
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABmyjw1w",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming #610 for continuing session `da58eec6-bf55-4414-99f3-e87a3ee3bee5`, branch `research/split-default-declarations`, from fetched origin/main `5f4dd8189c529a99713b629a71e60088c6974204`.\n\nAssignment verified before investigation/baseline. The maintainer explicitly confirmed the declaration/construction and public query-result typing seams. Isolated real-package static overlay only; no production/runtime/database changes or new declaration alternatives. Red/green slices, exact consumer results/negative controls, and an honest package-wide audit.\n",
+      "createdAt": "2026-11-15T17:06:04Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/610#issuecomment-6898118871",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABmyzy9w",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Static proof delivered in **draft PR #611**. The accepted declaration forms pass on real-package imports for both SQLite and MariaDB with only an independent optional server_default argument added to copied Text signatures. No wrappers, required=True workaround, callable intersections, new descriptor coordinates or generated per-model constructors.\n\nThe 10 focused checks cover the unmodified rejection, clean anchor, paired positive/negative declaration/construction and public query-result typing. There are 50 rejected negative diagnostic sites across both modified backends; SQL fallbacks do not make inputs optional, defaultless GenCol stays required, explicit pending permits omission, and Row/scalar query results exclude pending markers. Bad Python defaults/factories and caller values remain rejected. The entire copied package also passes ty with zero diagnostics; an independent read-only audit replayed all 10 checks without finding consequential gaps.\n\nLimits are important: copied bodies ignore server_default and are never imported/executed. This establishes static feasibility, not runtime defaults, metadata/DDL, INSERT omission, database behavior or Pydantic integration. Legacy default-marker overloads remain in the copy, and only Text plus listed consumers are covered. No production/dependency changes or backend execution occurred.\n\nReplayable report and evidence: `research/split_defaults_610/README.md`; harness: `tests/experimental/test_split_defaults_610.py`. Repository ty/lint/format, whitespace and local report links pass.\n\nProposed next question\u2014not started\u2014is the remaining default/nullability contract and legacy-marker migration behavior before runtime implementation. Pending-marker repetition is accepted, not a blocker to reopen. #610 and #603 remain open for review; #611 remains draft, and #607/#609 are not merged by this work.\n",
+      "createdAt": "2026-11-15T17:26:03Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/610#issuecomment-6898381559",
+      "viewerDidAuthor": true
+    }
+  ],
+  "createdAt": "2026-11-15T17:05:42Z",
+  "labels": [],
+  "number": 610,
+  "state": "OPEN",
+  "stateReason": "",
+  "title": "Prove split defaults with explicit pending in real-package declarations",
+  "updatedAt": "2026-11-15T17:26:03Z",
+  "url": "https://github.com/crpier/snekql/issues/610"
+}

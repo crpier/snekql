@@ -33,16 +33,22 @@ notes explain why each draft was retired, not proposals to close still-open PRs.
 No branches were deleted. The six completed research/documentation issues were closed
 only after preserving their original context and recording their bounded completion.
 At that point, the core design issues remained open pending checkpoint review.
-**Subsequent tracking, checked 2026-11-15:** #604 is merged; #473, #474 and #579
-were closed as superseded into the still-open redesign umbrella #603, not as solved.
-#606 / [draft PR #607](https://github.com/crpier/snekql/pull/607) provide partial
-storage-aware Decimal typing evidence, including explicit declaration costs and
-known failures. #608's [declaration design sheet](declaration-design-sheet.md)
-compares current declarations with two alternatives. The maintainer subsequently
-accepted its core separate-default direction with explicit pending defaults; the full
-contract is unfinished and unimplemented, and remaining nullability proposals are
-not automatically adopted. Existing issue assignments and claims must be checked before
-any future implementation.
+**Subsequent consolidation, 2026-11-15:** #604 is merged; #473, #474 and #579
+were superseded into #603, not solved. The maintainer required **one continuing
+redesign issue (#603) and one draft PR (#609)**, rather than additional task/PR pairs.
+Work from #607/#609/#611/#613 and task context from #606/#608/#610/#612 is preserved
+in that single branch and the [verified pre-consolidation archive](design-evidence/redesign-consolidation-2026-11-15/README.md).
+The redundant pairs are being retired without merging or declaring APIs implemented.
+
+Current entry points are the [checkpoint](design-checkpoint.md),
+[declaration comparison](declaration-design-sheet.md),
+[default/nullability contract](default-nullability-contract.md),
+[Decimal capability research](../research/decimal_capabilities_606/README.md) and
+[split-default typing proof](../research/split_defaults_610/README.md).
+The separate-default/explicit-pending direction and ordinary SQL nullable default
+are accepted; remaining contract details and production implementation are not.
+Existing claims must be checked before any future implementation, without opening
+another work queue for each part of this redesign.
 
 ## Defaults and nullability
 
@@ -245,6 +251,8 @@ The checkpoint records the actual directions and rejected approaches, the eviden
 capsules retain concrete examples, and the full per-PR archive preserves all changed
 files and pre-closure metadata. Commit-pinned reports retain external provenance too.
 This avoids treating retired draft branches as competing specifications. Preservation
-is part of #604, not yet merged into main; archived sources are not supported runtime
-modules or automatically maintained tests. Future branch/issue cleanup requires its
-own authorization.
+was merged in #604 for the older archive. The later consolidation lives in the single
+continuing PR #609. Archived source snapshots are not installed runtime modules or
+automatically maintained tests; the two isolated research harnesses in #609 remain
+explicit evidence, not production API changes. No new redesign issue/PR is needed
+for each subsequent discussion or bounded investigation.

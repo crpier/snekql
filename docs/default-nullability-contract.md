@@ -1,6 +1,7 @@
 # Defaults, nullability and migration: recommended contract
 
-**2026-11-15 — #612 under #603. SQL-style nullability default and separation
+**2026-11-15 — maintained in the single redesign issue #603 / PR #609.
+Former #612/#613 are provenance only. SQL-style nullability default and separation
 accepted; other contract/migration details remain recommendations. Unimplemented;
 no implementation or merge authorized.**
 
@@ -8,8 +9,8 @@ The core declaration direction is already accepted in [PR #609](https://github.c
 separate Python `default`/`default_factory` and SQL `server_default` parameters;
 retain Col/GenCol, Pending/Row, the Row witness and explicit pending defaults.
 Repeated `default=PENDING_GENERATION` is an accepted cost. Do not reopen it here.
-The [static proof in draft PR #611](https://github.com/crpier/snekql/pull/611)
-supports the three anchor forms on real Text declarations on both backends. It
+The [consolidated static proof](../research/split_defaults_610/README.md)
+(former PR #611) supports the three anchor forms on real Text declarations on both backends. It
 proves neither runtime behavior nor the nullability/migration contract below.
 
 ## Accepted nullability direction and remaining recommendations

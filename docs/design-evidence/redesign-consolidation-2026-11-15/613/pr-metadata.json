@@ -1,0 +1,72 @@
+{
+  "assignees": [],
+  "baseRefName": "main",
+  "baseRefOid": "5f4dd8189c529a99713b629a71e60088c6974204",
+  "body": "## Purpose and accepted decision\n\nRefs #612 and #603; follows the accepted declaration direction in PR #609 and bounded static proof in draft PR #611.\n\n**On 2026-11-15 the maintainer selected SQL-style nullability for ordinary columns:**\n\n- Omitted nullable permits SQL NULL, independent of the Python annotation.\n- nullable=False explicitly requests NOT NULL; nullable=True explicitly permits NULL, subject to primary-key/identity constraints.\n- Neither str nor str | None determines physical SQL nullability.\n- Do not require nullable on every column. Python constructor omission is still a separate default/default_factory question.\n\nThis supersedes this PR's original proposal to retain annotation-derived inference and the later mandatory-parameter suggestion. The maintainer confirmed the SQL-style rule with \u201ccool, that's what we're going with\u201d. It is a design decision, **not implementation or merge authorization, nor blanket approval of the remaining compatibility/SQL-default proposals**.\n\n## Documents\n\nStart at `docs/default-nullability-contract.md`; linked from the documentation index. Checkpoint D3 now records the dated accepted decision and distinguishes it from current main behavior. Existing choices\u2014split default channels, Col/GenCol, Pending/Row, the Row witness and explicit pending cost\u2014are preserved, not reopened.\n\n## Migration consequence of the accepted rule\n\nOrdinary columns previously inferred NOT NULL from non-null annotations need explicit nullable=False to preserve that schema expectation. Inventory them even if they use no legacy default marker. Before/after literal/clock examples now include that explicit flag where needed.\n\nNo automatic schema relaxation or migration-history rewrite. Existing Boolean nullable flags retain their physical meaning. Legacy explicit nullable=None must not preserve inference; exact rejection versus omitted-equivalent compatibility handling remains unapproved.\n\n## Remaining recommendations\u2014not adopted by the nullability approval\n\n- Permit independent physical/logical mismatch cases without a duplicate per-write NULL checker; preserve primary-key exceptions and ordinary validation/database failure behavior.\n- Treat bounded SQL defaults as schema facts independent of Python validators/factories/serialization, with existing safe rendering and supported scalar/clock boundaries. Proposed SQL DEFAULT NULL restrictions and other declaration limits still need review.\n- One documented future 0.x minor cutover, not dual default semantics. Move literals/clocks to server_default with explicit pending defaults to preserve omission. Retain LiteralDefault temporarily only as a diagnostic token in the initial cutover, never accepted lowering; remove it in a later minor. CurrentTimestamp stays an active SQL/assignment marker.\n\nThe contract includes omission/None/default contrasts, Pending/Row guarantees, defaults/factories timing, external generation, verification versus valid-row guarantees, rollout/rollback limits and later acceptance examples\u2014not tests run here.\n\n## Migration and verification risks addressed\n\nOld logical validators/serializers can change the encoded SQL default. Compare the old encoded SQL literal explicitly; if no equivalent bounded replacement exists, stop mechanical migration and separately review schema/application changes. No implicit coercion or raw-SQL escape hatch.\n\nVerification success is not proof of clause-level equivalence. Record unchecked/ambiguous facts (especially MariaDB implicit versus explicit NULL), use separate evidence where available and obtain an explicit rollout decision for unresolved limits.\n\nA read-only source/evidence audit identified these two risks; both were addressed. The subsequent small maintainer-decision updates were made directly without another delegate.\n\n## Validation and limits\n\n- Runtime reference source inspected at main `5f4dd8189c529a99713b629a71e60088c6974204`.\n- `uv run ty check` \u2014 passed.\n- `uv run ruff check .` \u2014 passed.\n- `uv run ruff format --check .` \u2014 passed.\n- Whitespace checks \u2014 passed.\n- 73 local documentation link targets/fragments checked across the updated documents.\n\nDocumentation only. No production/dependency changes, runtime models, checker probes, SQL/DDL/database tests, migration history edits, release/version change or merges. Checks validate the documentation, not the unimplemented target behavior. JSON/serialization, input/read generics, strict integer policy, structured Unparsed, Decimal and development verification remain separate.\n",
+  "closedAt": null,
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-11-15T17:39:50Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-11-15T17:39:50Z",
+      "messageBody": "",
+      "messageHeadline": "docs: propose nullability and legacy default migration contract (#612)",
+      "oid": "1f9d9def3700b6efc1fe85312785adc8d8a99b28"
+    },
+    {
+      "authoredDate": "2026-11-15T18:08:05Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-11-15T18:08:05Z",
+      "messageBody": "",
+      "messageHeadline": "docs: record accepted SQL-style nullability default (#612)",
+      "oid": "3bde9d4a62b9788da8c28d58d5e68ba40513f758"
+    }
+  ],
+  "createdAt": "2026-11-15T17:41:18Z",
+  "files": [
+    {
+      "path": "docs/README.md",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "docs/default-nullability-contract.md",
+      "additions": 365,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "docs/design-checkpoint.md",
+      "additions": 19,
+      "deletions": 10,
+      "changeType": "MODIFIED"
+    }
+  ],
+  "headRefName": "docs/default-nullability-contract",
+  "headRefOid": "3bde9d4a62b9788da8c28d58d5e68ba40513f758",
+  "isDraft": false,
+  "labels": [],
+  "mergedAt": null,
+  "number": 613,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Specify nullability and legacy-default migration proposals (#612)",
+  "updatedAt": "2026-11-15T18:08:55Z",
+  "url": "https://github.com/crpier/snekql/pull/613"
+}

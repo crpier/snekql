@@ -1,0 +1,32 @@
+from typing import TYPE_CHECKING, ClassVar
+from decimal import Decimal
+from pydantic import BaseModel
+from snekql import mariadb
+
+if TYPE_CHECKING:
+    class Item[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Item[mariadb.Row]]]
+        native: mariadb.Col[Decimal] = mariadb.Decimal(10, 2)
+        text: mariadb.Col[Decimal] = mariadb.Text()
+    class Result(BaseModel):
+        native: Decimal
+        text: Decimal
+    class Role: pass
+    a = Item.native.label('native')
+    b = Item.text.label('text')
+    c = mariadb.select(Item).project(Result, native=a, text=b).cte(Role, name='amounts')
+    x = c.column(a)
+    y = c.column(b)
+    reveal_type(Item.native)
+    reveal_type(Item.text)
+    reveal_type(a)
+    reveal_type(b)
+    reveal_type(c)
+    reveal_type(x)
+    reveal_type(y)
+    reveal_type(x.gt(Decimal('1')))
+    reveal_type(y.gt(Decimal('1')))
+    reveal_type(x.sum())
+    reveal_type(y.sum())
+    x.eq('bad')
+    y.eq('bad')
