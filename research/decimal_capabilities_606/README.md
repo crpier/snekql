@@ -2,6 +2,10 @@
 
 **2026-11-08 — partial feasibility, not a production change or selected API.**
 
+**Current tracking: issue #603 / draft PR #609 only.** Former #606/#607 are
+provenance, not separate ongoing queues. Original source/context is preserved in
+the [consolidation archive](../../docs/design-evidence/redesign-consolidation-2026-11-15/README.md).
+
 Refs #603. Baseline: `5f4dd8189c529a99713b629a71e60088c6974204`
 (fetched `origin/main`, including merged #604). Python 3.15.0, ty 0.0.84.
 

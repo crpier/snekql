@@ -2,6 +2,10 @@
 
 **2026-11-15. Static feasibility result, not a production implementation.**
 
+**Current tracking: issue #603 / draft PR #609 only.** Former #610/#611 are
+provenance, not separate ongoing queues. Original source/context is preserved in
+the [consolidation archive](../../docs/design-evidence/redesign-consolidation-2026-11-15/README.md).
+
 The maintainer accepted separate Python `default`/`default_factory` and SQL
 `server_default` channels on existing constructors, retaining Col/GenCol,
 Pending/Row, the Row witness and explicit pending defaults (#603 / PR #609).

@@ -38,7 +38,9 @@ were superseded into #603, not solved. The maintainer required **one continuing
 redesign issue (#603) and one draft PR (#609)**, rather than additional task/PR pairs.
 Work from #607/#609/#611/#613 and task context from #606/#608/#610/#612 is preserved
 in that single branch and the [verified pre-consolidation archive](design-evidence/redesign-consolidation-2026-11-15/README.md).
-The redundant pairs are being retired without merging or declaring APIs implemented.
+PRs #607/#611/#613 and issues #606/#608/#610/#612 are now closed with redirects.
+The [closure record](design-evidence/redesign-consolidation-2026-11-15/retirement.json)
+verifies that no PR was merged and no API completion was implied.
 
 Current entry points are the [checkpoint](design-checkpoint.md),
 [declaration comparison](declaration-design-sheet.md),

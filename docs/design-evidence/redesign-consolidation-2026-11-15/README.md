@@ -54,9 +54,15 @@ Current entry points:
 
 ## Retirement and workflow
 
-Closure records are added here after GitHub closure is verified. Redundant PRs are
-closed **without merging**; redundant issues are closed as superseded, not as proof
-that APIs were implemented. #603 and #609 stay open. No branches are deleted.
+[retirement.json](retirement.json) records the verified GitHub closures and redirect
+comments. PRs #607/#611/#613 are CLOSED with no mergedAt; issues #606/#608/#610/#612
+are CLOSED as NOT_PLANNED because their queues are superseded, not because APIs
+were implemented. #603 and draft #609 stay open. No branches were deleted.
+
+Both isolated harnesses were replayed together after consolidation: 18 checks passed.
+Repository ty, Ruff lint/format, whitespace and local documentation links were checked.
+This is not a new runtime/database proof; the Decimal overlay's known unsoundness,
+bypasses, regressions and copied-package diagnostics remain explicit in its report.
 
 Continue discussion, bounded investigations, decisions and later authorized edits
 in this same issue/PR pair. Do not create another issue or PR for each redesign step.
