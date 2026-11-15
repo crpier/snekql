@@ -102,16 +102,25 @@ but required a constructor-only `required=True` for SQL-defaulted fields that mu
 still require Python input. The maintainer rejected that trade-off **as a standalone
 change with the rest of the API unchanged**. It is not a selected public keyword.
 
-### D3. Nullability is not settled — open
+### D3. SQL-style nullability defaults, independent of Python — decision; unimplemented
 
-The current annotation-to-schema coupling was challenged. Research established useful
-independent contracts, including rejecting externally stored NULL while preserving a
-non-null successful Row type. SQLAlchemy/Django/GORM comparisons supplied precedents,
-not a selected interface.
+On 2026-11-15 the maintainer selected the ordinary SQL default: a column permits NULL
+when nullable is omitted. `nullable=False` explicitly requests NOT NULL;
+`nullable=True` explicitly permits NULL, subject to primary-key/identity constraints.
+Do not derive SQL nullability from T versus T | None, and do not require a nullable
+argument on every column. This replaces both the original inference-preserving
+recommendation and the later mandatory-argument suggestion.
 
-No decision selects Django-style NOT NULL defaults, explicit-only nullability,
-independent input/read type parameters or the required-input workaround. Revisit these
-together with defaults; don't optimize around an overload trick in isolation.
+Python annotations and Pydantic still own logical values and successful-read types.
+A plain str contract may map nullable SQL and reject actual NULL on parsed reads.
+Nullable storage does not permit Python constructor omission without a Python default
+or factory. Existing main behavior still infers nullability from annotations and
+rejects explicit mismatches; the new direction is not implemented.
+
+See the [default/nullability contract](default-nullability-contract.md) for the accepted
+rule, its NOT NULL migration implications and remaining recommendations. SQL-literal
+restrictions, cutover mechanics and other compatibility details are not automatically
+selected by this approval. No independent input/read generic scheme is selected.
 
 ### D4. Driver values go directly to the declared Pydantic contract — decision
 
