@@ -94,6 +94,7 @@ Design documents include working proposals and decision records; they are
 - [Class-body proposal](class-body-interface-proposal.md)
 - [Query composition design](query-composition-design.md)
 - [Earlier schema compatibility audit](schema-compatibility-audit.md)
+- [Defaults, nullability and legacy migration contract](default-nullability-contract.md): concrete recommendations awaiting decision
 
 [Back to the project README](../README.md)
 
