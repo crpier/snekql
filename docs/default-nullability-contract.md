@@ -1,8 +1,8 @@
 # Defaults, nullability and migration: recommended contract
 
 **2026-11-15 — maintained in the single redesign issue #603 / PR #609.
-Former #612/#613 are provenance only. SQL-style nullability default and separation
-accepted; other contract/migration details remain recommendations. Unimplemented;
+Former #612/#613 are provenance only. SQL-style nullability and independent SQL-default
+value semantics are accepted; other contract/migration details remain recommendations. Unimplemented;
 no implementation or merge authorized.**
 
 The core declaration direction is already accepted in [PR #609](https://github.com/crpier/snekql/pull/609):
@@ -13,7 +13,7 @@ The [consolidated static proof](../research/split_defaults_610/README.md)
 (former PR #611) supports the three anchor forms on real Text declarations on both backends. It
 proves neither runtime behavior nor the nullability/migration contract below.
 
-## Accepted nullability direction and remaining recommendations
+## Accepted default/nullability directions and remaining recommendations
 
 1. **Accepted: ordinary SQL columns permit NULL when nullable is omitted.**
    `nullable=False` requests NOT NULL; `nullable=True` explicitly permits NULL.
@@ -22,10 +22,12 @@ proves neither runtime behavior nor the nullability/migration contract below.
 2. **Permit both explicit mismatches.** Non-null Python over nullable SQL is useful
    for brownfield mappings. Nullable Python over non-null SQL is also allowed, but
    validating a value does not promise that the database will accept a write.
-3. **Treat SQL defaults as schema facts, not Python construction defaults.** Do not
-   run them through application validators or silently serialize them as logical
-   Python values. SQL DEFAULT NULL requires physically nullable storage, not a
-   nullable application contract.
+3. **Accepted: SQL defaults are schema facts, not Python construction defaults.**
+   Python defaults/factory outputs pass through the application Pydantic contract;
+   SQL defaults do not pass through application validators or serializers. A SQL
+   fallback may be outside the application's accepted values; reading it can fail
+   validation. Supported default forms and safe SQL quoting still apply. The proposed
+   physical NULL restrictions below are a separate detail, not approved by this rule.
 4. **Make one documented breaking cutover in a future 0.x minor release.** No dual
    old/new default semantics. Retain LiteralDefault only temporarily as a diagnostic
    token, not as an accepted recipe; move literals and clocks to `server_default`.
@@ -34,6 +36,8 @@ The maintainer confirmed the SQL-style default with “cool, that's what we're g
 with”. This supersedes this document's original recommendation to retain annotation
 inference. It does not approve every SQL-literal restriction, diagnostic or migration
 proposal below. Requiring nullable on every column is also not the chosen direction.
+The maintainer then explicitly confirmed independent SQL-default value semantics;
+that later approval does not select the remaining supported-form/cutover proposals.
 
 ## Status and scope
 
@@ -180,6 +184,24 @@ remain separate from default configuration.
 
 ## 4. SQL defaults have a separate, bounded contract
 
+**Accepted value ownership, 2026-11-15:** the maintainer confirmed that SQL defaults
+are not run through application validators or serializers, while Python defaults
+and factory outputs are. A fallback outside the application's logical contract is
+allowed, not rejected merely to make schema and application policies agree.
+For example, using typing.Literal:
+
+```python
+status: db.Col[Literal["active", "paused"]] = db.Text(
+    default="active", server_default="legacy"
+)
+```
+
+Python omission supplies "active". Another writer omitting the SQL column can get
+"legacy". Reading that value through this application fails the Literal contract.
+The declaration is allowed. This is intended semantics, not a new executed model
+or a claim that the earlier typing proof covered Literal annotations. No arbitrary
+SQL expressions or additional default forms are selected by this example.
+
 Omitted `server_default` means no declared SQL default. Explicit
 `server_default=None` means SQL DEFAULT NULL. Keep an internal unset representation;
 do not add another public sentinel or overload PENDING_GENERATION with this meaning.
@@ -201,11 +223,11 @@ Recommended initial boundary:
   with physically nullable, non-primary-key columns in those families. Preserve
   SQLite bool-on-Integer support and supported backend spellings. No arbitrary
   expressions, SQL functions, Decimal, JSON, binary or new temporal literals.
-- Treat these literals as SQL configuration. Preserve safe quoting and the existing
-  Boolean-to-SQL-literal rendering where appropriate. Do not apply application
-  constraints, Python factories, custom serializers or logical-value encoders to
-  reinterpret a schema default. A constrained string application can map an ordinary
-  text SQL fallback that its own validator rejects; reading that value then fails.
+- Accepted semantic requirement within any supported forms: treat SQL defaults as
+  SQL configuration, not inputs to application constraints, factories, serializers
+  or logical-value encoders. Preserve safe SQL rendering. Exact supported literal
+  kinds/backend spellings remain the bounded-surface proposal, not a new general
+  serialization contract.
 - Reject unsupported kinds and contradictory configuration before I/O: both Python
   default options, a pending default on Col, SQL DEFAULT NULL with NOT NULL, nullable
   primary-key declarations, and conflicting explicit SQL-default/auto-increment

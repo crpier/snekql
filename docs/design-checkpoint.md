@@ -94,9 +94,16 @@ the maintainer accepted separate Python `default`/`default_factory` and SQL
 `GenCol`, the explicit Row witness and explicit `default=PENDING_GENERATION` where
 omission should leave a field pending. Repetition of the sentinel is an accepted
 cost, not a blocker to solve through a wrapper or changed requiredness. Selector
-and field-wrapper variants are not chosen directions. The full replacement contract,
-nullability details and compatibility plan remain unfinished; no implementation or
-merge was authorized by this decision.
+and field-wrapper variants are not chosen directions. Remaining declaration
+restrictions and the compatibility plan are unfinished; no implementation or merge
+was authorized by this decision.
+
+Also accepted on 2026-11-15: Python defaults/factory outputs go through the declared
+application Pydantic contract; SQL defaults do not go through application validators
+or serializers. A SQL fallback may lie outside the application's accepted values,
+with an actual read then failing validation. Validate supported SQL-default forms and
+quote literals safely, but do not recouple the contracts through logical validation.
+This does not select new SQL functions/literal families or the migration cutover.
 
 Preserve omission versus explicit NULL and truthful Pending/Row values. A field's
 ability to hold a pending sentinel is different from whether the constructor permits
