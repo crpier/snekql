@@ -1,0 +1,20 @@
+from typing import assert_type
+
+from snekql import __BACKEND__ as db
+
+from models import FactoryState
+
+
+created = FactoryState()
+assert_type(created, FactoryState[db.Pending])
+assert_type(created.state, str)
+FactoryState(state="override")
+
+
+def row_value(row: FactoryState[db.Row]) -> None:
+    assert_type(row.state, str)
+
+
+FactoryState(state=None)  # error: invalid-argument-type
+FactoryState(state=17)  # error: invalid-argument-type
+FactoryState(state=db.PENDING_GENERATION)  # error: invalid-argument-type
