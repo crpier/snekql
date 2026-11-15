@@ -42,9 +42,12 @@ that later approval does not select the remaining supported-form/cutover proposa
 ## Status and scope
 
 The shipped reference is snekql 0.9.0 at
-`5f4dd8189c529a99713b629a71e60088c6974204`. Source and guides were inspected; no
-new runtime models, checker probes, SQL or database tests were executed for this
-contract. Existing [usage documentation](typing.md) still describes shipped behavior.
+`5f4dd8189c529a99713b629a71e60088c6974204`. Initial defaults/nullability recommendations
+came from source/guide inspection, without new runtime model, SQL or database probes.
+The subsequent [Json[T] driver experiment](../research/json_round_trip_603/README.md)
+executes Pydantic and actual drivers in private databases; it does not prove this
+contract's snekql runtime integration. Existing [usage documentation](typing.md)
+still describes shipped behavior.
 
 All snippets below are **proposed declaration excerpts**, inside the lifecycle-generic
 class required by [ADR 0020](adr/0020-class-body-models-with-pending-and-row.md).

@@ -1,0 +1,15 @@
+{
+  "python": "3.15.0",
+  "sqlite": "3.53.1",
+  "mariadb_binary": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+  "packages": {
+    "pydantic": "2.14.0",
+    "pydantic-core": "2.50.0",
+    "aiosqlite": "0.22.1",
+    "aiomysql": "0.3.2",
+    "PyMySQL": "1.2.0",
+    "ty": "0.0.84",
+    "snektest": "0.16.0"
+  },
+  "baseline_commit": "fd77bdcb9a2d25022df4128db73f7a5d6b74420c"
+}

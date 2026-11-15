@@ -46,9 +46,13 @@ Current entry points are the [checkpoint](design-checkpoint.md),
 [declaration comparison](declaration-design-sheet.md),
 [default/nullability contract](default-nullability-contract.md),
 [Decimal capability research](../research/decimal_capabilities_606/README.md) and
-[split-default typing proof](../research/split_defaults_610/README.md).
-The separate-default/explicit-pending direction and ordinary SQL nullable default
-are accepted; remaining contract details and production implementation are not.
+[split-default typing proof](../research/split_defaults_610/README.md) and
+[Json[T] direct-driver round trips](../research/json_round_trip_603/README.md).
+Separate defaults/explicit pending, ordinary SQL nullable defaults, independent
+SQL-default value ownership and Python-mode serialization passed unchanged to the
+driver are accepted. Other contract details and production implementation are not.
+The Json[T] experiment proves round_trip=True works at the tested Pydantic/driver
+boundaries; selecting that flag for snekql is not automatically approved.
 Existing claims must be checked before any future implementation, without opening
 another work queue for each part of this redesign.
 
@@ -255,6 +259,6 @@ files and pre-closure metadata. Commit-pinned reports retain external provenance
 This avoids treating retired draft branches as competing specifications. Preservation
 was merged in #604 for the older archive. The later consolidation lives in the single
 continuing PR #609. Archived source snapshots are not installed runtime modules or
-automatically maintained tests; the two isolated research harnesses in #609 remain
+automatically maintained tests; the isolated research harnesses in #609 remain
 explicit evidence, not production API changes. No new redesign issue/PR is needed
 for each subsequent discussion or bounded investigation.

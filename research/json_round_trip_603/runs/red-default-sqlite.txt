@@ -1,0 +1,32 @@
+tests/experimental/test_json_driver_round_trip.py::sqlite_json_annotation_round_trips ... ERROR (0.00s)
+
+=================================== FAILURES ===================================
+
+tests/experimental/test_json_driver_round_trip.py::sqlite_json_annotation_round_trips ... ERROR (0.00s)
+Traceback (most recent call last):
+  File
+"/home/crpier/Projects/snekql/tests/experimental/test_json_driver_round_trip.py"
+, line 17, in sqlite_json_annotation_round_trips
+            async with connection.execute(
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/aiosqlite/conte
+xt.py", line 41, in __aenter__
+            self._obj = await self._coro
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/aiosqlite/core.
+py", line 223, in execute
+            cursor = await self._execute(self._conn.execute, sql, parameters)
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/aiosqlite/core.
+py", line 160, in _execute
+            return await future
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/aiosqlite/core.
+py", line 63, in _connection_worker_thread
+                result = function()
+ProgrammingError: Error binding parameter 1: type 'dict' is not supported
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+ERROR tests/experimental/test_json_driver_round_trip.py::sqlite_json_annotation_round_trips - …
+
+────────────────────────── 1 error, 0 passed in 0.01s ──────────────────────────

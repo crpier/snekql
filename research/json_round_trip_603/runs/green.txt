@@ -1,0 +1,8 @@
+tests/experimental/test_json_driver_round_trip.py::json_annotation_requires_encoded_input_not_an_ordinary_dictionary ... OK (0.00s)
+tests/experimental/test_json_driver_round_trip.py::model_dump_and_type_adapter_both_honor_json_round_trip ... OK (0.00s)
+tests/experimental/test_json_driver_round_trip.py::mysql_default_dump_dictionary_is_rejected_by_driver ... OK (0.81s)
+tests/experimental/test_json_driver_round_trip.py::mysql_json_annotation_round_trips ... OK (0.00s)
+tests/experimental/test_json_driver_round_trip.py::round_trip_does_not_turn_an_ordinary_dictionary_annotation_into_json_text ... OK (0.00s)
+tests/experimental/test_json_driver_round_trip.py::sqlite_default_dump_dictionary_is_rejected_by_driver ... OK (0.00s)
+tests/experimental/test_json_driver_round_trip.py::sqlite_json_annotation_round_trips ... OK (0.00s)
+────────────────────────────── 7 passed in 0.86s ───────────────────────────────

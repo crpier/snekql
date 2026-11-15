@@ -188,6 +188,15 @@ The rule establishes consistent serialization, not a new decision about comparis
 validation against write-only fitting constraints. No runtime changes or new proof
 were authorized by this acceptance.
 
+**Bounded JSON driver finding, 2026-11-15:** [the direct Pydantic/driver checks](../research/json_round_trip_603/README.md)
+show Json[T] can emit bindable JSON text using dump_python(..., round_trip=True),
+without changing Python mode or adding a custom serializer. Actual aiosqlite and
+aiomysql/MariaDB round trips pass. Default dumping of an object emits a dictionary
+that both drivers reject. Raw dictionary construction still fails Json[T] validation;
+encoded input works. The earlier suggestion that custom serialization was needed
+for these drivers was too broad. Selecting round_trip=True for snekql remains a
+maintainer decision; its production integration and constructor typing are not proved.
+
 ### D5. Three whole-operation read modes — decision; spelling open
 
 | Mode | Value handling | Intended result value type |
