@@ -155,10 +155,38 @@ Intentional contract-controlled parsing remains allowed: ordinary Pydantic `int`
 accept numeric text while StrictInt rejects it. This refines the original desire to
 reject unexpected data: don't **conceal** a mismatch through a second implicit policy.
 
-snekql may still need to select Python-versus-JSON input grammar or output format.
-The precise JSON construction/read boundary remains open; this is not permission to
-pre-decode JSON through an independent snekql value policy. Earlier read-adapter/context
-sketches are experiments, not the chosen interpretation of D4.
+The precise JSON construction/read input grammar remains open; this is not permission
+to pre-decode JSON through an independent snekql value policy. Earlier read-adapter/context
+sketches are experiments, not the chosen interpretation of D4. The ordinary bound-value
+serialization default is now selected below; JSON-specific integration remains unfinished.
+
+### D4a. Python-mode Pydantic output goes unchanged to the driver — decision; unimplemented
+
+On 2026-11-15 the maintainer accepted the write parameter boundary:
+
+```text
+Python value → declared Pydantic validation → Pydantic Python-mode serialization → driver binding
+```
+
+Request serialized output, not merely the validated object: custom serializers must
+be honored according to their declared mode conditions. JSON-only serializers are
+not implicitly invoked by Python mode. Pass the resulting value unchanged to the
+driver; let its supported adapters/binding behavior operate. If it cannot bind that
+output, binding may fail. Logical validation does not promise driver compatibility,
+successful persistence or precision preservation.
+
+INSERT values, UPDATE values and comparison parameters use the same serialization
+rule. Text versus native storage must not silently select JSON mode or trigger a
+second snekql value conversion. Applications needing another parameter representation
+can express it through their Pydantic serializers. Do not add final-parameter checks
+or a general bindability validator. This rejects the suggested storage-selected mode
+as the default, without selecting a public mode-override or JSON round-trip interface.
+
+This applies to bound logical values, not SQL expression nodes, schema defaults or
+omitted pending markers. SQL defaults remain outside application serialization (D2).
+The rule establishes consistent serialization, not a new decision about comparison
+validation against write-only fitting constraints. No runtime changes or new proof
+were authorized by this acceptance.
 
 ### D5. Three whole-operation read modes — decision; spelling open
 
@@ -228,8 +256,9 @@ but do not catch all rounding/truncation; no universal lossless-write mode is ch
 
 Writes and comparisons should serialize consistently. Write-fit restrictions must
 not silently quantize comparison thresholds: a value unsuitable for storage can still
-be a legitimate search bound. Exact serialization-mode selection and binding policy
-are not finalized.
+be a legitimate search bound. The default is now Python-mode Pydantic output handed
+unchanged to the driver (D4a). Override/context/JSON-specific interfaces remain open;
+consistent serialization does not add storage-fit validation to comparison thresholds.
 
 ### D9. SQLite exact-decimal mapping remains unresolved — open
 

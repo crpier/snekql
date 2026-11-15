@@ -1,9 +1,9 @@
 # Defaults, nullability and migration: recommended contract
 
 **2026-11-15 — maintained in the single redesign issue #603 / PR #609.
-Former #612/#613 are provenance only. SQL-style nullability and independent SQL-default
-value semantics are accepted; other contract/migration details remain recommendations. Unimplemented;
-no implementation or merge authorized.**
+Former #612/#613 are provenance only. SQL-style nullability, independent SQL-default
+value semantics and Python-mode parameter serialization are accepted. Other contract/
+migration details remain recommendations. Unimplemented; no implementation or merge authorized.**
 
 The core declaration direction is already accepted in [PR #609](https://github.com/crpier/snekql/pull/609):
 separate Python `default`/`default_factory` and SQL `server_default` parameters;
@@ -147,9 +147,15 @@ actual SQL drift.
   the declared Pydantic contract before exposing a typed Pending value. Factories
   run only for omitted input during construction, never during declaration,
   schema verification or DDL generation. Do not pre-evaluate them to discover types.
+- Accepted parameter serialization: request Pydantic Python-mode serialized output
+  for concrete INSERT/UPDATE/comparison values, then pass it unchanged to the driver.
+  Do not select JSON mode from storage or add a snekql post-serializer converter or
+  bindability check. Serializers honor their declared mode conditions. Unsupported
+  output may fail driver binding; validated does not mean universally bindable.
 - A SQL fallback does not fill or overwrite a Pending object's value. INSERT omits
-  pending fields; it binds concrete values, including accepted scalar None as SQL
-  NULL. It never binds the pending sentinel or substitutes SQL defaults in Python.
+  pending fields and serializes concrete values as above. An actual serialized None
+  is bound as SQL NULL; application serializers may deliberately produce a different
+  representation. Never bind the pending sentinel or substitute SQL defaults in Python.
 - GenCol may map generation managed outside the declaration, such as a trigger.
   Do not demand a recorded server_default/identity merely to admit pending input.
   Missing or incompatible real generation can still fail at the database.
@@ -371,10 +377,11 @@ At separately agreed test seams, later evidence must establish:
   or fail with an actionable diagnostic. No legacy marker is silently reinterpreted
   as a Python value. Existing explicit clock assignments remain unchanged.
 
-This records the accepted nullability direction plus remaining proposals for
-maintainer approval, not authorization for implementation tests or code. JSON/serialization grammar, independent input/read
-generics, integer/bool policy, structured Unparsed, SQLite Decimal and broader
-verification tooling remain separate #603 work.
+This records accepted nullability, default ownership and Python-mode parameter
+serialization plus remaining proposals, not authorization for implementation tests
+or code. JSON input/round-trip integration and any serialization-mode override,
+independent input/read generics, integer/bool policy, structured Unparsed, SQLite
+Decimal and broader verification tooling remain separate #603 work.
 
 ## Source basis
 
