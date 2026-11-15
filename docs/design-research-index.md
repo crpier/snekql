@@ -32,9 +32,15 @@ notes explain why each draft was retired, not proposals to close still-open PRs.
 
 No branches were deleted. The six completed research/documentation issues were closed
 only after preserving their original context and recording their bounded completion.
-Defaults issue #473 and ergonomics issue #474 remain open for unresolved design work;
-#603 remains open while #604 awaits review/merge. Other issues were not retired.
-Existing issue assignments and claims must be checked before any future implementation.
+At that point, the core design issues remained open pending checkpoint review.
+**Subsequent tracking, checked 2026-11-15:** #604 is merged; #473, #474 and #579
+were closed as superseded into the still-open redesign umbrella #603, not as solved.
+#606 / [draft PR #607](https://github.com/crpier/snekql/pull/607) provide partial
+storage-aware Decimal typing evidence, including explicit declaration costs and
+known failures. #608's [declaration design sheet](declaration-design-sheet.md)
+compares current declarations with two alternatives; its recommendation is not an
+adopted interface. Existing issue assignments and claims must be checked before
+any future implementation.
 
 ## Defaults and nullability
 

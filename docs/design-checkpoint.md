@@ -15,6 +15,11 @@ recommendations. The [evidence capsules](design-evidence/README.md) preserve con
 scenarios, known prototype gaps and selected original executable fixtures. Existing usage guides and accepted ADRs still describe the shipped
 contracts; this checkpoint does not silently amend them.
 
+**Subsequent discussion:** #603 now tracks the continuing redesign. The
+[declaration design sheet](declaration-design-sheet.md) compares the current form
+with two alternatives following #606/#607's partial storage-typing experiment.
+Its recommendation is a proposal, not a new maintainer decision or implementation.
+
 ## In one page
 
 The purpose is trustworthy query results over databases whose schema, data and other
