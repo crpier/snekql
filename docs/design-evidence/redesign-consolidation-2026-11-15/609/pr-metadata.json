@@ -1,0 +1,78 @@
+{
+  "assignees": [],
+  "baseRefName": "main",
+  "baseRefOid": "5f4dd8189c529a99713b629a71e60088c6974204",
+  "body": "## Purpose\n\nRefs #608 and #603. Caller-facing design comparison after #606 / draft #607, not another typing experiment or implementation.\n\nStart with `docs/declaration-design-sheet.md`. It compares **the current form and exactly two alternatives** using the same required/default/factory/server-omission/identity/nullable/Decimal examples.\n\n## Core direction accepted\u2014full contract unfinished and unimplemented\n\nOn 2026-11-15 the maintainer accepted separate Python `default`/`default_factory` and SQL `server_default` parameters on existing storage constructors, retaining `Col`, `GenCol`, the explicit Row witness and explicit pending defaults. The field-wrapper alternative is not chosen: it adds nesting, retains pending repetition and does not recover storage typing.\n\nThe maintainer explicitly accepts the repeated `default=PENDING_GENERATION` cost for omittable generated fields. This is a design decision, not implementation or merge authorization; the full contract, remaining nullability details and compatibility plan are still unfinished. It does not revive the rejected standalone `required=True` workaround, silently make GenCol optional, add duplicate capability claims or pretend the checker can recover erased constructor facts. Runtime operation checks can remain where static coverage is absent.\n\n## Content\n\n- Concrete constructor omission, explicit values/None, Pending/read types, INSERT omission and SQL storage/default behavior for the shared cases.\n- Independent Python/SQL defaults, required Python input despite a SQL fallback, and proposed non-null application contracts over nullable storage.\n- Nullable server-default contrast: pending omission versus explicit SQL NULL, including DEFAULT NULL.\n- Proposed placement of the existing CurrentTimestamp marker in the SQL channel, without expanding SQL functions or promising new precision/conversion behavior.\n- Existing native versus canonical-text Decimal mappings as comparison examples, not a selected SQLite recipe or a claim that native binary Decimal arithmetic exists.\n- Readability, repetition, typing evidence and compatibility costs; recommendations distinguished from maintainer decisions, historical proof and current implementation.\n- Links from the docs index/checkpoint and corrected post-checkpoint issue/PR tracking in the research inventory. #604 is merged; #473/#474/#579 were superseded into open #603; #607 remains separate unmerged research.\n\nThree focused read-only design inputs informed the comparison. A separate documentation audit identified missing nullable-server/default-NULL and clock cases; both are now explicit. No new delegate was needed for those small corrections.\n\n## Validation and limits\n\n- `uv run ty check` \u2014 passed.\n- `uv run ruff check .` \u2014 passed.\n- `uv run ruff format --check .` \u2014 passed.\n- Whitespace checks \u2014 passed.\n- 87 local Markdown link targets checked, including supplied Markdown fragments.\n- Live issue/PR states verified with gh.\n\nDocumentation only. No code/dependency changes, runtime models, checker probes, backend suites or historical experiment reruns. Checks validate the edit, **not the hypothetical syntax or behavior**. Current behavior was source-inspected at baseline `5f4dd8189c529a99713b629a71e60088c6974204`.\n\n## Decision recorded\n\nThe maintainer explicitly accepted the recommendation:\n\n> yeah I agree with the recommendations; I'm ok with eating the cost of declaring db.PENDING_GENERATION often\n\nThe sheet and checkpoint now record that primary decision. Do not keep pending-marker repetition open as a blocker or use it to revive required=True. This does not select every nullability proposal, authorize code, or complete the redesign. PR remains unmerged.\n",
+  "closedAt": null,
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-11-15T13:58:02Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-11-15T13:58:02Z",
+      "messageBody": "",
+      "messageHeadline": "docs: compare model declarations and recommend split defaults (#608)",
+      "oid": "d9b9afe986700b2e2c6f84b77566f10350ebcaaf"
+    },
+    {
+      "authoredDate": "2026-11-15T14:09:04Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-11-15T14:09:04Z",
+      "messageBody": "\u2026608)",
+      "messageHeadline": "docs: record accepted split defaults and explicit pending decision (#\u2026",
+      "oid": "5effccf6d0b9682f80766c15e66e2494416d0516"
+    }
+  ],
+  "createdAt": "2026-11-15T13:58:43Z",
+  "files": [
+    {
+      "path": "docs/README.md",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "docs/declaration-design-sheet.md",
+      "additions": 398,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "docs/design-checkpoint.md",
+      "additions": 16,
+      "deletions": 3,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "docs/design-research-index.md",
+      "additions": 11,
+      "deletions": 3,
+      "changeType": "MODIFIED"
+    }
+  ],
+  "headRefName": "docs/declaration-design-sheet",
+  "headRefOid": "5effccf6d0b9682f80766c15e66e2494416d0516",
+  "isDraft": false,
+  "labels": [],
+  "mergedAt": null,
+  "number": 609,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Compare caller-facing declaration designs (#608)",
+  "updatedAt": "2026-11-15T14:09:37Z",
+  "url": "https://github.com/crpier/snekql/pull/609"
+}

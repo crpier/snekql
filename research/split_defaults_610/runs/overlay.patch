@@ -1,0 +1,36 @@
+--- original/snekql/storage.py
++++ overlay/snekql/storage.py
+@@ -530,0 +531 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -542,0 +544 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -554,0 +557 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -566,0 +570 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -578,0 +583 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -590,0 +596 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -602,0 +609 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -612,0 +620 @@
++    server_default: str | int | None | type[CurrentTimestamp] | EllipsisType = ...,
+--- original/snekql/mariadb/storage.py
++++ overlay/snekql/mariadb/storage.py
+@@ -426,0 +427 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -441,0 +443 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -456,0 +459 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -471,0 +475 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -486,0 +491 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -501,0 +507 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -516,0 +523 @@
++    server_default: str | int | None | type[CurrentTimestamp] = ...,
+@@ -529,0 +537 @@
++    server_default: str | int | None | type[CurrentTimestamp] | EllipsisType = ...,

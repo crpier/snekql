@@ -1,0 +1,30 @@
+from typing import ClassVar
+
+from snekql import __BACKEND__ as db
+
+
+class PythonDefault[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[PythonDefault[db.Row]]]
+    state: db.Col[str] = db.Text(default="draft", server_default="queued")
+
+
+class RequiredState[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[RequiredState[db.Row]]]
+    state: db.Col[str] = db.Text(server_default="queued")
+
+
+class GeneratedState[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[GeneratedState[db.Row]]]
+    state: db.GenCol[str] = db.Text(
+        default=db.PENDING_GENERATION, server_default="queued"
+    )
+
+
+class RequiredGenerated[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[RequiredGenerated[db.Row]]]
+    state: db.GenCol[str] = db.Text(server_default="queued")
+
+
+class SourceLess[S = db.Pending](db.Model[S]):
+    __row_type__: ClassVar[db.ReadType[SourceLess[db.Row]]]
+    state: db.GenCol[str] = db.Text()

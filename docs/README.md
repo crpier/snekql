@@ -88,11 +88,13 @@ Design documents include working proposals and decision records; they are
 
 - [Working purpose and interface design brief](design-brief.md)
 - [Current interface design checkpoint](design-checkpoint.md): decisions, evidence and open questions
+- [Declaration design sheet](declaration-design-sheet.md): current form, two alternatives and the accepted direction; unfinished and unimplemented
 - [Design research inventory](design-research-index.md): draft PRs and preservation recommendations
 - [Architecture decisions](adr/)
 - [Class-body proposal](class-body-interface-proposal.md)
 - [Query composition design](query-composition-design.md)
 - [Earlier schema compatibility audit](schema-compatibility-audit.md)
+- [Defaults, nullability and legacy migration contract](default-nullability-contract.md): accepted SQL-style nullability default and remaining migration proposals
 
 [Back to the project README](../README.md)
 

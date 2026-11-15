@@ -1,7 +1,9 @@
 # Interface design checkpoint — 2026-11-08
 
-**Status:** Consolidation for maintainer review, tracking #603. Repository-only design
-material, **not current usage instructions or an implemented redesign**.
+**Status:** Current redesign record, maintained in **issue #603 and draft PR #609
+only**. Repository-only design/research material, **not current usage instructions
+or an implemented redesign**. Work in this redesign continues in that same pair;
+do not create an issue/PR for each discussion, experiment or document.
 
 This is the current checkpoint for the defaults/nullability discussion begun under
 #473 and the subsequent query-value and static-operation investigations. It combines
@@ -14,6 +16,17 @@ for the current direction, its reasons and remaining decisions. The
 recommendations. The [evidence capsules](design-evidence/README.md) preserve concrete
 scenarios, known prototype gaps and selected original executable fixtures. Existing usage guides and accepted ADRs still describe the shipped
 contracts; this checkpoint does not silently amend them.
+
+**Subsequent discussion:** #603 now tracks the continuing redesign. The
+[declaration design sheet](declaration-design-sheet.md) compares the current form
+with two alternatives following #606/#607's partial storage-typing experiment.
+Its core recommendation—separate default channels, existing lifecycle/Row declarations
+and explicit pending defaults—was accepted on 2026-11-15. The SQL-style nullability
+default was subsequently accepted (D3). The full contract remains unfinished; other
+proposals are not automatically decisions or implemented. The later
+[split-default proof](../research/split_defaults_610/README.md) establishes bounded
+static feasibility. The [consolidation record](design-evidence/redesign-consolidation-2026-11-15/README.md)
+preserves the separately opened PRs/issues; they are not separate ongoing work streams.
 
 ## In one page
 
@@ -75,9 +88,22 @@ Distinct concepts do not automatically justify a public flag or generic for each
 ### D2. Defaults need a clearer design — direction selected; syntax open
 
 The maintainer concluded that changing the current overloaded-default approach is
-worthwhile. Separate Python `default`/`default_factory` and SQL `server_default`
-parameters gained the strongest rationale from D1. The selector remains comparison
-material; no replacement API has been finalized.
+worthwhile. On 2026-11-15, after the [declaration comparison](declaration-design-sheet.md),
+the maintainer accepted separate Python `default`/`default_factory` and SQL
+`server_default` parameters on existing storage constructors, retaining `Col`,
+`GenCol`, the explicit Row witness and explicit `default=PENDING_GENERATION` where
+omission should leave a field pending. Repetition of the sentinel is an accepted
+cost, not a blocker to solve through a wrapper or changed requiredness. Selector
+and field-wrapper variants are not chosen directions. Remaining declaration
+restrictions and the compatibility plan are unfinished; no implementation or merge
+was authorized by this decision.
+
+Also accepted on 2026-11-15: Python defaults/factory outputs go through the declared
+application Pydantic contract; SQL defaults do not go through application validators
+or serializers. A SQL fallback may lie outside the application's accepted values,
+with an actual read then failing validation. Validate supported SQL-default forms and
+quote literals safely, but do not recouple the contracts through logical validation.
+This does not select new SQL functions/literal families or the migration cutover.
 
 Preserve omission versus explicit NULL and truthful Pending/Row values. A field's
 ability to hold a pending sentinel is different from whether the constructor permits
@@ -89,16 +115,25 @@ but required a constructor-only `required=True` for SQL-defaulted fields that mu
 still require Python input. The maintainer rejected that trade-off **as a standalone
 change with the rest of the API unchanged**. It is not a selected public keyword.
 
-### D3. Nullability is not settled — open
+### D3. SQL-style nullability defaults, independent of Python — decision; unimplemented
 
-The current annotation-to-schema coupling was challenged. Research established useful
-independent contracts, including rejecting externally stored NULL while preserving a
-non-null successful Row type. SQLAlchemy/Django/GORM comparisons supplied precedents,
-not a selected interface.
+On 2026-11-15 the maintainer selected the ordinary SQL default: a column permits NULL
+when nullable is omitted. `nullable=False` explicitly requests NOT NULL;
+`nullable=True` explicitly permits NULL, subject to primary-key/identity constraints.
+Do not derive SQL nullability from T versus T | None, and do not require a nullable
+argument on every column. This replaces both the original inference-preserving
+recommendation and the later mandatory-argument suggestion.
 
-No decision selects Django-style NOT NULL defaults, explicit-only nullability,
-independent input/read type parameters or the required-input workaround. Revisit these
-together with defaults; don't optimize around an overload trick in isolation.
+Python annotations and Pydantic still own logical values and successful-read types.
+A plain str contract may map nullable SQL and reject actual NULL on parsed reads.
+Nullable storage does not permit Python constructor omission without a Python default
+or factory. Existing main behavior still infers nullability from annotations and
+rejects explicit mismatches; the new direction is not implemented.
+
+See the [default/nullability contract](default-nullability-contract.md) for the accepted
+rule, its NOT NULL migration implications and remaining recommendations. SQL-literal
+restrictions, cutover mechanics and other compatibility details are not automatically
+selected by this approval. No independent input/read generic scheme is selected.
 
 ### D4. Driver values go directly to the declared Pydantic contract — decision
 
@@ -120,10 +155,47 @@ Intentional contract-controlled parsing remains allowed: ordinary Pydantic `int`
 accept numeric text while StrictInt rejects it. This refines the original desire to
 reject unexpected data: don't **conceal** a mismatch through a second implicit policy.
 
-snekql may still need to select Python-versus-JSON input grammar or output format.
-The precise JSON construction/read boundary remains open; this is not permission to
-pre-decode JSON through an independent snekql value policy. Earlier read-adapter/context
-sketches are experiments, not the chosen interpretation of D4.
+The precise JSON construction/read input grammar remains open; this is not permission
+to pre-decode JSON through an independent snekql value policy. Earlier read-adapter/context
+sketches are experiments, not the chosen interpretation of D4. The ordinary bound-value
+serialization default is now selected below; JSON-specific integration remains unfinished.
+
+### D4a. Python-mode Pydantic output goes unchanged to the driver — decision; unimplemented
+
+On 2026-11-15 the maintainer accepted the write parameter boundary:
+
+```text
+Python value → declared Pydantic validation → Pydantic Python-mode serialization → driver binding
+```
+
+Request serialized output, not merely the validated object: custom serializers must
+be honored according to their declared mode conditions. JSON-only serializers are
+not implicitly invoked by Python mode. Pass the resulting value unchanged to the
+driver; let its supported adapters/binding behavior operate. If it cannot bind that
+output, binding may fail. Logical validation does not promise driver compatibility,
+successful persistence or precision preservation.
+
+INSERT values, UPDATE values and comparison parameters use the same serialization
+rule. Text versus native storage must not silently select JSON mode or trigger a
+second snekql value conversion. Applications needing another parameter representation
+can express it through their Pydantic serializers. Do not add final-parameter checks
+or a general bindability validator. This rejects the suggested storage-selected mode
+as the default, without selecting a public mode-override or JSON round-trip interface.
+
+This applies to bound logical values, not SQL expression nodes, schema defaults or
+omitted pending markers. SQL defaults remain outside application serialization (D2).
+The rule establishes consistent serialization, not a new decision about comparison
+validation against write-only fitting constraints. No runtime changes or new proof
+were authorized by this acceptance.
+
+**Bounded JSON driver finding, 2026-11-15:** [the direct Pydantic/driver checks](../research/json_round_trip_603/README.md)
+show Json[T] can emit bindable JSON text using dump_python(..., round_trip=True),
+without changing Python mode or adding a custom serializer. Actual aiosqlite and
+aiomysql/MariaDB round trips pass. Default dumping of an object emits a dictionary
+that both drivers reject. Raw dictionary construction still fails Json[T] validation;
+encoded input works. The earlier suggestion that custom serialization was needed
+for these drivers was too broad. Selecting round_trip=True for snekql remains a
+maintainer decision; its production integration and constructor typing are not proved.
 
 ### D5. Three whole-operation read modes — decision; spelling open
 
@@ -193,8 +265,9 @@ but do not catch all rounding/truncation; no universal lossless-write mode is ch
 
 Writes and comparisons should serialize consistently. Write-fit restrictions must
 not silently quantize comparison thresholds: a value unsuitable for storage can still
-be a legitimate search bound. Exact serialization-mode selection and binding policy
-are not finalized.
+be a legitimate search bound. The default is now Python-mode Pydantic output handed
+unchanged to the driver (D4a). Override/context/JSON-specific interfaces remain open;
+consistent serialization does not add storage-fit validation to comparison thresholds.
 
 ### D9. SQLite exact-decimal mapping remains unresolved — open
 
@@ -289,16 +362,17 @@ See the [research index](design-research-index.md) for reproducible/pinned refer
 
 ## What happens next
 
-1. Review this checkpoint for misclassified decisions and omissions. The maintainer
-   subsequently authorized consolidating and closing the nine research drafts; all
-   changed files were archived in #604 before closure. Review that preservation here,
-   rather than treating the retired branches as competing specifications.
-2. Resolve one concrete declaration comparison across the same scenarios: Python/SQL
-   defaults, constructor omission and SQL nullability. Don't select syntax from a
-   checker workaround alone.
-3. Prove a minimal storage-capability distinction: one logical Decimal type over native
-   numeric versus canonical text storage, with supported and rejected operations and
-   exact result types. Carry it through one derived-query path before broadening.
+1. Continue the redesign in issue #603 and draft PR #609 only. The older nine drafts
+   were archived in merged #604; later separately opened tasks/PRs are preserved in
+   the current consolidation record, not competing specifications or work queues.
+2. Review the remaining default/nullability compatibility proposals in the current
+   contract. The separate-default direction, explicit pending cost and ordinary
+   SQL nullable default are settled; do not redo those decisions or the completed
+   declaration/construction typing proof.
+3. Keep the completed Decimal capability experiment's limits visible: propagation
+   was conditional, declaration claims were unsound and ordinary integer operations
+   regressed. It is not a completed sound capability system. Do not expand that
+   overlay or remove runtime guards without a separately agreed scope.
 4. Close the remaining value-handling boundaries with one representative workflow:
    construction, serialization, driver→Pydantic reads, JSON and Unparsed structured
    results. Reuse full declared constraints; no hidden competing conversion layer.

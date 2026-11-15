@@ -1,0 +1,41 @@
+tests/experimental/test_json_driver_round_trip.py::mysql_json_annotation_round_trips ... ERROR (0.61s)
+tests/experimental/test_json_driver_round_trip.py::sqlite_json_annotation_round_trips ... OK (0.00s)
+
+=================================== FAILURES ===================================
+
+tests/experimental/test_json_driver_round_trip.py::mysql_json_annotation_round_trips ... ERROR (0.61s)
+Traceback (most recent call last):
+  File
+"/home/crpier/Projects/snekql/tests/experimental/test_json_driver_round_trip.py"
+, line 59, in mysql_json_annotation_round_trips
+                await cursor.execute(
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/aiomysql/cursor
+s.py", line 237, in execute
+                query = query % self._escape_args(args, conn)
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/aiomysql/cursor
+s.py", line 197, in _escape_args
+                return tuple(conn.escape(arg) for arg in args)
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/aiomysql/cursor
+s.py", line 197, in <genexpr>
+                return tuple(conn.escape(arg) for arg in args)
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/aiomysql/connec
+tion.py", line 419, in escape
+            return escape_item(obj, self._charset)
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/pymysql/convert
+ers.py", line 23, in escape_item
+            val = encoder(val, charset, mapping)
+  File
+"/home/crpier/Projects/snekql/.venv/lib/python3.15/site-packages/pymysql/convert
+ers.py", line 30, in escape_dict
+        raise TypeError("dict can not be used as parameter")
+TypeError: dict can not be used as parameter
+
+─────────────────────────────────── SUMMARY ────────────────────────────────────
+ERROR tests/experimental/test_json_driver_round_trip.py::mysql_json_annotation_round_trips - …
+
+────────────────────────── 1 error, 1 passed in 0.66s ──────────────────────────

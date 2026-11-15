@@ -1,0 +1,52 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Goal\n\nRefs #603. Maintainer-authorized narrow experiment: can ty distinguish supported operations for the same Python Decimal value type based on native MariaDB decimal versus SQLite canonical decimal text storage, including one derived-query path?\n\n## Confirmed public seams\n\n1. Ordinary public column expressions: valid operations pass, unsupported numeric operations fail; ordinary declarations and exact result/value types remain intact.\n2. A public derived query (subquery or CTE): storage-related restrictions survive the query boundary.\n\nUse independent positive/negative consumer probes, red-before-green slices and exact diagnostic inspection. Characterize the current baseline first. Any overlay is isolated research, not a selected production API. Do not fake success with Any, broad type erasure, or a toy replacement that bypasses real-package declarations.\n\nNo database execution, backend suites, dependencies or production changes. Static feasibility does not establish decimal round-trip accuracy, SQL arithmetic behavior or a selected SQLite storage recipe. Preserve replayable probes, limitations and a bounded report, then open a draft PR against main. No automatic merge.\n",
+  "closedAt": null,
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABkLVyAw",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming #606 for continuing session `da58eec6-bf55-4414-99f3-e87a3ee3bee5`, branch `research/decimal-storage-capabilities`, from fetched origin/main after merged #604.\n\nScope: the two maintainer-confirmed public seams in this issue. Static consumer probes and isolated overlays only; no production/dependency/database changes. Evidence and replay files will remain research, not an adopted API. This claim continues the #603 discussion but does not absorb other assigned work.\n",
+      "createdAt": "2026-11-08T14:34:30Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/606#issuecomment-6722777603",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABkLkvtQ",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Experiment delivered in draft PR #607; references #606 and umbrella #603. Nothing merged or implemented in the runtime.\n\n**Partial positive:** an explicit, separate storage coordinate survives real descriptors \u2192 labels \u2192 CTE outputs while values and fetch results stay Decimal. The tested text numeric operations are rejected; native operations and text equality/membership/count pass. A same-model MariaDB native/text pair prevents backend identity from faking the distinction.\n\n**Main negative:** ordinary `Col[Decimal]` declarations lose storage information. The experimental annotation repeats it explicitly, and class-body declarations still accept a false capability claim. This is conditional propagation, not trustworthy automatic storage discovery. Counterexamples also preserve column-comparison bypasses, aggregate/ordinary-integer regressions and two unsuppressed whole-overlay typing errors. Native Decimal binary addition was already unsupported and was not added.\n\nEight focused research checks and repository ty/lint/format checks pass. The copied experimental package itself does not pass whole-package typing; its two failures are explicitly archived. No databases or backend suites were run. Report, red-stage failures, replay fixtures and independent audit findings are in `research/decimal_capabilities_606/`.\n\nThe next decision is what declaration cost we accept to make storage statically visible and trustworthy\u2014not to roll this overlay into production or remove runtime guards. The broader redesign and this research issue remain open pending review.\n",
+      "createdAt": "2026-11-08T14:57:37Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/606#issuecomment-6723022773",
+      "viewerDidAuthor": true
+    }
+  ],
+  "createdAt": "2026-11-08T14:34:10Z",
+  "labels": [],
+  "number": 606,
+  "state": "OPEN",
+  "stateReason": "",
+  "title": "Prove storage-aware Decimal operation restrictions through a derived query",
+  "updatedAt": "2026-11-08T14:57:37Z",
+  "url": "https://github.com/crpier/snekql/issues/606"
+}

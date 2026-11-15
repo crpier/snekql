@@ -1,0 +1,310 @@
+[
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/__init__.py",
+    "archive": "607/research/__init__.py.txt",
+    "sha256": "3ab1d3f2cbe799a2b6f5928f025a36d59d4bd4aff8ed95468d4a11f5b80d1022"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/README.md",
+    "archive": "607/research/decimal_capabilities_606/README.md.txt",
+    "sha256": "6f896d880ebcb26e57eff85628ed15fb227a24eccaba26e0c9d1366ea340f775"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/__init__.py",
+    "archive": "607/research/decimal_capabilities_606/__init__.py.txt",
+    "sha256": "70179af883a47d491bc336f7056782e060ceb6beca05f511a8c43284306fb178"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/audit.md",
+    "archive": "607/research/decimal_capabilities_606/audit.md.txt",
+    "sha256": "f43d08961fa73ef7e12e44e0aa13d8bf537e03f493609537c7ec6f3d3af5c07b"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/baseline.py.txt",
+    "archive": "607/research/decimal_capabilities_606/baseline.py.txt.txt",
+    "sha256": "72a0163669bc07f2f66a96767675335c49f3bf0facca0c2f6a7f2a5a1439f37f"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/derived-source-review.md",
+    "archive": "607/research/decimal_capabilities_606/derived-source-review.md.txt",
+    "sha256": "ab08d5585cd469214dce630f0c03ab5257684572bb2482f53c25aff8d2e75a6f"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/derived.py.txt",
+    "archive": "607/research/decimal_capabilities_606/derived.py.txt.txt",
+    "sha256": "147a8a54fa10feb6bc750b584fcd75277ae281191f25e4f78979eb7ae71db7f3"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/direct.py.txt",
+    "archive": "607/research/decimal_capabilities_606/direct.py.txt.txt",
+    "sha256": "5b593c584240d1451320120edb7909103dd4a46a2d415d13931f27a07ec9a46e"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/known_holes.py.txt",
+    "archive": "607/research/decimal_capabilities_606/known_holes.py.txt.txt",
+    "sha256": "31b6b7ec1bd41b827edc7fb044265e3ea4be48a0b7a408a5a830a89b90180611"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/make_overlay.py",
+    "archive": "607/research/decimal_capabilities_606/make_overlay.py.txt",
+    "sha256": "6b11374d8d4b35d22147b711d2b2fad5408901135f6e938659a4adcda7a0ae16"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/negative.py.txt",
+    "archive": "607/research/decimal_capabilities_606/negative.py.txt.txt",
+    "sha256": "001292d92e82daffb5cf1938a8114384fb98f94b0bdee3bb50e8acdb6b9b0bef"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/original-derived-probe.py.txt",
+    "archive": "607/research/decimal_capabilities_606/original-derived-probe.py.txt.txt",
+    "sha256": "fafded9e8a960f455538120efa222f2c27d830cc3e0f29bb438e22641c8ee2db"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/positive.py.txt",
+    "archive": "607/research/decimal_capabilities_606/positive.py.txt.txt",
+    "sha256": "d54fbae81c05a835af75285ae2c2c474bbc2ccdcd500c3ae295d2729e0048e8c"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/runs/false-claim-rejection-failed.txt",
+    "archive": "607/research/decimal_capabilities_606/runs/false-claim-rejection-failed.txt.txt",
+    "sha256": "a7ae62dc719a538c6dcf0b3c6a93c61034f36d2b11564ba79a01357e9f120271"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/runs/overlay-package-diagnostics.json",
+    "archive": "607/research/decimal_capabilities_606/runs/overlay-package-diagnostics.json.txt",
+    "sha256": "46693b2b06187108d42c5b4fadcb7d119e80cc10cd41bce44e15e2b262cf7c77"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/runs/red-derived.txt",
+    "archive": "607/research/decimal_capabilities_606/runs/red-derived.txt.txt",
+    "sha256": "372f049ab239e1d09da7ef91e25592a4225b286c28f30f8f6c32cc40d959af3c"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "research/decimal_capabilities_606/runs/red-direct.txt",
+    "archive": "607/research/decimal_capabilities_606/runs/red-direct.txt.txt",
+    "sha256": "2c48b4d856d79008c882572088cf6a4fbb3f077a2fd3e15e475224077e99e29a"
+  },
+  {
+    "pr": 607,
+    "commit": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+    "source": "tests/experimental/test_decimal_storage_capabilities_606.py",
+    "archive": "607/tests/experimental/test_decimal_storage_capabilities_606.py.txt",
+    "sha256": "776b508a80fa7ad1230536293993dc75897c13a0516d7503a7ab29c621abffa0"
+  },
+  {
+    "pr": 609,
+    "commit": "5effccf6d0b9682f80766c15e66e2494416d0516",
+    "source": "docs/README.md",
+    "archive": "609/docs/README.md.txt",
+    "sha256": "abacd4570a6cb1ff90feb39d7a89b4a5093537a16577ba02f2ad5f77026133dd"
+  },
+  {
+    "pr": 609,
+    "commit": "5effccf6d0b9682f80766c15e66e2494416d0516",
+    "source": "docs/declaration-design-sheet.md",
+    "archive": "609/docs/declaration-design-sheet.md.txt",
+    "sha256": "273ef24a33453e3d98f2bdccf9e42ad594206910cfcbd8fbe9fcd0b65c69e6b1"
+  },
+  {
+    "pr": 609,
+    "commit": "5effccf6d0b9682f80766c15e66e2494416d0516",
+    "source": "docs/design-checkpoint.md",
+    "archive": "609/docs/design-checkpoint.md.txt",
+    "sha256": "125c20b84ed8bef396d305527c2e66d9e6d3514dcb5d017604caab04ea964722"
+  },
+  {
+    "pr": 609,
+    "commit": "5effccf6d0b9682f80766c15e66e2494416d0516",
+    "source": "docs/design-research-index.md",
+    "archive": "609/docs/design-research-index.md.txt",
+    "sha256": "15c8dbebb7cd0925ee5147bc3e757fc8b6aafff028f66d6baf9fde8a93e85fc9"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/__init__.py",
+    "archive": "611/research/__init__.py.txt",
+    "sha256": "b1238ecc4c4bc70bb44f1472a560f789297f20ab24cd24fbe94dc3f095217b03"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/README.md",
+    "archive": "611/research/split_defaults_610/README.md.txt",
+    "sha256": "cd54c13dac8303ab493dbcc48633d384c94f23b1d4380870b609472c80a40da8"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/__init__.py",
+    "archive": "611/research/split_defaults_610/__init__.py.txt",
+    "sha256": "200a23c23dba29c3c794895bb83dc0a6ecfd5c353f334cda98bf5e40262e19e6"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/baseline.consumer.py.txt",
+    "archive": "611/research/split_defaults_610/baseline.consumer.py.txt.txt",
+    "sha256": "96f3d6238fa11590356781592834e1042f0feccd9ae4ac8ba7cb88c38ef3943b"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/baseline.models.py.txt",
+    "archive": "611/research/split_defaults_610/baseline.models.py.txt.txt",
+    "sha256": "74f87121bf881158c6735c65f5ba1fda75228f81800a7e01216a68401f51e402"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/construction.consumer.py.txt",
+    "archive": "611/research/split_defaults_610/construction.consumer.py.txt.txt",
+    "sha256": "827a3beee1f604247db6420c3743ca1b3a8b14d8a2cd1c8f6ad5b3aebec5a260"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/construction.models.py.txt",
+    "archive": "611/research/split_defaults_610/construction.models.py.txt.txt",
+    "sha256": "89e989adac1dc396c50361ab1ad7cd208d8c6e054d87d3fd331cd406c5c80f56"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/factory.consumer.py.txt",
+    "archive": "611/research/split_defaults_610/factory.consumer.py.txt.txt",
+    "sha256": "04f6d1598898f4b60b6e726bb32f5bab235496dc3b4b75472b143b639a506f5e"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/factory.models.py.txt",
+    "archive": "611/research/split_defaults_610/factory.models.py.txt.txt",
+    "sha256": "37f43e67a544725be77d10562b88bfee8239d198bf933f83b15f163d77d0376e"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/make_overlay.py",
+    "archive": "611/research/split_defaults_610/make_overlay.py.txt",
+    "sha256": "a5850b4008fef626ad33e1b4280a5494372fdbecdf9c95c53ba4dd5f993f23d0"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/python_default.consumer.py.txt",
+    "archive": "611/research/split_defaults_610/python_default.consumer.py.txt.txt",
+    "sha256": "96f3d6238fa11590356781592834e1042f0feccd9ae4ac8ba7cb88c38ef3943b"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/python_default.models.py.txt",
+    "archive": "611/research/split_defaults_610/python_default.models.py.txt.txt",
+    "sha256": "7ae2c5931c3093cfa76abd8a2785ec04f449d5141286139d289479f746763f94"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/queries.consumer.py.txt",
+    "archive": "611/research/split_defaults_610/queries.consumer.py.txt.txt",
+    "sha256": "7befeb02e8a6e10aa2f01bd48659b1b07405541fd69182d9659796cfd3c7ae6d"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/queries.models.py.txt",
+    "archive": "611/research/split_defaults_610/queries.models.py.txt.txt",
+    "sha256": "0f3a3acabbac69604cd7767f037cf29fd05818d4787950e593a55e030a2b34ef"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/runs/green.txt",
+    "archive": "611/research/split_defaults_610/runs/green.txt.txt",
+    "sha256": "098214d0afc1323edd258a41c6504d8cd18a9c11f4c9574ba51652d142d44aa6"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/runs/overlay-package-diagnostics.json",
+    "archive": "611/research/split_defaults_610/runs/overlay-package-diagnostics.json.txt",
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/runs/overlay.patch",
+    "archive": "611/research/split_defaults_610/runs/overlay.patch.txt",
+    "sha256": "710c481dc737e728689069b645332f87c04f383995faa9a5051050eb5f19531b"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "research/split_defaults_610/runs/red-python-default.txt",
+    "archive": "611/research/split_defaults_610/runs/red-python-default.txt.txt",
+    "sha256": "8a0eb17062c69ca8c8660a8eca0799e7a894829960ef240c5fa0d414524afd72"
+  },
+  {
+    "pr": 611,
+    "commit": "a04405f9d3ced041a9031ee39641b770444b6da0",
+    "source": "tests/experimental/test_split_defaults_610.py",
+    "archive": "611/tests/experimental/test_split_defaults_610.py.txt",
+    "sha256": "bbe4db19f650e6fb7fbf34561899faaff65ae1a2e5fe651a6d98d1bf840174ac"
+  },
+  {
+    "pr": 613,
+    "commit": "3bde9d4a62b9788da8c28d58d5e68ba40513f758",
+    "source": "docs/README.md",
+    "archive": "613/docs/README.md.txt",
+    "sha256": "deec31bbe21484cf5283976b6c64222b849ca3e664916294260d3b687ea43ac8"
+  },
+  {
+    "pr": 613,
+    "commit": "3bde9d4a62b9788da8c28d58d5e68ba40513f758",
+    "source": "docs/default-nullability-contract.md",
+    "archive": "613/docs/default-nullability-contract.md.txt",
+    "sha256": "c6bd7c549c13df405ac309db5503697b92746ee4356af21e6136c749b3adee85"
+  },
+  {
+    "pr": 613,
+    "commit": "3bde9d4a62b9788da8c28d58d5e68ba40513f758",
+    "source": "docs/design-checkpoint.md",
+    "archive": "613/docs/design-checkpoint.md.txt",
+    "sha256": "1c1c96362243e65e5b4d22f4d5ba88622f6c6cf6f809bd76b0a5ec03cb7942cb"
+  }
+]

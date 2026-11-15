@@ -13,6 +13,9 @@ A [complete per-PR archive](pr-snapshots/README.md) additionally preserves all 9
 changed files and pre-closure PR metadata from the nine retired research drafts.
 They use `.txt` extensions because some deliberately contain invalid consumer code or
 experimental copied-source edits. They are not discovered as supported package tests.
+The [2026-11-15 consolidation archive](redesign-consolidation-2026-11-15/README.md)
+preserves another 44 changed-file snapshots and the pre-cleanup context for the
+later PRs/tasks, now maintained under #603 / PR #609 rather than separate work queues.
 
 - [Unparsed proof](595/proof.py.txt) and its
   [original positive/negative test harness](595/test_unparsed_type_adapter.py.txt),

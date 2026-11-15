@@ -32,9 +32,29 @@ notes explain why each draft was retired, not proposals to close still-open PRs.
 
 No branches were deleted. The six completed research/documentation issues were closed
 only after preserving their original context and recording their bounded completion.
-Defaults issue #473 and ergonomics issue #474 remain open for unresolved design work;
-#603 remains open while #604 awaits review/merge. Other issues were not retired.
-Existing issue assignments and claims must be checked before any future implementation.
+At that point, the core design issues remained open pending checkpoint review.
+**Subsequent consolidation, 2026-11-15:** #604 is merged; #473, #474 and #579
+were superseded into #603, not solved. The maintainer required **one continuing
+redesign issue (#603) and one draft PR (#609)**, rather than additional task/PR pairs.
+Work from #607/#609/#611/#613 and task context from #606/#608/#610/#612 is preserved
+in that single branch and the [verified pre-consolidation archive](design-evidence/redesign-consolidation-2026-11-15/README.md).
+PRs #607/#611/#613 and issues #606/#608/#610/#612 are now closed with redirects.
+The [closure record](design-evidence/redesign-consolidation-2026-11-15/retirement.json)
+verifies that no PR was merged and no API completion was implied.
+
+Current entry points are the [checkpoint](design-checkpoint.md),
+[declaration comparison](declaration-design-sheet.md),
+[default/nullability contract](default-nullability-contract.md),
+[Decimal capability research](../research/decimal_capabilities_606/README.md) and
+[split-default typing proof](../research/split_defaults_610/README.md) and
+[Json[T] direct-driver round trips](../research/json_round_trip_603/README.md).
+Separate defaults/explicit pending, ordinary SQL nullable defaults, independent
+SQL-default value ownership and Python-mode serialization passed unchanged to the
+driver are accepted. Other contract details and production implementation are not.
+The Json[T] experiment proves round_trip=True works at the tested Pydantic/driver
+boundaries; selecting that flag for snekql is not automatically approved.
+Existing claims must be checked before any future implementation, without opening
+another work queue for each part of this redesign.
 
 ## Defaults and nullability
 
@@ -237,6 +257,8 @@ The checkpoint records the actual directions and rejected approaches, the eviden
 capsules retain concrete examples, and the full per-PR archive preserves all changed
 files and pre-closure metadata. Commit-pinned reports retain external provenance too.
 This avoids treating retired draft branches as competing specifications. Preservation
-is part of #604, not yet merged into main; archived sources are not supported runtime
-modules or automatically maintained tests. Future branch/issue cleanup requires its
-own authorization.
+was merged in #604 for the older archive. The later consolidation lives in the single
+continuing PR #609. Archived source snapshots are not installed runtime modules or
+automatically maintained tests; the isolated research harnesses in #609 remain
+explicit evidence, not production API changes. No new redesign issue/PR is needed
+for each subsequent discussion or bounded investigation.

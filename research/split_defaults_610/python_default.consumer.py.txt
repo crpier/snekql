@@ -1,0 +1,16 @@
+from typing import assert_type
+
+from snekql import __BACKEND__ as db
+
+from models import PythonDefault
+
+
+omitted = PythonDefault()
+assert_type(omitted, PythonDefault[db.Pending])
+assert_type(omitted.state, str)
+explicit = PythonDefault(state="override")
+assert_type(explicit.state, str)
+
+
+def row_value(row: PythonDefault[db.Row]) -> None:
+    assert_type(row.state, str)

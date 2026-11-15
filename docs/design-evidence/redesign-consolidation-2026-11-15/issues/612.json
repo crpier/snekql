@@ -1,0 +1,67 @@
+{
+  "assignees": [
+    {
+      "id": "MDQ6VXNlcjMxODE1ODc1",
+      "login": "crpier",
+      "name": "Cristian Piersinaru",
+      "databaseId": 31815875
+    }
+  ],
+  "body": "## Purpose\n\nFollow #603, accepted declaration direction in PR #609, and the bounded real-package typing proof in #610 / draft PR #611. Maintainer authorized documenting the remaining nullability rules and migration from legacy default markers before runtime implementation.\n\n## Deliverable\n\nDocumentation-only contract with concrete recommended rules and acceptance examples for constructor omission, explicit None/SQL NULL, accepted Python values, successful Row types and physical nullability. Preserve independent Python/SQL defaults, Pydantic ownership, explicit Pending/Row lifecycle and Row witness, and the accepted repeated default=PENDING_GENERATION cost.\n\nCover SQL-only defaults with required Python input; differing Python/SQL defaults; nullable defaults and explicit DEFAULT NULL; non-null application contracts over nullable storage; the reverse mismatch; identities and clock defaults; and invalid combinations. Distinguish current implementation, existing decisions, new proposals and remaining decisions.\n\nRecommend a concrete legacy migration policy for LiteralDefault, CurrentTimestamp, plain Python defaults/factories and explicit pending generation, including diagnostic/breaking-change behavior and schema verification. Query Mapping is not Migration Ownership: no model edit implicitly changes a live schema.\n\nNo production/API/dependency changes, native DB execution, new checker experiments, duplicate write-validation layer or broad value/serialization redesign. Existing typing proof is evidence only; proposed runtime acceptance scenarios are not tests executed by this work. Open a documentation PR against main; do not merge or close ongoing redesign/research issues without authorization.\n",
+  "closedAt": null,
+  "comments": [
+    {
+      "id": "IC_kwDORi7Ryc8AAAABmy2gdw",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Claiming #612 for continuing session `da58eec6-bf55-4414-99f3-e87a3ee3bee5`, branch `docs/default-nullability-contract`, from fetched origin/main `5f4dd8189c529a99713b629a71e60088c6974204`.\n\nAssignment verified before source investigation. Documentation-only contract and migration recommendation; no runtime implementation, tests/probes or inferred maintainer adoption of new policy. User authorized this follow-up after the real-package static proof.\n",
+      "createdAt": "2026-11-15T17:29:34Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/612#issuecomment-6898425975",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABmzAjtA",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "Proposed nullability/default-migration contract delivered in **PR #613**, tracked by #612. Document: `docs/default-nullability-contract.md`.\n\nFour concrete recommendations, awaiting maintainer decision:\n\n1. Keep annotation-derived physical nullability when omitted; explicit nullable describes SQL storage rather than asserting agreement with Python.\n2. Permit both explicit mismatch directions without changing logical types or adding a per-write NULL checker; preserve primary-key exceptions and ordinary validation/database failure behavior.\n3. Treat bounded SQL defaults as independent schema facts. SQL DEFAULT NULL requires physically nullable storage, not an application type accepting None. No logical-validator/serializer reinterpretation of the SQL literal.\n4. Make one documented future 0.x minor cutover, not dual default semantics. Move old literals/clocks into server_default and preserve omission with explicit pending. Retain LiteralDefault initially only for migration diagnostics, not accepted lowering, then remove it in a later minor.\n\nThe accepted split-default/Col/GenCol/lifecycle/Row-witness direction and repeated pending cost are not reopened. Recipes address old encoded-default transformations and cases with no equivalent bounded replacement. Verification ambiguities remain explicit, not falsely certified as schema equivalence. A read-only audit's two migration/verification findings were addressed.\n\nDocumentation typing/lint/format, whitespace and 67 local links/fragments pass. No runtime models, checker probes, database/DDL tests, production/dependency changes, release, migration-history edits or merges. Approval of this investigation is not recorded as approval of these new recommendations. #612 and umbrella #603 remain open for review.\n",
+      "createdAt": "2026-11-15T17:42:08Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/612#issuecomment-6898590644",
+      "viewerDidAuthor": true
+    },
+    {
+      "id": "IC_kwDORi7Ryc8AAAABmzVlOA",
+      "author": {
+        "login": "crpier"
+      },
+      "authorAssociation": "OWNER",
+      "body": "## Accepted nullability decision \u2014 2026-11-15\n\nFollowing the objection that annotation-derived SQL nullability conflicts with independent Python/schema contracts, the maintainer rejected requiring nullable everywhere, asked for ordinary SQL behavior, and confirmed the proposed SQL-style default:\n\n> cool, that's what we're going with\n\nAccepted direction, now recorded in PR #613's contract and checkpoint D3:\n\n- Ordinary columns permit SQL NULL when nullable is omitted.\n- nullable=False explicitly requests NOT NULL; nullable=True explicitly permits NULL, subject to primary-key/identity constraints.\n- Python annotations do not choose physical nullability. Neither nullable storage nor T | None makes a constructor argument omittable.\n- No mandatory nullable argument, and no annotation-derived compatibility fallback.\n\nThis supersedes the original inference-preserving recommendation in the earlier #612/#603 result comment. Main still implements the old inference/assertion behavior; the selected direction is not implemented.\n\nMigration consequence: ordinary columns formerly inferred NOT NULL need explicit nullable=False to preserve that expectation. The revised before/after examples account for this even when Python/default behavior is unchanged. Do not silently relax live schemas or edit applied migrations. Legacy explicit nullable=None belongs in the same inventory; exact future acceptance/rejection of that argument remains a compatibility detail, not a second inference policy.\n\nThis approval does not select every remaining SQL-literal restriction, migration diagnostic/token window or release cutover proposal, and does not authorize production work or merges. PR #613 and issues #612/#603 remain open. Updated repository typing/lint/format, whitespace and 73 local documentation links/fragments pass.\n",
+      "createdAt": "2026-11-15T18:08:56Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/crpier/snekql/issues/612#issuecomment-6898935096",
+      "viewerDidAuthor": true
+    }
+  ],
+  "createdAt": "2026-11-15T17:29:22Z",
+  "labels": [],
+  "number": 612,
+  "state": "OPEN",
+  "stateReason": "",
+  "title": "Specify nullability and legacy default migration contracts",
+  "updatedAt": "2026-11-15T18:08:57Z",
+  "url": "https://github.com/crpier/snekql/issues/612"
+}

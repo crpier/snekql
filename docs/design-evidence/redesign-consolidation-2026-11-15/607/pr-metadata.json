@@ -1,0 +1,147 @@
+{
+  "assignees": [],
+  "baseRefName": "main",
+  "baseRefOid": "5f4dd8189c529a99713b629a71e60088c6974204",
+  "body": "## Scope\n\nRefs #606 and #603. Maintainer-authorized research at two confirmed public seams: ordinary Decimal column operations and one derived-query path. No production/dependency changes, database execution, backend suites or adopted public API.\n\n## Result: conditional propagation, not a solved declaration design\n\nA separate static storage coordinate can survive real-package descriptors, label tokens and CTE outputs while Python values/fetch results remain Decimal. It rejects the tested numeric-text operations while permitting native numeric operations and text equality/membership/count.\n\n**The stronger goal is not proved.** Ordinary `Col[Decimal]` loses constructor storage information. The isolated overlay requires an explicit extra annotation argument, and class-body field declarations can claim the wrong capability without a diagnostic. This is not sound automatic capability discovery or a production-ready interface.\n\n## Evidence\n\nStart with `research/decimal_capabilities_606/README.md`.\n\n- Replayable `.py.txt` consumer fixtures and a temporary-copy overlay builder; no copied/modified package code installed into the checkout.\n- Eight focused snektest checks, using exact diagnostic locations/codes, clean positive consumers, exact public result-type assertions and independent wrong-value controls.\n- 44 storage-forbidden calls (11 methods \u00d7 direct/derived \u00d7 SQLite/MariaDB text) are rejected in the overlay, while the unchanged package accepts them. Six bad-value comparisons reject strings in both versions.\n- Native decimal and canonical text occur in the same MariaDB model/CTE, preventing backend identity from masquerading as storage capability.\n- Preserved direct and derived red-stage failures, unsuccessful false-claim rejection expectations, preliminary source review and independent audit findings.\n\n## Deliberately unresolved failures\n\n- Original declaration spelling is not preserved; explicit capability annotations repeat storage information.\n- False class-body capability claims pass, despite ordinary assignment rejecting contradictory constructor return types.\n- Column-to-column ordering bypasses remain.\n- Native aggregate predicates regress; ordinary non-Decimal integer columns also regress under global receiver constraints. The independent audit exposed the latter, and baseline/overlay counterexamples now preserve it.\n- Native Decimal `.add()` is already unsupported by current int/float arithmetic overloads; this experiment does not add binary arithmetic.\n- Whole copied-package checking still produces two unsuppressed errors in erased internal provenance calls. Those diagnostics are archived. Passing the unchanged repository's checks must not be confused with a clean experimental package.\n- No general nullable/alias/compound/recursive/scalar/custom-representation proof, runtime annotation/Pydantic integration, actual SQL semantics or precision-loss guarantee.\n\n## Validation\n\n- `uv run snektest tests/experimental/test_decimal_storage_capabilities_606.py` \u2014 8 passed.\n- `uv run ty check` \u2014 passed on the unchanged runtime plus research harness.\n- `uv run ruff check .` \u2014 passed.\n- `uv run ruff format --check .` \u2014 passed.\n- `git diff --cached --check` \u2014 passed before commit. Terminal trailing-space padding was stripped from historical failure logs.\n- Whole experimental-package type check \u2014 intentionally reported as failing with the two integration blockers above, not suppressed or counted as a pass.\n\n## Design implication\n\nThe label-token CTE route can carry a storage coordinate. The next architectural decision is how that coordinate enters a trustworthy declaration without an unpleasant second source of truth. This PR is evidence for that discussion, not permission to expand the experiment into a runtime redesign, select a SQLite decimal recipe or remove guards.\n",
+  "closedAt": null,
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-11-08T14:56:28Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-11-08T14:56:28Z",
+      "messageBody": "",
+      "messageHeadline": "research: probe Decimal storage capabilities through CTEs (#606)",
+      "oid": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6"
+    }
+  ],
+  "createdAt": "2026-11-08T14:57:01Z",
+  "files": [
+    {
+      "path": "research/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/README.md",
+      "additions": 199,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/__init__.py",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/audit.md",
+      "additions": 23,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/baseline.py.txt",
+      "additions": 21,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/derived-source-review.md",
+      "additions": 34,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/derived.py.txt",
+      "additions": 41,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/direct.py.txt",
+      "additions": 21,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/known_holes.py.txt",
+      "additions": 70,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/make_overlay.py",
+      "additions": 224,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/negative.py.txt",
+      "additions": 84,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/original-derived-probe.py.txt",
+      "additions": 32,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/positive.py.txt",
+      "additions": 93,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/runs/false-claim-rejection-failed.txt",
+      "additions": 127,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/runs/overlay-package-diagnostics.json",
+      "additions": 40,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/runs/red-derived.txt",
+      "additions": 27,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/decimal_capabilities_606/runs/red-direct.txt",
+      "additions": 21,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "tests/experimental/test_decimal_storage_capabilities_606.py",
+      "additions": 164,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/decimal-storage-capabilities",
+  "headRefOid": "4fb4968db85d89df36a135b7c19b9a3fe5933aa6",
+  "isDraft": true,
+  "labels": [],
+  "mergedAt": null,
+  "number": 607,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Research storage-aware Decimal operations through CTEs (#606)",
+  "updatedAt": "2026-11-08T14:57:01Z",
+  "url": "https://github.com/crpier/snekql/pull/607"
+}
