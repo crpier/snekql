@@ -88,7 +88,7 @@ Design documents include working proposals and decision records; they are
 
 - [Working purpose and interface design brief](design-brief.md)
 - [Current interface design checkpoint](design-checkpoint.md): decisions, evidence and open questions
-- [Declaration design sheet](declaration-design-sheet.md): current form, two alternatives and a recommendation; not selected syntax
+- [Declaration design sheet](declaration-design-sheet.md): current form, two alternatives and the accepted direction; unfinished and unimplemented
 - [Design research inventory](design-research-index.md): draft PRs and preservation recommendations
 - [Architecture decisions](adr/)
 - [Class-body proposal](class-body-interface-proposal.md)

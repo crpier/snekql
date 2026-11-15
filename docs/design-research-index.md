@@ -38,8 +38,10 @@ were closed as superseded into the still-open redesign umbrella #603, not as sol
 #606 / [draft PR #607](https://github.com/crpier/snekql/pull/607) provide partial
 storage-aware Decimal typing evidence, including explicit declaration costs and
 known failures. #608's [declaration design sheet](declaration-design-sheet.md)
-compares current declarations with two alternatives; its recommendation is not an
-adopted interface. Existing issue assignments and claims must be checked before
+compares current declarations with two alternatives. The maintainer subsequently
+accepted its core separate-default direction with explicit pending defaults; the full
+contract is unfinished and unimplemented, and remaining nullability proposals are
+not automatically adopted. Existing issue assignments and claims must be checked before
 any future implementation.
 
 ## Defaults and nullability

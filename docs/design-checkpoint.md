@@ -18,7 +18,9 @@ contracts; this checkpoint does not silently amend them.
 **Subsequent discussion:** #603 now tracks the continuing redesign. The
 [declaration design sheet](declaration-design-sheet.md) compares the current form
 with two alternatives following #606/#607's partial storage-typing experiment.
-Its recommendation is a proposal, not a new maintainer decision or implementation.
+Its core recommendation—separate default channels, existing lifecycle/Row declarations
+and explicit pending defaults—was accepted on 2026-11-15. The full contract remains
+unfinished; other proposals in the sheet are not automatically decisions or implemented.
 
 ## In one page
 
@@ -80,9 +82,15 @@ Distinct concepts do not automatically justify a public flag or generic for each
 ### D2. Defaults need a clearer design — direction selected; syntax open
 
 The maintainer concluded that changing the current overloaded-default approach is
-worthwhile. Separate Python `default`/`default_factory` and SQL `server_default`
-parameters gained the strongest rationale from D1. The selector remains comparison
-material; no replacement API has been finalized.
+worthwhile. On 2026-11-15, after the [declaration comparison](declaration-design-sheet.md),
+the maintainer accepted separate Python `default`/`default_factory` and SQL
+`server_default` parameters on existing storage constructors, retaining `Col`,
+`GenCol`, the explicit Row witness and explicit `default=PENDING_GENERATION` where
+omission should leave a field pending. Repetition of the sentinel is an accepted
+cost, not a blocker to solve through a wrapper or changed requiredness. Selector
+and field-wrapper variants are not chosen directions. The full replacement contract,
+nullability details and compatibility plan remain unfinished; no implementation or
+merge was authorized by this decision.
 
 Preserve omission versus explicit NULL and truthful Pending/Row values. A field's
 ability to hold a pending sentinel is different from whether the constructor permits

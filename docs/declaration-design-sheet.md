@@ -1,19 +1,26 @@
 # Model declarations: caller-facing design sheet
 
-**2026-11-15 — proposal for discussion, not an accepted interface or usage guide.**
+**2026-11-15 — core direction accepted; full contract unfinished and unimplemented.
+Not a current usage guide.**
 
 Tracks #608 under #603. This follows the merged [design checkpoint](design-checkpoint.md)
 and the partial storage-typing experiment in [draft PR #607](https://github.com/crpier/snekql/pull/607).
 No new typing proof, model execution or database tests were performed for this sheet.
 
-## Recommendation first
+## Accepted direction
 
-**Favor separate Python `default`/`default_factory` and SQL `server_default`
+**Use separate Python `default`/`default_factory` and SQL `server_default`
 parameters on the existing storage constructors. Keep `Col`, `GenCol`, the explicit
-Row witness and explicit pending defaults for now.** This is alternative A below,
-not permission to implement it or a claim that its full interface already works.
+Row witness and explicit pending defaults for now.** The maintainer accepted this
+core recommendation (alternative A below), including its repeated sentinel cost:
 
-That is an intentionally limited recommendation. It makes default ownership clear
+> yeah I agree with the recommendations; I'm ok with eating the cost of declaring db.PENDING_GENERATION often
+
+This records a design decision, not permission to implement or merge, or a claim
+that the complete contract already works. Remaining nullability details and the
+compatibility plan are not settled by that acceptance.
+
+That is an intentionally limited decision. It makes default ownership clear
 and supports independent application/schema policies without a wrapper on every
 field. It does **not** hide the repeated pending sentinel or solve static storage
 capabilities. Make those costs visible rather than sell a shorter declaration that
@@ -27,12 +34,14 @@ normal declarations worse, elimination is not worth that price.
 
 - **Maintainer decisions/direction:** Python/schema policies can differ; Pydantic owns
   value interpretation; defaults need a clearer interface; only ty needs support.
-  Separate defaults are the leading preference, not adopted syntax.
+  The core separate-parameter direction and explicit pending cost are now accepted.
+  The full interface and its implementation are not finalized.
 - **Current implementation:** described below at `5f4dd8189c529a99713b629a71e60088c6974204`,
   using the [model guide](models.md), [typing reference](typing.md) and source inspection.
   Existing hidden value conversions are not endorsed by showing current declarations.
-- **This author's proposal:** alternative A and the physical-nullability override
-  described below. These have not been selected by the maintainer.
+- **Remaining proposal:** the physical-nullability override described below is
+  still comparison material; the final nullability rules are not selected here.
+  Alternative B remains an unselected comparison, not a second supported recipe.
 - **Historical evidence:** narrow defaults prototypes exist, and #607 demonstrated
   conditional propagation of a storage marker through a CTE. Neither proves these
   complete proposed declarations, their runtime behavior or a sound capability model.
@@ -74,7 +83,7 @@ misunderstanding was correctly caught by verification; it was not a verification
 The [checkpoint](design-checkpoint.md#d2-defaults-need-a-clearer-design--direction-selected-syntax-open)
 records why improving this is considered worthwhile.
 
-### Alternative A — separate named defaults, same declaration seam
+### Alternative A — accepted direction: separate named defaults, same declaration seam
 
 **Hypothetical replacement parameters; do not copy into current applications.**
 
@@ -348,7 +357,7 @@ storage and execution. No new adapter registry, generated typing files or checke
 plugin is introduced by this recommendation. SQL verification and migration
 readiness remain separate concerns.
 
-## Deliberate non-decisions and the next decision
+## Deliberate non-decisions and the next step
 
 This recommendation does not revive the abandoned left/right typing generator,
 server-prefix families or selector menus. Nor does it adopt the historical
@@ -363,14 +372,14 @@ Do not remove ADR 0020's lifecycle parameter or Row witness without replacement
 proof. Separate input/read generics, strict integer/bool policy, structured Unparsed
 and JSON entry-point selection are still #603 questions, not silently solved here.
 
-**The next maintainer decision is concrete:** is A's clearer default ownership and
-brownfield independence worth retaining explicit pending defaults at this stage?
-My recommendation is yes, rather than add a wrapper or distort requiredness to hide
-them. If removing that repetition is a requirement, record it as an unmet interface
-goal; do not label A final or quietly reintroduce `required=True`.
+**The explicit-pending trade-off is settled:** the maintainer accepts clearer default
+ownership and brownfield independence at the cost of repeating
+`default=db.PENDING_GENERATION` where needed. Do not keep treating removal of that
+repetition as a blocker, add a wrapper merely to hide it, or reintroduce `required=True`.
+That does not settle every nullability or compatibility detail or complete the redesign.
 
-After agreement on a caller contract, scope one new proof at the confirmed declaration
-and constructor seam. It should check the hardest independent-default/omission case
+The next proposed step is to scope one new proof at the declaration and constructor
+seam, confirming its exact tests before writing them. It should check the hardest independent-default/omission case
 and exact Pending/Row types, including negative controls—not expand the #607 overlay.
 No such proof or implementation is authorized or performed by this design sheet.
 
